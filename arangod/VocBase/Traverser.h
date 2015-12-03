@@ -75,7 +75,7 @@ namespace triagens {
           return false;
         }
 
-        std::string toString (triagens::arango::CollectionNameResolver const* resolver) {
+        std::string toString (triagens::arango::CollectionNameResolver const* resolver) const {
           return resolver->getCollectionNameCluster(cid) + "/" + std::string(key);
         }
 

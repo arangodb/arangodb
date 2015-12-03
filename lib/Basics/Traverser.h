@@ -1262,7 +1262,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief List of the last path is used to 
 ////////////////////////////////////////////////////////////////////////////////
-      EnumeratedPath<edgeIdentifier, vertexIdentifier> _enumeratedPath;
+
+        EnumeratedPath<edgeIdentifier, vertexIdentifier> _enumeratedPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The pointers returned for edge indexes on this path. Used to continue
@@ -1290,13 +1291,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Function to get the next edge from index.
 ////////////////////////////////////////////////////////////////////////////////
-       std::function<void (vertexIdentifier&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> _getEdge;
 
+       std::function<void (vertexIdentifier&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> _getEdge;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Function to get the connected vertex from index.
 ///        Returns false if the vertex does not match the filter
 ////////////////////////////////////////////////////////////////////////////////
+
        std::function<bool (edgeIdentifier const&, vertexIdentifier const&, size_t, vertexIdentifier&)> _getVertex;
 
       public: 
@@ -1308,7 +1310,7 @@ namespace triagens {
         PathEnumerator (
           std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&, edgeItem*&, size_t&, bool&)> getEdge,
           std::function<bool (edgeIdentifier const&, vertexIdentifier const&, size_t, vertexIdentifier&)> getVertex,
-          vertexIdentifier& startVertex
+          vertexIdentifier const& startVertex
         ) : _getEdge(getEdge),
             _getVertex(getVertex) {
           _enumeratedPath.vertices.push_back(startVertex);
@@ -1318,10 +1320,10 @@ namespace triagens {
           TRI_ASSERT(_enumeratedPath.vertices.size() == 1);
           TRI_ASSERT(_lastEdges.size() == 1);
           TRI_ASSERT(_lastEdgesDir.size() == 1);
-        };
+        }
 
         ~PathEnumerator () {
-        };
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -1330,6 +1332,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Get the next Path element from the traversal.
 ////////////////////////////////////////////////////////////////////////////////
+
       const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next () {
         if (_lastEdges.size() == 0) {
           _enumeratedPath.edges.clear();
@@ -1367,6 +1370,7 @@ namespace triagens {
 /// @brief Prunes the current path prefix, the next function should not return
 ///        any path having this prefix anymore.
 ////////////////////////////////////////////////////////////////////////////////
+
       void prune () {
         if (_lastEdges.size() > 0) {
           _lastEdges.pop();
@@ -1383,7 +1387,6 @@ namespace triagens {
 
     template <typename VertexId, typename EdgeId>
     class ConstDistanceFinder {
-
 
       public:
 
@@ -1402,7 +1405,7 @@ namespace triagens {
           Path () 
             : weight(0) {
 
-          };
+          }
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1411,7 +1414,6 @@ namespace triagens {
 
         typedef std::function<void(VertexId& V, std::vector<EdgeId>& edges, std::vector<VertexId>& neighbors)>
                 ExpanderFunction;
-
 
       private:
 
