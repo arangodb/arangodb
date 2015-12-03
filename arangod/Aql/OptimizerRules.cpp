@@ -154,7 +154,8 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
           }
         }
         else if (current->getType() == EN::ENUMERATE_LIST ||
-                 current->getType() == EN::ENUMERATE_COLLECTION) {
+                 current->getType() == EN::ENUMERATE_COLLECTION ||
+                 current->getType() == EN::TRAVERSAL) {
           // ok, but we cannot remove two different sorts if one of these node types is between them
           // example: in the following query, the one sort will be optimized away:
           //   FOR i IN [ { a: 1 }, { a: 2 } , { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i
@@ -848,6 +849,7 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
         case EN::FILTER: 
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
+        case EN::TRAVERSAL:
         case EN::INDEX: { 
           // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
           // an EnumerateListNode or an IndexNode
@@ -1048,6 +1050,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
       else if (currentType == EN::INDEX ||
                currentType == EN::ENUMERATE_COLLECTION ||
                currentType == EN::ENUMERATE_LIST ||
+               currentType == EN::TRAVERSAL ||
                currentType == EN::AGGREGATE ||
                currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
@@ -1749,7 +1752,7 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
                                    ExecutionPlan* plan, 
                                    Optimizer::Rule const* rule) {
   
-  // These are all the FILTER nodes where we start
+  // These are all the nodes where we start traversing (including all subqueries)
   std::vector<ExecutionNode*> nodes(std::move(plan->findEndNodes(true)));
 
   std::unordered_map<size_t, ExecutionNode*> changes;
@@ -1966,6 +1969,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
+        case EN::TRAVERSAL:
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:
         case EN::FILTER:
@@ -1994,7 +1998,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         case EN::REMOTE:
         case EN::ILLEGAL:
         case EN::LIMIT:                      // LIMIT is criterion to stop
-        case EN::TRAVERSAL:
           return true;  // abort.
 
         case EN::SORT:     // pulling two sorts together is done elsewhere.

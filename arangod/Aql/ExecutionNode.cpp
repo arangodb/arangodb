@@ -548,6 +548,7 @@ bool ExecutionNode::isInInnerLoop () const {
 
     if (type == ENUMERATE_COLLECTION ||
         type == INDEX ||
+        type == TRAVERSAL ||
         type == ENUMERATE_LIST) {
       // we are contained in an outer loop
       return true;
@@ -1050,8 +1051,7 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       nrRegs.emplace_back(registerId);
 
       for (auto& it : vars) {
-        varInfo.emplace(make_pair(it->id,
-                                 VarInfo(depth, totalNrRegs)));
+        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
