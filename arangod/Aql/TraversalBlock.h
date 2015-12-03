@@ -249,7 +249,7 @@ namespace triagens {
 /// @brief Checks if we output the vertex
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool const usesVertexOutput () {
+        bool usesVertexOutput () {
           return _vertexVar != nullptr;
         }
 
@@ -257,7 +257,7 @@ namespace triagens {
 /// @brief Checks if we output the edge
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool const usesEdgeOutput () {
+        bool usesEdgeOutput () {
           return _edgeVar != nullptr;
         }
 
@@ -265,7 +265,7 @@ namespace triagens {
 /// @brief Checks if we output the path
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool const usesPathOutput () {
+        bool usesPathOutput () {
           return _pathVar != nullptr;
         }
 
