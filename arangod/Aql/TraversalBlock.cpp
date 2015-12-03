@@ -319,7 +319,7 @@ bool TraversalBlock::morePaths (size_t hint) {
 size_t TraversalBlock::skipPaths (size_t hint) {
   freeCaches();
   _posInPaths = 0;
-  if (!_traverser->hasMore()) {
+  if (! _traverser->hasMore()) {
     return 0;
   }
   return _traverser->skip(hint);
@@ -334,8 +334,8 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
     // No Initialisation required.
     return;
   }
-  if (!_useRegister) {
-    if (!_usedConstant) {
+  if (! _useRegister) {
+    if (! _usedConstant) {
       _usedConstant = true;
       _traverser->setStartVertex(_startId);
     }
