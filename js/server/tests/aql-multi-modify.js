@@ -77,6 +77,46 @@ function ahuacatlMultiModifySuite () {
       var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn FOR doc IN OUTBOUND 'v/1' @@e RETURN doc";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1, "@e": cn3 });
     },
+    
+    testInsertAfterModification : function () {
+      var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn INSERT { _key: '2', foo: 'baz' } INTO @@cn";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1 });
+    },
+    
+    testUpdateAfterModification : function () {
+      var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn UPDATE '1' WITH { foo: 'baz' } INTO @@cn";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1 });
+    },
+    
+    testReplaceAfterModification : function () {
+      var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn REPLACE '1' WITH { foo: 'baz' } INTO @@cn";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1 });
+    },
+    
+    testRemoveAfterModification : function () {
+      var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn REMOVE '1' IN @@cn";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1 });
+    },
+    
+    testUpsertAfterModification : function () {
+      var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn UPSERT { foo: 'bar' } INSERT { foo: 'bar' } UPDATE { foo: 'baz' } IN @@cn";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1 });
+    },
+    
+    testDocumentAfterModification : function () {
+      var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn RETURN DOCUMENT(@@cn, '1')";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1 });
+    },
+    
+    testEdgeAfterModification : function () {
+      var q = "INSERT { _from: @from, _to: @to } INTO @@cn RETURN DOCUMENT(@@cn, NEW._key)";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn3, from: cn2 + "/1", to: cn2 + "/2" });
+    },
+    
+    testEdgesAfterModification : function () {
+      var q = "INSERT { _from: @from, _to: @to } INTO @@cn RETURN EDGES(@@cn, @from, 'outbound')";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn3, from: cn2 + "/1", to: cn2 + "/2" });
+    },
 
     testMultiInsertSameCollection : function () {
       var q = "INSERT { value: 1 } INTO @@cn INSERT { value: 2 } INTO @@cn";
