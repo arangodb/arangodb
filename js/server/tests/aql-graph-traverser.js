@@ -1214,7 +1214,102 @@ function complexFilteringSuite () {
       }
     }
 
+  };
 
+}
+
+function brokenGraphSuite () {
+
+  var paramDisabled  = { optimizer: { rules: [ "-all" ] } };
+
+  return {
+
+    setUp: function () {
+      cleanup();
+      vc = db._create(vn, {numberOfShards: 4});
+      ec = db._createEdgeCollection(en, {numberOfShards: 4});
+
+      vertex.A = vc.save({_key: "A"})._id;
+      vertex.B = vc.save({_key: "B"})._id;
+
+      ec.save(vertex.A, vn + "/missing", {});
+      ec.save(vn + "/missing", vertex.B, {});
+    },
+
+    tearDown: cleanup,
+
+    testRequestMissingVertex: function () {
+      var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x._id";
+      var bindVars = {
+        "@eCol": en,
+        startId: vertex.A
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result, [null]);
+    },
+
+    testStartAtMissingVertex: function () {
+      var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x._id";
+      var bindVars = {
+        "@eCol": en,
+        startId: vn + "/missing"
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result, [vertex.B]);
+    },
+
+    testHopOverMissingVertex: function () {
+      var query = "FOR x IN 2 OUTBOUND @startId @@eCol RETURN x._id";
+      var bindVars = {
+        "@eCol": en,
+        startId: vertex.A
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result, [vertex.B]);
+    },
+
+    testFilterOnMissingVertexNotTrue: function () {
+      var filter = [
+        "FILTER p.vertices[1].attribute == 'missing'",
+        "FILTER p.vertices[1].attribute > 12",
+        "FILTER p.vertices[1] != null"
+      ];
+      for (var i = 0; i < filter.length; ++i) {
+        var query = `FOR x, e, p IN 2 OUTBOUND @startId @@eCol ${filter[i]} RETURN x._id`;
+        var bindVars = {
+          "@eCol": en,
+          startId: vertex.A
+        };
+        var result = AQL_EXECUTE(query, bindVars).json;
+        assertEqual(result.length, 0, "With opt: ", query);
+        result = AQL_EXECUTE(query, bindVars, paramDisabled).json;
+        assertEqual(result.length, 0, "Without opt: ", query);
+      }
+    },
+
+    testFilterOnMissingVertexTrue: function () {
+      var filter = [
+        "FILTER p.vertices[1].attribute != 'missing'",
+        "FILTER p.vertices[1].attribute < 12",
+        "FILTER p.vertices[1] == null"
+      ];
+      for (var i = 0; i < filter.length; ++i) {
+        var query = `FOR x, e, p IN 2 OUTBOUND @startId @@eCol ${filter[i]} RETURN x._id`;
+        var bindVars = {
+          "@eCol": en,
+          startId: vertex.A
+        };
+        var result = AQL_EXECUTE(query, bindVars).json;
+        assertEqual(result.length, 1, "With opt: ", query);
+        assertEqual(result, [ vertex.B ], "With opt: ", query);
+        result = AQL_EXECUTE(query, bindVars, paramDisabled).json;
+        assertEqual(result.length, 1, "Without opt: ", query);
+        assertEqual(result, [ vertex.B ], "Without opt: ", query);
+      }
+    }
   };
 
 }
@@ -1224,5 +1319,6 @@ jsunity.run(multiCollectionGraphSuite);
 jsunity.run(potentialErrorsSuite);
 jsunity.run(complexInternaSuite);
 jsunity.run(complexFilteringSuite);
+jsunity.run(brokenGraphSuite);
 
 return jsunity.done();
