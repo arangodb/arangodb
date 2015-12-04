@@ -71,7 +71,7 @@ So all together this query has returned the following paths:
 !SUBSECTION Syntax
 
 Now let's see how we can write a query that follows this schema.
-You have two options here, you can either use a managed graph (see [the graphs chaper]() on how to create it)
+You have two options here, you can either use a managed graph (see [the graphs chapter](../Graphs/README.md) on how to create it)
 
 !SUBSUBSECTION Working on managed graphs:
 
