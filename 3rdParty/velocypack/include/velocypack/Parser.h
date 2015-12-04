@@ -112,6 +112,17 @@ class Parser {
     }
   }
 
+  // This method produces a
+  explicit Parser(Builder& builder,
+                  Options const* options = &Options::Defaults)
+      : _start(nullptr), _size(0), _pos(0), _nesting(0),
+         options(options) {
+    if (options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+    _b.reset(&builder, BuilderNonDeleter());
+  }
+
   // FIXME: withdraw this:
   Builder& builder() { return *_b; }
 
