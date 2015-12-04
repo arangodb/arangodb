@@ -30,7 +30,6 @@
 #include "Traverser.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
-#include <iostream>
 
 using TraverserExpression = triagens::arango::traverser::TraverserExpression;
 
@@ -153,11 +152,11 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
-  if (! recursiveCheck(varAccess, accessor)) {
-    return false;
-  }
 
-  triagens::basics::Json result = accessor.toJson();
+  triagens::basics::Json result(triagens::basics::Json::Null);
+  if (recursiveCheck(varAccess, accessor)) {
+    result = accessor.toJson();
+  }
 
   TRI_ASSERT(compareTo != nullptr);
   TRI_ASSERT(compareTo->json() != nullptr);
