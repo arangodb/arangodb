@@ -370,6 +370,11 @@ DATE_FORMAT("2016", "%%l = %l") // "%l = 1" (2016 is a leap year)
 DATE_FORMAT("2016-03-01", "%xxx%") // "063", trailing % ignored
 ```
 
+- *IS_DATESTRING(value)*: Returns true if *value* is a string that can be used
+  in a date function. This includes partial dates such as *2015* or *2015-10* and
+  strings containing invalid dates such as *2015-02-31*. The function will return 
+  false for all non-string values, even if some of them may be usable in date functions.
+
 !SECTION Working with dates and indices
 
 There are two recommended ways to store timestamps in ArangoDB:
