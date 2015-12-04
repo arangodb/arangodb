@@ -43,6 +43,8 @@
 #include <iostream>
 #endif
 
+#include <array>
+
 using namespace triagens::aql;
 using JsonHelper = triagens::basics::JsonHelper;
 using Json = triagens::basics::Json;
