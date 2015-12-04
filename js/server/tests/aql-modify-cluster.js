@@ -85,46 +85,6 @@ function ahuacatlModifySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (REMOVE d.foobar IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testInsertInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (INSERT { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testUpdateInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (UPDATE { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testReplaceInSubquery : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (REPLACE { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testReplaceInSubquery2 : function () {
-      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (FOR i IN 1..2 REPLACE { _key: 'test' } IN @@cn) RETURN d", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
     testMultiModify : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn1 REMOVE d IN @@cn1 FOR e IN @@cn2 REMOVE e IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
     },
