@@ -84,6 +84,9 @@ struct Options {
   // keep top-level object/array open when building objects with the Parser
   bool keepTopLevelOpen = false;
 
+  // clear builder before starting to parse in Parser
+  bool clearBuilderBeforeParse = true;
+
   // validate UTF-8 strings when JSON-parsing with Parser
   bool validateUtf8Strings = false;
 
