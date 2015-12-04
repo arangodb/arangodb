@@ -299,8 +299,25 @@ namespace triagens {
           catch (...) {
             return std::shared_ptr<arangodb::velocypack::Builder>();
           }
-          return std::shared_ptr<arangodb::velocypack::Builder>();
-          // FIXME: activate return parser.steal();
+          return parser.steal();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TRI_json_t to VelocyPack, writing into an existing Builder
+////////////////////////////////////////////////////////////////////////////////
+
+        static int toVelocyPack (
+                TRI_json_t const* json,
+                std::shared_ptr<arangodb::velocypack::Builder> builder) {
+          std::string tmp = toString(json);
+          arangodb::velocypack::Parser parser(builder);
+          try {
+            parser.parse(tmp);
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
+          return TRI_ERROR_NO_ERROR;
         }
 
     };

@@ -1008,11 +1008,11 @@ static void insertIntoShardMap (ClusterInfo* ci,
   else {
     // Sorry we do not know the responsible shard yet
     // Ask all of them
-    std::map<std::string, std::string> shardIds = collinfo->shardIds();
-    for (auto shard : shardIds) {
-      auto it = shardMap.find(shard.first);
+    auto shardList = ci->getShardList(collid);
+    for (auto const& shard : *shardList) {
+      auto it = shardMap.find(shard);
       if (it == shardMap.end()) {
-        shardMap.emplace(shard.first, std::vector<std::string>({splitId[1]}));
+        shardMap.emplace(shard, std::vector<std::string>({splitId[1]}));
       }
       else {
         it->second.push_back(splitId[1]);
@@ -1261,8 +1261,7 @@ int getFilteredEdgesOnCoordinator (
 
   ClusterCommResult* res;
 
-  map<ShardID, ServerID> shards = collinfo->shardIds();
-  map<ShardID, ServerID>::iterator it;
+  auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
   if (direction == TRI_EDGE_IN) {
@@ -1281,11 +1280,11 @@ int getFilteredEdgesOnCoordinator (
     }
     reqBodyString->append(body.toString());
   }
-  for (it = shards.begin(); it != shards.end(); ++it) {
+  for (auto const& p : *shards) {
     map<string, string>* headers = new map<string, string>;
-    res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+    res = cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
+                           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + p.first + queryParameters,
                            reqBodyString, headers, nullptr, 3600.0);
     delete res;
   }
@@ -1298,7 +1297,7 @@ int getFilteredEdgesOnCoordinator (
 
   triagens::basics::Json documents(triagens::basics::Json::Array);
   
-  for (count = (int) shards.size(); count > 0; count--) {
+  for (count = (int) shards->size(); count > 0; count--) {
     res = cc->wait( "", coordTransactionID, 0, "", 0.0);
     if (res->status == CL_COMM_TIMEOUT) {
       delete res;

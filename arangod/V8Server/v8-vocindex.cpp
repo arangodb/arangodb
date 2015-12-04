@@ -1097,8 +1097,6 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   velocy("indexes", Value(ValueType::Array));
-  velocy.close();
-  velocy.close();
 
   // create a dummy primary index
   TRI_document_collection_t* doc = nullptr;
@@ -1107,11 +1105,10 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 
   auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
+  TRI_json_t* index = idxJson.json();
+
   TRI_json_t* indexes;
   TRI_json_t* json;
-
-  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
-
 
   if (collectionType == TRI_COL_TYPE_EDGE) {
     // create a dummy edge index
