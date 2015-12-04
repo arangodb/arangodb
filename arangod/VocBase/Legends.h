@@ -236,7 +236,7 @@ namespace triagens {
         Shape const* _shapes;
 
       public:
-        LegendReader (char const* l) 
+        explicit LegendReader (char const* l) 
           : Shaper(),
             _legend(l) {
 

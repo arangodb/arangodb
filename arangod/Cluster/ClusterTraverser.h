@@ -92,7 +92,7 @@ namespace triagens {
 
             public:
 
-              VertexGetter (ClusterTraverser* traverser)
+              explicit VertexGetter (ClusterTraverser* traverser)
                 : _traverser(traverser) {
                 }
 
@@ -108,7 +108,7 @@ namespace triagens {
 
             public:
 
-              EdgeGetter (ClusterTraverser* traverser)
+              explicit EdgeGetter (ClusterTraverser* traverser)
                 : _traverser(traverser),
                   _continueConst(1) {
                 }
