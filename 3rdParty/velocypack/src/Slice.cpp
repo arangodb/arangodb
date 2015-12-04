@@ -32,6 +32,7 @@
 #include "velocypack/Dumper.h"
 #include "velocypack/HexDump.h"
 #include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
 #include "velocypack/ValueType.h"
 
@@ -212,10 +213,21 @@ unsigned int const Slice::FirstSubMap[32] = {
     8,  // 0x12, object with unsorted index table
     0};
 
+// creates a Slice from Json and adds it to a scope
+Slice Slice::fromJson(SliceScope& scope, std::string const& json,
+                      Options const* options) {
+  Parser parser(options);
+  parser.parse(json);
+
+  Builder& b = parser.builder();  // don't copy Builder contents here
+  return scope.add(b.start(), b.size(), options);
+}
+
 // translates an integer key into a string
 Slice Slice::translate() const {
   if (!isSmallInt() && !isUInt()) {
-    throw Exception(Exception::NeedAttributeTranslator);
+    throw Exception(Exception::InvalidValueType,
+                    "Cannot translate key of this type");
   }
   uint64_t id = getUInt();
 
@@ -224,6 +236,22 @@ Slice Slice::translate() const {
   }
 
   return Slice(options->attributeTranslator->translate(id), options);
+}
+
+// check if two Slices are equal on the binary level
+bool Slice::equals(Slice const& other) const {
+  if (head() != other.head()) {
+    return false;
+  }
+
+  ValueLength const size = byteSize();
+
+  if (size != other.byteSize()) {
+    return false;
+  }
+
+  return (memcmp(start(), other.start(),
+                 arangodb::velocypack::checkOverflow(size)) == 0);
 }
 
 std::string Slice::toJson() const {
@@ -285,21 +313,19 @@ Slice Slice::get(std::string const& attribute) const {
 
     Slice key = Slice(_start + dataOffset, options);
 
-    if (key.isString()) {
-      if (!key.isEqualString(attribute)) {
-        return Slice();
-      }
-    } else if (key.isSmallInt() || key.isUInt()) {
-      // translate key
-      if (!key.translate().isEqualString(attribute)) {
-        return Slice();
-      }
-    } else {
-      // invalid key
-      return Slice();
+    if (key.isString() && key.isEqualString(attribute)) {
+      return Slice(key.start() + key.byteSize(), options);
     }
 
-    return Slice(key.start() + key.byteSize(), options);
+    if (key.isSmallInt() || key.isUInt()) {
+      // translate key
+      if (key.translate().isEqualString(attribute)) {
+        return Slice(key.start() + key.byteSize(), options);
+      }
+    }
+
+    // no match or invalid key type
+    return Slice();
   }
 
   ValueLength const ieBase =
@@ -401,7 +427,7 @@ int64_t Slice::getSmallInt() const {
     return getInt();
   }
 
-  throw Exception(Exception::InvalidValueType, "Expecting type Smallint");
+  throw Exception(Exception::InvalidValueType, "Expecting type SmallInt");
 }
 
 int Slice::compareString(std::string const& attribute) const {
@@ -433,14 +459,8 @@ Slice Slice::getFromCompactObject(std::string const& attribute) const {
   ObjectIterator it(*this);
   while (it.valid()) {
     Slice key = it.key();
-    if (key.isString()) {
-      if (key.isEqualString(attribute)) {
-        return Slice(key.start() + key.byteSize(), options);
-      }
-    } else if (key.isSmallInt() || key.isUInt()) {
-      if (key.translate().isEqualString(attribute)) {
-        return Slice(key.start() + key.byteSize(), options);
-      }
+    if (key.makeKey().isEqualString(attribute)) {
+      return Slice(key.start() + key.byteSize(), options);
     }
 
     it.next();
@@ -454,8 +474,9 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   VELOCYPACK_ASSERT(type() == ValueType::Array || type() == ValueType::Object);
 
   auto const h = head();
+
   if (h == 0x01 || h == 0x0a) {
-    // special case. empty array or object
+    // special case: empty Array or empty Object
     throw Exception(Exception::IndexOutOfBounds);
   }
 
@@ -506,24 +527,12 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
 Slice Slice::getNth(ValueLength index) const {
   VELOCYPACK_ASSERT(type() == ValueType::Array);
 
-  auto const h = head();
-  if (h == 0x01) {
-    // special case. empty Array
-    throw Exception(Exception::IndexOutOfBounds);
-  }
-
   return Slice(_start + getNthOffset(index), options);
 }
 
 // extract the nth member from an Object
 Slice Slice::getNthKey(ValueLength index, bool translate) const {
   VELOCYPACK_ASSERT(type() == ValueType::Object);
-
-  auto const h = head();
-  if (h == 0x01) {
-    // special case. empty Object
-    throw Exception(Exception::IndexOutOfBounds);
-  }
 
   Slice s(_start + getNthOffset(index), options);
 
@@ -542,7 +551,8 @@ Slice Slice::makeKey() const {
     return translate();
   }
 
-  throw Exception(Exception::InternalError, "Cannot translate key");
+  throw Exception(Exception::InvalidValueType,
+                  "Cannot translate key of this type");
 }
 
 // get the offset for the nth member from a compact Array or Object type
@@ -645,6 +655,25 @@ Slice Slice::searchObjectKeyBinary(std::string const& attribute,
       return Slice();
     }
   }
+}
+
+SliceScope::SliceScope() : _allocations() {}
+
+SliceScope::~SliceScope() {
+  for (auto& it : _allocations) {
+    delete[] it;
+  }
+}
+
+Slice SliceScope::add(uint8_t const* data, ValueLength size,
+                      Options const* options) {
+  size_t const s = checkOverflow(size);
+  std::unique_ptr<uint8_t[]> copy(new uint8_t[s]);
+  memcpy(copy.get(), data, s);
+  _allocations.push_back(copy.get());
+  uint8_t const* start = copy.release();
+
+  return Slice(start, options);
 }
 
 std::ostream& operator<<(std::ostream& stream, Slice const* slice) {

@@ -54,7 +54,7 @@ class Buffer {
       if (that._pos > sizeof(_local)) {
         _buffer = new T[that._pos];
       }
-      memcpy(_buffer, that._buffer, that._pos);
+      memcpy(_buffer, that._buffer, checkOverflow(that._pos));
       _alloc = that._pos;
       _pos = that._pos;
     }
@@ -68,7 +68,7 @@ class Buffer {
         if (that._pos > sizeof(_local)) {
           _buffer = new T[that._pos];
         }
-        memcpy(_buffer, that._buffer, that._pos);
+        memcpy(_buffer, that._buffer, checkOverflow(that._pos));
         _alloc = that._pos;
         _pos = that._pos;
       }
@@ -78,7 +78,7 @@ class Buffer {
 
   Buffer(Buffer&& that) : Buffer() {
     if (that._buffer == that._local) {
-      memcpy(_buffer, that._buffer, that._pos);
+      memcpy(_buffer, that._buffer, checkOverflow(that._pos));
       _pos = that._pos;
       that._pos = 0;
     } else {
@@ -128,7 +128,7 @@ class Buffer {
 
   void append(char const* p, ValueLength len) {
     reserve(len);
-    memcpy(_buffer + _pos, p, len);
+    memcpy(_buffer + _pos, p, checkOverflow(len));
     _pos += len;
   }
 
@@ -139,14 +139,8 @@ class Buffer {
 
     VELOCYPACK_ASSERT(_pos + len >= sizeof(_local));
 
-    static ValueLength const MinLength = sizeof(_local);
-
     // need reallocation
     ValueLength newLen = _pos + len;
-    if (newLen < MinLength) {
-      // ensure we don't alloc too small blocks
-      newLen = MinLength;
-    }
     static double const GrowthFactor = 1.25;
     if (_pos > 0 && newLen < GrowthFactor * _pos) {
       // ensure the buffer grows sensibly and not by 1 byte only
@@ -154,13 +148,13 @@ class Buffer {
     }
     VELOCYPACK_ASSERT(newLen > _pos);
 
-    T* p = new T[newLen];
+    T* p = new T[checkOverflow(newLen)];
 #ifdef VELOCYPACK_DEBUG
     // poison memory
     memset(p, 0xa5, newLen);
 #endif
     // copy old data
-    memcpy(p, _buffer, _pos);
+    memcpy(p, _buffer, checkOverflow(_pos));
     if (_buffer != _local) {
       delete[] _buffer;
     }
