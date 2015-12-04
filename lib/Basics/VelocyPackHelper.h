@@ -61,8 +61,7 @@ namespace triagens {
         static T getNumericValue (VPackSlice const& slice,
                                   T defaultValue) {
           if (slice.isNumber()) {
-            return (T) slice.getUInt();
-            // return slice.getNumericValue<T>();
+            return slice.getNumber<T>();
           }
           return defaultValue;
         }
@@ -77,8 +76,7 @@ namespace triagens {
                                   T defaultValue) {
           VPackSlice sub = slice.get(name);
           if (sub.isNumber()) {
-            return (T) sub.getUInt();
-            // return sub.getNumericValue<T>();
+            return sub.getNumber<T>();
           }
           return defaultValue;
         }
