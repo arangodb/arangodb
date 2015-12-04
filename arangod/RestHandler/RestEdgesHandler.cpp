@@ -32,6 +32,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "VocBase/Traverser.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::rest;
 using namespace triagens::arango;
 
@@ -385,38 +388,55 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 
 bool RestEdgesHandler::readFilteredEdges () {
   std::vector<traverser::TraverserExpression*> expressions;
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
-  triagens::basics::ScopeGuard guard{
-    []() -> void { },
-    [&expressions]() -> void {
-      for (auto& e : expressions) {
-        delete e;
+  try { 
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    if (! parseSuccess) {
+      // We continue unfiltered
+      // Filter could be done by caller
+      delete _response;
+      _response = nullptr;
+      return readEdges(expressions);
+    }
+    VPackSlice body = parsedBody.get()->slice();
+    triagens::basics::ScopeGuard guard{
+      []() -> void { },
+      [&expressions]() -> void {
+        for (auto& e : expressions) {
+          delete e;
+        }
+      }
+    };
+
+    if (! body.isArray()) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "Expected a list of traverser expressions as body parameter");
+      return false;
+    }
+
+    expressions.reserve(body.length());
+
+    for (auto const& exp : VPackArrayIterator(body)) {
+      if (exp.isObject()) {
+        std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
+        expressions.emplace_back(expression.get());
+        expression.release();
       }
     }
-  };
-  if (json == nullptr) {
-    delete _response;
-    _response = nullptr;
     return readEdges(expressions);
   }
-
-  if (! TRI_IsArrayJson(json.get())) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "Expected a list of traverser expressions as body parameter");
-    return false;
+  catch (triagens::basics::Exception const& ex) {
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   }
-
-  size_t length = TRI_LengthArrayJson(json.get()); 
-  expressions.reserve(length);
-
-  for (size_t i = 0; i < length; ++i) {
-    TRI_json_t* exp = TRI_LookupArrayJson(json.get(), i);
-    if (TRI_IsObjectJson(exp)) {
-      std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
-      expressions.emplace_back(expression.get());
-      expression.release();
-    }
+  catch (std::bad_alloc const&) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
-  return readEdges(expressions);
+  catch (std::exception const& ex) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  }
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+  }
+  return false;
 }

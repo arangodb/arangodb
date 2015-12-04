@@ -39,6 +39,8 @@
 #include "VocBase/DocumentAccessor.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 namespace triagens {
   namespace arango {
     namespace traverser {
@@ -114,6 +116,8 @@ namespace triagens {
           }
 
           explicit TraverserExpression (TRI_json_t const*);
+
+          explicit TraverserExpression (VPackSlice const& slice);
 
           virtual ~TraverserExpression () {
             // no need to destroy varAccess here. Its memory is managed via the
