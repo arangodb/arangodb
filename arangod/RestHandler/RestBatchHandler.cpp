@@ -317,6 +317,10 @@ HttpHandler::status_t RestBatchHandler::execute () {
       catch (triagens::basics::Exception const& ex) {
         handler->handleError(ex);
       }
+      catch (std::bad_alloc const& ex) {
+        triagens::basics::Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+        handler->handleError(err);
+      }
       catch (std::exception const& ex) {
         triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
         handler->handleError(err);

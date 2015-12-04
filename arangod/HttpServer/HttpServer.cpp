@@ -454,6 +454,12 @@ HttpHandler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, Htt
 
       handler->handleError(ex);
     }
+    catch (std::bad_alloc const& ex) {
+      RequestStatisticsAgentSetExecuteError(handler);
+
+      basics::Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+      handler->handleError(err);
+    }
     catch (std::exception const& ex) {
       RequestStatisticsAgentSetExecuteError(handler);
 
