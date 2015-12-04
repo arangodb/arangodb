@@ -1,0 +1,68 @@
+!CHAPTER Upgrading to ArangoDB 2.8
+
+Please read the following sections if you upgrade from a previous version to
+ArangoDB 2.8. Please be sure that you have checked the list of [changes in 2.8](../Upgrading/UpgradingChanges28.md)
+before upgrading.
+
+Please note first that a database directory used with ArangoDB 2.8
+cannot be used with earlier versions (e.g. ArangoDB 2.7) any
+more. Upgrading a database directory cannot be reverted. Therefore
+please make sure to create a full backup of your existing ArangoDB
+installation before performing an upgrade.
+
+!SECTION Database Directory Version Check and Upgrade
+
+ArangoDB will perform a database version check at startup. When ArangoDB 2.8
+encounters a database created with earlier versions of ArangoDB, it will refuse
+to start. This is intentional.
+
+The output will then look like this:
+
+```
+2015-12-04T17:11:17Z [31432] ERROR In database '_system': Database directory version (20702) is lower than current version (20800).
+2015-12-04T17:11:17Z [31432] ERROR In database '_system': ----------------------------------------------------------------------
+2015-12-04T17:11:17Z [31432] ERROR In database '_system': It seems like you have upgraded the ArangoDB binary.
+2015-12-04T17:11:17Z [31432] ERROR In database '_system': If this is what you wanted to do, please restart with the
+2015-12-04T17:11:17Z [31432] ERROR In database '_system':   --upgrade
+2015-12-04T17:11:17Z [31432] ERROR In database '_system': option to upgrade the data in the database directory.
+2015-12-04T17:11:17Z [31432] ERROR In database '_system': Normally you can use the control script to upgrade your database
+2015-12-04T17:11:17Z [31432] ERROR In database '_system':   /etc/init.d/arangodb stop
+2015-12-04T17:11:17Z [31432] ERROR In database '_system':   /etc/init.d/arangodb upgrade
+2015-12-04T17:11:17Z [31432] ERROR In database '_system':   /etc/init.d/arangodb start
+2015-12-04T17:11:17Z [31432] ERROR In database '_system': ----------------------------------------------------------------------
+2015-12-04T17:11:17Z [31432] FATAL Database '_system' needs upgrade. Please start the server with the --upgrade option
+```
+
+To make ArangoDB 2.8 start with a database directory created with an earlier
+ArangoDB version, you may need to invoke the upgrade procedure once.  This can
+be done by running ArangoDB from the command line and supplying the `--upgrade`
+option.
+
+Note: here the same database should be specified that is also specified when
+arangod is started regularly. Please do not run the `--upgrade` command on each
+individual database subfolder (named `database-<some number>`).
+ 
+For example, if you regularly start your ArangoDB server with
+
+    unix> arangod mydatabasefolder
+
+then running
+
+    unix> arangod mydatabasefolder --upgrade
+
+will perform the upgrade for the whole ArangoDB instance, including all of its
+databases.
+
+Starting with `--upgrade` will run a database version check and perform any
+necessary migrations. As usual, you should create a backup of your database
+directory before performing the upgrade.
+
+The last line of the output should look like this:
+```
+2015-12-04T17:12:15Z [31558] INFO database upgrade passed
+```
+
+Please check the full output the `--upgrade` run. Upgrading may produce errors, which need
+to be fixed before ArangoDB can be used properly. If no errors are present or
+they have been resolved manually, you can start ArangoDB 2.8 regularly.
+

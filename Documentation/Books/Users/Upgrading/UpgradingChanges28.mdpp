@@ -4,7 +4,69 @@ It is recommended to check the following list of incompatible changes **before**
 upgrading to ArangoDB 2.8, and adjust any client programs if necessary.
 
 
-!SECTION Miscellaneous changes
+!SECTION AQL
+
+!SUBSECTION Keywords added
+
+The following AQL keywords were added in ArangoDB 2.8:
+
+* `GRAPH`
+* `OUTBOUND`
+* `INBOUND`
+* `ANY`
+* `ALL`
+
+Usage of these keywords for collection names, variable names or attribute names
+in AQL queries will not be possible without quoting. For example, the following
+AQL query will still work as it uses a quoted collection name and a quoted
+attribute name:
+
+```
+FOR doc IN `OUTBOUND`
+  RETURN doc.`any`
+```
+
+
+!SUBSECTION Deadlock handling
+
+Client applications should be prepared to handle error 29 (`deadlock detected`)
+that ArangoDB may now throw when it detects a deadlock across multiple transactions.
+When a client application receives error 29, it should retry the operation that
+failed. 
+
+The error can only occur for AQL queries or user transactions that involve 
+more than a single collection.
+
+
+!SUBSECTION Optimizer
+
+The AQL execution node type `IndexRangeNode` was replaced with a new more capable
+execution node type `IndexNode`. That means in execution plan explain output there
+will be no more `IndexRangeNode`s but only `IndexNode`. This affects explain output
+that can be retrieved via `require("org/arangodb/aql/explainer").explain(query)`,
+`db._explain(query)`, and the HTTP query explain API.
+
+The optimizer rule that makes AQL queries actually use indexes was also renamed
+from `use-index-range` to `use-indexes`. Again this affects explain output
+that can be retrieved via `require("org/arangodb/aql/explainer").explain(query)`,
+`db._explain(query)`, and the HTTP query explain API.
+
+
+!SECTION HTTP API
+
+When a server-side operation got canceled due to an explicit client cancel request 
+via HTTP `DELETE /_api/job`, previous versions of ArangoDB returned an HTTP status
+code of 408 (request timeout) for the response of the canceled operation.
+
+The HTTP return code 408 has caused problems with some client applications. Some 
+browsers (e.g. Chrome) handled a 408 response by resending the original request, 
+which is the opposite of what is desired when a job should be canceled.
+
+Therefore ArangoDB will return HTTP status code 410 (gone) for canceled operations
+from version 2.8 on.
+
+
+!SECTION Foxx
 
 !SUBSECTION Module resolution
 
@@ -34,7 +96,7 @@ The module now always returns response bodies, even for error responses. In vers
 prior to 2.8 the module would silently drop response bodies if the response header
 indicated an error.
 
-The old behaviour of not returning bodies for error responses can be restored by
+The old behavior of not returning bodies for error responses can be restored by
 explicitly setting the option `returnBodyOnError` to `false`:
 
 ```js

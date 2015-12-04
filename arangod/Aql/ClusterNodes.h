@@ -372,13 +372,15 @@ namespace triagens {
                         Collection const* collection, 
                         VariableId const varId,
                         VariableId const alternativeVarId,
-                        bool createKeys)
+                        bool createKeys,
+                        bool allowKeyConversionToObject)
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
             _collection(collection),
             _varId(varId),
             _alternativeVarId(alternativeVarId),
-            _createKeys(createKeys) {
+            _createKeys(createKeys),
+            _allowKeyConversionToObject(allowKeyConversionToObject) {
         }
         
         DistributeNode (ExecutionPlan* plan, 
@@ -386,8 +388,9 @@ namespace triagens {
                         TRI_vocbase_t* vocbase,
                         Collection const* collection, 
                         VariableId const varId,
-                        bool createKeys)
-          : DistributeNode(plan, id, vocbase, collection, varId, varId, createKeys) {
+                        bool createKeys,
+                        bool allowKeyConversionToObject)
+          : DistributeNode(plan, id, vocbase, collection, varId, varId, createKeys, allowKeyConversionToObject) {
           // just delegates to the other constructor
         }
 
@@ -417,7 +420,7 @@ namespace triagens {
         ExecutionNode* clone (ExecutionPlan* plan,
                               bool withDependencies,
                               bool withProperties) const override final {
-          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _alternativeVarId, _createKeys);
+          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _alternativeVarId, _createKeys, _allowKeyConversionToObject);
           
           cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -478,6 +481,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool const _createKeys;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allow conversion of key to object
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _allowKeyConversionToObject;
 
     };
 

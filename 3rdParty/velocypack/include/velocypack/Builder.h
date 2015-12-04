@@ -584,6 +584,11 @@ class Builder {
   void checkAttributeUniqueness(Slice const& obj) const;
 };
 
+struct BuilderNonDeleter {
+  void operator()(Builder*) {
+  }
+};
+
 }  // namespace arangodb::velocypack
 }  // namespace arangodb
 

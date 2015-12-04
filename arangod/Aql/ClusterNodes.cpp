@@ -153,7 +153,8 @@ DistributeNode::DistributeNode (ExecutionPlan* plan,
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
     _varId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(), "varId")),
     _alternativeVarId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(), "alternativeVarId")),
-    _createKeys(JsonHelper::checkAndGetBooleanValue(base.json(), "createKeys")) {
+    _createKeys(JsonHelper::checkAndGetBooleanValue(base.json(), "createKeys")),
+    _allowKeyConversionToObject(JsonHelper::checkAndGetBooleanValue(base.json(), "allowKeyConversionToObject")) {
 }
 
 void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
@@ -169,7 +170,8 @@ void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
       ("collection", triagens::basics::Json(_collection->getName()))
       ("varId", triagens::basics::Json(static_cast<int>(_varId)))
       ("alternativeVarId", triagens::basics::Json(static_cast<int>(_alternativeVarId)))
-      ("createKeys", triagens::basics::Json(_createKeys));
+      ("createKeys", triagens::basics::Json(_createKeys))
+      ("allowKeyConversionToObject", triagens::basics::Json(_allowKeyConversionToObject));
 
   // And add it:
   nodes(json);
