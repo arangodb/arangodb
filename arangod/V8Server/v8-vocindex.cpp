@@ -1104,26 +1104,17 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
       (new triagens::arango::PrimaryIndex(doc));
 
   auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-
-  TRI_json_t* index = idxJson.json();
-  auto indexVelocy = triagens::basics::JsonHelper::toVelocyPack(index);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, index);
-
-  velocy.add(indexVelocy->slice());
-
-  TRI_json_t* indexes;
-  TRI_json_t* json;
+  triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
 
   if (collectionType == TRI_COL_TYPE_EDGE) {
     // create a dummy edge index
     std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(id, nullptr));
 
-    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
+    idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+    triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
   }
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexes", indexes);
+  velocy.close();  // closes indexes array
+  velocy.close();  // closes top level
 
   string errorMsg;
   int myerrno = ci->createCollectionCoordinator(databaseName,
@@ -1132,8 +1123,6 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
                                                 velocy.slice(),
                                                 errorMsg,
                                                 240.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(myerrno, errorMsg);
