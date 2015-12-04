@@ -193,7 +193,7 @@ v2.8.0-alpha1 (2015-12-03)
 
   the index will now contain the individual values `"AQL"`, `"ArangoDB"` and `"Index"`.
   
-  Now the index will be for finding all documents having `"ArangoDB"` somewhere in their
+  Now the index can be used for finding all documents having `"ArangoDB"` somewhere in their
   tags array using the following AQL query:
     
       FOR doc IN colName 
