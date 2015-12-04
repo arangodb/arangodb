@@ -146,7 +146,9 @@ class Parser {
     _start = start;
     _size = size;
     _pos = 0;
-    _b->clear();
+    if (options->clearBuilderBeforeParse) {
+      _b->clear();
+    }
     _b->options = options;
     return parseInternal(multi);
   }

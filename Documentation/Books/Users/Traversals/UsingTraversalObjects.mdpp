@@ -23,16 +23,16 @@ var startVertex = db._document("v/world");
 ```
 
 **Note**: The startVertex needs to be a document, not only a document id.
-  
+
 We can then create a traverser and start the traversal by calling its *traverse* method.
 Note that *traverse* needs a *result* object, which it can modify in place:
 
 ```js
-var result = { 
-  visited: { 
-    vertices: [ ], 
-    paths: [ ] 
-  } 
+var result = {
+  visited: {
+    vertices: [ ],
+    paths: [ ]
+  }
 };
 var traverser = new traversal.Traverser(config);
 traverser.traverse(result, startVertex);
@@ -42,8 +42,8 @@ Finally, we can print the contents of the *results* object, limited to the visit
 We will only print the name and type of each visited vertex for brevity:
 
 ```js
-require("internal").print(result.visited.vertices.map(function(vertex) { 
-  return vertex.name + " (" + vertex.type + ")"; 
+require("internal").print(result.visited.vertices.map(function(vertex) {
+  return vertex.name + " (" + vertex.type + ")";
 }));
 ```
 
@@ -63,18 +63,18 @@ var config = {
 };
 
 var startVertex = db._document("v/world");
-var result = { 
-  visited: { 
-    vertices: [ ], 
-    paths: [ ] 
-  } 
+var result = {
+  visited: {
+    vertices: [ ],
+    paths: [ ]
+  }
 };
 
 var traverser = new traversal.Traverser(config);
 traverser.traverse(result, startVertex);
 
-require("internal").print(result.visited.vertices.map(function(vertex) { 
-  return vertex.name + " (" + vertex.type + ")"; 
+require("internal").print(result.visited.vertices.map(function(vertex) {
+  return vertex.name + " (" + vertex.type + ")";
 }));
 ```
 
@@ -82,14 +82,14 @@ The result is an array of vertices that were visited during the traversal, start
 start vertex (i.e. *v/world* in our example):
 
 ```js
-[ 
-  "World (root)", 
-  "Africa (continent)", 
-  "Asia (continent)", 
-  "Australia (continent)", 
-  "Europe (continent)", 
-  "North America (continent)", 
-  "South America (continent)" 
+[
+  "World (root)",
+  "Africa (continent)",
+  "Asia (continent)",
+  "Australia (continent)",
+  "Europe (continent)",
+  "North America (continent)",
+  "South America (continent)"
 ]
 ```
 
@@ -149,29 +149,29 @@ var config = {
 };
 
 var startVertex = db._document("v/capital-algiers");
-var result = { 
-  visited: { 
-    vertices: [ ], 
-    paths: [ ] 
-  } 
+var result = {
+  visited: {
+    vertices: [ ],
+    paths: [ ]
+  }
 };
 
 var traverser = new traversal.Traverser(config);
 traverser.traverse(result, startVertex);
 
-require("internal").print(result.visited.vertices.map(function(vertex) { 
-  return vertex.name + " (" + vertex.type + ")"; 
+require("internal").print(result.visited.vertices.map(function(vertex) {
+  return vertex.name + " (" + vertex.type + ")";
 }));
 ```
 
 The result is:
 
 ```js
-[ 
-  "Algiers (capital)", 
-  "Algeria (country)", 
-  "Africa (continent)", 
-  "World (root)" 
+[
+  "Algiers (capital)",
+  "Algeria (country)",
+  "Africa (continent)",
+  "World (root)"
 ]
 ```
 
@@ -198,18 +198,18 @@ var config = {
   expander: traversal.inboundExpander
 };
 
-var result = { 
-  visited: { 
-    vertices: [ ], 
-    paths: [ ] 
-  } 
+var result = {
+  visited: {
+    vertices: [ ],
+    paths: [ ]
+  }
 };
 
 var traverser = new traversal.Traverser(config);
 traverser.traverse(result, startVertex);
 
-require("internal").print(result.visited.vertices.map(function(vertex) { 
-  return vertex.name + " (" + vertex.type + ")"; 
+require("internal").print(result.visited.vertices.map(function(vertex) {
+  return vertex.name + " (" + vertex.type + ")";
 }));
 ```
 
@@ -218,17 +218,17 @@ each continent found, the traverser will descend into linked countries, and then
 the linked capital:
 
 ```js
-[ 
-  "World (root)", 
-  "Africa (continent)", 
-  "Algeria (country)", 
-  "Algiers (capital)", 
-  "Angola (country)", 
-  "Luanda (capital)", 
-  "Botswana (country)", 
-  "Gaborone (capital)", 
-  "Burkina Faso (country)", 
-  "Ouagadougou (capital)", 
+[
+  "World (root)",
+  "Africa (continent)",
+  "Algeria (country)",
+  "Algiers (capital)",
+  "Angola (country)",
+  "Luanda (capital)",
+  "Botswana (country)",
+  "Gaborone (capital)",
+  "Burkina Faso (country)",
+  "Ouagadougou (capital)",
   ...
 ]
 ```
@@ -238,28 +238,28 @@ traverser visit vertices **after** all connected vertices were visited (i.e. mos
 vertices will be emitted first):
 
 ```js
-[ 
-  "Algiers (capital)", 
-  "Algeria (country)", 
-  "Luanda (capital)", 
-  "Angola (country)", 
-  "Gaborone (capital)", 
-  "Botswana (country)", 
-  "Ouagadougou (capital)", 
-  "Burkina Faso (country)", 
-  "Bujumbura (capital)", 
-  "Burundi (country)", 
-  "Yaounde (capital)", 
-  "Cameroon (country)", 
-  "N'Djamena (capital)", 
-  "Chad (country)", 
-  "Yamoussoukro (capital)", 
-  "Cote d'Ivoire (country)", 
-  "Cairo (capital)", 
-  "Egypt (country)", 
-  "Asmara (capital)", 
-  "Eritrea (country)", 
-  "Africa (continent)", 
+[
+  "Algiers (capital)",
+  "Algeria (country)",
+  "Luanda (capital)",
+  "Angola (country)",
+  "Gaborone (capital)",
+  "Botswana (country)",
+  "Ouagadougou (capital)",
+  "Burkina Faso (country)",
+  "Bujumbura (capital)",
+  "Burundi (country)",
+  "Yaounde (capital)",
+  "Cameroon (country)",
+  "N'Djamena (capital)",
+  "Chad (country)",
+  "Yamoussoukro (capital)",
+  "Cote d'Ivoire (country)",
+  "Cairo (capital)",
+  "Egypt (country)",
+  "Asmara (capital)",
+  "Eritrea (country)",
+  "Africa (continent)",
   ...
 ]
 ```
@@ -271,20 +271,20 @@ traversal, we'll see that the return order changes, and items on the same level 
 returned adjacently:
 
 ```js
-[ 
-  "World (root)", 
-  "Africa (continent)", 
-  "Asia (continent)", 
-  "Australia (continent)", 
-  "Europe (continent)", 
-  "North America (continent)", 
-  "South America (continent)", 
-  "Burkina Faso (country)", 
-  "Burundi (country)", 
-  "Cameroon (country)", 
-  "Chad (country)", 
-  "Algeria (country)", 
-  "Angola (country)", 
+[
+  "World (root)",
+  "Africa (continent)",
+  "Asia (continent)",
+  "Australia (continent)",
+  "Europe (continent)",
+  "North America (continent)",
+  "South America (continent)",
+  "Burkina Faso (country)",
+  "Burundi (country)",
+  "Cameroon (country)",
+  "Chad (country)",
+  "Algeria (country)",
+  "Angola (country)",
   ...
 ]
 ```
@@ -302,25 +302,25 @@ var config = {
   ...
 };
 ```
- 
+
 The arguments l and r are edge documents.
 This will traverse edges of the same vertex in backward *_key* order:
 
 ```js
 [
-  "World (root)", 
-  "South America (continent)", 
-  "North America (continent)", 
-  "Europe (continent)", 
-  "Australia (continent)", 
-  "Asia (continent)", 
-  "Africa (continent)", 
-  "Ecuador (country)", 
-  "Colombia (country)", 
-  "Chile (country)", 
-  "Brazil (country)", 
-  "Bolivia (country)", 
-  "Argentina (country)", 
+  "World (root)",
+  "South America (continent)",
+  "North America (continent)",
+  "Europe (continent)",
+  "Australia (continent)",
+  "Asia (continent)",
+  "Africa (continent)",
+  "Ecuador (country)",
+  "Colombia (country)",
+  "Chile (country)",
+  "Brazil (country)",
+  "Bolivia (country)",
+  "Argentina (country)",
   ...
 ]
 ```
@@ -358,7 +358,7 @@ The traverser comes with the following predefined visitors:
 - *doNothingVisitor*: if no action shall be carried out when a vertex is visited, this
   visitor can be employed. It will not do anything and will thus be fast. It can be used
   for performance comparisons with other visitors.
- 
+
 We can also write our own visitor function if we want to. The general function signature for
 visitor functions is as follows:
 
@@ -398,14 +398,14 @@ we could write the following custom visitor:
 
 ```js
 config.visitor = function (config, result, vertex, path, connected) {
-  if (! result) { 
+  if (! result) {
     result = { };
   }
 
   if (! result.hasOwnProperty('count')) {
     result.count = 0;
   }
-  
+
   ++result.count;
 }
 ```
@@ -422,7 +422,7 @@ visited:
 ```js
 config.visitor = function (config, result, vertex, path, connected) {
   if (! result) {
-    result = { }; 
+    result = { };
   }
   if (! result.hasOwnProperty("visited")) {
     result.visited = { vertices: [ ] };
@@ -477,7 +477,7 @@ It will receive the traversal configuration, the current vertex, and the full pa
 the traversal start vertex to the current vertex. The path consists of an array of edges, 
 and an array of vertices. We could also filter everything but capitals by checking the
 length of the path from the start vertex to the current vertex. Capitals will have a
-distance of 3 from the *v/world* start vertex 
+distance of 3 from the *v/world* start vertex
 (capital -> is-in -> country -> is-in -> continent -> is-in -> world):
 
 ```js
@@ -532,8 +532,8 @@ vertex the edge points to).
 
 If the function returns *true*, the edge will be followed. If the function returns
 *false*, the edge will not be followed.
-Here is a very simple custom edge filter function implementation, which simply 
-includes edges if the (edges) path length is less than 1, and will exclude any 
+Here is a very simple custom edge filter function implementation, which simply
+includes edges if the (edges) path length is less than 1, and will exclude any
 other edges. This will effectively terminate the traversal after the first level 
 of edges:
 
@@ -569,7 +569,7 @@ var config = {
 ```
 
 It is the expander's responsibility to return all edges and vertices directly
-connected to the current vertex (which is passed via the *vertex* variable). 
+connected to the current vertex (which is passed via the *vertex* variable).
 The full path from the start vertex up to the current vertex is also supplied via
 the *path* variable.
 An expander is expected to return an array of objects, which need to have an *edge*
@@ -596,7 +596,7 @@ var config = {
       }
     });
     return connected;
-  } 
+  }
 };
 ```
 
@@ -606,10 +606,10 @@ over which edges will be returned.
 Following are two examples of custom expanders that pick edges based on attributes
 of the edges and the connected vertices.
 
-Finding the connected edges / vertices based on an attribute *when* in the 
+Finding the connected edges / vertices based on an attribute *when* in the
 connected vertices. The goal is to follow the edge that leads to the vertex
 with the highest value in the *when* attribute:
- 
+
 ```js
 var config = {
   ...
@@ -617,10 +617,10 @@ var config = {
     var datasource = config.datasource;
     // determine all outgoing edges
     var outEdges = datasource.getOutEdges(vertex);
-  
+
     if (outEdges.length === 0) {
       return [ ];
-    }  
+    }
 
     var data = [ ];
     outEdges.forEach(function (edge) {
@@ -630,7 +630,7 @@ var config = {
     // sort outgoing vertices according to "when" attribute value
     data.sort(function (l, r) {
       if (l.vertex.when === r.vertex.when) {
-        return 0;  
+        return 0;
       }
 
       return (l.vertex.when < r.vertex.when ? 1 : -1);
@@ -643,7 +643,7 @@ var config = {
 };
 ```
 
-Finding the connected edges / vertices based on an attribute *when* in the 
+Finding the connected edges / vertices based on an attribute *when* in the
 edge itself. The goal is to pick the one edge (out of potentially many) that
 has the highest *when* attribute value:
 
@@ -654,7 +654,7 @@ var config = {
     var datasource = config.datasource;
     // determine all outgoing edges
     var outEdges = datasource.getOutEdges(vertex);
- 
+
     if (outEdges.length === 0) {
       return [ ]; // return an empty array
     }
@@ -671,7 +671,7 @@ var config = {
     var edge = outEdges[0];
     try {
       var v = datasource.getInVertex(edge);
-      return [ { edge: edge, vertex: v } ];   
+      return [ { edge: edge, vertex: v } ];
     }
     catch (e) { }
 
@@ -716,7 +716,6 @@ To adjust the uniqueness for following edges, there are the following options fo
 * *"none"*: always follow an edge, regardless of whether it was followed before
 * *"global"*: follow an edge only if it wasn't followed in the traversal
 * *"path"*: follow an edge if it is not included in the current path
-``` 
 
 Note that uniqueness checking will have some effect on both runtime and memory usage. For example, when
 uniqueness checks are set to *"global"*, arrays of visited vertices and edges must be kept in memory while the
@@ -756,7 +755,7 @@ unintentionally run a never-ending traversal on a graph with cyclic data. How ma
 at most is determined by the *maxIterations* configuration option. If a traversal hits the cap specified 
 by *maxIterations*, it will abort and throw a *too many iterations* exception. If this error is encountered,
 the *maxIterations* value should be increased if it is made sure that the other traversal configuration
-parameters are sane and the traversal will abort naturally at some point. 
+parameters are sane and the traversal will abort naturally at some point.
 
 Finally, the *buildVertices* configuration option can be set to *false* to avoid looking up and fully constructing
 vertex data. If all that's needed from vertices are the *_id* or *_key* attributes, the *buildvertices* 
@@ -773,7 +772,7 @@ configuration can consist of the following attributes:
   general visitor function signature is *function (config, result, vertex, path)*. If the traversal
   order is *preorder-expander*, the connecting edges of the visited vertex will be passed as the
   fifth parameter, extending the function signature to: *function (config, result, vertex, path, edges)*. 
- 
+
   Visitor functions are not expected to return values, but they may modify the *result* variable as 
   needed (e.g. by pushing vertex data into the result).
 - *expander*: expander function that is responsible for returning edges and vertices
