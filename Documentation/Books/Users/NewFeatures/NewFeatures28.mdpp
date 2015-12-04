@@ -46,12 +46,12 @@ FOR foaf, e, path IN 2 ANY @startUser GRAPH "relations"
   RETURN DISTINCT foaf
 ```
 
-Also optimizer rules have been implemented to gain performance of the traversal statement.
-This rules move filter statements into the traversal statement s.t. paths which can never
+Optimizer rules have been implemented to gain performance of the traversal statement.
+These rules move filter statements into the traversal statement s.t. paths which can never
 pass the filter are not emitted to the variables.
 As an example take the query above and assume there are edges that do not have `type == "friend"`.
 If in the first edge step there is such a non-friend edge the second steps will never
-be computed as they cannot fulfill the filter condition.
+be computed for these edges as they cannot fulfill the filter condition.
 
 !SUBSECTION Array Indexes
 
@@ -184,10 +184,10 @@ A deadlock is a situation in which two or more concurrent operations (user trans
 or AQL queries) try to access the same resources (collections, documents) and need to 
 wait for the others to finish, but none of them can make any progress.
 
-In case of such deadlock, there would be no progress for any of the involved
+In case of such a deadlock, there would be no progress for any of the involved
 transactions, and none of the involved transactions could ever complete. This is
 completely undesirable, so the new automatic deadlock detection mechanism in ArangoDB
-will automatically kick in and abort one of the transactions involved in such deadlock. 
+will automatically kick in and abort one of the transactions involved in such a deadlock. 
 Aborting means that all changes done by the transaction will be rolled back and error 
 29 (`deadlock detected`) will be thrown.
 
@@ -222,7 +222,7 @@ have been backported to ArangoDB 2.7 as well):
   slave will (intentionally) idle and not poll for master log changes in case the 
   master had sent the full logs already.
   The `idleMaxWaitTime` value will only be used when `adapativePolling` is set
-  to `true`. When `adaptivePolling` is disable, only `idleMinWaitTime` will be
+  to `true`. When `adaptivePolling` is disabled, only `idleMinWaitTime` will be
   used as a constant time span in which the slave will not poll the master for
   further changes. The default values are 0.5 seconds for `idleMinWaitTime` and
   2.5 seconds for `idleMaxWaitTime`, which correspond to the hard-coded values
