@@ -1106,6 +1106,10 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
   TRI_json_t* index = idxJson.json();
+  auto indexVelocy = triagens::basics::JsonHelper::toVelocyPack(index);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, index);
+
+  velocy.add(indexVelocy->slice());
 
   TRI_json_t* indexes;
   TRI_json_t* json;

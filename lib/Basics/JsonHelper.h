@@ -310,7 +310,9 @@ namespace triagens {
                 TRI_json_t const* json,
                 std::shared_ptr<arangodb::velocypack::Builder> builder) {
           std::string tmp = toString(json);
-          arangodb::velocypack::Parser parser(builder);
+          arangodb::velocypack::Options opt;
+          opt.clearBuilderBeforeParse = false;
+          arangodb::velocypack::Parser parser(builder, &opt);
           try {
             parser.parse(tmp);
           }
