@@ -85,22 +85,6 @@ function ahuacatlModifySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMultiModify : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn1 REMOVE d IN @@cn1 FOR e IN @@cn2 REMOVE e IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiModify2 : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn1 FOR e IN @@cn2 REMOVE d IN @@cn1 REMOVE e IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
-
     testDynamicOptions1 : function () {
       assertQueryError(errors.ERROR_QUERY_COMPILE_TIME_OPTIONS.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS { foo: d }", { "@cn": cn1 });
     },
@@ -1126,8 +1110,16 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUpdateInvalidType : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE 'foo' IN @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
     testUpdateInvalidKey : function () {
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR d IN @@cn UPDATE 'foo' IN @@cn", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR d IN @@cn UPDATE { _key: 'foo' } IN @@cn", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
