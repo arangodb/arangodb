@@ -550,6 +550,63 @@ int EdgeIndex::batchInsert (triagens::arango::Transaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges using the index, restarting at the edge pointed at
+/// by next
+////////////////////////////////////////////////////////////////////////////////
+      
+void EdgeIndex::lookup (triagens::arango::Transaction* trx,
+                        TRI_edge_index_iterator_t const* edgeIndexIterator,
+                        std::vector<TRI_doc_mptr_copy_t>& result,
+                        TRI_doc_mptr_copy_t*& next,
+                        size_t batchSize) {
+
+  auto callback = [&result] (TRI_doc_mptr_t* data) -> void {
+    result.emplace_back(*(data));
+  };
+
+  std::vector<TRI_doc_mptr_t*>* found = nullptr;
+  if (next == nullptr) {
+    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
+      found = _edgesFrom->lookupByKey(trx, &(edgeIndexIterator->_edge), batchSize);
+    }
+    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
+      found = _edgesTo->lookupByKey(trx, &(edgeIndexIterator->_edge), batchSize);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+    if (found != nullptr && found->size() != 0) {
+      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
+    }
+  }
+  else {
+    if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
+      found = _edgesFrom->lookupByKeyContinue(trx, next, batchSize);
+    }
+    else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
+      found = _edgesTo->lookupByKeyContinue(trx, next, batchSize);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+    if (found != nullptr && found->size() != 0) {
+      next = static_cast<TRI_doc_mptr_copy_t*>(found->back());
+    }
+    else {
+      next = nullptr;
+    }
+  }
+
+  if (found != nullptr) {
+    for (auto& v : *found) {
+      callback(v);
+    }
+
+    delete found;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////
         

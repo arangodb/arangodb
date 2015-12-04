@@ -278,7 +278,7 @@ static inline void TRI_MemoryPrefetch (void* p) {
 
 template<typename T>
 struct TRI_AutoOutOfScope {
-    TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) { }
+    explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) { }
     ~TRI_AutoOutOfScope() { m_destructor(); }
   private:
     T& m_destructor;

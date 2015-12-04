@@ -38,8 +38,33 @@ the correct server, in the correct database!
 Setting the optional *incremental* attribute in the call to *syncCollection* will start an
 incremental transfer of data. This may be useful in case when the slave already has
 parts or almost all of the data in the collection and only the differences need to be
-synchronized.
+synchronized. Note that to compute the differences the incremental transfer will build a sorted
+list of all document keys in the collection on both the slave and the master, which may still be
+expensive for huge collections in terms of memory usage and runtime. During building the list
+of keys the collection will be read-locked on the master.
 
 The *initialSyncMaxWaitTime* attribute in the call to *syncCollection* controls how long the
 slave will wait for a master's response. This wait time can be used to control after what time 
 the synchronization will give up and fail. 
+
+When *syncCollection* is called from the ArangoShell, the optional *async* attribute can be used
+to start the synchronization as a background process on the slave. If *async* is set to *true*,
+the call to *syncCollection* will return almost instantly with an id string. Using this id string,
+the status of the sync job on the slave can be queried using the *getSyncResult* function as follows:
+
+
+```js
+db._useDatabase("_system");
+var replication = require("org/arangodb/replication");
+var id = replication.syncCollection("test", {
+  endpoint: "tcp://master.domain.org:8529",
+  username: "myuser",
+  password: "mypasswd",
+  async: true
+});
+
+print(replication.getSyncResult(id));
+```
+
+*getSyncResult* will return *false* as long as the synchronization is not complete, and return the
+synchronization result otherwise.

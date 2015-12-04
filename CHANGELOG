@@ -1,6 +1,30 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL function `IS_DATESTRING(value)`
+
+  Returns true if *value* is a string that can be used in a date function. 
+  This includes partial dates such as *2015* or *2015-10* and strings containing
+  invalid dates such as *2015-02-31*. The function will return false for all 
+  non-string values, even if some of them may be usable in date functions.
+
+
+v2.8.0-alpha1 (2015-12-03)
+--------------------------
+
+* added AQL keywords `GRAPH`, `OUTBOUND`, `INBOUND` and `ANY` for use in graph 
+  traversals, reserved AQL keyword `ALL` for future use
+
+  Usage of these keywords as collection names, variable names or attribute names
+  in AQL queries will not be possible without quoting. For example, the following
+  AQL query will still work as it uses a quoted collection name and a quoted
+  attribute name:
+
+      FOR doc IN `OUTBOUND`
+        RETURN doc.`any`
+
+* issue #1593: added AQL `POW` function for exponentation
+
 * added cluster execution site info in explain output for AQL queries
 
 * replication improvements:
@@ -47,6 +71,29 @@ v2.8.0 (XXXX-XX-XX)
  
   - the initial synchronization now logs its progress so it can be queried using
     the regular replication status check APIs.
+
+  - added `async` attribute for `sync` and `syncCollection` operations called from
+    the ArangoShell. Setthing this attribute to `true` will make the synchronization 
+    job on the server go into the background, so that the shell does not block. The
+    status of the started asynchronous synchronization job can be queried from the 
+    ArangoShell like this:
+
+        /* starts initial synchronization */
+        var replication = require("org/arangodb/replication");
+        var id = replication.sync({
+          endpoint: "tcp://master.domain.org:8529",
+          username: "myuser",
+          password: "mypasswd",
+          async: true
+       });
+
+       /* now query the id of the returned async job and print the status */
+       print(replication.getSyncResult(id));
+
+    The result of `getSyncResult()` will be `false` while the server-side job
+    has not completed, and different to `false` if it has completed. When it has
+    completed, all job result details will be returned by the call to `getSyncResult()`.
+
 
 * fixed non-deterministic query results in some cluster queries
 
@@ -169,8 +216,69 @@ v2.8.0 (XXXX-XX-XX)
   re-enabled by explicitly setting the option `returnBodyOnError` to `false` (#1437)
 
 
-v2.7.2 (XXXX-XX-XX)
+v2.7.3 (XXXX-XX-XX)
 -------------------
+
+* fixed disappearing of documents for collections transferred via `sync` or
+  `syncCollection` if the collection was dropped right before synchronization 
+  and drop and (re-)create collection markers were located in the same WAL file
+
+
+v2.7.2 (2015-12-01)
+-------------------
+
+* replication improvements:
+
+  - added `autoResync` configuration parameter for continuous replication. 
+ 
+    When set to `true`, a replication slave will automatically trigger a full data 
+    re-synchronization with the master when the master cannot provide the log data 
+    the slave had asked for. Note that `autoResync` will only work when the option
+    `requireFromPresent` is also set to `true` for the continuous replication, or
+    when the continuous syncer is started and detects that no start tick is present.
+    
+    Automatic re-synchronization may transfer a lot of data from the master to the
+    slave and may be expensive. It is therefore turned off by default. 
+    When turned off, the slave will never perform an automatic re-synchronization
+    with the master.
+
+  - added `idleMinWaitTime` and `idleMaxWaitTime` configuration parameters for
+    continuous replication. 
+
+    These parameters can be used to control the minimum and maximum wait time the 
+    slave will (intentionally) idle and not poll for master log changes in case the 
+    master had sent the full logs already. 
+    The `idleMaxWaitTime` value will only be used when `adapativePolling` is set
+    to `true`. When `adaptivePolling` is disable, only `idleMinWaitTime` will be
+    used as a constant time span in which the slave will not poll the master for
+    further changes. The default values are 0.5 seconds for `idleMinWaitTime` and
+    2.5 seconds for `idleMaxWaitTime`, which correspond to the hard-coded values
+    used in previous versions of ArangoDB.
+
+  - added `initialSyncMaxWaitTime` configuration parameter for initial and continuous
+    replication
+
+    This option controls the maximum wait time (in seconds) that the initial 
+    synchronization will wait for a response from the master when fetching initial 
+    collection data. If no response is received within this time period, the initial
+    synchronization will give up and fail. This option is also relevant for 
+    continuous replication in case *autoResync* is set to *true*, as then the
+    continuous replication may trigger a full data re-synchronization in case
+    the master cannot the log data the slave had asked for.
+
+  - HTTP requests sent from the slave to the master during initial synchronization
+    will now be retried if they fail with connection problems.
+ 
+  - the initial synchronization now logs its progress so it can be queried using
+    the regular replication status check APIs.
+
+* fixed non-deterministic query results in some cluster queries
+
+* added missing lock instruction for primary index in compactor size calculation
+
+* fixed issue #1589
+
+* fixed issue #1583
 
 * fixed undefined behavior when accessing the top level of a document with the `[*]`
   operator
@@ -183,6 +291,7 @@ v2.7.2 (XXXX-XX-XX)
 
 * Foxx: constructors provided to Repository and Model sub-classes via extend are
   now correctly called (#1592)
+
 
 v2.7.1 (2015-11-07)
 -------------------

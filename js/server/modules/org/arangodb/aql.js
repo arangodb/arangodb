@@ -2703,6 +2703,35 @@ function AQL_IS_OBJECT (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if value is of a valid datestring
+///
+/// returns a bool
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_IS_DATESTRING (value) {
+  'use strict';
+    
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
+    return false;
+  }
+
+  // argument is a string
+
+  // append zulu time specifier if no other present
+  if (! value.match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
+      (value.match(/-\d+(:\d+)?$/) && ! value.match(/[tT ]/))) {
+    value += 'Z';
+  }
+
+  // detect invalid dates ("foo" -> "fooZ" -> getTime() == NaN)
+  var date = new Date(value);
+  if (isNaN(date)) {
+    return false;
+  }
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 numeric functions
 // -----------------------------------------------------------------------------
@@ -2765,6 +2794,16 @@ function AQL_SQRT (value) {
   'use strict';
 
   return NUMERIC_VALUE(Math.sqrt(AQL_TO_NUMBER(value)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exponentation
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_POW (base, exp) {
+  'use strict';
+
+  return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
 }
 
 // -----------------------------------------------------------------------------
@@ -8735,7 +8774,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_aql_general_graph_absolute_betweenness
 ///
-/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
+/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, options)`
 ///
 /// The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
@@ -9148,12 +9187,14 @@ exports.AQL_IS_ARRAY = AQL_IS_ARRAY;
 exports.AQL_IS_LIST = AQL_IS_ARRAY; // alias
 exports.AQL_IS_OBJECT = AQL_IS_OBJECT;
 exports.AQL_IS_DOCUMENT = AQL_IS_OBJECT; // alias
+exports.AQL_IS_DATESTRING = AQL_IS_DATESTRING;
 exports.AQL_FLOOR = AQL_FLOOR;
 exports.AQL_CEIL = AQL_CEIL;
 exports.AQL_ROUND = AQL_ROUND;
 exports.AQL_ABS = AQL_ABS;
 exports.AQL_RAND = AQL_RAND;
 exports.AQL_SQRT = AQL_SQRT;
+exports.AQL_POW = AQL_POW;
 exports.AQL_LENGTH = AQL_LENGTH;
 exports.AQL_FIRST = AQL_FIRST;
 exports.AQL_LAST = AQL_LAST;

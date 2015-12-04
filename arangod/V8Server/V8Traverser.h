@@ -30,11 +30,10 @@
 #ifndef ARANGODB_V8_TRAVERSER_H
 #define ARANGODB_V8_TRAVERSER_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Traverser.h"
 #include "Utils/ExplicitTransaction.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/ExampleMatcher.h"
+#include "VocBase/Traverser.h"
 
 namespace triagens {
   namespace arango {
@@ -44,70 +43,15 @@ namespace triagens {
 
 class VocShaper;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Template for a vertex id. Is simply a pair of cid and key
-////////////////////////////////////////////////////////////////////////////////
-
-struct VertexId {
+struct EdgeInfo {
   TRI_voc_cid_t cid;
-  char const*   key;
+  TRI_doc_mptr_copy_t mptr;
 
-  VertexId () 
-    : cid(0), 
-      key("") {
-  }
-
-  VertexId (TRI_voc_cid_t cid, char const* key) 
-    : cid(cid), key(key) {
-  }
-  
-  bool operator== (const VertexId& other) const {
-    if (cid == other.cid) {
-      return strcmp(key, other.key) == 0;
-    }
-    return false;
-  }
-
-  // Find unnecessary copies
-  //   VertexId(const VertexId&) = delete;
-  // VertexId(const VertexId& v) : first(v.first), second(v.second) { std::cout << "move failed!\n";}
-  // VertexId(VertexId&& v) : first(v.first), second(std::move(v.second)) {}
+  EdgeInfo (
+    TRI_voc_cid_t& pcid,
+    TRI_doc_mptr_copy_t& pmptr
+  ) : cid(pcid), mptr(pmptr) { }
 };
-
-namespace std {
-  template<>
-  struct hash<VertexId> {
-    public:
-      size_t operator() (VertexId const& s) const {
-        size_t h1 = std::hash<TRI_voc_cid_t>()(s.cid);
-        size_t h2 = TRI_FnvHashString(s.key);
-        return h1 ^ ( h2 << 1 );
-      }
-  };
-
-  template<>
-  struct equal_to<VertexId> {
-    public:
-      bool operator() (VertexId const& s, VertexId const& t) const {
-        return s.cid == t.cid && strcmp(s.key, t.key) == 0;
-      }
-  };
-
-  template<>
-    struct less<VertexId> {
-      public:
-        bool operator() (const VertexId& lhs, const VertexId& rhs) {
-          if (lhs.cid != rhs.cid) {
-            return lhs.cid < rhs.cid;
-          }
-          return strcmp(lhs.key, rhs.key) < 0;
-        }
-    };
-
-}
-
-// EdgeId and VertexId are similar here. both have a key and a cid
-typedef VertexId EdgeId; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Template for information required by vertex filter.
@@ -133,14 +77,17 @@ struct VertexFilterInfo {
 /// @brief typedef the template instantiation of the PathFinder
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef triagens::basics::PathFinder<VertexId, EdgeId, double> 
+typedef triagens::basics::PathFinder<triagens::arango::traverser::VertexId,
+                                     triagens::arango::traverser::EdgeId,
+                                     double> 
         ArangoDBPathFinder;
 
-typedef triagens::basics::ConstDistanceFinder<VertexId, EdgeId> 
+typedef triagens::basics::ConstDistanceFinder<triagens::arango::traverser::VertexId,
+                                              triagens::arango::traverser::EdgeId>
         ArangoDBConstDistancePathFinder;
 
 namespace triagens {
-  namespace basics {
+  namespace arango {
     namespace traverser {
 
       // A collection of shared options used in several functions.
@@ -179,7 +126,7 @@ namespace triagens {
                               TRI_voc_cid_t const& cid,
                               std::string& errorMessage);
 
-          void addEdgeFilter (Json const& example,
+          void addEdgeFilter (triagens::basics::Json const& example,
                               VocShaper* shaper,
                               TRI_voc_cid_t const& cid,
                               triagens::arango::CollectionNameResolver const* resolver);
@@ -244,6 +191,148 @@ namespace triagens {
           bool matchesVertex (VertexId const&) const;
 
       };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                   class SingleServerTraversalPath
+// -----------------------------------------------------------------------------
+
+      class SingleServerTraversalPath : public TraversalPath {
+        
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+        public:
+
+          explicit SingleServerTraversalPath (triagens::basics::EnumeratedPath<EdgeInfo, VertexId> const& path) 
+            : _path(path) {
+          }
+
+          ~SingleServerTraversalPath () {
+          }
+
+          triagens::basics::Json* pathToJson (triagens::arango::Transaction*,
+                                              triagens::arango::CollectionNameResolver*) override;
+
+          triagens::basics::Json* lastEdgeToJson (triagens::arango::Transaction*,
+                                                  triagens::arango::CollectionNameResolver*) override;
+
+          triagens::basics::Json* lastVertexToJson (triagens::arango::Transaction*,
+                                                    triagens::arango::CollectionNameResolver*) override;
+
+        private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+          triagens::basics::Json* edgeToJson (Transaction* trx,
+                                              CollectionNameResolver* resolver,
+                                              EdgeInfo const& e);
+
+          triagens::basics::Json* vertexToJson (Transaction* trx,
+                                                CollectionNameResolver* resolver,
+                                                VertexId const& v);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+          triagens::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
+
+      };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         class DepthFirstTraverser
+// -----------------------------------------------------------------------------
+      class DepthFirstTraverser : public Traverser {
+
+        private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+
+          CollectionNameResolver* _resolver;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal cursor to enumerate the paths of a graph
+////////////////////////////////////////////////////////////////////////////////
+
+          std::unique_ptr<triagens::basics::PathEnumerator<EdgeInfo,
+                                                           VertexId,
+                                                           TRI_doc_mptr_copy_t>> _enumerator;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to extract an edge
+////////////////////////////////////////////////////////////////////////////////
+
+          std::function<void(VertexId const&,
+                             std::vector<EdgeInfo>&,
+                             TRI_doc_mptr_copy_t*&,
+                             size_t&,
+                             bool&)>              _getEdge;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to extract vertex information
+////////////////////////////////////////////////////////////////////////////////
+
+          std::function<bool (EdgeInfo const&, VertexId const&, size_t, VertexId&)> _getVertex;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a vector containing all required edge collection structures
+////////////////////////////////////////////////////////////////////////////////
+
+          std::vector<TRI_document_collection_t*> _edgeCols;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Outer top level transaction
+////////////////////////////////////////////////////////////////////////////////
+
+          Transaction* _trx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to define the _getVertex and _getEdge functions
+////////////////////////////////////////////////////////////////////////////////
+
+          void _defInternalFunctions ();
+
+        public:
+
+          DepthFirstTraverser (
+            std::vector<TRI_document_collection_t*> const&,
+            TraverserOptions&,
+            CollectionNameResolver*,
+            Transaction*,
+            std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
+          );
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reset the traverser to use another start vertex
+////////////////////////////////////////////////////////////////////////////////
+
+          void setStartVertex (VertexId const& v) override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the next possible path in the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+          TraversalPath* next () override;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+        private:
+
+          bool edgeMatchesConditions (TRI_doc_mptr_t&,
+                                      size_t&,
+                                      size_t);
+
+          bool vertexMatchesConditions (VertexId const&,
+                                        size_t);
+      };
+
     }
   }
 }
@@ -301,12 +390,12 @@ class EdgeCollectionInfo {
         _weighter(weighter) {
     }
 
-    EdgeId extractEdgeId (TRI_doc_mptr_copy_t& ptr) {
-      return EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
+    triagens::arango::traverser::EdgeId extractEdgeId (TRI_doc_mptr_copy_t& ptr) {
+      return triagens::arango::traverser::EdgeId(_edgeCollectionCid, TRI_EXTRACT_MARKER_KEY(&ptr));
     }
 
     std::vector<TRI_doc_mptr_copy_t> getEdges (TRI_edge_direction_e direction,
-                                               VertexId const& vertexId) const {
+                                               triagens::arango::traverser::VertexId const& vertexId) const {
       return TRI_LookupEdgesDocumentCollection(_trx, _edgeCollection,
                    direction, vertexId.cid, const_cast<char*>(vertexId.key));
     }
@@ -322,6 +411,7 @@ class EdgeCollectionInfo {
     double weightEdge (TRI_doc_mptr_copy_t& ptr) {
       return _weighter(ptr);
     }
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -372,12 +462,12 @@ class VertexCollectionInfo {
 
 std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    triagens::basics::traverser::ShortestPathOptions& opts
+    triagens::arango::traverser::ShortestPathOptions& opts
 );
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
-    triagens::basics::traverser::ShortestPathOptions& opts
+    triagens::arango::traverser::ShortestPathOptions& opts
 );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,7 +475,7 @@ std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPath
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_RunNeighborsSearch (std::vector<EdgeCollectionInfo*>& collectionInfos,
-                             triagens::basics::traverser::NeighborsOptions& opts,
-                             std::unordered_set<VertexId>& distinct);
+                             triagens::arango::traverser::NeighborsOptions& opts,
+                             std::unordered_set<triagens::arango::traverser::VertexId>& distinct);
 
 #endif

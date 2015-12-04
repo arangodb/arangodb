@@ -35,10 +35,11 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "V8Server/ApplicationV8.h"
+#include "VocBase/Traverser.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -524,25 +525,84 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
 
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
+      
+    size_t resultSize = 10; 
+    if (TRI_IsArrayJson(queryResult.json)) {
+      resultSize = TRI_LengthArrayJson(queryResult.json);
+    }
 
     { 
       _response = createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
-      size_t n = 10; 
-      if (TRI_IsArrayJson(queryResult.json)) {
-        n = TRI_LengthArrayJson(queryResult.json);
-      }
-
       triagens::basics::Json result(triagens::basics::Json::Object, 3);
-      result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
-      queryResult.json = nullptr;
+
+      // This is for internal use of AQL Traverser only.
+      // Should not be documented
+      if (TRI_IsArrayJson(queryResult.json)) {
+        size_t const n = TRI_LengthArrayJson(queryResult.json);
+
+        VPackSlice const postFilter = slice.get("filter");
+        if (postFilter.isArray()) {
+          std::vector<triagens::arango::traverser::TraverserExpression*> expressions;
+          triagens::basics::ScopeGuard guard{
+            []() -> void { },
+            [&expressions]() -> void {
+              for (auto& e : expressions) {
+                delete e;
+              }
+            }
+          };
+
+          VPackValueLength length = postFilter.length();
+          
+          expressions.reserve(length);
+
+          for (auto const& it : VPackArrayIterator(postFilter)) {
+            if (it.isObject()) {
+              std::string json = it.toJson(); // TODO: remove me later
+              std::unique_ptr<TRI_json_t> exp(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, json.c_str())); // TODO: remove me later
+              std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp.get()));
+              expressions.emplace_back(expression.get());
+              expression.release();
+            }
+          }
+          
+          triagens::basics::Json filteredDocuments(triagens::basics::Json::Array, n);
+
+          for (size_t i = 0; i < n; ++i) {
+            TRI_json_t const* tmp = TRI_LookupArrayJson(queryResult.json, i);
+            if (tmp != nullptr) {
+              bool add = true;
+              for (auto& e : expressions) {
+                if (! e->isEdgeAccess && ! e->matchesCheck(tmp)) {
+                  add = false;
+                  break;
+                }
+              }
+              if (add) {
+                filteredDocuments.add(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, tmp));
+              }
+            }
+          }
+          
+          result.set("documents", filteredDocuments);
+        }
+        else {
+          result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+          queryResult.json = nullptr;
+        }
+      }
+      else {
+        result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+        queryResult.json = nullptr;
+      }
       
       result.set("error", triagens::basics::Json(false));
       result.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
 
       // reserve 48 bytes per result document by default
-      int res = _response->body().reserve(48 * n);
+      int res = _response->body().reserve(48 * resultSize);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);

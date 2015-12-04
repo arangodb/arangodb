@@ -152,14 +152,9 @@ OperationID ClusterComm::getOperationID () {
 /// either in the callback or via poll. The caller has to call delete on
 /// the resulting ClusterCommResult*. The library takes ownerships of
 /// the pointers `headerFields` and `callback` and releases
-/// the memory when the operation has been finished. If `freeBody`
-/// is `true`, then the library takes ownership of the pointer `body`
-/// as well and deletes it at the end. If `freeBody` is `false, it
-/// is the caller's responsibility to ensure that the object object
-/// to which `body` points is retained until the full asynchronous
-/// operation is finished and has been reported back to the caller
-/// and that the object is destructed after the operation has finally
-/// terminated.
+/// the memory when the operation has been finished. We use a shared_ptr
+/// for the body string such that it is possible to use the same body
+/// in multiple requests.
 ///
 /// Arguments: `clientTransactionID` is a string coming from the client
 /// and describing the transaction the client is doing, `coordTransactionID`
@@ -177,8 +172,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
                 string const&                       destination,
                 triagens::rest::HttpRequest::HttpRequestType  reqtype,
                 string const                        path,
-                string const*                       body,
-                bool                                freeBody,
+                shared_ptr<string const>            body,
                 map<string, string>*                headerFields,
                 ClusterCommCallback*                callback,
                 ClusterCommTimeout                  timeout) {
@@ -238,14 +232,13 @@ ClusterCommResult* ClusterComm::asyncRequest (
   op->reqtype              = reqtype;
   op->path                 = path;
   op->body                 = body;
-  op->freeBody             = freeBody;
   op->headerFields         = headerFields;
   op->callback             = callback;
   op->endTime              = timeout == 0.0 ? TRI_microtime() + 24 * 60 * 60.0
                                             : TRI_microtime() + timeout;
 
   // LOCKING-DEBUG
-  // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << body << "\n";
+  // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << *(body.get()) << "\n";
   // for (auto& h : *headerFields) {
   //   std::cout << h.first << ":" << h.second << std::endl;
   // }
@@ -1086,7 +1079,7 @@ void ClusterCommThread::run () {
               }
             }
             else {
-              if (nullptr != op->body) {
+              if (nullptr != op->body.get()) {
                 LOG_DEBUG("sending %s request to DB server '%s': %s",
                    triagens::rest::HttpRequest::translateMethod(op->reqtype)
                      .c_str(), op->serverID.c_str(), op->body->c_str());
@@ -1107,7 +1100,7 @@ void ClusterCommThread::run () {
 
               // We add this result to the operation struct without acquiring
               // a lock, since we know that only we do such a thing:
-              if (nullptr != op->body) {
+              if (nullptr != op->body.get()) {
                 op->result = client->request(op->reqtype, op->path,
                              op->body->c_str(), op->body->size(),
                              *(op->headerFields));

@@ -40,10 +40,10 @@ book-check-mdpp-leftovers:
 	fi
 
 ppbook-check-html-link:
-	@if test "`grep -r '\[.*\]\(.*\)' ppbooks/$(NAME) |grep '\.md:' |grep html |grep -v http://|grep -v https:// |grep -v header.css |wc -l`" -gt 0; then \
+	@if test "`egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME) |grep '\.md:' |grep html |grep -v http://|grep -v https:// |grep -v header.css |wc -l`" -gt 0; then \
 		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
 		echo; \
-		grep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  | grep '\.md:' | grep html |grep -v http://|grep -v https:// |grep -v header.css ; \
+		egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME)  | grep '\.md:' | grep html |grep -v http://|grep -v https:// |grep -v header.css ; \
 		exit 1; \
 	fi
 
@@ -73,13 +73,9 @@ book-check-markdown-leftovers:
 	fi
 
 book-check-dangling-anchors:
-	@grep -R "a href" books/$(NAME) | \
-		grep -v styles/header.js | \
-		grep -v /app.js | \
-		grep -v navigation| \
-		grep -v 'http://' | \
-		grep -v 'https://' | \
-		grep '#'  |sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
+	@grep -R "a href.*#" books/$(NAME) | \
+		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://)" | \
+		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
 
 	@NO=0; \
 	for i in `cat /tmp/anchorlist.txt`; do \

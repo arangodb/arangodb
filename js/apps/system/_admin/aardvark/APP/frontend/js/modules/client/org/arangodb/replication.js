@@ -171,9 +171,19 @@ var sync = function (config) {
   var db = internal.db;
 
   var body = JSON.stringify(config || { });
-  var requestResult = db._connection.PUT("/_api/replication/sync", body);
+  var requestResult;
+  if (config.async) {
+    var headers = { "X-Arango-Async" : "store" };
+    requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+  }
+  else {
+    requestResult = db._connection.PUT("/_api/replication/sync", body);
+  }
 
   arangosh.checkRequestResult(requestResult);
+  if (config.async) {
+    return requestResult.headers["x-arango-async-id"];
+  }
 
   return requestResult;
 };
@@ -191,12 +201,34 @@ var syncCollection = function (collection, config) {
   config.restrictCollections = [ collection ];
   config.includeSystem = true;
   var body = JSON.stringify(config);
-
-  var requestResult = db._connection.PUT("/_api/replication/sync", body);
+  var requestResult;
+  if (config.async) {
+    var headers = { "X-Arango-Async" : "store" };
+    requestResult = db._connection.PUT_RAW("/_api/replication/sync", body, headers);
+  }
+  else {
+    requestResult = db._connection.PUT("/_api/replication/sync", body);
+  }
 
   arangosh.checkRequestResult(requestResult);
+  if (config.async) {
+    return requestResult.headers["x-arango-async-id"];
+  }
 
   return requestResult;
+};
+
+var getSyncResult = function (id) {
+  var db = internal.db;
+
+  var requestResult = db._connection.PUT_RAW("/_api/job/" + encodeURIComponent(id), "");
+  arangosh.checkRequestResult(requestResult);
+
+  if (requestResult.headers.hasOwnProperty("x-arango-async-id")) {
+    return JSON.parse(requestResult.body);
+  }
+
+  return false;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,11 +249,12 @@ var serverId = function () {
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.logger         = logger;
-exports.applier        = applier;
-exports.sync           = sync;
-exports.syncCollection = syncCollection;
-exports.serverId       = serverId;
+exports.logger          = logger;
+exports.applier         = applier;
+exports.sync            = sync;
+exports.syncCollection  = syncCollection;
+exports.getSyncResult   = getSyncResult;
+exports.serverId        = serverId;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

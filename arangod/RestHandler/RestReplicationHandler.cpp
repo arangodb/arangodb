@@ -2974,13 +2974,14 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
       else {
         j = it2->second;
+        std::shared_ptr<std::string const> body
+            (new string(bufs[j]->c_str(), bufs[j]->length()));
         result = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                                triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                                "/_db/" + StringUtils::urlEncode(dbName) +
                                "/_api/replication/restore-data?collection=" +
-                               it->first + forceopt,
-                               new string(bufs[j]->c_str(), bufs[j]->length()),
-                               true, headers, nullptr, 300.0);
+                               it->first + forceopt, body,
+                               headers, nullptr, 300.0);
         delete result;
       }
     }

@@ -34,6 +34,7 @@
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
+#include "lib/Basics/json-utilities.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -42,6 +43,7 @@ namespace triagens {
     class Ast;
     struct Collection;
     class ExecutionBlock;
+    class TraversalBlock;
     class ExecutionPlan;
     struct Index;
     class RedundantCalculationsReplacer;
@@ -64,6 +66,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         friend class ExecutionBlock;
+        friend class TraversalBlock;
 
       public:
 
@@ -90,7 +93,8 @@ namespace triagens {
           NORESULTS               = 19,
           DISTRIBUTE              = 20,
           UPSERT                  = 21,
-          INDEX                   = 22
+          TRAVERSAL               = 22,
+          INDEX                   = 23
         };
 
 // -----------------------------------------------------------------------------
@@ -175,6 +179,15 @@ namespace triagens {
         void addDependency (ExecutionNode* ep) {
           _dependencies.emplace_back(ep);
           ep->_parents.emplace_back(this);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a parent
+////////////////////////////////////////////////////////////////////////////////
+
+        void addParent (ExecutionNode* ep) {
+          ep->_dependencies.emplace_back(this);
+          _parents.emplace_back(ep);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -562,6 +575,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual bool canThrow () {
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node is a data modification node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual bool isModificationNode () const {
+          // derived classes can change this
           return false;
         }
 
@@ -1118,6 +1140,14 @@ namespace triagens {
           return std::vector<Variable const*>{ _outVariable };
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* outVariable () const {
+          return _outVariable;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1496,6 +1526,12 @@ namespace triagens {
                               bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the subquery is a data-modification operation
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isModificationQuery () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for subquery
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1507,9 +1543,9 @@ namespace triagens {
 /// @brief setter for subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setSubquery (ExecutionNode* subquery) {
+        void setSubquery (ExecutionNode* subquery, bool forceOverwrite) {
           TRI_ASSERT(subquery != nullptr);
-          TRI_ASSERT(_subquery == nullptr); // do not allow overwriting an existing subquery
+          TRI_ASSERT((forceOverwrite && _subquery != nullptr) || (! forceOverwrite && _subquery == nullptr)); 
           _subquery = subquery;
         }
 

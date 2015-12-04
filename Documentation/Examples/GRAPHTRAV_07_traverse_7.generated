@@ -1,0 +1,58 @@
+arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/' GRAPH 'traversalGraph' LET localScopeVar = RAND() &gt; 0.5 FILTER p.edges[0].theTruth != localScopeVar return v._key"</span>, {}, {colors:<span class="hljs-literal">false</span>});
+Query string:
+ FOR v,e,p IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span> OUTBOUND <span class="hljs-string">'circles/'</span> GRAPH <span class="hljs-string">'traversalGraph'</span> LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span> FILTER 
+ p.edges[<span class="hljs-number">0</span>].theTruth != localScopeVar <span class="hljs-keyword">return</span> v._key
+
+Execution plan:
+ Id   NodeType          Est.   Comment
+  <span class="hljs-number">1</span>   SingletonNode        <span class="hljs-number">1</span>   * ROOT
+  <span class="hljs-number">2</span>   TraversalNode     <span class="hljs-number">1000</span>     - FOR v  <span class="hljs-comment">/* vertex */</span>  , e  <span class="hljs-comment">/* edge */</span>  , p  <span class="hljs-comment">/* paths */</span>  IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>  <span class="hljs-comment">/* min..maxPathDepth */</span>  OUTBOUND <span class="hljs-string">'circles/'</span>  <span class="hljs-comment">/* Startnode */</span>  GRAPH <span class="hljs-string">'traversalGraph'</span>
+  <span class="hljs-number">3</span>   CalculationNode   <span class="hljs-number">1000</span>     - LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span>   <span class="hljs-comment">/* simple expression */</span>
+  <span class="hljs-number">4</span>   CalculationNode   <span class="hljs-number">1000</span>     - LET #<span class="hljs-number">4</span> = p.<span class="hljs-string">`edges`</span>[<span class="hljs-number">0</span>].<span class="hljs-string">`theTruth`</span> != localScopeVar   <span class="hljs-comment">/* simple expression */</span>
+  <span class="hljs-number">5</span>   FilterNode        <span class="hljs-number">1000</span>     - FILTER #<span class="hljs-number">4</span>
+  <span class="hljs-number">6</span>   CalculationNode   <span class="hljs-number">1000</span>     - LET #<span class="hljs-number">6</span> = v.<span class="hljs-string">`_key`</span>   <span class="hljs-comment">/* attribute expression */</span>
+  <span class="hljs-number">7</span>   ReturnNode        <span class="hljs-number">1000</span>     - RETURN #<span class="hljs-number">6</span>
+
+Indexes used:
+ none
+
+Traversals on graphs:
+ Id   traversal depth   Vertex collections   Edge collections   Filter conditions
+  <span class="hljs-number">2</span>   <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>              circles              edges              
+
+Optimization rules applied:
+ Id   RuleName
+  <span class="hljs-number">1</span>   move-calculations-up
+  <span class="hljs-number">2</span>   move-calculations-down
+
+
+arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label == 'right_foo' return v._key"</span>, {}, {colors:<span class="hljs-literal">false</span>});
+Query string:
+ FOR v,e,p IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span> OUTBOUND <span class="hljs-string">'circles/A'</span> GRAPH <span class="hljs-string">'traversalGraph'</span> FILTER p.edges[<span class="hljs-number">0</span>].label == <span class="hljs-string">'right_foo'</span> 
+ <span class="hljs-keyword">return</span> v._key
+
+Execution plan:
+ Id   NodeType          Est.   Comment
+  <span class="hljs-number">1</span>   SingletonNode        <span class="hljs-number">1</span>   * ROOT
+  <span class="hljs-number">2</span>   TraversalNode     <span class="hljs-number">1000</span>     - FOR v  <span class="hljs-comment">/* vertex */</span>  , e  <span class="hljs-comment">/* edge */</span>  , p  <span class="hljs-comment">/* paths */</span>  IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>  <span class="hljs-comment">/* min..maxPathDepth */</span>  OUTBOUND <span class="hljs-string">'circles/A'</span>  <span class="hljs-comment">/* Startnode */</span>  GRAPH <span class="hljs-string">'traversalGraph'</span>
+  <span class="hljs-number">3</span>   CalculationNode   <span class="hljs-number">1000</span>     - LET #<span class="hljs-number">3</span> = p.<span class="hljs-string">`edges`</span>[<span class="hljs-number">0</span>].<span class="hljs-string">`label`</span> == <span class="hljs-string">"right_foo"</span>   <span class="hljs-comment">/* simple expression */</span>
+  <span class="hljs-number">4</span>   FilterNode        <span class="hljs-number">1000</span>     - FILTER #<span class="hljs-number">3</span>
+  <span class="hljs-number">5</span>   CalculationNode   <span class="hljs-number">1000</span>     - LET #<span class="hljs-number">5</span> = v.<span class="hljs-string">`_key`</span>   <span class="hljs-comment">/* attribute expression */</span>
+  <span class="hljs-number">6</span>   ReturnNode        <span class="hljs-number">1000</span>     - RETURN #<span class="hljs-number">5</span>
+
+Indexes used:
+ none
+
+Traversals on graphs:
+ Id   traversal depth   Vertex collections   Edge collections   Filter conditions
+  <span class="hljs-number">2</span>   <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>              circles              edges              p.<span class="hljs-string">`edges`</span>[<span class="hljs-number">0</span>].<span class="hljs-string">`label`</span> == <span class="hljs-string">"right_foo"</span>
+
+Optimization rules applied:
+ Id   RuleName
+  <span class="hljs-number">1</span>   move-calculations-up
+  <span class="hljs-number">2</span>   move-filters-up
+  <span class="hljs-number">3</span>   move-calculations-up-<span class="hljs-number">2</span>
+  <span class="hljs-number">4</span>   move-filters-up-<span class="hljs-number">2</span>
+  <span class="hljs-number">5</span>   merge-traversal-filter
+
+

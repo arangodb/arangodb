@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertTrue, assertNotEqual, assertEqual */
+/*global fail, assertTrue, assertFalse, assertNotEqual, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var testHelper = require("org/arangodb/test-helper").Helper;
+var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
 var db = arangodb.db;
 var internal = require("internal");
 
@@ -244,6 +245,56 @@ function walSuite () {
       internal.wal.properties(props);
       db._drop(cn);
       c = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop a collection a recreate it with the same id,
+/// wait for collector, unload the collection and check if documents are still
+/// available
+////////////////////////////////////////////////////////////////////////////////
+    
+    testDropAndRecreate : function () {
+      db._drop("UnitTestsExample");
+      db._create("UnitTestsExample");
+      var i;
+      for (i = 0; i < 10; ++i) {
+        db._collection("UnitTestsExample").save({ _key: "test" + i, value: i });
+      }
+      var id = db._collection("UnitTestsExample")._id;
+
+      db._drop("UnitTestsExample");
+      // wait until directory gets deleted
+      require("internal").wait(5, false);
+
+      // re-create using the same id
+      db._create("UnitTestsExample", { id: id });
+      assertEqual(id, db._collection("UnitTestsExample")._id);
+
+      for (i = 100; i < 110; ++i) {
+        // sync last document we're saving
+        db._collection("UnitTestsExample").save({ _key: "test" + i, value: i }, { waitForSync: i === 109 });
+      }
+
+      // now garbage collect and unload
+      require("internal").wal.flush(true, true);
+      db._collection("UnitTestsExample").unload();
+      
+      while (db._collection("UnitTestsExample").status() !== ArangoCollection.STATUS_UNLOADED) {
+        internal.wait(1, false);
+      }
+
+      var c = db._collection("UnitTestsExample");
+      assertEqual(10, c.count());
+
+      for (i = 0; i < 10; ++i) {
+        assertFalse(c.exists("test" + i));
+      }
+
+      for (i = 100; i < 110; ++i) {
+        assertTrue(c.exists("test" + i));
+        assertEqual(i, c.document("test" + i).value);
+      }
+      db._drop("UnitTestsExample");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

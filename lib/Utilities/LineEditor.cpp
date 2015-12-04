@@ -48,7 +48,8 @@ using namespace arangodb;
 ////////////////////////////////////////////////////////////////////////////////
 
 LineEditor::LineEditor ()
-  : _shell(nullptr) {
+  : _shell(nullptr),
+    _signalFunc(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +114,18 @@ void LineEditor::addHistory (const std::string& line) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LineEditor::signal () {
+  if (_signalFunc != nullptr) {
+    _signalFunc();
+  }
   _shell->signal();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a callback function to be executed on signal receipt
+////////////////////////////////////////////////////////////////////////////////
+
+void LineEditor::setSignalFunction (std::function<void()> const& func) {
+  _signalFunc = func;
 }
 
 // -----------------------------------------------------------------------------

@@ -31,7 +31,6 @@
 #define ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/StringBuffer.h"
 #include "Rest/Endpoint.h"
 
@@ -66,7 +65,7 @@ namespace triagens {
 
       private:
 
-        GeneralClientConnection (GeneralClientConnection const&);
+        explicit GeneralClientConnection (GeneralClientConnection const&);
         GeneralClientConnection& operator= (GeneralClientConnection const&);
 
       public:
@@ -171,8 +170,24 @@ namespace triagens {
 /// @brief return the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string& getErrorDetails () const {
+        std::string const& getErrorDetails () const {
           return _errorDetails;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the current operation should be interrupted
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isInterrupted () const {
+          return _isInterrupted;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interrupt the current operation
+////////////////////////////////////////////////////////////////////////////////
+        
+        void setInterrupted (bool value) {
+          _isInterrupted = value;
         }
 
 // -----------------------------------------------------------------------------
@@ -264,6 +279,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _isConnected;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the current operation should be interrupted
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _isInterrupted;
 
     };
   }

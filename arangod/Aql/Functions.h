@@ -129,6 +129,7 @@ namespace triagens {
       static AqlValue Ceil                (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Floor               (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Sqrt                (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue Pow                 (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue Rand                (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue FirstDocument       (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue FirstList           (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);

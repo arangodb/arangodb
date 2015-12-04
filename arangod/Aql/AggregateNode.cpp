@@ -172,7 +172,7 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
-  UserVarFinder (int mindepth) 
+  explicit UserVarFinder (int mindepth) 
     : mindepth(mindepth), depth(-1) { 
   }
 
@@ -194,6 +194,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
     else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
              en->getType() == ExecutionNode::INDEX ||
              en->getType() == ExecutionNode::ENUMERATE_LIST ||
+             en->getType() == ExecutionNode::TRAVERSAL ||
              en->getType() == ExecutionNode::AGGREGATE) {
       depth += 1;
     }

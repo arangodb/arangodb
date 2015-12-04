@@ -44,6 +44,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
+#include "Aql/TraversalBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
@@ -75,6 +76,9 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
     case ExecutionNode::ENUMERATE_LIST: {
       return new EnumerateListBlock(engine,
                                     static_cast<EnumerateListNode const*>(en));
+    }
+    case ExecutionNode::TRAVERSAL: {
+      return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
     }
     case ExecutionNode::CALCULATION: {
       return new CalculationBlock(engine,
@@ -224,7 +228,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionBlock*  root;
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
-  Instanciator (ExecutionEngine* engine) 
+  explicit Instanciator (ExecutionEngine* engine) 
     : engine(engine),
       root(nullptr) {
   }
@@ -552,7 +556,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     optimizerOptions.set("rules", optimizerOptionsRules);
     options.set("optimizer", optimizerOptions);
     result.set("options", options);
-    std::unique_ptr<std::string> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
+    std::shared_ptr<std::string const> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
     
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
@@ -568,8 +572,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                 "shard:" + shardId,  
                                 triagens::rest::HttpRequest::HTTP_REQUEST_POST, 
                                 url,
-                                body.release(),
-                                true,
+                                body,
                                 headers,
                                 nullptr,
                                 30.0);

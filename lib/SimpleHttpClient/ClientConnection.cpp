@@ -173,6 +173,10 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     return false;
   }
 
+  // wait for at most 0.5 seconds for poll/select to complete
+  // if it takes longer, break each poll/select into smaller chunks so we can
+  // interrupt the whole process if it takes too long in total 
+  static double const POLL_DURATION = 0.5;
   auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
   double start = TRI_microtime();
   int res;
@@ -194,13 +198,13 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
   poller.events = (isWrite ? POLLOUT : POLLIN);
 
   while (true) {  // will be left by break
-    res = poll(&poller, 1, towait);
+    res = poll(&poller, 1, towait > static_cast<int>(POLL_DURATION * 1000.0) ? static_cast<int>(POLL_DURATION * 1000.0) : towait);
     if (res == -1 && errno == EINTR) {
       if (! nowait) {
         double end = TRI_microtime();
         towait -= static_cast<int>((end - start) * 1000.0);
         start = end;
-        if (towait < 0) {  // Should not happen, but there might be rounding
+        if (towait <= 0) {  // Should not happen, but there might be rounding
                            // errors, so just to prevent a poll call with
                            // negative timeout...
           res = 0;
@@ -209,6 +213,22 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
       }
       continue;
     }
+
+    if (res == 0) {
+      if (isInterrupted()) {
+        _errorDetails = std::string("command locally aborted");
+        TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
+        return false;
+      }
+      double end = TRI_microtime();
+      towait -= static_cast<int>((end - start) * 1000.0);
+      if (towait <= 0) {
+        break;
+      }
+      start = end;
+      continue;
+    }
+
     break;
   }
   // Now res can be:
@@ -228,10 +248,10 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
     return false;
   }
 
-  fd_set fdset;
-
   // handle interrupt
-  do { 
+  do {
+retry:     
+    fd_set fdset;
     FD_ZERO(&fdset);
     FD_SET(fd, &fdset);
 
@@ -247,9 +267,14 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
 
     int sockn = (int) (fd + 1);
 
+    double waitTimeout = timeout;
+    if (waitTimeout > POLL_DURATION) {
+      waitTimeout = POLL_DURATION;
+    }
+
     struct timeval t;
-    t.tv_sec = (long) timeout;
-    t.tv_usec = (long) ((timeout - (double) t.tv_sec) * 1000000.0);
+    t.tv_sec = (long) waitTimeout;
+    t.tv_usec = (long) ((waitTimeout - (double) t.tv_sec) * 1000000.0);
 
     res = select(sockn, readFds, writeFds, nullptr, &t);
 
@@ -260,7 +285,22 @@ bool ClientConnection::prepare (double timeout, bool isWrite) const {
       timeout = timeout - (end - start);
       start = end;
     }
-  } while (res == -1 && errno == EINTR && timeout > 0.0);
+    else if (res == 0) {
+      if (isInterrupted()) {
+        _errorDetails = std::string("command locally aborted");
+        TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
+        return false;
+      }
+      double end = TRI_microtime();
+      timeout = timeout - (end - start);
+      if (timeout <= 0.0) {
+        break;
+      }
+      start = end;
+      goto retry;
+    }
+  } 
+  while (res == -1 && errno == EINTR && timeout > 0.0);
 #endif
 
   if (res > 0) {

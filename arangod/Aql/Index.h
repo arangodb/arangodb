@@ -58,7 +58,7 @@ namespace triagens {
       Index (Index const&) = delete;
       Index& operator= (Index const&) = delete;
       
-      Index (triagens::arango::Index* idx)
+      explicit Index (triagens::arango::Index* idx)
         : id(idx->id()),
           type(idx->type()),
           unique(false),
@@ -79,7 +79,7 @@ namespace triagens {
         }
       }
       
-      Index (TRI_json_t const* json)
+      explicit Index (TRI_json_t const* json)
         : id(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
           type(triagens::arango::Index::type(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
           unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),

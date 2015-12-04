@@ -66,7 +66,7 @@ using namespace triagens::rest;
 
 
 struct LocalCollectionGuard {
-  LocalCollectionGuard (TRI_vocbase_col_t* collection)
+  explicit LocalCollectionGuard (TRI_vocbase_col_t* collection)
     : _collection(collection) {
   }
 

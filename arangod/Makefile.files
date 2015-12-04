@@ -48,6 +48,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Function.cpp \
 	arangod/Aql/Functions.cpp \
 	arangod/Aql/grammar.cpp \
+        arangod/Aql/Graphs.cpp \
 	arangod/Aql/Index.cpp \
 	arangod/Aql/IndexBlock.cpp \
 	arangod/Aql/IndexNode.cpp \
@@ -70,6 +71,9 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/SortNode.cpp \
 	arangod/Aql/SubqueryBlock.cpp \
 	arangod/Aql/tokens.cpp \
+        arangod/Aql/TraversalConditionFinder.cpp \
+	arangod/Aql/TraversalBlock.cpp \
+	arangod/Aql/TraversalNode.cpp \
 	arangod/Aql/V8Expression.cpp \
 	arangod/Aql/Variable.cpp \
 	arangod/Aql/VariableGenerator.cpp \
@@ -78,6 +82,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Cluster/ApplicationCluster.cpp \
 	arangod/Cluster/ClusterComm.cpp \
 	arangod/Cluster/ClusterInfo.cpp \
+	arangod/Cluster/ClusterTraverser.cpp \
 	arangod/Cluster/HeartbeatThread.cpp \
 	arangod/Cluster/RestShardHandler.cpp \
 	arangod/Cluster/ServerJob.cpp \
@@ -131,6 +136,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestDebugHelperHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
+	arangod/RestHandler/RestEdgesHandler.cpp \
 	arangod/RestHandler/RestExportHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestJobHandler.cpp \
@@ -168,6 +174,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Utils/Cursor.cpp \
 	arangod/Utils/CursorRepository.cpp \
 	arangod/Utils/DocumentHelper.cpp \
+	arangod/Utils/ShapedJsonTransformer.cpp \
 	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
 	arangod/Utils/TransactionContext.cpp \
@@ -202,6 +209,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/DocumentAccessor.cpp \
 	arangod/VocBase/ExampleMatcher.cpp \
 	arangod/VocBase/edge-collection.cpp \
+	arangod/VocBase/Graphs.cpp \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/KeyGenerator.cpp \
 	arangod/VocBase/Legends.cpp \
@@ -214,6 +222,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/shaped-json.cpp \
 	arangod/VocBase/Shaper.cpp \
 	arangod/VocBase/transaction.cpp \
+	arangod/VocBase/Traverser.cpp \
 	arangod/VocBase/vocbase.cpp \
 	arangod/VocBase/vocbase-defaults.cpp \
 	arangod/VocBase/VocShaper.cpp \

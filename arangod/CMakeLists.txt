@@ -90,6 +90,7 @@ add_executable(
     Aql/Function.cpp
     Aql/Functions.cpp
     Aql/grammar.cpp
+    Aql/Graphs.cpp
     Aql/Index.cpp
     Aql/IndexBlock.cpp
     Aql/IndexNode.cpp
@@ -112,6 +113,9 @@ add_executable(
     Aql/SortNode.cpp
     Aql/SubqueryBlock.cpp
     Aql/tokens.cpp
+    Aql/TraversalConditionFinder.cpp
+    Aql/TraversalBlock.cpp
+    Aql/TraversalNode.cpp
     Aql/V8Expression.cpp
     Aql/Variable.cpp
     Aql/VariableGenerator.cpp
@@ -120,6 +124,7 @@ add_executable(
     Cluster/ApplicationCluster.cpp
     Cluster/ClusterComm.cpp
     Cluster/ClusterInfo.cpp
+    Cluster/ClusterTraverser.cpp
     Cluster/ClusterMethods.cpp
     Cluster/HeartbeatThread.cpp
     Cluster/RestShardHandler.cpp
@@ -173,6 +178,7 @@ add_executable(
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
+    RestHandler/RestEdgesHandler.cpp
     RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestJobHandler.cpp
@@ -210,6 +216,7 @@ add_executable(
     Utils/Cursor.cpp
     Utils/CursorRepository.cpp
     Utils/DocumentHelper.cpp
+    Utils/ShapedJsonTransformer.cpp
     Utils/StandaloneTransactionContext.cpp
     Utils/Transaction.cpp
     Utils/TransactionContext.cpp
@@ -244,6 +251,7 @@ add_executable(
     VocBase/DocumentAccessor.cpp
     VocBase/ExampleMatcher.cpp
     VocBase/edge-collection.cpp
+    VocBase/Graphs.cpp
     VocBase/headers.cpp
     VocBase/KeyGenerator.cpp
     VocBase/Legends.cpp
@@ -256,6 +264,7 @@ add_executable(
     VocBase/shaped-json.cpp
     VocBase/Shaper.cpp
     VocBase/transaction.cpp
+    VocBase/Traverser.cpp
     VocBase/vocbase.cpp
     VocBase/vocbase-defaults.cpp
     VocBase/VocShaper.cpp

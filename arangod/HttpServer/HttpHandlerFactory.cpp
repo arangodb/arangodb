@@ -55,7 +55,7 @@ namespace {
 namespace {
   class MaintenanceHandler : public HttpHandler {
     public:
-      MaintenanceHandler (HttpRequest* request) 
+      explicit MaintenanceHandler (HttpRequest* request) 
         : HttpHandler(request) {
       };
 

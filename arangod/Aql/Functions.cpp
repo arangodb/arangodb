@@ -51,6 +51,7 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using CollectionNameResolver = triagens::arango::CollectionNameResolver;
+using VertexId = triagens::arango::traverser::VertexId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread-local cache for compiled regexes
@@ -2259,7 +2260,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
                                triagens::arango::AqlTransaction* trx,
                                FunctionParameters const& parameters) {
   size_t const n = parameters.size();
-  basics::traverser::NeighborsOptions opts;
+  triagens::arango::traverser::NeighborsOptions opts;
 
   if (n < 4 || n > 6) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "NEIGHBORS", (int) 4, (int) 6);
@@ -3490,7 +3491,36 @@ AqlValue Functions::Sqrt (triagens::aql::Query* query,
   bool unused = false;
   double input = TRI_ToDoubleJson(inputJson.json(), unused);
   input = sqrt(input);
+  if (std::isnan(input)) {
+    return AqlValue(new Json(Json::Null));
+  }
   return AqlValue(new Json(input));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function POW
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Pow (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+
+  if (n != 2) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "POW", (int) 2, (int) 2);
+  }
+
+  Json baseJson = ExtractFunctionParameter(trx, parameters, 0, false);
+  Json expJson = ExtractFunctionParameter(trx, parameters, 1, false);
+  
+  bool unused = false;
+  double base = TRI_ToDoubleJson(baseJson.json(), unused);
+  double exp = TRI_ToDoubleJson(expJson.json(), unused);
+  base = pow(base, exp);
+  if (std::isnan(base) || ! std::isfinite(base)) {
+    return AqlValue(new Json(Json::Null));
+  }
+  return AqlValue(new Json(base));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

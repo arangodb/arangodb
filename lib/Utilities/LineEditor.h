@@ -31,6 +31,7 @@
 #define ARANGODB_UTILITIES_LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
+#include <functional>
 
 namespace arangodb {
   class ShellBase;
@@ -121,6 +122,12 @@ namespace arangodb {
 
       void signal ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a callback function to be executed on signal receipt
+////////////////////////////////////////////////////////////////////////////////
+
+      void setSignalFunction (std::function<void()> const&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -132,6 +139,12 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
       ShellBase* _shell;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback function to be executed on signal receipt
+////////////////////////////////////////////////////////////////////////////////
+
+      std::function<void()> _signalFunc;
   };
 }
 

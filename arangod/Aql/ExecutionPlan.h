@@ -63,7 +63,7 @@ namespace triagens {
 /// @brief create the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan (Ast*);
+        explicit ExecutionPlan (Ast*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the plan, frees all assigned nodes
@@ -403,6 +403,13 @@ namespace triagens {
 
         ExecutionNode* fromNodeFor (ExecutionNode*,
                                     AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST TRAVERAL node
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode* fromNodeTraversal (ExecutionNode*,
+                                          AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST FILTER node

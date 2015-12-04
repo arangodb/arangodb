@@ -1305,7 +1305,6 @@ typedef struct open_iterator_state_s {
   uint64_t                   _documents;
   int64_t                    _initialCount;
   uint32_t                   _trxCollections;
-  uint32_t                   _numOps;
   bool                       _trxPrepared;
 }
 open_iterator_state_t;

@@ -72,6 +72,8 @@ void Aqlerror (YYLTYPE* locp,
 %token T_IN "IN keyword"
 %token T_WITH "WITH keyword"
 %token T_INTO "INTO keyword"
+
+%token T_GRAPH "GRAPH keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -123,6 +125,11 @@ void Aqlerror (YYLTYPE* locp,
 
 %token T_END 0 "end of query string"
 
+%token T_OUTBOUND "outbound direction"
+%token T_INBOUND "inbound direction"
+%token T_ANY "any direction"
+
+%token T_ALL "all modifier"
 
 /* define operator precedence */
 %left T_COMMA
@@ -185,6 +192,10 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> optional_array_filter;
 %type <node> optional_array_limit;
 %type <node> optional_array_return;
+%type <node> graph_subject;
+%type <intval> graph_direction;
+%type <node> graph_direction_steps;
+%type <node> graph_collection;
 %type <node> reference;
 %type <node> simple_value;
 %type <node> value_literal;
@@ -202,34 +213,27 @@ void Aqlerror (YYLTYPE* locp,
 %%
 
 query: 
-    optional_statement_block_statements return_statement {
-    }
-  | optional_statement_block_statements remove_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements insert_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements update_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements replace_statement optional_post_modification_block {
-    }
-  | optional_statement_block_statements upsert_statement optional_post_modification_block {
+    optional_statement_block_statements final_statement {
     }
   ;
 
-optional_post_modification_lets:
-    /* empty */ {
+final_statement:
+    return_statement {
     }
-  | optional_post_modification_lets let_statement {
-    }
-  ;
-
-optional_post_modification_block:
-    /* empty */ {
-      // still need to close the scope opened by the data-modification statement
+  | remove_statement {
       parser->ast()->scopes()->endNested();
     }
-  | optional_post_modification_lets return_statement {
-      // the RETURN statement will close the scope opened by the data-modification statement
+  | insert_statement {
+      parser->ast()->scopes()->endNested();
+    }
+  | update_statement {
+      parser->ast()->scopes()->endNested();
+    }
+  | replace_statement {
+      parser->ast()->scopes()->endNested();
+    }
+  | upsert_statement {
+      parser->ast()->scopes()->endNested();
     }
   ;
 
@@ -253,6 +257,16 @@ statement_block_statement:
     }
   | limit_statement {
     }
+  | remove_statement {
+    }
+  | insert_statement {
+    }
+  | update_statement {
+    }
+  | replace_statement {
+    }
+  | upsert_statement {
+    }
   ;
 
 for_statement:
@@ -260,6 +274,21 @@ for_statement:
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
      
       auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
+      parser->ast()->addOperation(node);
+    }
+    | T_FOR variable_name T_IN graph_direction_steps expression graph_subject {
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4, $5, $6);
+      parser->ast()->addOperation(node);
+    }
+    | T_FOR variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4.value, $4.length, $6, $7, $8);
+      parser->ast()->addOperation(node);
+    }
+    | T_FOR variable_name T_COMMA variable_name T_COMMA variable_name T_IN graph_direction_steps expression graph_subject {
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      auto node = parser->ast()->createNodeTraversal($2.value, $2.length, $4.value, $4.length, $6.value, $6.length, $8, $9, $10);
       parser->ast()->addOperation(node);
     }
   ;
@@ -861,9 +890,6 @@ expression_or_query:
       $$ = $1;
     }
   | {
-      if (parser->isModificationQuery()) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
-      }
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query {
@@ -1034,6 +1060,75 @@ optional_array_return:
     }
   ;
 
+graph_collection:
+    T_STRING {
+      $$ = parser->ast()->createNodeValueString($1.value, $1.length);
+    }
+  | bind_parameter {
+      // TODO FIXME check @s
+      $$ = $1;
+    }
+  ;
+
+graph_collection_list:
+     graph_collection {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember($1);
+     }
+   | graph_collection_list T_COMMA graph_collection {
+       auto node = static_cast<AstNode*>(parser->peekStack());
+       node->addMember($3);
+     }
+   ;
+
+graph_subject:
+    graph_collection {
+      auto node = parser->ast()->createNodeArray();
+      node->addMember($1);
+      $$ = parser->ast()->createNodeCollectionList(node);
+    }
+  | graph_collection T_COMMA 
+    {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+      node->addMember($1);
+    } graph_collection_list {
+      auto node = static_cast<AstNode*>(parser->popStack());
+      $$ = parser->ast()->createNodeCollectionList(node);
+    }
+  | T_GRAPH bind_parameter {
+      // graph name
+      $$ = $2;
+    }
+  | T_GRAPH T_QUOTED_STRING {
+      // graph name
+      $$ = parser->ast()->createNodeValueString($2.value, $2.length);
+    }
+  ;
+
+graph_direction:
+    // Returns the edge direction number.
+    // Identical order as TRI_edge_direction_e
+    T_OUTBOUND {
+      $$ = 2;
+    }
+    | T_INBOUND {
+      $$ = 1;
+    }
+    | T_ANY {
+      $$ = 0; 
+    }
+  ;
+
+graph_direction_steps:
+    graph_direction {
+      $$ = parser->ast()->createNodeDirection($1, 1);
+    }
+    | expression graph_direction {
+      $$ = parser->ast()->createNodeDirection($2, $1);
+    }
+  ;
+
 reference:
     T_STRING {
       // variable or collection
@@ -1091,9 +1186,6 @@ reference:
       }
     }
   | T_OPEN {
-      if (parser->isModificationQuery()) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
-      }
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query T_CLOSE {

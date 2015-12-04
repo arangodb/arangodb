@@ -92,7 +92,7 @@ namespace triagens {
 /// @brief constructor, taking a shaper
 ////////////////////////////////////////////////////////////////////////////////
 
-        JsonLegend (Shaper* shaper)
+        explicit JsonLegend (Shaper* shaper)
           : _shaper(shaper), 
             _att_data(TRI_UNKNOWN_MEM_ZONE),
             _shape_data(TRI_UNKNOWN_MEM_ZONE) {
@@ -236,7 +236,7 @@ namespace triagens {
         Shape const* _shapes;
 
       public:
-        LegendReader (char const* l) 
+        explicit LegendReader (char const* l) 
           : Shaper(),
             _legend(l) {
 

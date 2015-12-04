@@ -267,10 +267,8 @@ bool IndexBlock::initIndexes () {
           if (isRunningInCluster) {
             // must invalidate the expression now as we might be called from
             // different threads
-            if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
-              for (auto const& e : _nonConstExpressions) {
-                e->expression->invalidate();
-              }
+            for (auto const& e : _nonConstExpressions) {
+              e->expression->invalidate();
             }
           
             engine->getQuery()->exitContext(); 

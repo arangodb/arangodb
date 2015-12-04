@@ -60,9 +60,9 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
-                                        string databaseName,
-                                        const string& username,
-                                        const string& password,
+                                        std::string databaseName,
+                                        std::string const& username,
+                                        std::string const& password,
                                         double requestTimeout,
                                         double connectTimeout,
                                         size_t numRetries,
@@ -161,7 +161,7 @@ V8ClientConnection::~V8ClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string V8ClientConnection::rewriteLocation (void* data,
-                                            const string& location) {
+                                            std::string const& location) {
   V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
 
   TRI_ASSERT(c != nullptr);
@@ -196,10 +196,18 @@ bool V8ClientConnection::isConnected () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set the current operation to interrupted
+////////////////////////////////////////////////////////////////////////////////
+
+void V8ClientConnection::setInterrupted (bool value) {
+  _connection->setInterrupted(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current database name
 ////////////////////////////////////////////////////////////////////////////////
 
-const string& V8ClientConnection::getDatabaseName () {
+std::string const& V8ClientConnection::getDatabaseName () {
   return _databaseName;
 }
 
@@ -215,7 +223,7 @@ void V8ClientConnection::setDatabaseName (std::string const& databaseName) {
 /// @brief returns the version and build number of the arango server
 ////////////////////////////////////////////////////////////////////////////////
 
-const string& V8ClientConnection::getVersion () {
+std::string const& V8ClientConnection::getVersion () {
   return _version;
 }
 
@@ -223,7 +231,7 @@ const string& V8ClientConnection::getVersion () {
 /// @brief returns the server mode
 ////////////////////////////////////////////////////////////////////////////////
 
-const string& V8ClientConnection::getMode () {
+std::string const& V8ClientConnection::getMode () {
   return _mode;
 }
 
@@ -239,7 +247,7 @@ int V8ClientConnection::getLastHttpReturnCode () {
 /// @brief get the last error message
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string& V8ClientConnection::getErrorMessage () {
+std::string const& V8ClientConnection::getErrorMessage () {
   return _lastErrorMessage;
 }
 
@@ -422,6 +430,10 @@ v8::Handle<v8::Value> V8ClientConnection::requestData (v8::Isolate* isolate,
 
 v8::Handle<v8::Value> V8ClientConnection::handleResult (v8::Isolate* isolate) {
   v8::EscapableHandleScope scope(isolate);
+
+  if (_httpResult == nullptr) {
+    return scope.Escape<v8::Value>(v8::Undefined(isolate));
+  }
 
   if (! _httpResult->isComplete()) {
     // not complete

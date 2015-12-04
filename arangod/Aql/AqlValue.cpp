@@ -28,6 +28,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/AqlItemBlock.h"
 #include "Basics/json-utilities.h"
+#include "Utils/ShapedJsonTransformer.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-shape-conv.h"
 #include "V8Server/v8-wrapshapedjson.h"
@@ -615,6 +616,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
     }
 
     case EMPTY: {
+      return v8::Null(isolate); // TODO: FIXME decide if we really want this...---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
       return v8::Undefined(isolate);
     }
   }
@@ -643,36 +645,12 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(_marker != nullptr);
 
       auto shaper = document->getShaper();
-      TRI_shaped_json_t shaped;
-      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-      Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
-
-      // append the internal attributes
-
-      // _id, _key, _rev
-      char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
-      std::string id(trx->resolver()->getCollectionName(document->_info._cid));
-      id.push_back('/');
-      id.append(key);
-      json(TRI_VOC_ATTRIBUTE_ID, Json(id));
-      json(TRI_VOC_ATTRIBUTE_REV, Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker))));
-      json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
-
-      if (TRI_IS_EDGE_MARKER(_marker)) {
-        // _from
-        std::string from(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
-        from.push_back('/');
-        from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
-        json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
-        
-        // _to
-        std::string to(trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker)));
-        to.push_back('/');
-        to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
-        json(TRI_VOC_ATTRIBUTE_TO, Json(to));
-      }
-
-      return json;
+      return TRI_ExpandShapedJson(
+        shaper,
+        trx->resolver(),
+        document->_info._cid,
+        _marker
+      );
     }
           
     case DOCVEC: {
@@ -715,6 +693,7 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
     }
 
     case EMPTY: {
+      return Json(Json::Null); // TODO FIXME: decide if we really want this...--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
       return triagens::basics::Json();
     }
   }

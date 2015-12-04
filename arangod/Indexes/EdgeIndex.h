@@ -153,13 +153,24 @@ namespace triagens {
         int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
          
         int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges using the index, restarting at the edge pointed at
+/// by next
+////////////////////////////////////////////////////////////////////////////////
+      
+        void lookup (triagens::arango::Transaction*,
+                     TRI_edge_index_iterator_t const*,
+                     std::vector<TRI_doc_mptr_copy_t>&,
+                     TRI_doc_mptr_copy_t*&,
+                     size_t);
         
         int batchInsert (triagens::arango::Transaction*,
                          std::vector<TRI_doc_mptr_t const*> const*,
                          size_t) override final;
 
         int sizeHint (triagens::arango::Transaction*, size_t) override final;
-        
+
         bool hasBatchInsert () const override final {
           return true;
         }
