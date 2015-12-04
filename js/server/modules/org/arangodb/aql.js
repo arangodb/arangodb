@@ -2718,12 +2718,6 @@ function AQL_IS_DATESTRING (value) {
 
   // argument is a string
 
-  // append zulu time specifier if no other present
-  if (! value.match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
-      (value.match(/-\d+(:\d+)?$/) && ! value.match(/[tT ]/))) {
-    value += 'Z';
-  }
-
   // detect invalid dates ("foo" -> "fooZ" -> getTime() == NaN)
   var date = new Date(value);
   if (isNaN(date)) {
