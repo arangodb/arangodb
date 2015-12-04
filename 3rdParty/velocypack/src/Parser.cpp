@@ -32,13 +32,13 @@ using namespace arangodb::velocypack;
 
 // The following function does the actual parse. It gets bytes
 // via peek, consume and reset appends the result to the Builder
-// in _b. Errors are reported via an exception.
+// in *_b. Errors are reported via an exception.
 // Behind the scenes it runs two parses, one to collect sizes and
 // check for parse errors (scan phase) and then one to actually
 // build the result (build phase).
 
 ValueLength Parser::parseInternal(bool multi) {
-  _b.options = options;  // copy over options
+  _b->options = options;  // copy over options
 
   // skip over optional BOM
   if (_size >= 3 && _start[0] == 0xef && _start[1] == 0xbb &&
@@ -118,20 +118,20 @@ void Parser::parseNumber() {
     }
     if (!numberValue.isInteger) {
       if (negative) {
-        _b.addDouble(-numberValue.doubleValue);
+        _b->addDouble(-numberValue.doubleValue);
       } else {
-        _b.addDouble(numberValue.doubleValue);
+        _b->addDouble(numberValue.doubleValue);
       }
     } else if (negative) {
       if (numberValue.intValue <= static_cast<uint64_t>(INT64_MAX)) {
-        _b.addInt(-static_cast<int64_t>(numberValue.intValue));
+        _b->addInt(-static_cast<int64_t>(numberValue.intValue));
       } else if (numberValue.intValue == toUInt64(INT64_MIN)) {
-        _b.addInt(INT64_MIN);
+        _b->addInt(INT64_MIN);
       } else {
-        _b.addDouble(-static_cast<double>(numberValue.intValue));
+        _b->addDouble(-static_cast<double>(numberValue.intValue));
       }
     } else {
-      _b.addUInt(numberValue.intValue);
+      _b->addUInt(numberValue.intValue);
     }
     return;
   }
@@ -152,7 +152,7 @@ void Parser::parseNumber() {
     }
     i = consume();
     if (i < 0) {
-      _b.addDouble(fractionalPart);
+      _b->addDouble(fractionalPart);
       return;
     }
   } else {
@@ -164,7 +164,7 @@ void Parser::parseNumber() {
   }
   if (i != 'e' && i != 'E') {
     unconsume();
-    _b.addDouble(fractionalPart);
+    _b->addDouble(fractionalPart);
     return;
   }
   i = getOneOrThrow("Incomplete number");
@@ -187,7 +187,7 @@ void Parser::parseNumber() {
   if (std::isnan(fractionalPart) || !std::isfinite(fractionalPart)) {
     throw Exception(Exception::NumberOutOfRange);
   }
-  _b.addDouble(fractionalPart);
+  _b->addDouble(fractionalPart);
 }
 
 void Parser::parseString() {
@@ -197,9 +197,9 @@ void Parser::parseString() {
   // insert 8 bytes for the length as soon as we reach 127 bytes
   // in the VPack representation.
 
-  ValueLength const base = _b._pos;
-  _b.reserveSpace(1);
-  _b._start[_b._pos++] = 0x40;  // correct this later
+  ValueLength const base = _b->_pos;
+  _b->reserveSpace(1);
+  _b->_start[_b->_pos++] = 0x40;  // correct this later
 
   bool large = false;          // set to true when we reach 128 bytes
   uint32_t highSurrogate = 0;  // non-zero if high-surrogate was seen
@@ -207,36 +207,37 @@ void Parser::parseString() {
   while (true) {
     size_t remainder = _size - _pos;
     if (remainder >= 16) {
-      _b.reserveSpace(remainder);
+      _b->reserveSpace(remainder);
       size_t count;
       if (options->validateUtf8Strings) {
-        count = JSONStringCopyCheckUtf8(_b._start + _b._pos, _start + _pos,
+        count = JSONStringCopyCheckUtf8(_b->_start + _b->_pos, _start + _pos,
                                         remainder);
       } else {
-        count = JSONStringCopy(_b._start + _b._pos, _start + _pos, remainder);
+        count = JSONStringCopy(_b->_start + _b->_pos, _start + _pos, remainder);
       }
       _pos += count;
-      _b._pos += count;
+      _b->_pos += count;
     }
     int i = getOneOrThrow("Unfinished string");
-    if (!large && _b._pos - (base + 1) > 126) {
+    if (!large && _b->_pos - (base + 1) > 126) {
       large = true;
-      _b.reserveSpace(8);
-      memmove(_b._start + base + 9, _b._start + base + 1, _b._pos - (base + 1));
-      _b._pos += 8;
+      _b->reserveSpace(8);
+      ValueLength len = _b->_pos - (base + 1);
+      memmove(_b->_start + base + 9, _b->_start + base + 1, checkOverflow(len));
+      _b->_pos += 8;
     }
     switch (i) {
       case '"':
         ValueLength len;
         if (!large) {
-          len = _b._pos - (base + 1);
-          _b._start[base] = 0x40 + static_cast<uint8_t>(len);
+          len = _b->_pos - (base + 1);
+          _b->_start[base] = 0x40 + static_cast<uint8_t>(len);
           // String is ready
         } else {
-          len = _b._pos - (base + 9);
-          _b._start[base] = 0xbf;
+          len = _b->_pos - (base + 9);
+          _b->_start[base] = 0xbf;
           for (ValueLength i = 1; i <= 8; i++) {
-            _b._start[base + i] = len & 0xff;
+            _b->_start[base + i] = len & 0xff;
             len >>= 8;
           }
         }
@@ -251,33 +252,33 @@ void Parser::parseString() {
           case '"':
           case '/':
           case '\\':
-            _b.reserveSpace(1);
-            _b._start[_b._pos++] = static_cast<uint8_t>(i);
+            _b->reserveSpace(1);
+            _b->_start[_b->_pos++] = static_cast<uint8_t>(i);
             highSurrogate = 0;
             break;
           case 'b':
-            _b.reserveSpace(1);
-            _b._start[_b._pos++] = '\b';
+            _b->reserveSpace(1);
+            _b->_start[_b->_pos++] = '\b';
             highSurrogate = 0;
             break;
           case 'f':
-            _b.reserveSpace(1);
-            _b._start[_b._pos++] = '\f';
+            _b->reserveSpace(1);
+            _b->_start[_b->_pos++] = '\f';
             highSurrogate = 0;
             break;
           case 'n':
-            _b.reserveSpace(1);
-            _b._start[_b._pos++] = '\n';
+            _b->reserveSpace(1);
+            _b->_start[_b->_pos++] = '\n';
             highSurrogate = 0;
             break;
           case 'r':
-            _b.reserveSpace(1);
-            _b._start[_b._pos++] = '\r';
+            _b->reserveSpace(1);
+            _b->_start[_b->_pos++] = '\r';
             highSurrogate = 0;
             break;
           case 't':
-            _b.reserveSpace(1);
-            _b._start[_b._pos++] = '\t';
+            _b->reserveSpace(1);
+            _b->_start[_b->_pos++] = '\t';
             highSurrogate = 0;
             break;
           case 'u': {
@@ -300,23 +301,23 @@ void Parser::parseString() {
               }
             }
             if (v < 0x80) {
-              _b.reserveSpace(1);
-              _b._start[_b._pos++] = static_cast<uint8_t>(v);
+              _b->reserveSpace(1);
+              _b->_start[_b->_pos++] = static_cast<uint8_t>(v);
               highSurrogate = 0;
             } else if (v < 0x800) {
-              _b.reserveSpace(2);
-              _b._start[_b._pos++] = 0xc0 + (v >> 6);
-              _b._start[_b._pos++] = 0x80 + (v & 0x3f);
+              _b->reserveSpace(2);
+              _b->_start[_b->_pos++] = 0xc0 + (v >> 6);
+              _b->_start[_b->_pos++] = 0x80 + (v & 0x3f);
               highSurrogate = 0;
             } else if (v >= 0xdc00 && v < 0xe000 && highSurrogate != 0) {
               // Low surrogate, put the two together:
               v = 0x10000 + ((highSurrogate - 0xd800) << 10) + v - 0xdc00;
-              _b._pos -= 3;
-              _b.reserveSpace(4);
-              _b._start[_b._pos++] = 0xf0 + (v >> 18);
-              _b._start[_b._pos++] = 0x80 + ((v >> 12) & 0x3f);
-              _b._start[_b._pos++] = 0x80 + ((v >> 6) & 0x3f);
-              _b._start[_b._pos++] = 0x80 + (v & 0x3f);
+              _b->_pos -= 3;
+              _b->reserveSpace(4);
+              _b->_start[_b->_pos++] = 0xf0 + (v >> 18);
+              _b->_start[_b->_pos++] = 0x80 + ((v >> 12) & 0x3f);
+              _b->_start[_b->_pos++] = 0x80 + ((v >> 6) & 0x3f);
+              _b->_start[_b->_pos++] = 0x80 + (v & 0x3f);
               highSurrogate = 0;
             } else {
               if (v >= 0xd800 && v < 0xdc00) {
@@ -325,10 +326,10 @@ void Parser::parseString() {
               } else {
                 highSurrogate = 0;
               }
-              _b.reserveSpace(3);
-              _b._start[_b._pos++] = 0xe0 + (v >> 12);
-              _b._start[_b._pos++] = 0x80 + ((v >> 6) & 0x3f);
-              _b._start[_b._pos++] = 0x80 + (v & 0x3f);
+              _b->reserveSpace(3);
+              _b->_start[_b->_pos++] = 0xe0 + (v >> 12);
+              _b->_start[_b->_pos++] = 0x80 + ((v >> 6) & 0x3f);
+              _b->_start[_b->_pos++] = 0x80 + (v & 0x3f);
             }
             break;
           }
@@ -344,13 +345,13 @@ void Parser::parseString() {
             throw Exception(Exception::UnexpectedControlCharacter);
           }
           highSurrogate = 0;
-          _b.reserveSpace(1);
-          _b._start[_b._pos++] = static_cast<uint8_t>(i);
+          _b->reserveSpace(1);
+          _b->_start[_b->_pos++] = static_cast<uint8_t>(i);
         } else {
           if (!options->validateUtf8Strings) {
             highSurrogate = 0;
-            _b.reserveSpace(1);
-            _b._start[_b._pos++] = static_cast<uint8_t>(i);
+            _b->reserveSpace(1);
+            _b->_start[_b->_pos++] = static_cast<uint8_t>(i);
           } else {
             // multi-byte UTF-8 sequence!
             int follow = 0;
@@ -370,14 +371,14 @@ void Parser::parseString() {
             }
 
             // validate follow up characters
-            _b.reserveSpace(1 + follow);
-            _b._start[_b._pos++] = static_cast<uint8_t>(i);
+            _b->reserveSpace(1 + follow);
+            _b->_start[_b->_pos++] = static_cast<uint8_t>(i);
             for (int j = 0; j < follow; ++j) {
               i = getOneOrThrow("scanString: truncated UTF-8 sequence");
               if ((i & 0xc0) != 0x80) {
                 throw Exception(Exception::InvalidUtf8Sequence);
               }
-              _b._start[_b._pos++] = static_cast<uint8_t>(i);
+              _b->_start[_b->_pos++] = static_cast<uint8_t>(i);
             }
             highSurrogate = 0;
           }
@@ -388,14 +389,14 @@ void Parser::parseString() {
 }
 
 void Parser::parseArray() {
-  ValueLength base = _b._pos;
-  _b.addArray();
+  ValueLength base = _b->_pos;
+  _b->addArray();
 
   int i = skipWhiteSpace("Expecting item or ']'");
   if (i == ']') {
     // empty array
     ++_pos;  // the closing ']'
-    _b.close();
+    _b->close();
     return;
   }
 
@@ -403,13 +404,13 @@ void Parser::parseArray() {
 
   while (true) {
     // parse array element itself
-    _b.reportAdd(base);
+    _b->reportAdd(base);
     parseJson();
     i = skipWhiteSpace("Expecting ',' or ']'");
     if (i == ']') {
       // end of array
       ++_pos;  // the closing ']'
-      _b.close();
+      _b->close();
       decreaseNesting();
       return;
     }
@@ -425,8 +426,8 @@ void Parser::parseArray() {
 }
 
 void Parser::parseObject() {
-  ValueLength base = _b._pos;
-  _b.addObject();
+  ValueLength base = _b->_pos;
+  _b->addObject();
 
   int i = skipWhiteSpace("Expecting item or '}'");
   if (i == '}') {
@@ -434,7 +435,7 @@ void Parser::parseObject() {
     consume();  // the closing ']'
     if (_nesting != 0 || !options->keepTopLevelOpen) {
       // only close if we've not been asked to keep top level open
-      _b.close();
+      _b->close();
     }
     return;
   }
@@ -449,22 +450,22 @@ void Parser::parseObject() {
     // get past the initial '"'
     ++_pos;
 
-    _b.reportAdd(base);
+    _b->reportAdd(base);
     bool excludeAttribute = false;
-    auto const lastPos = _b._pos;
+    auto const lastPos = _b->_pos;
     if (options->attributeExcludeHandler == nullptr) {
       parseString();
     } else {
       parseString();
       if (options->attributeExcludeHandler->shouldExclude(
-              Slice(_b._start + lastPos, options), _nesting)) {
+              Slice(_b->_start + lastPos, options), _nesting)) {
         excludeAttribute = true;
       }
     }
 
     if (!excludeAttribute && options->attributeTranslator != nullptr) {
       // check if a translation for the attribute name exists
-      Slice key(_b._start + lastPos, options);
+      Slice key(_b->_start + lastPos, options);
 
       if (key.isString()) {
         ValueLength keyLength;
@@ -476,8 +477,8 @@ void Parser::parseObject() {
           // found translation... now reset position to old key position
           // and simply overwrite the existing key with the numeric translation
           // id
-          _b._pos = lastPos;
-          _b.addUInt(Slice(translated, options).getUInt());
+          _b->_pos = lastPos;
+          _b->addUInt(Slice(translated, options).getUInt());
         }
       }
     }
@@ -492,7 +493,7 @@ void Parser::parseObject() {
     parseJson();
 
     if (excludeAttribute) {
-      _b.removeLast();
+      _b->removeLast();
     }
 
     i = skipWhiteSpace("Expecting ',' or '}'");
@@ -501,7 +502,7 @@ void Parser::parseObject() {
       ++_pos;  // the closing '}'
       if (_nesting != 1 || !options->keepTopLevelOpen) {
         // only close if we've not been asked to keep top level open
-        _b.close();
+        _b->close();
       }
       decreaseNesting();
       return;

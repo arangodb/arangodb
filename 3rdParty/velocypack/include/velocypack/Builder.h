@@ -96,7 +96,7 @@ class Builder {
     if (_pos + len <= _size) {
       return;  // All OK, we can just increase tos->pos by len
     }
-    checkValueLength(_pos + len);
+    checkOverflow(_pos + len);
 
     _buffer->prealloc(len);
     _start = _buffer->data();
@@ -158,25 +158,23 @@ class Builder {
   ~Builder() {}
 
   Builder(Builder const& that)
-      : _buffer(that._buffer),
+      : _buffer(new Buffer<uint8_t>(*that._buffer)),
         _start(_buffer->data()),
         _size(_buffer->size()),
         _pos(that._pos),
         _stack(that._stack),
         _index(that._index),
         options(that.options) {
-    if (that._buffer == nullptr) {
-      throw Exception(Exception::InternalError,
-                      "Buffer of Builder is already gone");
+    if (options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
   }
 
   Builder& operator=(Builder const& that) {
-    if (that._buffer == nullptr) {
-      throw Exception(Exception::InternalError,
-                      "Buffer of Builder is already gone");
+    if (that.options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
-    _buffer = that._buffer;
+    _buffer.reset(new Buffer<uint8_t>(*that._buffer));
     _start = _buffer->data();
     _size = _buffer->size();
     _pos = that._pos;
@@ -187,12 +185,11 @@ class Builder {
   }
 
   Builder(Builder&& that) {
-    if (that._buffer == nullptr) {
-      throw Exception(Exception::InternalError,
-                      "Buffer of Builder is already gone");
+    if (that.options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
     _buffer = that._buffer;
-    that._buffer.reset();
+    that._buffer.reset(new Buffer<uint8_t>());
     _start = _buffer->data();
     _size = _buffer->size();
     _pos = that._pos;
@@ -201,18 +198,17 @@ class Builder {
     _index.clear();
     _index.swap(that._index);
     options = that.options;
-    that._start = nullptr;
+    that._start = that._buffer->data();
     that._size = 0;
     that._pos = 0;
   }
 
   Builder& operator=(Builder&& that) {
-    if (that._buffer == nullptr) {
-      throw Exception(Exception::InternalError,
-                      "Buffer of Builder is already gone");
+    if (that.options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
     _buffer = that._buffer;
-    that._buffer.reset();
+    that._buffer.reset(new Buffer<uint8_t>());
     _start = _buffer->data();
     _size = _buffer->size();
     _pos = that._pos;
@@ -221,7 +217,7 @@ class Builder {
     _index.clear();
     _index.swap(that._index);
     options = that.options;
-    that._start = nullptr;
+    that._start = that._buffer->data();
     that._size = 0;
     that._pos = 0;
     return *this;
@@ -230,19 +226,17 @@ class Builder {
   // get a const reference to the Builder's Buffer object
   std::shared_ptr<Buffer<uint8_t>> const& buffer() const { return _buffer; }
 
-  uint8_t const* data() const {
-    if (_buffer == nullptr) {
-      throw Exception(Exception::InternalError,
-                      "Buffer of Builder is already gone");
-    }
+  std::shared_ptr<Buffer<uint8_t>> steal() {
+    std::shared_ptr<Buffer<uint8_t>> res = std::move(_buffer);
+    _buffer.reset(new Buffer<uint8_t>());
+    return res;
+  }
 
+  uint8_t const* data() const {
     return _buffer.get()->data();
   }
 
   std::string toString() const;
-
-  // get a non-const reference to the Builder's Buffer object
-  std::shared_ptr<Buffer<uint8_t>>& buffer() { return _buffer; }
 
   static Builder clone(Slice const& slice,
                        Options const* options = &Options::Defaults) {
@@ -487,8 +481,7 @@ class Builder {
             options->attributeTranslator->translate(attrName);
 
         if (translated != nullptr) {
-          set(Slice(options->attributeTranslator->translate(attrName),
-                    options));
+          set(Slice(translated, options));
           return set(sub);
         }
         // otherwise fall through to regular behavior

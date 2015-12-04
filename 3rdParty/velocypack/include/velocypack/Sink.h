@@ -84,10 +84,12 @@ struct StringSinkImpl final : public Sink {
   void append(char const* p) override final { buffer->append(p, strlen(p)); }
 
   void append(char const* p, ValueLength len) override final {
-    buffer->append(p, len);
+    buffer->append(p, checkOverflow(len));
   }
 
-  void reserve(ValueLength len) override final { buffer->reserve(len); }
+  void reserve(ValueLength len) override final {
+    buffer->reserve(checkOverflow(len));
+  }
 
   T* buffer;
 };

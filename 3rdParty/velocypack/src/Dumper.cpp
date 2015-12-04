@@ -102,7 +102,15 @@ void Dumper::appendUInt(uint64_t v) {
   _sink->push_back('0' + (v % 10));
 }
 
+void Dumper::appendDouble(double v) {
+  char temp[24];
+  int len = fpconv_dtoa(v, &temp[0]);
+  _sink->append(&temp[0], static_cast<ValueLength>(len));
+}
+
 void Dumper::dumpInteger(Slice const* slice) {
+  VELOCYPACK_ASSERT(slice->isInteger());
+
   if (slice->isType(ValueType::UInt)) {
     uint64_t v = slice->getUInt();
 
@@ -181,9 +189,6 @@ void Dumper::dumpInteger(Slice const* slice) {
       v = -v;
     }
     _sink->push_back('0' + static_cast<char>(v));
-  } else {
-    // we should never get here
-    throw Exception(Exception::InvalidValueType, "Unexpected number type");
   }
 }
 
@@ -375,9 +380,7 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
       if (std::isnan(v) || !std::isfinite(v)) {
         handleUnsupportedType(slice);
       } else {
-        char temp[24];
-        int len = fpconv_dtoa(v, &temp[0]);
-        _sink->append(&temp[0], static_cast<ValueLength>(len));
+        appendDouble(v);
       }
       break;
     }
