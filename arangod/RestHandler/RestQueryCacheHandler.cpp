@@ -225,13 +225,13 @@ bool RestQueryCacheHandler::replaceProperties () {
     return true;
   }
   bool validBody = true;
-  VPackBuilder parsedBody = parseVelocyPackBody(validBody);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(validBody);
 
   if (! validBody) {
     // error message generated in parseJsonBody
     return true;
   }
-  VPackSlice body = parsedBody.slice();
+  VPackSlice body = parsedBody.get()->slice();
 
   if (! body.isObject()) {
     generateError(HttpResponse::BAD,

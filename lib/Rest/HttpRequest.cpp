@@ -523,7 +523,7 @@ void HttpRequest::setHeader (char const* key,
 /// @brief gets the request body as VPackBuilder
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder HttpRequest::toVelocyPack () {
+std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack () {
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   

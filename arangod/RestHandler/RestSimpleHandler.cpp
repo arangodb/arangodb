@@ -79,12 +79,13 @@ HttpHandler::status_t RestSimpleHandler::execute () {
 
   if (type == HttpRequest::HTTP_REQUEST_PUT) {
     bool parsingSuccess = true;
-    VPackBuilder parsedBody = parseVelocyPackBody(parsingSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parsingSuccess);
 
     if (! parsingSuccess) {
       return status_t(HANDLER_DONE);
     }
-    VPackSlice body = parsedBody.slice();
+
+    VPackSlice body = parsedBody.get()->slice();
 
     if (! body.isObject()) {
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting JSON object body");

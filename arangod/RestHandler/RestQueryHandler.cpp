@@ -504,12 +504,13 @@ bool RestQueryHandler::replaceProperties () {
   }
 
   bool parseSuccess = true;
-  VPackBuilder parsedBody = parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (! parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
   }
-  VPackSlice body = parsedBody.slice();
+
+  VPackSlice body = parsedBody.get()->slice();
   if (! body.isObject()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -644,13 +645,13 @@ bool RestQueryHandler::parseQuery () {
   }
 
   bool parseSuccess = true;
-  VPackBuilder parsedBody = parseVelocyPackBody(parseSuccess);
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (! parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
   }
 
-  VPackSlice body = parsedBody.slice();
+  VPackSlice body = parsedBody.get()->slice();
 
   if (! body.isObject()) {
     generateError(HttpResponse::BAD,

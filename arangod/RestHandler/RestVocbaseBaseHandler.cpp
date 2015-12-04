@@ -575,7 +575,7 @@ bool RestVocbaseBaseHandler::extractWaitForSync () const {
 /// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder RestVocbaseBaseHandler::parseVelocyPackBody (bool& success) {
+std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody (bool& success) {
   try {
     success = true;
     return _request->toVelocyPack();

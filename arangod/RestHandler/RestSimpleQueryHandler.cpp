@@ -174,12 +174,12 @@ HttpHandler::status_t RestSimpleQueryHandler::execute () {
 void RestSimpleQueryHandler::allDocuments () {
   try { 
     bool parseSuccess = true;
-    VPackBuilder parsedBody = parseVelocyPackBody(parseSuccess);
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
     if (! parseSuccess) {
       return;
     }
-    VPackSlice body = parsedBody.slice();
+    VPackSlice body = parsedBody.get()->slice();
 
     VPackSlice const value = body.get("collection");
 
