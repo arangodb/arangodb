@@ -2572,7 +2572,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       bool const createKeys = (nodeType == ExecutionNode::INSERT);
       inputVariable = node->getVariablesUsedHere()[0];
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, inputVariable->id, createKeys);
+          vocbase, collection, inputVariable->id, createKeys, true);
     }
     else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
@@ -2585,7 +2585,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         inputVariable = v[0];
       }
       distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, inputVariable->id, false);
+            vocbase, collection, inputVariable->id, false, v.size() > 1);
     }
     else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
@@ -2600,7 +2600,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         inputVariable = v[0];
       }
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, inputVariable->id, false);
+          vocbase, collection, inputVariable->id, false, v.size() > 1);
     }
     else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT nodes has two input variables!
@@ -2608,7 +2608,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       TRI_ASSERT(v.size() >= 2);
 
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, v[0]->id, v[2]->id, false);
+          vocbase, collection, v[0]->id, v[2]->id, false, true);
     }
     else {
       TRI_ASSERT(false);
@@ -2940,7 +2940,8 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
   const Variable* _variable;
   ExecutionNode* _lastNode;
   
-  public: 
+  public:
+   
     RemoveToEnumCollFinder (ExecutionPlan* plan,
                             std::unordered_set<ExecutionNode*>& toUnlink)
       : _plan(plan),
@@ -2960,7 +2961,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
     bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
         case EN::REMOVE: {
-          TRI_ASSERT(_remove == false);
+          if (_remove) {
+            break;
+          }
             
           // find the variable we are removing . . .
           auto rn = static_cast<RemoveNode*>(en);
