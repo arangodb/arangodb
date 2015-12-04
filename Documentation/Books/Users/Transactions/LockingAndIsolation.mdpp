@@ -147,7 +147,7 @@ will automatically abort one of the transactions involved in such deadlock. Abor
 means that all changes done by the transaction will be rolled back and error 29 
 (`deadlock detected`) will be thrown. 
 
-Client code (AQL queries, user transactions) that access more than one collection 
+Client code (AQL queries, user transactions) that accesses more than one collection 
 should be aware of the potential of deadlocks and should handle the error 29 
 (`deadlock detected`) properly, either by passing the exception to the caller or 
 retrying the operation.
