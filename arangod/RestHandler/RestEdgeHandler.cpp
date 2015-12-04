@@ -31,6 +31,7 @@
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -200,115 +201,135 @@ bool RestEdgeHandler::createDocument () {
   }
 
   bool const waitForSync = extractWaitForSync();
+  try { 
+    bool parseSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    if (! parseSuccess) {
+      return false;
+    }
 
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
-  
-  if (json == nullptr) {
-    return false;
-  }
+    VPackSlice body = parsedBody->slice();
 
-  if (! TRI_IsObjectJson(json.get())) {
-    generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    return false;
-  }
+    if (! body.isObject()) {
+      generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+      return false;
+    }
 
-  if (ServerState::instance()->isCoordinator()) {
-    // json will be freed inside!
-    return createDocumentCoordinator(collection, waitForSync, json.release(), from, to);
-  }
+    if (ServerState::instance()->isCoordinator()) {
+      // json will be freed inside!
+      return createDocumentCoordinator(collection, waitForSync, body, from, to);
+    }
 
-  if (! checkCreateCollection(collection, getCollectionType())) {
-    return false;
-  }
+    if (! checkCreateCollection(collection, getCollectionType())) {
+      return false;
+    }
 
-  // find and load collection given by name or identifier
-  SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
+    // find and load collection given by name or identifier
+    SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
 
-  // .............................................................................
-  // inside write transaction
-  // .............................................................................
+    // .............................................................................
+    // inside write transaction
+    // .............................................................................
 
-  int res = trx.begin();
+    int res = trx.begin();
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
-    return false;
-  }
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateTransactionError(collection, res);
+      return false;
+    }
 
-  TRI_document_collection_t* document = trx.documentCollection();
+    TRI_document_collection_t* document = trx.documentCollection();
 
-  if (document->_info._type != TRI_COL_TYPE_EDGE) {
-    // check if we are inserting with the EDGE handler into a non-EDGE collection
-    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
-    return false;
-  }
+    if (document->_info._type != TRI_COL_TYPE_EDGE) {
+      // check if we are inserting with the EDGE handler into a non-EDGE collection
+      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+      return false;
+    }
 
-  TRI_voc_cid_t const cid = trx.cid();
+    TRI_voc_cid_t const cid = trx.cid();
 
-  // edge
-  TRI_document_edge_t edge;
-  edge._fromCid = cid;
-  edge._toCid   = cid;
-  edge._fromKey = nullptr;
-  edge._toKey   = nullptr;
+    // edge
+    TRI_document_edge_t edge;
+    edge._fromCid = cid;
+    edge._toCid   = cid;
+    edge._fromKey = nullptr;
+    edge._toKey   = nullptr;
 
-  string wrongPart;
-  // Note that in a DBserver in a cluster, the following call will
-  // actually parse the first part of *from* as a cluster-wide
-  // collection name, exactly as it is needed here!
-  res = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    wrongPart = "'from'";
-  }
-  else {
+    string wrongPart;
     // Note that in a DBserver in a cluster, the following call will
     // actually parse the first part of *from* as a cluster-wide
     // collection name, exactly as it is needed here!
-    res = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
+    res = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      wrongPart = "'to'";
+      wrongPart = "'from'";
     }
-  }
+    else {
+      // Note that in a DBserver in a cluster, the following call will
+      // actually parse the first part of *from* as a cluster-wide
+      // collection name, exactly as it is needed here!
+      res = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+      if (res != TRI_ERROR_NO_ERROR) {
+        wrongPart = "'to'";
+      }
+    }
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
+      FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
+
+      if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+        generateError(HttpResponse::NOT_FOUND, res, wrongPart + " does not point to a valid collection");
+      }
+      else {
+        generateError(HttpResponse::BAD, res, wrongPart + " is not a document handle");
+      }
+      return false;
+    }
+
+    // .............................................................................
+    // inside write transaction
+    // .............................................................................
+
+    // will hold the result
+    TRI_doc_mptr_copy_t mptr;
+
+    // TODO remove this as soon as we can store VPack
+    std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+    res = trx.createEdge(&mptr, json.get(), waitForSync, &edge);
+    res = trx.finish(res);
+
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
 
-    if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-      generateError(HttpResponse::NOT_FOUND, res, wrongPart + " does not point to a valid collection");
+    // .............................................................................
+    // outside write transaction
+    // .............................................................................
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      generateTransactionError(collection, res);
+      return false;
     }
-    else {
-      generateError(HttpResponse::BAD, res, wrongPart + " is not a document handle");
-    }
-    return false;
+
+    generateSaved(trx, cid, mptr);
+
+    return true;
   }
-
-  // .............................................................................
-  // inside write transaction
-  // .............................................................................
-
-  // will hold the result
-  TRI_doc_mptr_copy_t mptr;
-  res = trx.createEdge(&mptr, json.get(), waitForSync, &edge);
-  res = trx.finish(res);
-
-  FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
-  FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
-
-  // .............................................................................
-  // outside write transaction
-  // .............................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res);
-    return false;
+  catch (triagens::basics::Exception const& ex) {
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
   }
-
-  generateSaved(trx, cid, mptr);
-
-  return true;
+  catch (std::bad_alloc const&) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+  }
+  catch (std::exception const& ex) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
+  }
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+  }
+  // Only in error case
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,7 +338,7 @@ bool RestEdgeHandler::createDocument () {
 
 bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
                                                  bool waitForSync,
-                                                 TRI_json_t* json,
+                                                 VPackSlice const& document,
                                                  char const* from,
                                                  char const* to) {
   std::string const& dbname = _request->databaseName();
@@ -327,7 +348,9 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   string resultBody;
 
   int error = triagens::arango::createEdgeOnCoordinator(
-            dbname, collname, waitForSync, json, from, to,
+            dbname, collname, waitForSync,
+            triagens::basics::VelocyPackHelper::velocyPackToJson(document),
+            from, to,
             responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {

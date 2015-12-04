@@ -91,7 +91,7 @@ namespace triagens {
 
       bool createDocumentCoordinator (std::string const& collname,
                                       bool waitForSync,
-                                      TRI_json_t* json,
+                                      VPackSlice const& document,
                                       char const* from,
                                       char const* to);
     };
