@@ -115,8 +115,6 @@ namespace triagens {
               compareTo(nullptr) {
           }
 
-          explicit TraverserExpression (TRI_json_t const*);
-
           explicit TraverserExpression (VPackSlice const& slice);
 
           virtual ~TraverserExpression () {

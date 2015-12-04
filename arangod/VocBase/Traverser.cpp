@@ -88,36 +88,6 @@ TraverserExpression::TraverserExpression (VPackSlice const& slice) {
   varAccess = new aql::AstNode(registerNode, registerString, varNode);
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates an expression from a TRI_json_t*
-////////////////////////////////////////////////////////////////////////////////
-
-TraverserExpression::TraverserExpression (TRI_json_t const* json) {
-  isEdgeAccess = basics::JsonHelper::checkAndGetBooleanValue(json, "isEdgeAccess");
-  comparisonType = static_cast<aql::AstNodeType>(basics::JsonHelper::checkAndGetNumericValue<uint32_t>(json, "comparisonType"));
-  auto registerNode = [&](aql::AstNode const* node) -> void {
-    _nodeRegister.emplace_back(node);
-  };
-  auto registerString = [&](std::string const& str) -> char const* {
-    std::unique_ptr<std::string> copy(new std::string(str.c_str(), str.size()));
-    _stringRegister.emplace_back(copy.get());
-    auto p = copy.release();
-    TRI_ASSERT(p != nullptr);
-    TRI_ASSERT(p->c_str() != nullptr);
-    return p->c_str(); // should never change its position, even if vector grows/shrinks
-  };
-  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::checkAndGetObjectValue(json, "varAccess"), triagens::basics::Json::NOFREE);
-
-  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::getObjectElement(json, "compareTo"), triagens::basics::Json::NOFREE));
-  if (compareTo->json() == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid compareTo value");
-  }
-  // If this fails everything before does not leak
-  varAccess = new aql::AstNode(registerNode, registerString, varNode);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transforms the expression into json
 ////////////////////////////////////////////////////////////////////////////////

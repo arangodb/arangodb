@@ -561,9 +561,7 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
 
           for (auto const& it : VPackArrayIterator(postFilter)) {
             if (it.isObject()) {
-              std::string json = it.toJson(); // TODO: remove me later
-              std::unique_ptr<TRI_json_t> exp(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, json.c_str())); // TODO: remove me later
-              std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp.get()));
+              std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(it));
               expressions.emplace_back(expression.get());
               expression.release();
             }
