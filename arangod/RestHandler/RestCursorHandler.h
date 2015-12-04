@@ -39,8 +39,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-struct TRI_json_t;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class RestCursorHandler
 // -----------------------------------------------------------------------------
