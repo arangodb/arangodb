@@ -42,14 +42,14 @@ std::string Builder::toString() const {
 
 void Builder::doActualSort(std::vector<SortEntry>& entries) {
   VELOCYPACK_ASSERT(entries.size() > 1);
-  std::sort(entries.begin(), entries.end(), [](SortEntry const& a,
-                                               SortEntry const& b) {
+  std::sort(entries.begin(), entries.end(),
+            [](SortEntry const& a, SortEntry const& b) {
     // return true iff a < b:
     uint8_t const* pa = a.nameStart;
     uint64_t sizea = a.nameSize;
     uint8_t const* pb = b.nameStart;
     uint64_t sizeb = b.nameSize;
-    size_t const compareLength = static_cast<size_t>((std::min)(sizea, sizeb));
+    size_t const compareLength = checkOverflow((std::min)(sizea, sizeb));
     int res = memcmp(pa, pb, compareLength);
 
     return (res < 0 || (res == 0 && sizea < sizeb));
@@ -88,7 +88,7 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
     if (*aa >= 0x40 && *aa <= 0xbe && *bb >= 0x40 && *bb <= 0xbe) {
       // The fast path, short strings:
       uint8_t m = (std::min)(*aa - 0x40, *bb - 0x40);
-      int c = memcmp(aa + 1, bb + 1, static_cast<size_t>(m));
+      int c = memcmp(aa + 1, bb + 1, checkOverflow(m));
       return (c < 0 || (c == 0 && *aa < *bb));
     } else {
       uint64_t lena;
@@ -96,7 +96,7 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
       aa = findAttrName(aa, lena, options);
       bb = findAttrName(bb, lenb, options);
       uint64_t m = (std::min)(lena, lenb);
-      int c = memcmp(aa, bb, m);
+      int c = memcmp(aa, bb, checkOverflow(m));
       return (c < 0 || (c == 0 && lena < lenb));
     }
   };
@@ -118,18 +118,19 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   entries.clear();
 #endif
 
-  entries.reserve(offsets.size());
-  for (ValueLength i = 0; i < offsets.size(); i++) {
+  size_t const n = offsets.size();
+  entries.reserve(n);
+  for (size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = findAttrName(objBase + e.offset, e.nameSize, options);
     entries.push_back(e);
   }
-  VELOCYPACK_ASSERT(entries.size() == offsets.size());
+  VELOCYPACK_ASSERT(entries.size() == n);
   doActualSort(entries);
 
   // copy back the sorted offsets
-  for (ValueLength i = 0; i < offsets.size(); i++) {
+  for (size_t i = 0; i < n; i++) {
     offsets[i] = entries[i].offset;
   }
 }
@@ -164,9 +165,9 @@ void Builder::close() {
   ValueLength& tos = _stack.back();
   uint8_t const head = _start[tos];
 
-  if (head != 0x06 && head != 0x0b && head != 0x13 && head != 0x14) {
-    throw Exception(Exception::BuilderNeedOpenObject);
-  }
+  VELOCYPACK_ASSERT(head == 0x06 || head == 0x0b || head == 0x13 ||
+                    head == 0x14);
+
   bool const isArray = (head == 0x06 || head == 0x13);
   std::vector<ValueLength>& index = _index[_stack.size() - 1];
 
@@ -207,7 +208,8 @@ void Builder::close() {
       ValueLength targetPos = 1 + bLen;
 
       if (_pos > (tos + 9)) {
-        memmove(_start + tos + targetPos, _start + tos + 9, _pos - (tos + 9));
+        ValueLength len = _pos - (tos + 9);
+        memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
       }
 
       // store byte length
@@ -289,7 +291,8 @@ void Builder::close() {
       targetPos = 2;
     }
     if (_pos > (tos + 9)) {
-      memmove(_start + tos + targetPos, _start + tos + 9, _pos - (tos + 9));
+      ValueLength len = _pos - (tos + 9);
+      memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
     }
     _pos -= (9 - targetPos);
     for (size_t i = 0; i < index.size(); i++) {
@@ -594,7 +597,7 @@ uint8_t* Builder::set(Value const& item) {
         value = item.getCharPtr();
         s = &value;
       }
-      size_t size = s->size();
+      size_t const size = s->size();
       if (size <= 126) {
         // short string
         reserveSpace(1 + size);
@@ -634,7 +637,7 @@ uint8_t* Builder::set(Value const& item) {
       }
       ValueLength v = s->size();
       appendUInt(v, 0xbf);
-      memcpy(_start + _pos, s->c_str(), v);
+      memcpy(_start + _pos, s->c_str(), checkOverflow(v));
       _pos += v;
       break;
     }
@@ -662,20 +665,20 @@ uint8_t* Builder::set(Value const& item) {
 uint8_t* Builder::set(Slice const& item) {
   ValueLength const l = item.byteSize();
   reserveSpace(l);
-  memcpy(_start + _pos, item.start(), l);
+  memcpy(_start + _pos, item.start(), checkOverflow(l));
   _pos += l;
   return _start + _pos - l;
 }
 
 uint8_t* Builder::set(ValuePair const& pair) {
   // This method builds a single further VPack item at the current
-  // append position. This is the case for ValueType::ID or
-  // ValueType::Binary, which both need two pieces of information
-  // to build.
+  // append position. This is the case for ValueType::String,
+  // ValueType::Binary, or ValueType::Custom, which can be built
+  // with two pieces of information
   if (pair.valueType() == ValueType::Binary) {
     uint64_t v = pair.getSize();
     appendUInt(v, 0xbf);
-    memcpy(_start + _pos, pair.getStart(), v);
+    memcpy(_start + _pos, pair.getStart(), checkOverflow(v));
     _pos += v;
     return nullptr;  // unused here
   } else if (pair.valueType() == ValueType::String) {
@@ -703,7 +706,7 @@ uint8_t* Builder::set(ValuePair const& pair) {
     reserveSpace(size);
     uint8_t const* p = pair.getStart();
     if (p != nullptr) {
-      memcpy(_start + _pos, p, size);
+      memcpy(_start + _pos, p, checkOverflow(size));
     }
     _pos += size;
     return _start + _pos - size;
@@ -726,15 +729,13 @@ void Builder::checkAttributeUniqueness(Slice const& obj) const {
     // compare each two adjacent attribute names
     for (ValueLength i = 1; i < n; ++i) {
       Slice current = obj.keyAt(i);
-      if (!current.isString()) {
-        throw Exception(Exception::BuilderUnexpectedType,
-                        "Expecting String key");
-      }
+      // keyAt() guarantees a string as returned type
+      VELOCYPACK_ASSERT(current.isString());
 
       ValueLength len2;
       char const* q = current.getString(len2);
 
-      if (len == len2 && memcmp(p, q, len2) == 0) {
+      if (len == len2 && memcmp(p, q, checkOverflow(len2)) == 0) {
         // identical key
         throw Exception(Exception::DuplicateAttributeName);
       }
@@ -745,13 +746,11 @@ void Builder::checkAttributeUniqueness(Slice const& obj) const {
   } else {
     std::unordered_set<std::string> keys;
 
-    for (size_t i = 0; i < n; ++i) {
+    for (ValueLength i = 0; i < n; ++i) {
       // note: keyAt() already translates integer attributes
       Slice key = obj.keyAt(i);
-      if (!key.isString()) {
-        throw Exception(Exception::BuilderUnexpectedType,
-                        "Expecting String key");
-      }
+      // keyAt() guarantees a string as returned type
+      VELOCYPACK_ASSERT(key.isString());
 
       if (!keys.emplace(key.copyString()).second) {
         throw Exception(Exception::DuplicateAttributeName);

@@ -35,8 +35,11 @@
 
 using namespace arangodb::velocypack;
 
+// indicator for "element not found" in indexOf() method
+ValueLength const Collection::NotFound = UINT64_MAX;
+
 // convert a vector of strings into an unordered_set of strings
-static inline std::unordered_set<std::string> ToSet(
+static inline std::unordered_set<std::string> makeSet(
     std::vector<std::string> const& keys) {
   std::unordered_set<std::string> s;
   for (auto const& it : keys) {
@@ -45,14 +48,12 @@ static inline std::unordered_set<std::string> ToSet(
   return s;
 }
 
-void Collection::forEach(
-    Slice const& slice,
-    std::function<bool(Slice const&, ValueLength)> const& cb) {
+void Collection::forEach(Slice const& slice, Predicate const& predicate) {
   ArrayIterator it(slice);
   ValueLength index = 0;
 
   while (it.valid()) {
-    if (!cb(it.value(), index)) {
+    if (!predicate(it.value(), index)) {
       // abort
       return;
     }
@@ -61,9 +62,7 @@ void Collection::forEach(
   }
 }
 
-Builder Collection::filter(
-    Slice const& slice,
-    std::function<bool(Slice const&, ValueLength)> const& cb) {
+Builder Collection::filter(Slice const& slice, Predicate const& predicate) {
   // construct a new Array
   Builder b;
   b.add(Value(ValueType::Array));
@@ -73,7 +72,7 @@ Builder Collection::filter(
 
   while (it.valid()) {
     Slice s = it.value();
-    if (cb(s, index)) {
+    if (predicate(s, index)) {
       b.add(s);
     }
     it.next();
@@ -83,15 +82,13 @@ Builder Collection::filter(
   return b;
 }
 
-Slice Collection::find(
-    Slice const& slice,
-    std::function<bool(Slice const&, ValueLength)> const& cb) {
+Slice Collection::find(Slice const& slice, Predicate const& predicate) {
   ArrayIterator it(slice);
   ValueLength index = 0;
 
   while (it.valid()) {
     Slice s = it.value();
-    if (cb(s, index)) {
+    if (predicate(s, index)) {
       return s;
     }
     it.next();
@@ -101,15 +98,13 @@ Slice Collection::find(
   return Slice();
 }
 
-bool Collection::contains(
-    Slice const& slice,
-    std::function<bool(Slice const&, ValueLength)> const& cb) {
+bool Collection::contains(Slice const& slice, Predicate const& predicate) {
   ArrayIterator it(slice);
   ValueLength index = 0;
 
   while (it.valid()) {
     Slice s = it.value();
-    if (cb(s, index)) {
+    if (predicate(s, index)) {
       return true;
     }
     it.next();
@@ -119,14 +114,41 @@ bool Collection::contains(
   return false;
 }
 
-bool Collection::all(Slice const& slice,
-                     std::function<bool(Slice const&, ValueLength)> const& cb) {
+bool Collection::contains(Slice const& slice, Slice const& other) {
+  ArrayIterator it(slice);
+
+  while (it.valid()) {
+    if (it.value().equals(other)) {
+      return true;
+    }
+    it.next();
+  }
+
+  return false;
+}
+
+ValueLength Collection::indexOf(Slice const& slice, Slice const& other) {
+  ArrayIterator it(slice);
+  ValueLength index = 0;
+
+  while (it.valid()) {
+    if (it.value().equals(other)) {
+      return index;
+    }
+    it.next();
+    ++index;
+  }
+
+  return Collection::NotFound;
+}
+
+bool Collection::all(Slice const& slice, Predicate const& predicate) {
   ArrayIterator it(slice);
   ValueLength index = 0;
 
   while (it.valid()) {
     Slice s = it.value();
-    if (!cb(s, index)) {
+    if (!predicate(s, index)) {
       return false;
     }
     it.next();
@@ -136,14 +158,13 @@ bool Collection::all(Slice const& slice,
   return true;
 }
 
-bool Collection::any(Slice const& slice,
-                     std::function<bool(Slice const&, ValueLength)> const& cb) {
+bool Collection::any(Slice const& slice, Predicate const& predicate) {
   ArrayIterator it(slice);
   ValueLength index = 0;
 
   while (it.valid()) {
     Slice s = it.value();
-    if (cb(s, index)) {
+    if (predicate(s, index)) {
       return true;
     }
     it.next();
@@ -163,7 +184,7 @@ std::vector<std::string> Collection::keys(Slice const& slice) {
 
 void Collection::keys(Slice const& slice, std::vector<std::string>& result) {
   // pre-allocate result vector
-  result.reserve(slice.length());
+  result.reserve(checkOverflow(slice.length()));
 
   ObjectIterator it(slice);
 
@@ -203,7 +224,7 @@ Builder Collection::keep(Slice const& slice,
   // check if there are so many keys that we want to use the hash-based version
   // cut-off values are arbitrary...
   if (keys.size() >= 4 && slice.length() > 10) {
-    return keep(slice, ToSet(keys));
+    return keep(slice, makeSet(keys));
   }
 
   Builder b;
@@ -247,7 +268,7 @@ Builder Collection::remove(Slice const& slice,
   // check if there are so many keys that we want to use the hash-based version
   // cut-off values are arbitrary...
   if (keys.size() >= 4 && slice.length() > 10) {
-    return remove(slice, ToSet(keys));
+    return remove(slice, makeSet(keys));
   }
 
   Builder b;
