@@ -1030,6 +1030,8 @@ static void insertIntoShardMap (ClusterInfo* ci,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a list of filtered documents in a coordinator
 ///        All found documents will be inserted into result.
+///        After execution documentIds will contain all id's of documents
+///        that could not be found.
 ////////////////////////////////////////////////////////////////////////////////
 
 int getFilteredDocumentsOnCoordinator (
@@ -1044,7 +1046,7 @@ int getFilteredDocumentsOnCoordinator (
   ClusterComm* cc = ClusterComm::instance();
 
   std::unordered_map<ShardID, std::vector<std::string>> shardRequestMap;
-  for (auto doc : documentIds) {
+  for (auto const& doc : documentIds) {
     insertIntoShardMap(ci, dbname, doc, shardRequestMap);
   }
 
@@ -1054,18 +1056,18 @@ int getFilteredDocumentsOnCoordinator (
   // If it is by key the key was only added to one key list, if not
   // it is contained multiple times.
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  for (auto shard : shardRequestMap) {
+  for (auto const& shard : shardRequestMap) {
     std::unique_ptr<map<string, string>> headersCopy(new map<string, string>(headers));
     triagens::basics::Json reqBody(triagens::basics::Json::Object, 2);
     reqBody("collection", triagens::basics::Json(static_cast<std::string>(shard.first))); // ShardID is a string
     triagens::basics::Json keyList(triagens::basics::Json::Array, shard.second.size());
-    for (auto key : shard.second) {
+    for (auto const& key : shard.second) {
       keyList.add(triagens::basics::Json(key));
     }
     reqBody("keys", keyList.steal());
     if (! expressions.empty()) {
       triagens::basics::Json filter(Json::Array, expressions.size());
-      for (auto& e : expressions) {
+      for (auto const& e : expressions) {
         triagens::basics::Json tmp(Json::Object);
         e->toJson(tmp, TRI_UNKNOWN_MEM_ZONE);
         filter.add(tmp.steal());
@@ -1107,19 +1109,28 @@ int getFilteredDocumentsOnCoordinator (
           TRI_json_t* element = TRI_LookupArrayJson(documents, k);
           std::string id = triagens::basics::JsonHelper::checkAndGetStringValue(element, "_id");
           result.emplace(id, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, element));
+          documentIds.erase(id);
         }
         catch (...) {
           // Ignore this error.
         }
       }
+      TRI_json_t* filtered = TRI_LookupObjectJson(resultBody.get(), "filtered");
+      if (filtered != nullptr && TRI_IsArrayJson(filtered)) {
+        size_t resCount = TRI_LengthArrayJson(filtered);
+        for (size_t k = 0; k < resCount; ++k) {
+          TRI_json_t* element = TRI_LookupArrayJson(filtered, k);
+          std::string def;
+          std::string id = triagens::basics::JsonHelper::getStringValue(element, def);
+          documentIds.erase(id);
+        }
+      }
     }
     delete res;
   }
+
   return TRI_ERROR_NO_ERROR;
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents in a coordinator

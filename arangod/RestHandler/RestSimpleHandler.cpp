@@ -517,11 +517,11 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
 
       triagens::basics::Json result(triagens::basics::Json::Object, 3);
 
-      // This is for internal use of AQL Traverser only.
-      // Should not be documented
       if (TRI_IsArrayJson(queryResult.json)) {
         size_t const n = TRI_LengthArrayJson(queryResult.json);
 
+        // This is for internal use of AQL Traverser only.
+        // Should not be documented
         auto const postFilter = TRI_LookupObjectJson(json, "filter");
         if (postFilter != nullptr && TRI_IsArrayJson(postFilter)) {
           std::vector<triagens::arango::traverser::TraverserExpression*> expressions;
@@ -547,6 +547,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
           }
           
           triagens::basics::Json filteredDocuments(triagens::basics::Json::Array, n);
+          triagens::basics::Json filteredIds(triagens::basics::Json::Array);
 
           for (size_t i = 0; i < n; ++i) {
             TRI_json_t const* tmp = TRI_LookupArrayJson(queryResult.json, i);
@@ -555,6 +556,14 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
               for (auto& e : expressions) {
                 if (! e->isEdgeAccess && ! e->matchesCheck(tmp)) {
                   add = false;
+                  try {
+                    std::string _id = triagens::basics::JsonHelper::checkAndGetStringValue(tmp, "_id");
+                    triagens::basics::Json tmp(_id);
+                    filteredIds.add(tmp.steal());
+                  }
+                  catch (...) {
+                    // This should never occur.
+                  }
                   break;
                 }
               }
@@ -565,6 +574,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
           }
           
           result.set("documents", filteredDocuments);
+          result.set("filtered", filteredIds);
         }
         else {
           result.set("documents", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
