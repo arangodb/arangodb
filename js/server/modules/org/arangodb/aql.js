@@ -2703,6 +2703,35 @@ function AQL_IS_OBJECT (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if value is of a valid datestring
+///
+/// returns a bool
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_IS_DATESTRING (value) {
+  'use strict';
+    
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
+    return false;
+  }
+
+  // argument is a string
+
+  // append zulu time specifier if no other present
+  if (! value.match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
+      (value.match(/-\d+(:\d+)?$/) && ! value.match(/[tT ]/))) {
+    value += 'Z';
+  }
+
+  // detect invalid dates ("foo" -> "fooZ" -> getTime() == NaN)
+  var date = new Date(value);
+  if (isNaN(date)) {
+    return false;
+  }
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 numeric functions
 // -----------------------------------------------------------------------------
@@ -9158,6 +9187,7 @@ exports.AQL_IS_ARRAY = AQL_IS_ARRAY;
 exports.AQL_IS_LIST = AQL_IS_ARRAY; // alias
 exports.AQL_IS_OBJECT = AQL_IS_OBJECT;
 exports.AQL_IS_DOCUMENT = AQL_IS_OBJECT; // alias
+exports.AQL_IS_DATESTRING = AQL_IS_DATESTRING;
 exports.AQL_FLOOR = AQL_FLOOR;
 exports.AQL_CEIL = AQL_CEIL;
 exports.AQL_ROUND = AQL_ROUND;

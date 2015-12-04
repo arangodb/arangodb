@@ -111,6 +111,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "IS_OBJECT",                   Function("IS_OBJECT",                   "AQL_IS_OBJECT", ".", true, true, false, true, true, &Functions::IsObject) },
   // IS_DOCUMENT is an alias for IS_OBJECT
   { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "AQL_IS_DOCUMENT", ".", true, true, false, true, true, &Functions::IsObject) }, 
+  { "IS_DATESTRING",               Function("IS_DATESTRING",               "AQL_IS_DATESTRING", ".", true, true, false, true, true) }, 
   
   // type cast functions
   { "TO_NUMBER",                   Function("TO_NUMBER",                   "AQL_TO_NUMBER", ".", true, true, false, true, true, &Functions::ToNumber) },
