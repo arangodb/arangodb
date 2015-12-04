@@ -305,16 +305,11 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 
   triagens::arango::traverser::VertexId start;
   std::string startVertexString(startVertex);
-  try {
-    start = triagens::arango::traverser::IdStringToVertexId (
-      trx.resolver(),
-      startVertexString
-    );
-  }
-  catch (triagens::basics::Exception& e) {
-    handleError(e);
-    return false;
-  }
+
+  start = triagens::arango::traverser::IdStringToVertexId (
+    trx.resolver(),
+    startVertexString
+  );
 
   TRI_transaction_collection_t* collection = trx.trxCollection();
 
@@ -388,55 +383,40 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 
 bool RestEdgesHandler::readFilteredEdges () {
   std::vector<traverser::TraverserExpression*> expressions;
-  try { 
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-    if (! parseSuccess) {
-      // We continue unfiltered
-      // Filter could be done by caller
-      delete _response;
-      _response = nullptr;
-      return readEdges(expressions);
-    }
-    VPackSlice body = parsedBody->slice();
-    triagens::basics::ScopeGuard guard{
-      []() -> void { },
-      [&expressions]() -> void {
-        for (auto& e : expressions) {
-          delete e;
-        }
-      }
-    };
-
-    if (! body.isArray()) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "Expected a list of traverser expressions as body parameter");
-      return false;
-    }
-
-    expressions.reserve(body.length());
-
-    for (auto const& exp : VPackArrayIterator(body)) {
-      if (exp.isObject()) {
-        std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
-        expressions.emplace_back(expression.get());
-        expression.release();
-      }
-    }
+  bool parseSuccess = true;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  if (! parseSuccess) {
+    // We continue unfiltered
+    // Filter could be done by caller
+    delete _response;
+    _response = nullptr;
     return readEdges(expressions);
   }
-  catch (triagens::basics::Exception const& ex) {
-    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  VPackSlice body = parsedBody->slice();
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&expressions]() -> void {
+      for (auto& e : expressions) {
+        delete e;
+      }
+    }
+  };
+
+  if (! body.isArray()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Expected a list of traverser expressions as body parameter");
+    return false;
   }
-  catch (std::bad_alloc const&) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+
+  expressions.reserve(body.length());
+
+  for (auto const& exp : VPackArrayIterator(body)) {
+    if (exp.isObject()) {
+      std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
+      expressions.emplace_back(expression.get());
+      expression.release();
+    }
   }
-  catch (std::exception const& ex) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
-  }
-  return false;
+  return readEdges(expressions);
 }
