@@ -2259,8 +2259,11 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "indexes", indexes);
 
+  std::shared_ptr<arangodb::velocypack::Builder> builder 
+      = triagens::basics::JsonHelper::toVelocyPack(parameters);
+
   int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards,
-                                            parameters, errorMsg, 0.0);
+                                            builder->slice(), errorMsg, 0.0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
@@ -2812,16 +2815,15 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   }
 
   // We need to distribute the documents we get over the shards:
-  map<ShardID, ServerID> shardIdsMap = col->shardIds();
-  map<string, size_t> shardTab;
-  vector<string> shardIds;
-  map<ShardID, ServerID>::iterator it;
-  map<string, size_t>::iterator it2;
-  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
-    shardTab.insert(make_pair(it->first,shardIds.size()));
-    shardIds.push_back(it->first);
+  auto shardIdsMap = col->shardIds();
+
+  std::unordered_map<std::string, size_t> shardTab;
+  std::vector<std::string> shardIds;
+  for (auto const& p : *shardIdsMap) {
+    shardTab.insert(make_pair(p.first, shardIds.size()));
+    shardIds.push_back(p.first);
   }
-  vector<StringBuffer*> bufs;
+  std::vector<StringBuffer*> bufs;
   size_t j;
   for (j = 0; j < shardIds.size(); j++) {
     bufs.push_back(new StringBuffer(TRI_UNKNOWN_MEM_ZONE));
@@ -2923,16 +2925,16 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           break;
         }
         else {
-          it2 = shardTab.find(responsibleShard);
-          if (it2 == shardTab.end()) {
+          auto it = shardTab.find(responsibleShard);
+          if (it == shardTab.end()) {
             TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
             errorMsg = "cannot find responsible shard";
             res = TRI_ERROR_INTERNAL;
             break;
           }
           else {
-            bufs[it2->second]->appendText(ptr, pos-ptr);
-            bufs[it2->second]->appendText("\n");
+            bufs[it->second]->appendText(ptr, pos-ptr);
+            bufs[it->second]->appendText("\n");
           }
         }
       }
@@ -2976,22 +2978,22 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
     }
 
-    for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
-      map<string, string>* headers = new map<string, string>;
-      it2 = shardTab.find(it->first);
-      if (it2 == shardTab.end()) {
+    for (auto const& p : *shardIdsMap) {
+      auto headers = new std::map<std::string, std::string>;
+      auto it = shardTab.find(p.first);
+      if (it == shardTab.end()) {
         errorMsg = "cannot find shard";
         res = TRI_ERROR_INTERNAL;
       }
       else {
-        j = it2->second;
+        j = it->second;
         std::shared_ptr<std::string const> body
             (new string(bufs[j]->c_str(), bufs[j]->length()));
-        result = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
+        result = cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                                triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                                "/_db/" + StringUtils::urlEncode(dbName) +
                                "/_api/replication/restore-data?collection=" +
-                               it->first + forceopt, body,
+                               p.first + forceopt, body,
                                headers, nullptr, 300.0);
         delete result;
       }
@@ -3000,7 +3002,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     // Now listen to the results:
     unsigned int count;
     unsigned int nrok = 0;
-    for (count = (int) shardIdsMap.size(); count > 0; count--) {
+    for (count = (int) shardIdsMap->size(); count > 0; count--) {
       result = cc->wait( "", coordTransactionID, 0, "", 0.0);
       if (result->status == CL_COMM_RECEIVED) {
         if (result->answer_code == triagens::rest::HttpResponse::OK ||
@@ -3051,7 +3053,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       delete result;
     }
 
-    if (nrok != shardIdsMap.size()) {
+    if (nrok != shardIdsMap->size()) {
       errorMsg.append("some shard(s) produced error(s)");
       res = TRI_ERROR_INTERNAL;
     }

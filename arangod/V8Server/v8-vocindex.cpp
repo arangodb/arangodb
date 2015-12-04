@@ -47,6 +47,8 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#include "velocypack/Builder.h"
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -939,7 +941,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 
   bool allowUserKeys = true;
   uint64_t numberOfShards = 1;
-  vector<string> shardKeys;
+  std::vector<std::string> shardKeys;
 
   // default shard key
   shardKeys.push_back("_key");
@@ -1034,13 +1036,17 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     CollectionNameResolver resolver(vocbase);
     TRI_voc_cid_t otherCid 
       = resolver.getCollectionIdCluster(distributeShardsLike);
+    std::string otherCidString = triagens::basics::StringUtils::itoa(otherCid);
     shared_ptr<CollectionInfo> collInfo = ci->getCollection(databaseName,
-                               triagens::basics::StringUtils::itoa(otherCid));
+                               otherCidString);
     auto shards = collInfo->shardIds();
-    for (auto it = shards.begin(); it != shards.end(); ++it) {
-      dbServers.push_back(it->second);
+    auto shardList = ci->getShardList(otherCidString);
+    for (auto const& s : *shardList) {
+      auto it = shards->find(s);
+      if (it != shards->end()) {
+        dbServers.push_back(it->second[0]);
+      }
     }
-    // FIXME: need to sort shards numerically and not alphabetically
   }
 
   // now create the shards
@@ -1056,49 +1062,56 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   // now create the JSON for the collection
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::velocypack::Builder velocy;
+  using arangodb::velocypack::Value;
+  using arangodb::velocypack::ValueType;
 
-  if (json == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  velocy.openObject();
+  velocy("id",           Value(cid))
+        ("name",         Value(name))
+        ("type",         Value((int) collectionType))
+        ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
+        ("deleted",      Value(parameters._deleted))
+        ("doCompact",    Value(parameters._doCompact))
+        ("isSystem",     Value(parameters._isSystem))
+        ("isVolatile",   Value(parameters._isVolatile))
+        ("waitForSync",  Value(parameters._waitForSync))
+        ("maximalSize",  Value(parameters._maximalSize))
+        ("indexBuckets", Value(parameters._indexBuckets))
+        ("keyOptions",   Value(ValueType::Object))
+            ("type",          Value("traditional"))
+            ("allowUserKeys", Value(allowUserKeys))
+         .close();
+
+  velocy("shardKeys", Value(ValueType::Array));
+  for (auto const& sk : shardKeys) {
+    velocy(Value(sk));
+  }
+  velocy.close();
+
+  velocy("shards", Value(ValueType::Object));
+  for (auto const& p : shards) {
+    velocy(p.first, Value(ValueType::Array))
+       (Value(p.second))
+    .close();
   }
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._deleted));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._doCompact));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem",    TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._isSystem));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._isVolatile));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._waitForSync));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters._maximalSize));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters._indexBuckets));
-
-  TRI_json_t* keyOptions = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-  if (keyOptions != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional", strlen("traditional")));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
-
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", keyOptions);
-  }
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringArray(TRI_UNKNOWN_MEM_ZONE, shardKeys));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
-
-  TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (indexes == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
+  velocy("indexes", Value(ValueType::Array));
+  velocy.close();
+  velocy.close();
 
   // create a dummy primary index
   TRI_document_collection_t* doc = nullptr;
-  std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(doc));
+  std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex
+      (new triagens::arango::PrimaryIndex(doc));
 
   auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
+  TRI_json_t* indexes;
+  TRI_json_t* json;
+
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
+
 
   if (collectionType == TRI_COL_TYPE_EDGE) {
     // create a dummy edge index
@@ -1115,7 +1128,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   int myerrno = ci->createCollectionCoordinator(databaseName,
                                                 cid,
                                                 numberOfShards,
-                                                json,
+                                                velocy.slice(),
                                                 errorMsg,
                                                 240.0);
 

@@ -35,6 +35,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/json.h"
 #include "Rest/HttpRequest.h"
+#include "velocypack/Slice.h"
 
 namespace triagens {
   namespace httpclient {
@@ -461,6 +462,14 @@ namespace triagens {
 
         AgencyCommResult setValue (std::string const&,
                                    TRI_json_t const*,
+                                   double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a value in the back end, velocypack variant
+////////////////////////////////////////////////////////////////////////////////
+
+        AgencyCommResult setValue (std::string const&,
+                                   arangodb::velocypack::Slice const,
                                    double);
 
 ////////////////////////////////////////////////////////////////////////////////

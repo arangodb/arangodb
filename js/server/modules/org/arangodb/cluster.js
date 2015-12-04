@@ -415,18 +415,16 @@ function handleDatabaseChanges (plan) {
 function createLocalCollections (plannedCollections, planVersion) {
   var ourselves = global.ArangoServerState.id();
 
-  var createCollectionAgency = function (database, shard, payload) {
-    var realPayload = { error: payload.error,
-                        errorNum: payload.errorNum,
-                        errorMessage: payload.errorMessage,
-                        planVersion: payload.planVersion,
-                        indexes: payload.indexes,
-                        leader: payload.leader,
-                        inSync: payload.inSync,
-                        DBServer: payload.DBServer,
-                        planVersion: planVersion };
-    global.ArangoAgency.set("Current/Collections/" + database + "/" + payload.planId + "/" + shard,
-                     realPayload);
+  var createCollectionAgency = function (database, shard, collInfo, error) {
+    var payload = { error: error.error,
+                    errorNum: error.errorNum,
+                    errorMessage: error.errorMessage,
+                    indexes: collInfo.indexes,
+                    servers: [ ourselves ],
+                    planVersion: planVersion };
+    global.ArangoAgency.set("Current/Collections/" + database + "/" + 
+                            collInfo.planId + "/" + shard,
+                            payload);
   };
 
   var db = require("internal").db;
@@ -454,17 +452,20 @@ function createLocalCollections (plannedCollections, planVersion) {
           // diff the collections
           for (collection in collections) {
             if (collections.hasOwnProperty(collection)) {
-              var payload = collections[collection];
-              var shards = payload.shards;
+              var collInfo = collections[collection];
+              var shards = collInfo.shards;
               var shard;
 
-              payload.planId = payload.id;
-              delete payload.id;  // must not actually set it here
+              collInfo.planId = collInfo.id;
+              delete collInfo.id;  // must not actually set it here
 
               for (shard in shards) {
                 if (shards.hasOwnProperty(shard)) {
-                  if (shards[shard] === ourselves) {
+                  if (shards[shard][0] === ourselves) {
                     // found a shard we are responsible for
+
+                    var error = { error: false, errorNum: 0,
+                                  errorMessage: "no error" };
 
                     if (! localCollections.hasOwnProperty(shard)) {
                       // must create this shard
@@ -472,63 +473,52 @@ function createLocalCollections (plannedCollections, planVersion) {
                                    database,
                                    shard,
                                    database,
-                                   payload.planId);
+                                   collInfo.planId);
 
                       try {
-                        if (payload.type === ArangoCollection.TYPE_EDGE) {
-                          db._createEdgeCollection(shard, payload);
+                        if (collInfo.type === ArangoCollection.TYPE_EDGE) {
+                          db._createEdgeCollection(shard, collInfo);
                         }
                         else {
-                          db._create(shard, payload);
+                          db._create(shard, collInfo);
                         }
-                        payload.error = false;
-                        payload.errorNum = 0;
-                        payload.errorMessage = "no error";
                       }
                       catch (err2) {
-                        payload.error = true;
-                        payload.errorNum = err2.errorNum;
-                        payload.errorMessage = err2.errorMessage;
-
+                        error = { error: true, errorNum: err2.errorNum,
+                                  errorMessage: err2.errorMessage };
                         console.error("creating local shard '%s/%s' for central '%s/%s' failed: %s",
                                       database,
                                       shard,
                                       database,
-                                      payload.planId,
+                                      collInfo.planId,
                                       JSON.stringify(err2));
                       }
 
-                      payload.DBServer = ourselves;
                       writeLocked({ part: "Current" },
                                   createCollectionAgency,
-                                  [ database, shard, payload ]);
+                                  [ database, shard, collInfo, error ]);
                     }
                     else {
-                      if (localCollections[shard].status !== payload.status) {
+                      if (localCollections[shard].status !== collInfo.status) {
                         console.info("detected status change for local shard '%s/%s'",
                                      database,
                                      shard);
 
-                        if (payload.status === ArangoCollection.STATUS_UNLOADED) {
+                        if (collInfo.status === ArangoCollection.STATUS_UNLOADED) {
                           console.info("unloading local shard '%s/%s'",
                                        database,
                                        shard);
                           db._collection(shard).unload();
                         }
-                        else if (payload.status === ArangoCollection.STATUS_LOADED) {
+                        else if (collInfo.status === ArangoCollection.STATUS_LOADED) {
                           console.info("loading local shard '%s/%s'",
                                        database,
                                        shard);
                           db._collection(shard).load();
                         }
-                        payload.error = false;
-                        payload.errorNum = 0;
-                        payload.errorMessage = "no error";
-                        payload.DBServer = ourselves;
-
                         writeLocked({ part: "Current" },
                                     createCollectionAgency,
-                                    [ database, shard, payload ]);
+                                    [ database, shard, collInfo, error ]);
                       }
 
                       // collection exists, now compare collection properties
@@ -537,9 +527,9 @@ function createLocalCollections (plannedCollections, planVersion) {
                                   "indexBuckets" ];
                       for (i = 0; i < cmp.length; ++i) {
                         var p = cmp[i];
-                        if (localCollections[shard][p] !== payload[p]) {
+                        if (localCollections[shard][p] !== collInfo[p]) {
                           // property change
-                          properties[p] = payload[p];
+                          properties[p] = collInfo[p];
                         }
                       }
 
@@ -550,30 +540,31 @@ function createLocalCollections (plannedCollections, planVersion) {
 
                         try {
                           db._collection(shard).properties(properties);
-                          payload.error = false;
-                          payload.errorNum = 0;
-                          payload.errorMessage = "no error";
                         }
                         catch (err3) {
-                          payload.error = true;
-                          payload.errorNum = err3.errorNum;
-                          payload.errorMessage = err3.errorMessage;
+                          error = { error: true, errorNum: err3.errorNum,
+                                    errorMessage: err3.errorMessage };
                         }
-
-                        payload.DBServer = ourselves;
                         writeLocked({ part: "Current" },
                                     createCollectionAgency,
-                                    [ database, shard, payload ]);
+                                    [ database, shard, collInfo, error ]);
                       }
+                    }
+
+                    if (error.error) {
+                      continue;  // No point to look for properties and
+                                 // indices, if the creation has not worked
                     }
 
                     var indexes = getIndexMap(shard);
                     var idx;
                     var index;
 
-                    if (payload.hasOwnProperty("indexes")) {
-                      for (i = 0; i < payload.indexes.length; ++i) {
-                        index = payload.indexes[i];
+                    if (collInfo.hasOwnProperty("indexes")) {
+                      for (i = 0; i < collInfo.indexes.length; ++i) {
+                        index = collInfo.indexes[i];
+
+                        var changed = false;
 
                         if (index.type !== "primary" && index.type !== "edge" &&
                             ! indexes.hasOwnProperty(index.id)) {
@@ -582,36 +573,36 @@ function createLocalCollections (plannedCollections, planVersion) {
                                        shard,
                                        JSON.stringify(index));
 
-                          indexes[index.id] = index;
-
                           try {
                             arangodb.db._collection(shard).ensureIndex(index);
-                            indexes[index.id].error = false;
-                            indexes[index.id].errorNum = 0;
-                            indexes[index.id].errorMessage = "";
+                            index.error = false;
+                            index.errorNum = 0;
+                            index.errorMessage = "";
                           }
                           catch (err5) {
-                            indexes[index.id].error = true;
-                            indexes[index.id].errorNum = err5.errorNum;
-                            indexes[index.id].errorMessage = err5.errorMessage;
+                            index.error = true;
+                            index.errorNum = err5.errorNum;
+                            index.errorMessage = err5.errorMessage;
                           }
 
-                          payload.DBServer = ourselves;
-
+                          changed = true;
+                        }
+                        if (changed) {
                           writeLocked({ part: "Current" },
                                       createCollectionAgency,
-                                      [ database, shard, payload ]);
+                                      [ database, shard, collInfo, error ]);
                         }
                       }
 
+                      var changed2 = false;
                       for (idx in indexes) {
                         if (indexes.hasOwnProperty(idx)) {
                           // found an index in the index map, check if it must be deleted
 
                           if (indexes[idx].type !== "primary" && indexes[idx].type !== "edge") {
                             var found = false;
-                            for (i = 0; i < payload.indexes.length; ++i) {
-                              if (payload.indexes[i].id === idx) {
+                            for (i = 0; i < collInfo.indexes.length; ++i) {
+                              if (collInfo.indexes[i].id === idx) {
                                 found = true;
                                 break;
                               }
@@ -619,6 +610,7 @@ function createLocalCollections (plannedCollections, planVersion) {
 
                             if (! found) {
                               // found an index to delete locally
+                              changed2 = true;
                               index = indexes[idx];
 
                               console.info("dropping index '%s/%s': %s",
@@ -629,15 +621,15 @@ function createLocalCollections (plannedCollections, planVersion) {
                               arangodb.db._collection(shard).dropIndex(index);
 
                               delete indexes[idx];
-                              payload.indexes.splice(i, i);
-                              payload.DBServer = ourselves;
-
-                              writeLocked({ part: "Current" },
-                                          createCollectionAgency,
-                                          [ database, shard, payload ]);
+                              collInfo.indexes.splice(i, i);
                             }
                           }
                         }
+                      }
+                      if (changed2) {
+                        writeLocked({ part: "Current" },
+                                    createCollectionAgency,
+                                    [ database, shard, collInfo, error ]);
                       }
                     }
 

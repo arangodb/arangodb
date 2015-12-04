@@ -187,7 +187,16 @@ ClusterCommResult* ClusterComm::asyncRequest (
 
   if (destination.substr(0, 6) == "shard:") {
     op->shardID = destination.substr(6);
-    op->serverID = ClusterInfo::instance()->getResponsibleServer(op->shardID);
+    {
+      std::shared_ptr<std::vector<ServerID>> resp
+          = ClusterInfo::instance()->getResponsibleServer(op->shardID);
+      if (! resp->empty()) {
+        op->serverID = (*resp)[0];
+      }
+      else {
+        op->serverID = "";
+      }
+    }
     LOG_DEBUG("Responsible server: %s", op->serverID.c_str());
     if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
@@ -308,7 +317,16 @@ ClusterCommResult* ClusterComm::syncRequest (
 
   if (destination.substr(0, 6) == "shard:") {
     res->shardID = destination.substr(6);
-    res->serverID = ClusterInfo::instance()->getResponsibleServer(res->shardID);
+    {
+      std::shared_ptr<std::vector<ServerID>> resp
+          = ClusterInfo::instance()->getResponsibleServer(res->shardID);
+      if (! resp->empty()) {
+        res->serverID = (*resp)[0];
+      }
+      else {
+        res->serverID = "";
+      }
+    }
     LOG_DEBUG("Responsible server: %s", res->serverID.c_str());
     if (res->serverID.empty()) {
       res->status = CL_COMM_ERROR;

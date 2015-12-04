@@ -1029,6 +1029,25 @@ AgencyCommResult AgencyComm::setValue (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a value in the backend
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::setValue (std::string const& key,
+                                       arangodb::velocypack::Slice const json,
+                                       double ttl) {
+  AgencyCommResult result;
+
+  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      _globalConnectionOptions._requestTimeout,
+      result,
+      buildUrl(key) + ttlParam(ttl, true),
+      "value=" + triagens::basics::StringUtils::urlEncode(json.toString()),
+      false);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a key exists
 ////////////////////////////////////////////////////////////////////////////////
 

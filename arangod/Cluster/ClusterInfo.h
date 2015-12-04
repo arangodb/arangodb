@@ -39,6 +39,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "velocypack/Slice.h"
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
@@ -266,9 +267,36 @@ namespace triagens {
 /// @brief returns the shard ids
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, std::string> shardIds () const {
-          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
-          return triagens::basics::JsonHelper::stringObject(node);
+        typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
+
+        std::shared_ptr<ShardMap> shardIds () const {
+          std::shared_ptr<ShardMap> res
+              = std::atomic_load(&_shardMapCache);
+          if (res.get() != nullptr) {
+            return res;
+          }
+          TRI_json_t* const node 
+              = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
+          if (node != nullptr && TRI_IsObjectJson(node)) {
+            size_t len = TRI_LengthVector(&node->_value._objects);
+            for (size_t i = 0; i < len; i += 2) {
+              auto key = static_cast<TRI_json_t*>(
+                  TRI_AtVector(&node->_value._objects, i));
+              auto value = static_cast<TRI_json_t*>(
+                  TRI_AtVector(&node->_value._objects, i + 1));
+              if (TRI_IsStringJson(key) && TRI_IsArrayJson(value)) {
+                ShardID shard 
+                    = triagens::basics::JsonHelper::getStringValue(key, "");
+                std::vector<ServerID> servers
+                    = triagens::basics::JsonHelper::stringArray(value);
+                if (shard != "") {
+                  (*res).insert(make_pair(shard, servers));
+                }
+              }
+            }
+          }
+          std::atomic_store(&_shardMapCache, res);
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,6 +331,9 @@ namespace triagens {
       private:
 
         TRI_json_t*                        _json;
+
+        // Just a cache
+        mutable std::shared_ptr<ShardMap>  _shardMapCache;
     };
 
 
@@ -421,30 +452,16 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current leader for one shardID
+/// @brief returns the current leader and followers for a shard
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string leader (ShardID const& shardID) const {
-          auto it = _jsons.find(shardID);
-          if (it != _jsons.end()) {
-            TRI_json_t* json = it->second;
-            return triagens::basics::JsonHelper::getStringValue
-                               (json, "leader", "");
-          }
-          return std::string("");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current followers for a shard
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<ServerID> followers (ShardID const& shardID) const {
+        std::vector<ServerID> servers (ShardID const& shardID) const {
           std::vector<ServerID> v;
           auto it = _jsons.find(shardID);
           if (it != _jsons.end()) {
             TRI_json_t const* json
-                = triagens::basics::JsonHelper::getObjectElement(json,
-                                                                 "inSync");
+                = triagens::basics::JsonHelper::getObjectElement(it->second,
+                                                                 "servers");
             if (json != nullptr) {
               v = triagens::basics::JsonHelper::stringArray(json);
             }
@@ -459,9 +476,9 @@ namespace triagens {
         std::string errorMessage (ShardID const& shardID) const {
           auto it = _jsons.find(shardID);
           if (it != _jsons.end()) {
-            TRI_json_t* _json = it->second;
+            TRI_json_t* json = it->second;
             return triagens::basics::JsonHelper::getStringValue
-                               (_json, "errorMessage", "");
+                               (json, "errorMessage", "");
           }
           return std::string();
         }
@@ -699,7 +716,7 @@ namespace triagens {
         int createCollectionCoordinator (std::string const& databaseName,
                                          std::string const& collectionID,
                                          uint64_t numberOfShards,
-                                         TRI_json_t const* json,
+                                         arangodb::velocypack::Slice const json,
                                          std::string& errorMsg,
                                          double timeout);
 
@@ -803,12 +820,22 @@ namespace triagens {
         std::string getTargetServerEndpoint (ServerID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the server who is responsible for a shard
+/// @brief find the servers who are responsible for a shard (one leader 
+/// and possibly multiple followers).
 /// If it is not found in the cache, the cache is reloaded once, if
-/// it is still not there an empty string is returned as an error.
+/// it is still not there a pointer to an empty vector is returned as 
+/// an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ServerID getResponsibleServer (ShardID const&);
+        std::shared_ptr<std::vector<ServerID>> getResponsibleServer (
+            ShardID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard list of a collection, sorted numerically
+////////////////////////////////////////////////////////////////////////////////
+
+        std::shared_ptr<std::vector<ShardID>> getShardList (
+                                 CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shard that is responsible for a document
@@ -955,9 +982,7 @@ namespace triagens {
         AllCollectionsCurrent
             _currentCollections;        // from Current/Collections/
         ProtectionData _currentCollectionsProt;
-        //std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
-        //    _shardIds;                  // from Current/Collections/
-        std::unordered_map<ShardID, ServerID>
+        std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
             _shardIds;                  // from Current/Collections/
 
 ////////////////////////////////////////////////////////////////////////////////

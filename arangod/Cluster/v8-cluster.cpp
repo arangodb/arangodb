@@ -815,8 +815,8 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
   }
 
   shared_ptr<CollectionInfo> ci
-        = ClusterInfo::instance()->getCollection(TRI_ObjectToString(args[0]),
-                                                 TRI_ObjectToString(args[1]));
+      = ClusterInfo::instance()->getCollection(TRI_ObjectToString(args[0]),
+                                               TRI_ObjectToString(args[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
@@ -843,19 +843,22 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
   }
   result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
 
-  const std::map<std::string, std::string>& sis = ci->shardIds();
+  std::shared_ptr<std::unordered_map<ShardID, std::vector<ServerID>>> shardMap
+      = ci->shardIds();
   v8::Handle<v8::Object> shardIds = v8::Object::New(isolate);
-  std::map<std::string, std::string>::const_iterator it = sis.begin();
-  while (it != sis.end()) {
-    shardIds->Set(TRI_V8_STD_STRING((*it).first),
-                  TRI_V8_STD_STRING((*it).second));
-    ++it;
+  for (auto const& p : *shardMap) {
+    v8::Handle<v8::Array> list = v8::Array::New(isolate, (int) p.second.size());
+    uint32_t pos = 0;
+    for (auto const& s : p.second) {
+      list->Set(pos++, TRI_V8_STD_STRING(s));
+    }
+    shardIds->Set(TRI_V8_STD_STRING(p.first), list);
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
 
-  // TODO: fill "indexes"
-  v8::Handle<v8::Array> indexes = v8::Array::New(isolate);
+  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, ci->getIndexes());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -920,9 +923,15 @@ static void JS_GetResponsibleServerClusterInfo (const v8::FunctionCallbackInfo<v
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
 
-  std::string const result = ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(args[0]));
+  auto result = ClusterInfo::instance()->getResponsibleServer(
+                                               TRI_ObjectToString(args[0]));
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, (int) result->size());
+  uint32_t count = 0;
+  for (auto const& s : *result) {
+    list->Set(count++, TRI_V8_STD_STRING(s));
+  }
 
-  TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_RETURN(list);
   TRI_V8_TRY_CATCH_END
 }
 

@@ -144,16 +144,16 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
                                 static_cast<NoResultsNode const*>(en));
     }
     case ExecutionNode::SCATTER: {
-      auto&& shardIds = static_cast<ScatterNode const*>(en)->collection()->shardIds();
+      auto shardIds = static_cast<ScatterNode const*>(en)->collection()->shardIds();
       return new ScatterBlock(engine,
                               static_cast<ScatterNode const*>(en),
-                              shardIds);
+                              *shardIds);
     }
     case ExecutionNode::DISTRIBUTE: {
-      auto&& shardIds = static_cast<DistributeNode const*>(en)->collection()->shardIds();
+      auto shardIds = static_cast<DistributeNode const*>(en)->collection()->shardIds();
       return new DistributeBlock(engine,
                                  static_cast<DistributeNode const*>(en),
-                                 shardIds,
+                                 *shardIds,
                                  static_cast<DistributeNode const*>
                                  (en)->collection());
     }
@@ -592,12 +592,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                      Collection* collection) {
 
     // pick up the remote query ids
-    std::vector<std::string> shardIds = collection->shardIds();
+    auto shardIds = collection->shardIds();
 
     std::string error;
     int count = 0;
     int nrok = 0;
-    for (count = (int) shardIds.size(); count > 0; count--) {
+    for (count = (int) shardIds->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
       if (res->status == triagens::arango::CL_COMM_RECEIVED) {
@@ -641,7 +641,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
-    if (nrok != (int) shardIds.size()) {
+    if (nrok != (int) shardIds->size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
   }
@@ -662,7 +662,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // iterate over all shards of the collection
     size_t nr = 0;
-    for (auto& shardId : collection->shardIds()) {
+    for (auto& shardId : *(collection->shardIds())) {
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
       auto jsonPlan = generatePlanForOneShard(nr++, info, connectedId, shardId, true);
@@ -738,9 +738,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // now we'll create a remote node for each shard and add it to the gather node
           Collection const* collection = static_cast<GatherNode const*>((*en))->collection();
 
-          auto&& shardIds = collection->shardIds();
+          auto shardIds = collection->shardIds();
 
-          for (auto const& shardId : shardIds) {
+          for (auto const& shardId : *shardIds) {
             std::string theId 
               = triagens::basics::StringUtils::itoa(remoteNode->id())
               + ":" + shardId;
