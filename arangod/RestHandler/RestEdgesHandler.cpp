@@ -398,7 +398,7 @@ bool RestEdgesHandler::readFilteredEdges () {
       _response = nullptr;
       return readEdges(expressions);
     }
-    VPackSlice body = parsedBody.get()->slice();
+    VPackSlice body = parsedBody->slice();
     triagens::basics::ScopeGuard guard{
       []() -> void { },
       [&expressions]() -> void {
