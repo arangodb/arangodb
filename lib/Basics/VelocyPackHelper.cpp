@@ -61,6 +61,7 @@ bool VelocyPackHelper::getBooleanValue (VPackSlice const& slice,
 
 std::string VelocyPackHelper::checkAndGetStringValue (VPackSlice const& slice,
                                                       char const* name) {
+  TRI_ASSERT(slice.isObject());
   VPackSlice sub = slice.get(name);
   if (! sub.isString()) {
     std::string msg = "The attribute '" + std::string(name)  
