@@ -124,7 +124,7 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC () {
 
 static void CreateErrorObject (v8::Isolate* isolate,
                                int errorNumber,
-                               string const& message) {
+                               std::string const& message) {
   if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
     LOG_ERROR("encountered out-of-memory error");
   }
@@ -140,14 +140,14 @@ static void CreateErrorObject (v8::Isolate* isolate,
 
   if (err.IsEmpty()) {
     isolate->ThrowException(v8::Object::New(isolate));
-    return ;
+    return;
   }
 
   v8::Handle<v8::Object> errorObject = err->ToObject();
 
   if (errorObject.IsEmpty()) {
     isolate->ThrowException(v8::Object::New(isolate));
-    return ;
+    return;
   }
 
   errorObject->Set(TRI_V8_ASCII_STRING("errorNum"), v8::Number::New(isolate, errorNumber));
@@ -4122,7 +4122,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Isolate* isolate,
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject (v8::Isolate *isolate, int errorNumber) {
+void TRI_CreateErrorObject (v8::Isolate* isolate, int errorNumber) {
   v8::HandleScope scope(isolate);
 
   CreateErrorObject(isolate, errorNumber, TRI_errno_string(errorNumber));
@@ -4134,7 +4134,7 @@ void TRI_CreateErrorObject (v8::Isolate *isolate, int errorNumber) {
 
 void TRI_CreateErrorObject (v8::Isolate *isolate,
                             int errorNumber,
-                            string const& message) {
+                            std::string const& message) {
   v8::HandleScope scope(isolate);
   CreateErrorObject(isolate, errorNumber, message);
 }
@@ -4145,7 +4145,7 @@ void TRI_CreateErrorObject (v8::Isolate *isolate,
 
 void TRI_CreateErrorObject (v8::Isolate *isolate,
                             int errorNumber,
-                            string const& message,
+                            std::string const& message,
                             bool autoPrepend) {
   v8::HandleScope scope(isolate);
 

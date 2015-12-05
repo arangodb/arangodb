@@ -258,11 +258,96 @@ function printIndexes (indexes) {
   }
 }
 
+
+/* print indexes used */
+function printTraversalDetails (traversals) {
+  'use strict';
+  if (traversals.length === 0) {
+    return;
+  }
+
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(section("Traversals on graphs:"));
+
+  var maxIdLen = String("Id").length;
+  var maxMinMaxDepth = String("Depth").length;
+  var maxVertexCollectionNameStrLen = String("Vertex collections").length;
+  var maxEdgeCollectionNameStrLen = String("Edge collections").length;
+  var maxConditionsLen = String("Filter conditions").length;
+
+  traversals.forEach(function(node) {
+    var l = String(node.id).length;
+    if (l > maxIdLen) {
+      maxIdLen = l;
+    }
+
+    if (node.minMaxDepthLen > maxMinMaxDepth) {
+      maxMinMaxDepth = node.minMaxDepthLen;
+    }
+
+    if (node.hasOwnProperty('ConditionStr')) {
+      if (node.ConditionStr.length > maxConditionsLen) {
+        maxConditionsLen = node.ConditionStr.length;
+      }
+    }
+
+    if (node.hasOwnProperty('vertexCollectionNameStr')) {
+      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
+        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+      }
+    }
+    if (node.hasOwnProperty('edgeCollectionNameStr')) {
+      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
+        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+      }
+    }
+
+  });
+
+  var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " +
+    header("Depth") +  pad(1 + maxMinMaxDepth - String("Depth").length) + "   " +
+    header("Vertex collections") + pad(1 + maxVertexCollectionNameStrLen - "Vertex collections".length) + "   " +
+    header("Edge collections") + pad(1 + maxEdgeCollectionNameStrLen - "Edge collections".length) + "   " +
+    header("Filter conditions");
+
+  stringBuilder.appendLine(line);
+
+  for (var i = 0; i < traversals.length; ++i) {
+    line = " " + pad(1 + maxIdLen - String(traversals[i].id).length) + 
+      traversals[i].id + "   ";
+
+    line += traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) +  "   ";
+
+    if (traversals[i].hasOwnProperty('vertexCollectionNameStr')) {
+      line += traversals[i].vertexCollectionNameStr + 
+        pad(1 + maxVertexCollectionNameStrLen - traversals[i].vertexCollectionNameStrLen) + "   ";
+    }
+    else {
+      line += pad(1 + maxVertexCollectionNameStrLen) + "   ";
+    }
+
+    if (traversals[i].hasOwnProperty('edgeCollectionNameStr')) {
+      line += traversals[i].edgeCollectionNameStr + 
+        pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + "   ";
+    }
+    else {
+      line += pad(1 + maxEdgeCollectionNameStrLen) + "   ";
+    }
+
+    if (traversals[i].hasOwnProperty('ConditionStr')) {
+      line += traversals[i].ConditionStr;
+    }
+
+    stringBuilder.appendLine(line);
+  }
+
+}
+
 /* analzye and print execution plan */
 function processQuery (query, explain) {
   'use strict';
   var nodes = { }, 
-    parents = { }, 
+    parents = { },
     rootNode = null,
     maxTypeLen = 0,
     maxSiteLen = 0,
@@ -317,15 +402,22 @@ function processQuery (query, explain) {
   var references = { }, 
     collectionVariables = { }, 
     usedVariables = { },
-    indexes = [ ], 
+    indexes = [ ],
+    traversalDetails = [],
     modificationFlags,
     isConst = true;
 
   var variableName = function (node) {
-    if (/^[0-9_]/.test(node.name)) {
-      return variable("#" + node.name);
+    try {
+      if (/^[0-9_]/.test(node.name)) {
+        return variable("#" + node.name);
+      }
     }
-   
+    catch(x) {
+      print(node);
+      throw(x);
+    }
+    
     if (collectionVariables.hasOwnProperty(node.id)) {
       usedVariables[node.name] = collectionVariables[node.id];
     }
@@ -455,6 +547,35 @@ function processQuery (query, explain) {
     }
   };
 
+  var buildSimpleExpression = function (simpleExpressions) {
+    var rc = "";
+
+    for (var indexNo in simpleExpressions) {
+      if (simpleExpressions.hasOwnProperty(indexNo)) {
+        if (rc.length > 0) {
+          rc += " AND ";
+        }
+        for (var i = 0; i < simpleExpressions[indexNo].length; i++) {
+          var item = simpleExpressions[indexNo][i];
+          rc += attribute("Path") + ".";
+          if (item.isEdgeAccess) {
+            rc += attribute("edges");
+          }
+          else {
+            rc += attribute("vertices");
+          }
+          rc += "[" + value(indexNo) + "] -> ";
+          rc += buildExpression(item.varAccess);
+          rc += " " + item.comparisonType + " ";
+          rc += buildExpression(item.compareTo);
+        }
+      }
+      
+    }
+    return rc;
+  };
+
+
   var buildBound = function (attr, operators, bound) {
     var boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
     return attribute(attr) + " " + operators[bound.include ? 1 : 0] + " " + boundValue;
@@ -544,6 +665,61 @@ function processQuery (query, explain) {
         index.node = node.id;
         indexes.push(index);
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan */");
+
+      case "TraversalNode":
+        node.minMaxDepth = node.minDepth + ".." + node.maxDepth;
+        node.minMaxDepthLen = node.minMaxDepth.length;
+
+        var rc = keyword("FOR ") + 
+          variableName(node.vertexOutVariable) + 
+          "  " + annotation("/* vertex */");
+        
+        if (node.hasOwnProperty('edgeOutVariable')) {
+          rc += "  , " + variableName(node.edgeOutVariable) +
+            "  " + annotation("/* edge */");
+        }
+        if (node.hasOwnProperty('pathOutVariable')) {
+          rc += "  , " + variableName(node.pathOutVariable) +
+            "  " + annotation("/* paths */");
+        }
+        rc += "  " +
+          keyword("IN") + " " +
+          node.minMaxDepth + "  " + annotation("/* min..maxPathDepth */") + "  " +
+          keyword("OUTBOUND") +
+          " '" + node.vertexId + "'  " + annotation("/* Startnode */") + "  " +
+          keyword("GRAPH") +  " '" + node.graph + "'";
+
+        traversalDetails.push(node);
+        if (node.hasOwnProperty('simpleExpressions')) {
+          node.ConditionStr = buildSimpleExpression(node.simpleExpressions);
+        }
+
+        var e = [];
+        if (node.hasOwnProperty('graphDefinition')) {
+          var v = [];
+          node.graphDefinition.vertexCollectionNames.forEach(function(vcn) {
+            v.push(collection(vcn));
+          });
+          node.vertexCollectionNameStr = v.join(", ");
+          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;
+
+          node.graphDefinition.edgeCollectionNames.forEach(function(ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(", ");
+          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;
+        }
+        else {
+          var edgeCols = node.graph;
+          edgeCols.forEach(function(ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(", ");
+          node.edgeCollectionNameStrLen = edgeCols.join(", ").length;
+          node.graph = "<anonymous>";
+        }
+        return rc;
+
       case "CalculationNode":
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
       case "FilterNode":
@@ -614,6 +790,8 @@ function processQuery (query, explain) {
   };
 
   var postHandle = function (node) {
+    var isLeafNode = ! parents.hasOwnProperty(node.id);
+
     if ([ "EnumerateCollectionNode",
           "EnumerateListNode",
           "IndexRangeNode",
@@ -621,7 +799,7 @@ function processQuery (query, explain) {
           "SubqueryNode" ].indexOf(node.type) !== -1) {
       level++;
     }
-    else if (node.type === "ReturnNode" && subqueries.length > 0) {
+    else if (isLeafNode && subqueries.length > 0) {
       level = subqueries.pop();
     }
     else if (node.type === "SingletonNode") {
@@ -701,6 +879,7 @@ function processQuery (query, explain) {
 
   stringBuilder.appendLine();
   printIndexes(indexes);
+  printTraversalDetails (traversalDetails);
   stringBuilder.appendLine();
   printRules(plan.rules);
   printModificationFlags(modificationFlags);

@@ -396,6 +396,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/EndpointTest.cpp \
 	UnitTests/Basics/StringBufferTest.cpp \
 	UnitTests/Basics/StringUtilsTest.cpp \
+	UnitTests/Basics/PathEnumeratorTest.cpp \
 	UnitTests/Basics/AttributeNameParserTest.cpp 
 
 UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib @BOOST_CPPFLAGS@
@@ -614,12 +615,14 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-functions-types-cxx.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
+			@top_srcdir@/js/server/tests/aql-graph-traverser.js \
 			@top_srcdir@/js/server/tests/aql-graph-visitors.js \
 			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-is-in-polygon.js \
 			@top_srcdir@/js/server/tests/aql-logical.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
+			@top_srcdir@/js/server/tests/aql-multi-modify.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \

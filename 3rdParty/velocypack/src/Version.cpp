@@ -31,7 +31,9 @@
 
 using namespace arangodb::velocypack;
 
-Version const Version::BuildVersion(0, 0, 1);
+Version const Version::BuildVersion(VELOCYPACK_VERSION_MAJOR,
+                                    VELOCYPACK_VERSION_MINOR,
+                                    VELOCYPACK_VERSION_PATCH);
 
 std::string Version::toString() const {
   std::stringstream version;

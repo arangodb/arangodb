@@ -26,6 +26,20 @@
       "change #graphSortDesc"                     : "sorting"
     },
 
+    toggleTab: function(e) {
+      var id = e.currentTarget.id;
+      id = id.replace('tab-', '');
+      $('#tab-content-create-graph .tab-pane').removeClass('active');
+      $('#tab-content-create-graph #' + id).addClass('active');
+
+      if (id === 'exampleGraphs') {
+        $('#modal-dialog .modal-footer button').css("display", "none");
+      }
+      else {
+        $('#modal-dialog .modal-footer button').css("display", "block");
+      }
+    },
+
     redirectToGraphViewer: function(e) {
       var name = $(e.currentTarget).attr("id");
       name = name.substr(0, name.length - 5);
@@ -80,18 +94,36 @@
     deleteGraph: function() {
       var self = this;
       var name = $("#editGraphName")[0].value;
-      this.collection.get(name).destroy({
-        success: function() {
-          self.updateGraphManagementView();
-          window.modalView.hide();
-        },
-        error: function(xhr, err) {
-          var response = JSON.parse(err.responseText),
-            msg = response.errorMessage;
-          arangoHelper.arangoError(msg);
-          window.modalView.hide();
-        }
-      });
+
+      if ($('#dropGraphCollections').is(':checked')) {
+
+        var callback = function(success) {
+          if (success) {
+            self.collection.remove(self.collection.get(name));
+            self.updateGraphManagementView();
+            window.modalView.hide();
+          }
+          else {
+            window.modalView.hide();
+          }
+        };
+
+        this.collection.dropAndDeleteGraph(name, callback);
+      }
+      else {
+        this.collection.get(name).destroy({
+          success: function() {
+            self.updateGraphManagementView();
+            window.modalView.hide();
+          },
+          error: function(xhr, err) {
+            var response = JSON.parse(err.responseText),
+              msg = response.errorMessage;
+            arangoHelper.arangoError(msg);
+            window.modalView.hide();
+          }
+        });
+      }
     },
 
     checkBoxes: function (e) {
@@ -125,6 +157,35 @@
       this.render();
     },
 
+    createExampleGraphs: function(e) {
+      var graph = $(e.currentTarget).attr('graph-id'), self = this;
+      $.ajax({
+        type: "POST",
+        url: "/_admin/aardvark/graph-examples/create/" + encodeURIComponent(graph),
+        success: function () {
+          window.modalView.hide();
+          self.updateGraphManagementView();
+          arangoHelper.arangoNotification('Example Graphs', 'Graph: ' + graph + ' created.');
+        },
+        error: function (err) {
+          window.modalView.hide();
+          console.log(err);
+          if (err.responseText) {
+            try {
+              var msg = JSON.parse(err.responseText);
+              arangoHelper.arangoError('Example Graphs', msg.errorMessage);
+            }
+            catch (e) {
+              arangoHelper.arangoError('Example Graphs', 'Could not create example graph: ' + graph);
+            }
+          }
+          else {
+            arangoHelper.arangoError('Example Graphs', 'Could not create example graph: ' + graph);
+          }
+        }
+      });
+    },
+
     render: function() {
       this.collection.fetch({
         async: false
@@ -147,6 +208,8 @@
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
       this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
+      this.events["click #graphTab a"] = this.toggleTab.bind(this);
+      this.events["click .createExampleGraphs"] = this.createExampleGraphs.bind(this);
       arangoHelper.setCheckboxStatus("#graphManagementDropdown");
 
       return this;
@@ -493,8 +556,8 @@
         buttons.push(
           window.modalView.createSuccessButton("Save", this.saveEditedGraph.bind(this))
         );
-
-      } else {
+      } 
+      else {
         title = "Create Graph";
 
         tableContent.push(
@@ -615,6 +678,13 @@
           $('#row_toCollections' + i).addClass('last');
           $('#row_toCollections' + i).after('<tr id="spacer'+ i +'" class="spacer"></tr>');
         }
+        
+        $('#graphTab').hide(); 
+        $('#modal-dialog .modal-delete-confirmation').append(
+          '<fieldset><input type="checkbox" id="dropGraphCollections" name="" value="">' + 
+            '<label for="mc">also drop collections?</label>' +
+          '</fieldset>'
+        );
       }
 
     },

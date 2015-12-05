@@ -47,6 +47,8 @@ namespace velocypack {
 // forward for fasthash64 function declared elsewhere
 uint64_t fasthash64(void const*, size_t, uint64_t);
 
+class SliceScope;
+
 class Slice {
   // This class provides read only access to a VPack value, it is
   // intentionally light-weight (only one pointer value), such that
@@ -95,6 +97,10 @@ class Slice {
     return *this;
   }
 
+  // creates a Slice from Json and adds it to a scope
+  static Slice fromJson(SliceScope& scope, std::string const& json,
+                        Options const* options = &Options::Defaults);
+
   uint8_t const* begin() { return _start; }
 
   uint8_t const* begin() const { return _start; }
@@ -123,7 +129,7 @@ class Slice {
   inline uint8_t head() const { return *_start; }
 
   inline uint64_t hash() const {
-    return fasthash64(start(), byteSize(), 0xdeadbeef);
+    return fasthash64(start(), checkOverflow(byteSize()), 0xdeadbeef);
   }
 
   // check if slice is of the specified type
@@ -462,8 +468,25 @@ class Slice {
     if (h == 0xbf) {
       // long UTF-8 String
       length = readInteger<ValueLength>(_start + 1, 8);
-      checkValueLength(length);
+      checkOverflow(length);
       return reinterpret_cast<char const*>(_start + 1 + 8);
+    }
+
+    throw Exception(Exception::InvalidValueType, "Expecting type String");
+  }
+
+  // return the length of the String slice
+  ValueLength getStringLength() const {
+    uint8_t const h = head();
+
+    if (h >= 0x40 && h <= 0xbe) {
+      // short UTF-8 String
+      return h - 0x40;
+    }
+
+    if (h == 0xbf) {
+      // long UTF-8 String
+      return readInteger<ValueLength>(_start + 1, 8);
     }
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
@@ -481,8 +504,8 @@ class Slice {
 
     if (h == 0xbf) {
       ValueLength length = readInteger<ValueLength>(_start + 1, 8);
-      checkValueLength(length);
-      return std::string(reinterpret_cast<char const*>(_start + 1 + 8), length);
+      return std::string(reinterpret_cast<char const*>(_start + 1 + 8),
+                         checkOverflow(length));
     }
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
@@ -493,15 +516,25 @@ class Slice {
     if (type() != ValueType::Binary) {
       throw Exception(Exception::InvalidValueType, "Expecting type Binary");
     }
-    uint8_t const h = head();
 
-    if (h >= 0xc0 && h <= 0xc7) {
-      length = readInteger<ValueLength>(_start + 1, h - 0xbf);
-      checkValueLength(length);
-      return _start + 1 + h - 0xbf;
+    uint8_t const h = head();
+    VELOCYPACK_ASSERT(h >= 0xc0 && h <= 0xc7);
+
+    length = readInteger<ValueLength>(_start + 1, h - 0xbf);
+    checkOverflow(length);
+    return _start + 1 + h - 0xbf;
+  }
+
+  // return the length of the Binary slice
+  ValueLength getBinaryLength() const {
+    if (type() != ValueType::Binary) {
+      throw Exception(Exception::InvalidValueType, "Expecting type Binary");
     }
 
-    throw Exception(Exception::InvalidValueType, "Expecting type Binary");
+    uint8_t const h = head();
+    VELOCYPACK_ASSERT(h >= 0xc0 && h <= 0xc7);
+
+    return readInteger<ValueLength>(_start + 1, h - 0xbf);
   }
 
   // return a copy of the value for a Binary object
@@ -509,19 +542,17 @@ class Slice {
     if (type() != ValueType::Binary) {
       throw Exception(Exception::InvalidValueType, "Expecting type Binary");
     }
+
     uint8_t const h = head();
+    VELOCYPACK_ASSERT(h >= 0xc0 && h <= 0xc7);
 
-    if (h >= 0xc0 && h <= 0xc7) {
-      std::vector<uint8_t> out;
-      ValueLength length = readInteger<ValueLength>(_start + 1, h - 0xbf);
-      checkValueLength(length);
-      out.reserve(static_cast<size_t>(length));
-      out.insert(out.end(), _start + 1 + h - 0xbf,
-                 _start + 1 + h - 0xbf + length);
-      return std::move(out);
-    }
-
-    throw Exception(Exception::InvalidValueType, "Expecting type Binary");
+    std::vector<uint8_t> out;
+    ValueLength length = readInteger<ValueLength>(_start + 1, h - 0xbf);
+    checkOverflow(length);
+    out.reserve(static_cast<size_t>(length));
+    out.insert(out.end(), _start + 1 + h - 0xbf,
+               _start + 1 + h - 0xbf + length);
+    return std::move(out);
   }
 
   // get the total byte size for the slice, including the head byte
@@ -613,14 +644,16 @@ class Slice {
       }
     }
 
-    VELOCYPACK_ASSERT(false);
-    return 0;
+    throw Exception(Exception::InternalError);
   }
 
   Slice makeKey() const;
 
   int compareString(std::string const& attribute) const;
   bool isEqualString(std::string const& attribute) const;
+
+  // check if two Slices are equal on the binary level
+  bool equals(Slice const& other) const;
 
   std::string toJson() const;
   std::string toString() const;
@@ -643,14 +676,6 @@ class Slice {
       return 5;
     }
     return 9;
-  }
-
-  ValueLength valueOffset(ValueLength index) const {
-    if (type() != ValueType::Array && type() != ValueType::Object) {
-      throw Exception(Exception::InvalidValueType, "Expecting Array or Object");
-    }
-
-    return getNthOffset(index);
   }
 
   // get the offset for the nth member from an Array type
@@ -706,33 +731,47 @@ class Slice {
   static unsigned int const FirstSubMap[32];
 };
 
+// a class for keeping Slice allocations in scope
+class SliceScope {
+ public:
+  SliceScope(SliceScope const&) = delete;
+  SliceScope& operator=(SliceScope const&) = delete;
+  SliceScope();
+  ~SliceScope();
+
+  Slice add(uint8_t const* data, ValueLength size,
+            Options const* options = &Options::Defaults);
+
+ private:
+  std::vector<uint8_t*> _allocations;
+};
+
 }  // namespace arangodb::velocypack
 }  // namespace arangodb
 
 namespace std {
+// implementation of std::hash for a Slice object
 template <>
 struct hash<arangodb::velocypack::Slice> {
   size_t operator()(arangodb::velocypack::Slice const& slice) const {
-    return slice.hash();
+#ifdef VELOCYPACK_32BIT
+    // size_t is only 32 bits wide here... so don't simply truncate the
+    // 64 bit hash value but convert it into a 32 bit value using data
+    // from low and high bytes
+    uint64_t const hash = slice.hash();
+    return static_cast<uint32_t>(hash >> 32) ^ static_cast<uint32_t>(hash);
+#else
+    return static_cast<size_t>(slice.hash());
+#endif
   }
 };
 
+// implementation of std::equal_to for two Slice objects
 template <>
 struct equal_to<arangodb::velocypack::Slice> {
-  bool operator()(arangodb::velocypack::Slice const& a,
-                  arangodb::velocypack::Slice const& b) const {
-    if (*a.start() != *b.start()) {
-      return false;
-    }
-
-    auto const aSize = a.byteSize();
-    auto const bSize = b.byteSize();
-
-    if (aSize != bSize) {
-      return false;
-    }
-
-    return (memcmp(a.start(), b.start(), aSize) == 0);
+  bool operator()(arangodb::velocypack::Slice const& left,
+                  arangodb::velocypack::Slice const& right) const {
+    return left.equals(right);
   }
 };
 }

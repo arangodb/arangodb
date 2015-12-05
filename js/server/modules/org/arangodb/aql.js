@@ -2703,6 +2703,29 @@ function AQL_IS_OBJECT (value) {
   return (TYPEWEIGHT(value) === TYPEWEIGHT_OBJECT);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test if value is of a valid datestring
+///
+/// returns a bool
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_IS_DATESTRING (value) {
+  'use strict';
+    
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_STRING) {
+    return false;
+  }
+
+  // argument is a string
+
+  // detect invalid dates ("foo" -> "fooZ" -> getTime() == NaN)
+  var date = new Date(value);
+  if (isNaN(date)) {
+    return false;
+  }
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 numeric functions
 // -----------------------------------------------------------------------------
@@ -8745,7 +8768,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_aql_general_graph_absolute_betweenness
 ///
-/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
+/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, options)`
 ///
 /// The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
@@ -9158,6 +9181,7 @@ exports.AQL_IS_ARRAY = AQL_IS_ARRAY;
 exports.AQL_IS_LIST = AQL_IS_ARRAY; // alias
 exports.AQL_IS_OBJECT = AQL_IS_OBJECT;
 exports.AQL_IS_DOCUMENT = AQL_IS_OBJECT; // alias
+exports.AQL_IS_DATESTRING = AQL_IS_DATESTRING;
 exports.AQL_FLOOR = AQL_FLOOR;
 exports.AQL_CEIL = AQL_CEIL;
 exports.AQL_ROUND = AQL_ROUND;

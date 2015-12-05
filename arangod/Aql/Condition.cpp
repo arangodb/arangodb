@@ -173,6 +173,7 @@ ConditionPart::ConditionPart (Variable const* variable,
   : ConditionPart(variable, "", operatorNode, side, data) {
 
   TRI_AttributeNamesToString(attributeNames, attributeName, false);
+  isExpanded = (attributeName.find("[*]") != std::string::npos);
 }
 
 ConditionPart::~ConditionPart () {
@@ -249,6 +250,16 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
       }
     }
   }
+  else if (isExpanded && 
+           other.isExpanded &&
+           operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+           other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+           other.valueNode->isConstant()) {
+    if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
+      return true;
+    }
+    return false;
+  }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
   ConditionPartCompareResult res = ConditionPart::ResultsTable
@@ -307,9 +318,9 @@ Condition* Condition::fromJson (ExecutionPlan* plan,
   std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
 
   if (json.isObject() && json.members() != 0) {
-    std::unique_ptr<AstNode> node(new AstNode(plan->getAst(), json)); 
-    condition->andCombine(node.get());
-    node.release();
+    // note: the AST is responsible for freeing the AstNode later!
+    AstNode* node = new AstNode(plan->getAst(), json); 
+    condition->andCombine(node);
   }
 
   condition->_isNormalized = true;
@@ -559,6 +570,30 @@ void Condition::normalize (ExecutionPlan* plan) {
   _root = fixRoot(_root, 0);
 
   optimize(plan);
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  if (_root != nullptr) {
+    // _root->dump(0);
+    validateAst(_root, 0);
+  }
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize the condition
+/// this will convert the condition into its disjunctive normal form
+/// in this case we don't re-run the optimizer. Its expected that you 
+/// don't want to remove eventually unneccessary filters.
+////////////////////////////////////////////////////////////////////////////////
+
+void Condition::normalize () {
+  if (_isNormalized) {
+    // already normalized
+    return;
+  }
+
+  _root = transformNode(_root);
+  _root = fixRoot(_root, 0);
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   if (_root != nullptr) {
@@ -1302,7 +1337,7 @@ bool Condition::canRemove (ConditionPart const& me,
     if (operand->isComparisonOperator()) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
-     
+
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         std::pair<Variable const*, std::vector<triagens::basics::AttributeName>> result;
           

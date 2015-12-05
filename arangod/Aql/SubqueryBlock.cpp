@@ -83,6 +83,8 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
   if (res.get() == nullptr) {
     return nullptr;
   }
+      
+  bool const subqueryReturnsData = (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
 
   // TODO: constant and deterministic subqueries only need to be executed once
   bool const subqueryIsConst = false; // TODO 
@@ -106,7 +108,19 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
 
       // execute the subquery
       subqueryResults = executeSubquery();
+
       TRI_ASSERT(subqueryResults != nullptr);
+
+      if (! subqueryReturnsData) {
+        // remove all data from subquery result so only an 
+        // empty array remains
+        for (auto& x : *subqueryResults) {
+          delete x;
+        }
+        subqueryResults->clear();
+        res->setValue(i, _outReg, AqlValue(subqueryResults));
+        continue;
+      }
 
       try {
         TRI_IF_FAILURE("SubqueryBlock::getSome") {

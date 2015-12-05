@@ -1,6 +1,28 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL function `IS_DATESTRING(value)`
+
+  Returns true if *value* is a string that can be used in a date function. 
+  This includes partial dates such as *2015* or *2015-10* and strings containing
+  invalid dates such as *2015-02-31*. The function will return false for all 
+  non-string values, even if some of them may be usable in date functions.
+
+
+v2.8.0-alpha1 (2015-12-03)
+--------------------------
+
+* added AQL keywords `GRAPH`, `OUTBOUND`, `INBOUND` and `ANY` for use in graph 
+  traversals, reserved AQL keyword `ALL` for future use
+
+  Usage of these keywords as collection names, variable names or attribute names
+  in AQL queries will not be possible without quoting. For example, the following
+  AQL query will still work as it uses a quoted collection name and a quoted
+  attribute name:
+
+      FOR doc IN `OUTBOUND`
+        RETURN doc.`any`
+
 * issue #1593: added AQL `POW` function for exponentation
 
 * added cluster execution site info in explain output for AQL queries
@@ -171,7 +193,7 @@ v2.8.0 (XXXX-XX-XX)
 
   the index will now contain the individual values `"AQL"`, `"ArangoDB"` and `"Index"`.
   
-  Now the index will be for finding all documents having `"ArangoDB"` somewhere in their
+  Now the index can be used for finding all documents having `"ArangoDB"` somewhere in their
   tags array using the following AQL query:
     
       FOR doc IN colName 

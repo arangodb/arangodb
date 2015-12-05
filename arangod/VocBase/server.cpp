@@ -798,7 +798,10 @@ static int CloseDroppedDatabases (TRI_server_t* server) {
       TRI_DestroyVocBase(vocbase);
       delete vocbase;
     }
-    else if (vocbase->_type != TRI_VOCBASE_TYPE_COORDINATOR) {
+    else if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
+      delete vocbase;
+    }
+    else {
       LOG_ERROR("unknown database type %d %s - close doing nothing.",
                 vocbase->_type,
                 vocbase->_name);
@@ -2072,8 +2075,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
     decltype(oldLists) newLists = nullptr;
     try {
       newLists = new DatabasesLists(*oldLists);
-      newLists->_coordinatorDatabases.insert(
-            std::make_pair(std::string(vocbase->_name), vocbase));
+      newLists->_coordinatorDatabases.emplace(std::string(vocbase->_name), vocbase);
     }
     catch (...) {
       delete newLists;
@@ -2267,7 +2269,7 @@ std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t* s
       TRI_ASSERT(vocbase != nullptr);
 
       if (! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE)) {
-        v.push_back(vocbase->_id);
+        v.emplace_back(vocbase->_id);
       }
     }
   }
@@ -2296,7 +2298,7 @@ int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t* server,
 
       if (vocbase->_id == id &&
           (force || ! TRI_EqualString(vocbase->_name, TRI_VOC_SYSTEM_DATABASE))) {
-        newLists->_droppedDatabases.insert(vocbase);
+        newLists->_droppedDatabases.emplace(vocbase);
         newLists->_coordinatorDatabases.erase(it);
         break;
       }

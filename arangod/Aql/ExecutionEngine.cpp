@@ -44,6 +44,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortBlock.h"
 #include "Aql/SubqueryBlock.h"
+#include "Aql/TraversalBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
@@ -75,6 +76,9 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
     case ExecutionNode::ENUMERATE_LIST: {
       return new EnumerateListBlock(engine,
                                     static_cast<EnumerateListNode const*>(en));
+    }
+    case ExecutionNode::TRAVERSAL: {
+      return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
     }
     case ExecutionNode::CALCULATION: {
       return new CalculationBlock(engine,

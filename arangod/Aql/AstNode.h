@@ -179,8 +179,11 @@ namespace triagens {
       NODE_TYPE_PASSTHRU                      = 56,
       NODE_TYPE_ARRAY_LIMIT                   = 57,
       NODE_TYPE_DISTINCT                      = 58,
-      NODE_TYPE_OPERATOR_NARY_AND             = 59,
-      NODE_TYPE_OPERATOR_NARY_OR              = 60
+      NODE_TYPE_TRAVERSAL                     = 59,
+      NODE_TYPE_COLLECTION_LIST               = 60,
+      NODE_TYPE_DIRECTION                     = 61,
+      NODE_TYPE_OPERATOR_NARY_AND             = 62,
+      NODE_TYPE_OPERATOR_NARY_OR              = 63
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY,  "incorrect node types order");
@@ -240,6 +243,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       AstNode (Ast*,
+               triagens::basics::Json const& json); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the node from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+      AstNode (std::function<void (AstNode*)> registerNode,
+               std::function<char const* (std::string const&)> registerString,
                triagens::basics::Json const& json); 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -556,6 +567,22 @@ namespace triagens {
 
         bool isAttributeAccessForVariable (std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>&) const;
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locate a variable including the direct path vector leading to it.
+////////////////////////////////////////////////////////////////////////////////
+
+      void findVariableAccess(std::vector<AstNode const*>& currentPath,
+                              std::vector<std::vector<AstNode const*>>& paths,
+                              Variable const* findme) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dig through the tree and return a reference to the astnode referencing 
+/// findme, nullptr otherwise.
+////////////////////////////////////////////////////////////////////////////////
+
+      AstNode const* findReference(AstNode const* findme) const;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node is simple enough to be used in a simple
 /// expression
@@ -622,6 +649,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool containsDynamicAttributeName () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief iterates whether a node of type "searchType" can be found
+////////////////////////////////////////////////////////////////////////////////
+
+        bool containsNodeType (AstNodeType searchType) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of members

@@ -251,6 +251,12 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf("-novalgrind") !== -1)  && 
+      (typeof(options.valgrind) === 'string')) {
+    whichFilter.filter = "skip in valgrind";
+    return false;
+  }
+
   return true;
 }
 

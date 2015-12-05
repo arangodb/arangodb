@@ -31,6 +31,7 @@
 #include "Aql/AggregationOptions.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ConditionFinder.h"
+#include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
@@ -153,7 +154,8 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
           }
         }
         else if (current->getType() == EN::ENUMERATE_LIST ||
-                 current->getType() == EN::ENUMERATE_COLLECTION) {
+                 current->getType() == EN::ENUMERATE_COLLECTION ||
+                 current->getType() == EN::TRAVERSAL) {
           // ok, but we cannot remove two different sorts if one of these node types is between them
           // example: in the following query, the one sort will be optimized away:
           //   FOR i IN [ { a: 1 }, { a: 2 } , { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i
@@ -847,9 +849,10 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
         case EN::FILTER: 
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
+        case EN::TRAVERSAL:
         case EN::INDEX: { 
           // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
-          // an EnumerateListNode or an IndexNode
+          // an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization
           collectionNode = nullptr;
           current = nullptr;
@@ -1047,6 +1050,7 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
       else if (currentType == EN::INDEX ||
                currentType == EN::ENUMERATE_COLLECTION ||
                currentType == EN::ENUMERATE_LIST ||
+               currentType == EN::TRAVERSAL ||
                currentType == EN::AGGREGATE ||
                currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
@@ -1706,8 +1710,14 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     }
     else {
       auto nn = static_cast<SubqueryNode*>(n);
+
       if (nn->canThrow()) {
         // subqueries that can throw must not be optimized away
+        continue;
+      }
+ 
+      if (nn->isModificationQuery()) {
+        // subqueries that modify data must not be optimized away
         continue;
       }
     }
@@ -1742,7 +1752,7 @@ int triagens::aql::useIndexesRule (Optimizer* opt,
                                    ExecutionPlan* plan, 
                                    Optimizer::Rule const* rule) {
   
-  // These are all the FILTER nodes where we start
+  // These are all the nodes where we start traversing (including all subqueries)
   std::vector<ExecutionNode*> nodes(std::move(plan->findEndNodes(true)));
 
   std::unordered_map<size_t, ExecutionNode*> changes;
@@ -1959,6 +1969,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
+        case EN::TRAVERSAL:
         case EN::ENUMERATE_LIST:
         case EN::SUBQUERY:
         case EN::FILTER:
@@ -2314,15 +2325,23 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
   bool wasModified = false;
 
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
+    // find subqueries
+    std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
+
+    for (auto& it : plan->findNodesOfType(ExecutionNode::SUBQUERY, true)) {
+      subqueries.emplace(static_cast<SubqueryNode const*>(it)->getSubquery(), it);
+    }
+
     // we are a coordinator. now look in the plan for nodes of type
-    // EnumerateCollectionNode and IndexNode
+    // EnumerateCollectionNode, IndexNode and modification nodes
     std::vector<ExecutionNode::NodeType> const types = { 
       ExecutionNode::ENUMERATE_COLLECTION, 
       ExecutionNode::INDEX,
       ExecutionNode::INSERT,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,
-      ExecutionNode::REMOVE
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT // TODO: check if ok here
     }; 
 
     std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(types, true)));
@@ -2333,13 +2352,15 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       auto const& parents = node->getParents();
       auto const& deps = node->getDependencies();
       TRI_ASSERT(deps.size() == 1);
-      bool const isRootNode = plan->isRoot(node);
+
       // don't do this if we are already distributing!
       if (deps[0]->getType() == ExecutionNode::REMOTE &&
           deps[0]->getFirstDependency()->getType() == ExecutionNode::DISTRIBUTE) {
         continue;
       }
-      plan->unlinkNode(node, isRootNode);
+
+      bool const isRootNode = plan->isRoot(node);
+      plan->unlinkNode(node, true);
 
       auto const nodeType = node->getType();
 
@@ -2404,6 +2425,13 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       // and now link the gather node with the rest of the plan
       if (parents.size() == 1) {
         parents[0]->replaceDependency(deps[0], gatherNode);
+      }
+
+      // check if the node that we modified was at the end of a subquery
+      auto it = subqueries.find(node);
+
+      if (it != subqueries.end()) {
+        static_cast<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
       }
 
       if (isRootNode) {
@@ -2544,7 +2572,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       bool const createKeys = (nodeType == ExecutionNode::INSERT);
       inputVariable = node->getVariablesUsedHere()[0];
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, inputVariable->id, createKeys);
+          vocbase, collection, inputVariable->id, createKeys, true);
     }
     else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
@@ -2557,7 +2585,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         inputVariable = v[0];
       }
       distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, inputVariable->id, false);
+            vocbase, collection, inputVariable->id, false, v.size() > 1);
     }
     else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
@@ -2572,7 +2600,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         inputVariable = v[0];
       }
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, inputVariable->id, false);
+          vocbase, collection, inputVariable->id, false, v.size() > 1);
     }
     else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT nodes has two input variables!
@@ -2580,7 +2608,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       TRI_ASSERT(v.size() >= 2);
 
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, v[0]->id, v[2]->id, false);
+          vocbase, collection, v[0]->id, v[2]->id, false, true);
     }
     else {
       TRI_ASSERT(false);
@@ -2686,6 +2714,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
+        case EN::TRAVERSAL:
           //do break
           stopSearching = true;
           break;
@@ -2791,6 +2820,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::INDEX:
+        case EN::TRAVERSAL:
         case EN::ENUMERATE_COLLECTION:
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -2910,7 +2940,8 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
   const Variable* _variable;
   ExecutionNode* _lastNode;
   
-  public: 
+  public:
+   
     RemoveToEnumCollFinder (ExecutionPlan* plan,
                             std::unordered_set<ExecutionNode*>& toUnlink)
       : _plan(plan),
@@ -2930,7 +2961,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
     bool before (ExecutionNode* en) override final {
       switch (en->getType()) {
         case EN::REMOVE: {
-          TRI_ASSERT(_remove == false);
+          if (_remove) {
+            break;
+          }
             
           // find the variable we are removing . . .
           auto rn = static_cast<RemoveNode*>(en);
@@ -3062,8 +3095,9 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
-        case EN::LIMIT:           
+        case EN::LIMIT:
         case EN::SORT:
+        case EN::TRAVERSAL:
         case EN::INDEX: {
           // if we meet any of the above, then we abort . . .
         }
@@ -3664,6 +3698,36 @@ int triagens::aql::patchUpdateStatementsRule (Optimizer* opt,
   // always re-add the original plan, be it modified or not
   // only a flag in the plan will be modified
   opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief merges filter nodes into graph traversal nodes
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::mergeFilterIntoTraversal (Optimizer* opt, 
+                                             ExecutionPlan* plan, 
+                                             Optimizer::Rule const* rule) {
+
+  std::vector<ExecutionNode*>&& tNodes = plan->findNodesOfType(EN::TRAVERSAL, true);
+
+  if (tNodes.size() == 0) {
+    opt->addPlan(plan, rule, false);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // These are all the FILTER nodes where we start
+  std::vector<ExecutionNode*>&& nodes = plan->findEndNodes(true);
+
+  bool planAltered = false; 
+  for (auto const& n : nodes) {
+    TraversalConditionFinder finder(plan, &planAltered);
+    n->walk(&finder);
+  }
+
+  opt->addPlan(plan, rule, planAltered);
 
   return TRI_ERROR_NO_ERROR;
 }

@@ -79,7 +79,7 @@ class Parser {
     bool isInteger;
   };
 
-  Builder _b;
+  std::shared_ptr<Builder> _b;
   uint8_t const* _start;
   size_t _size;
   size_t _pos;
@@ -89,27 +89,56 @@ class Parser {
   Options const* options;
 
   Parser(Parser const&) = delete;
+  Parser(Parser &&) = delete;
   Parser& operator=(Parser const&) = delete;
+  Parser& operator=(Parser&&) = delete;
+  ~Parser() = default;
 
-  Parser(Options const* options = &Options::Defaults)
+  explicit Parser(Options const* options = &Options::Defaults)
       : _start(nullptr), _size(0), _pos(0), _nesting(0), options(options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-
     if (options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
     }
-    _b.options = options;
+    _b.reset(new Builder());
+    _b->options = options;
   }
 
-  static Builder fromJson(std::string const& json,
-                          Options const* options = &Options::Defaults) {
+  explicit Parser(std::shared_ptr<Builder>& builder,
+                  Options const* options = &Options::Defaults)
+      : _b(builder), _start(nullptr), _size(0), _pos(0), _nesting(0),
+         options(options) {
+    if (options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+  }
+
+  // This method produces a
+  explicit Parser(Builder& builder,
+                  Options const* options = &Options::Defaults)
+      : _start(nullptr), _size(0), _pos(0), _nesting(0),
+         options(options) {
+    if (options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+    _b.reset(&builder, BuilderNonDeleter());
+  }
+
+  // FIXME: withdraw this:
+  Builder& builder() { return *_b; }
+
+  Builder const& builder() const { return *_b; }
+
+  static std::shared_ptr<Builder> fromJson(
+      std::string const& json,
+      Options const* options = &Options::Defaults) {
     Parser parser(options);
     parser.parse(json);
     return parser.steal();
   }
 
-  static Builder fromJson(uint8_t const* start, size_t size,
-                          Options const* options = &Options::Defaults) {
+  static std::shared_ptr<Builder> fromJson(
+      uint8_t const* start, size_t size,
+      Options const* options = &Options::Defaults) {
     Parser parser(options);
     parser.parse(start, size);
     return parser.steal();
@@ -128,31 +157,31 @@ class Parser {
     _start = start;
     _size = size;
     _pos = 0;
-    _b.clear();
-    _b.options = options;
+    if (options->clearBuilderBeforeParse) {
+      _b->clear();
+    }
+    _b->options = options;
     return parseInternal(multi);
   }
 
   // We probably want a parse from stream at some stage...
   // Not with this high-performance two-pass approach. :-(
 
-  Builder&& steal() {
-    if (_b._buffer == nullptr) {
-      throw Exception(Exception::InternalError,
-                      "Buffer of Builder is already gone");
-    }
-    return std::move(_b);
+  std::shared_ptr<Builder> steal() {
+    std::shared_ptr<Builder> res(_b);
+    _b.reset(new Builder());
+    return res;
   }
 
   // Beware, only valid as long as you do not parse more, use steal
   // to move the data out!
-  uint8_t const* start() { return _b.start(); }
+  uint8_t const* start() { return _b->start(); }
 
   // Returns the position at the time when the just reported error
   // occurred, only use when handling an exception.
   size_t errorPos() const { return _pos > 0 ? _pos - 1 : _pos; }
 
-  void clear() { _b.clear(); }
+  void clear() { _b->clear(); }
 
  private:
   inline int peek() const {
@@ -188,7 +217,7 @@ class Parser {
     if (consume() != 'r' || consume() != 'u' || consume() != 'e') {
       throw Exception(Exception::ParseError, "Expecting 'true'");
     }
-    _b.addTrue();
+    _b->addTrue();
   }
 
   void parseFalse() {
@@ -197,7 +226,7 @@ class Parser {
         consume() != 'e') {
       throw Exception(Exception::ParseError, "Expecting 'false'");
     }
-    _b.addFalse();
+    _b->addFalse();
   }
 
   void parseNull() {
@@ -205,7 +234,7 @@ class Parser {
     if (consume() != 'u' || consume() != 'l' || consume() != 'l') {
       throw Exception(Exception::ParseError, "Expecting 'null'");
     }
-    _b.addNull();
+    _b->addNull();
   }
 
   void scanDigits(ParsedNumber& value) {

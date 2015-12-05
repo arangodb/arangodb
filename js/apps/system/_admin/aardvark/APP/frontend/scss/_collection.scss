@@ -111,6 +111,7 @@
 }
 
 #infoTab,
+#graphTab,
 #collectionTab {
   border-bottom: 0;
   margin-bottom: 1px;
@@ -119,11 +120,13 @@
 }
 
 #infoTab li,
+#graphTab li,
 #collectionTab li {
   float: right;
 }
 
 #infoTab a,
+#graphTab a,
 #collectionTab a {
   background-color: $c-new-grey;
   border-bottom: 1px solid $c-darker-grey;
@@ -138,6 +141,7 @@
 }
 
 #infoTab .active > a,
+#graphTab .active > a,
 #collectionTab .active > a {
   background-color: $c-modal-header;
   border-color: $c-collection-tab-border-bottom $c-collection-tab-border-bottom transparent !important;

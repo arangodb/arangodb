@@ -153,6 +153,7 @@ namespace triagens {
 
         triagens::arango::DocumentDitch* ditch (TRI_voc_cid_t cid) {
           TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+          TRI_ASSERT(trxColl != nullptr);
           return trxColl->_ditch;
         }
 
@@ -162,6 +163,7 @@ namespace triagens {
 
         TRI_document_collection_t* documentCollection (TRI_voc_cid_t cid) {
           TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+          TRI_ASSERT(trxColl != nullptr);
           return trxColl->_collection->_collection;
         }
 

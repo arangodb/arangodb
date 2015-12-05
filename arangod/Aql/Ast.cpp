@@ -31,6 +31,7 @@
 #include "Aql/Arithmetic.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
+#include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json-utilities.h"
@@ -653,6 +654,19 @@ AstNode* Ast::createNodeVariable (char const* name,
   }
 
   if (_scopes.existsVariable(name, nameLength)) {
+    if (! isUserDefined &&
+        (strcmp(name, Variable::NAME_OLD) == 0 ||
+         strcmp(name, Variable::NAME_NEW) == 0)) {
+      // special variable
+      auto variable = _variables.createVariable(name, nameLength, isUserDefined);
+      _scopes.replaceVariable(variable);
+
+      AstNode* node = createNode(NODE_TYPE_VARIABLE);
+      node->setData(static_cast<void*>(variable));
+
+      return node;
+    }
+
     _query->registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
     return nullptr;
   }
@@ -1143,6 +1157,134 @@ AstNode* Ast::createNodeCalculatedObjectElement (AstNode const* attributeName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collection list node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollectionList (AstNode const* edgeCollections) {
+
+  AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
+
+  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
+
+  for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
+    auto eC = edgeCollections->getMember(i);
+    if (eC->isStringValue()) {
+      _query->collections()->add(eC->getStringValue(), TRI_TRANSACTION_READ);
+    } // else bindParameter use default for collection bindVar
+    // We do not need to propagate these members
+    node->addMember(eC);
+  }
+  
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST direction node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeDirection (uint64_t direction,
+                                   uint64_t steps) {
+  AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  AstNode* dir = createNodeValueInt(direction);
+  AstNode* step = createNodeValueInt(steps);
+  node->addMember(dir);
+  node->addMember(step);
+
+  TRI_ASSERT(node->numMembers() == 2);
+  return node;
+}
+
+AstNode* Ast::createNodeDirection (uint64_t direction,
+                                   AstNode const* steps) {
+  AstNode* node = createNode(NODE_TYPE_DIRECTION);
+  AstNode* dir = createNodeValueInt(direction);
+
+  node->addMember(dir);
+  node->addMember(steps);
+
+  TRI_ASSERT(node->numMembers() == 2);
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST traversal node with only vertex variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeTraversal (char const* vertexVarName,
+                                   size_t vertexVarLength,
+                                   AstNode const* direction,
+                                   AstNode const* start,
+                                   AstNode const* graph) {
+
+  if (vertexVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
+
+  node->addMember(direction);
+  node->addMember(start);
+  node->addMember(graph);
+
+  AstNode* vertexVar = createNodeVariable(vertexVarName, vertexVarLength, false);
+  node->addMember(vertexVar);
+
+  TRI_ASSERT(node->numMembers() == 4);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST traversal node with vertex and edge variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeTraversal (char const* vertexVarName,
+                                   size_t vertexVarLength,
+                                   char const* edgeVarName,
+                                   size_t edgeVarLength,
+                                   AstNode const* direction,
+                                   AstNode const* start,
+                                   AstNode const* graph) {
+  if (edgeVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNodeTraversal(vertexVarName, vertexVarLength, direction, start, graph);
+
+  AstNode* edgeVar = createNodeVariable(edgeVarName, edgeVarLength, false);
+  node->addMember(edgeVar);
+
+  TRI_ASSERT(node->numMembers() == 5);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST traversal node with vertex, edge and path variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeTraversal (char const* vertexVarName,
+                                   size_t vertexVarLength,
+                                   char const* edgeVarName,
+                                   size_t edgeVarLength,
+                                   char const* pathVarName,
+                                   size_t pathVarLength,
+                                   AstNode const* direction,
+                                   AstNode const* start,
+                                   AstNode const* graph) {
+
+  if (pathVarName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  AstNode* node = createNodeTraversal(vertexVarName, vertexVarLength, edgeVarName, edgeVarLength, direction, start, graph);
+
+  AstNode* pathVar = createNodeVariable(pathVarName, pathVarLength, false);
+  node->addMember(pathVar);
+
+  TRI_ASSERT(node->numMembers() == 6);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1351,6 +1493,22 @@ void Ast::injectBindParameters (BindParameters& parameters) {
       // convert into a regular attribute access node to simplify handling later
       return createNodeAttributeAccess(node->getMember(0), name->getStringValue(), name->getStringLength());
     }
+    else if (node->type == NODE_TYPE_TRAVERSAL) {
+      auto graphNode = node->getMember(2);
+      if (graphNode->type == NODE_TYPE_VALUE) {
+        TRI_ASSERT(graphNode->isStringValue());
+        std::string graphName = graphNode->getStringValue();
+        auto graph = _query->lookupGraphByName(graphName);
+        auto vColls = graph->vertexCollections();
+        for (const auto& n: vColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+        auto eColls = graph->edgeCollections();
+        for (const auto& n: eColls) {
+          _query->collections()->add(n, TRI_TRANSACTION_READ);
+        }
+      }
+    }
 
     return node;
   };
@@ -1439,9 +1597,11 @@ AstNode* Ast::replaceVariableReference (AstNode* node,
 
 void Ast::validateAndOptimize () {
   struct TraversalContext {
-    int64_t stopOptimizationRequests = 0;
-    bool isInFilter       = false;
-    bool hasSeenWriteNode = false;
+    std::unordered_set<std::string> writeCollectionsSeen;
+    int64_t stopOptimizationRequests    = 0;
+    bool isInFilter                     = false;
+    bool hasSeenAnyWriteNode            = false;
+    bool hasSeenWriteNodeInCurrentScope = false;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> bool {
@@ -1460,6 +1620,19 @@ void Ast::validateAndOptimize () {
     else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
     }
+    else if (node->type == NODE_TYPE_REMOVE ||
+             node->type == NODE_TYPE_INSERT ||
+             node->type == NODE_TYPE_UPDATE ||
+             node->type == NODE_TYPE_REPLACE ||
+             node->type == NODE_TYPE_UPSERT) {
+      auto c = static_cast<TraversalContext*>(data);
+
+      if (c->hasSeenWriteNodeInCurrentScope) {
+        // no two data-modification nodes are allowed in the same scope
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_MULTI_MODIFY);
+      }
+      c->hasSeenWriteNodeInCurrentScope = true;
+    }
 
     return true;
   };
@@ -1468,13 +1641,20 @@ void Ast::validateAndOptimize () {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = false;
     }
+    else if (node->type == NODE_TYPE_REMOVE ||
+             node->type == NODE_TYPE_INSERT ||
+             node->type == NODE_TYPE_UPDATE ||
+             node->type == NODE_TYPE_REPLACE ||
+             node->type == NODE_TYPE_UPSERT) {
+      auto c = static_cast<TraversalContext*>(data);
+      c->hasSeenAnyWriteNode = true;
 
-    if (node->type == NODE_TYPE_REMOVE ||
-        node->type == NODE_TYPE_INSERT ||
-        node->type == NODE_TYPE_UPDATE ||
-        node->type == NODE_TYPE_REPLACE ||
-        node->type == NODE_TYPE_UPSERT) {
-      static_cast<TraversalContext*>(data)->hasSeenWriteNode = true;
+      TRI_ASSERT(c->hasSeenWriteNodeInCurrentScope);
+      c->hasSeenWriteNodeInCurrentScope = false;
+
+      auto collection = node->getMember(1);
+      auto name = collection->getStringValue();
+      c->writeCollectionsSeen.emplace(name);
     }
     else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
@@ -1543,8 +1723,10 @@ void Ast::validateAndOptimize () {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
-      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode &&
+      if (static_cast<TraversalContext*>(data)->hasSeenAnyWriteNode &&
           ! func->canRunOnDBServer) {
+        // if canRunOnDBServer is true, then this is an indicator for a 
+        // document-accessing function
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
 
@@ -1583,9 +1765,24 @@ void Ast::validateAndOptimize () {
 
     // collection
     if (node->type == NODE_TYPE_COLLECTION) {
-      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode) {
+      char const* name = node->getStringValue();
+
+      auto c = static_cast<TraversalContext*>(data);
+
+      if (c->writeCollectionsSeen.find(name) != c->writeCollectionsSeen.end()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
+
+      return node;
+    }
+    
+    // traversal
+    if (node->type == NODE_TYPE_TRAVERSAL) {
+      // traversals must not be used after a modification operation
+      if (static_cast<TraversalContext*>(data)->hasSeenAnyWriteNode) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+      }
+
       return node;
     }
     
@@ -2846,12 +3043,13 @@ std::pair<std::string, bool> Ast::normalizeFunctionName (char const* name) {
 
   std::string functionName(upperName);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
 
   if (functionName.find(':') == std::string::npos) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
     // prepend default namespace for internal functions
     return std::make_pair(functionName, true);
   }
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
 
   // user-defined function
   return std::make_pair(functionName, false);

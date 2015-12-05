@@ -297,6 +297,14 @@ namespace triagens {
                               "' '" +
                               _connection->getErrorDetails() +
                               "'");
+
+              if (_connection->isInterrupted()) {
+                this->close();
+                delete _result;
+                _result = nullptr;
+                setErrorMessage("Command locally aborted");
+                return nullptr;
+              }
               this->close(); // this sets the state to IN_CONNECT for a retry
               break;
             }

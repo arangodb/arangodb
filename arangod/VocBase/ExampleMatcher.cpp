@@ -51,6 +51,7 @@ void ExampleMatcher::cleanup () {
   for (auto& def : definitions) {
     for (auto& it : def._values) {
       TRI_FreeShapedJson(zone, it);
+      it = nullptr;
     }
   }
 }
@@ -122,12 +123,13 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
       else {
         def._pids.push_back(pid);
 
-        auto value = TRI_ShapedJsonV8Object(isolate, val, _shaper, false);
+        std::unique_ptr<TRI_shaped_json_t> value(TRI_ShapedJsonV8Object(isolate, val, _shaper, false));
 
-        if (value == nullptr) {
+        if (value.get() == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
         }
-        def._values.push_back(value);
+        def._values.push_back(value.get());
+        value.release();
       }
     }
     else {

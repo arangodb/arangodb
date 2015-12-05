@@ -1506,7 +1506,15 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
+  auto cc = ClientConnection;
+
   V8LineEditor console(isolate, context, ".arangosh.history");
+  console.setSignalFunction([&cc] () {
+    if (cc != nullptr) {
+      cc->setInterrupted(true);
+    }
+  });
+
   console.open(BaseClient.autoComplete());
 
   uint64_t nrCommands = 0;
@@ -1620,7 +1628,7 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       string exception;
 
       if (! tryCatch.CanContinue() || tryCatch.HasTerminated()) {
-        exception = "command locally aborted";
+        exception = "command locally aborted\n";
       }
       else {
         exception = TRI_StringifyV8Exception(isolate, &tryCatch);
@@ -1632,6 +1640,8 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       // this will change the prompt for the next round
       promptError = true;
     }
+      
+    ClientConnection->setInterrupted(false);
 
     BaseClient.stopPager();
     BaseClient.printLine("");

@@ -1,6 +1,6 @@
 !CHAPTER Advanced features
 
-!SUBSECTION Subqueries 
+!SUBSECTION Subqueries
 
 Wherever an expression is allowed in AQL, a subquery can be placed. A subquery
 is a query part that can introduce its own local variables without affecting
@@ -11,9 +11,9 @@ explicitly mark their start and end points:
 
 ```js
 FOR p IN persons
-  LET recommendations = ( 
-    FOR r IN recommendations 
-      FILTER p.id == r.personId 
+  LET recommendations = (
+    FOR r IN recommendations
+      FILTER p.id == r.personId
       SORT p.rank DESC
       LIMIT 10
       RETURN r
@@ -24,11 +24,11 @@ FOR p IN persons
 ```js
 FOR p IN persons
   COLLECT city = p.city INTO g
-  RETURN { 
-    city : city, 
-    numPersons : LENGTH(g), 
+  RETURN {
+    city : city,
+    numPersons : LENGTH(g),
     maxRating: MAX(
-      FOR r IN g 
+      FOR r IN g
       RETURN r.p.rating
     )}
 ```
@@ -49,57 +49,57 @@ To demonstrate the array expansion operator, let's go on with the following thre
 example *users* documents:
 
 ```json
-[ 
-  { 
+[
+  {
     name: "john",
-    age: 35, 
-    friends: [ 
-      { name: "tina", age: 43 }, 
-      { name: "helga", age: 52 }, 
-      { name: "alfred", age: 34 } 
-    ] 
-  }, 
-  { 
-    name: "yves", 
-    age: 24, 
-    friends: [ 
-      { name: "sergei", age: 27 }, 
-      { name: "tiffany", age: 25 } 
-    ] 
-  }, 
-  { 
-    name: "sandra", 
-    age: 40, 
-    friends: [ 
-      { name: "bob", age: 32 }, 
-      { name: "elena", age: 48 } 
-    ] 
-  } 
+    age: 35,
+    friends: [
+      { name: "tina", age: 43 },
+      { name: "helga", age: 52 },
+      { name: "alfred", age: 34 }
+    ]
+  },
+  {
+    name: "yves",
+    age: 24,
+    friends: [
+      { name: "sergei", age: 27 },
+      { name: "tiffany", age: 25 }
+    ]
+  },
+  {
+    name: "sandra",
+    age: 40,
+    friends: [
+      { name: "bob", age: 32 },
+      { name: "elena", age: 48 }
+    ]
+  }
 ]
 ```
 
-With the <i>[\*]</i> operator it becomes easy to query just the names of the 
+With the <i>[\*]</i> operator it becomes easy to query just the names of the
 friends for each user:
 
-``` 
-FOR u IN users 
+```
+FOR u IN users
   RETURN { name: u.name, friends: u.friends[*].name }
 ```
 
 This will produce:
 
 ```json
-[ 
-  { "name" : "john", "friends" : [ "tina", "helga", "alfred" ] }, 
-  { "name" : "yves", "friends" : [ "sergei", "tiffany" ] }, 
-  { "name" : "sandra", "friends" : [ "bob", "elena" ] } 
+[
+  { "name" : "john", "friends" : [ "tina", "helga", "alfred" ] },
+  { "name" : "yves", "friends" : [ "sergei", "tiffany" ] },
+  { "name" : "sandra", "friends" : [ "bob", "elena" ] }
 ]
 ```
 
 This a shortcut for the longer, semantically equivalent query:
 
-``` 
-FOR u IN users 
+```
+FOR u IN users
   RETURN { name: u.name, friends: (FOR f IN u.friends RETURN f.name) }
 ```
 
@@ -111,7 +111,7 @@ For example, to return only the names of friends that have an *age* value
 higher than the user herself an inline *FILTER* can be used:
 
 ```
-FOR u IN users 
+FOR u IN users
   RETURN { name: u.name, friends: u.friends[* FILTER CURRENT.age > u.age].name }
 ```
 
@@ -123,27 +123,27 @@ To return a projection of the current element, use *RETURN*. If a *FILTER* is
 also present, *RETURN* must come later.
 
 ```
-FOR u IN users 
-  RETURN u.friends[* RETURN CONCAT(CURRENT.name, " is a friend of ", u.name)] 
+FOR u IN users
+  RETURN u.friends[* RETURN CONCAT(CURRENT.name, " is a friend of ", u.name)]
 ```
 
 The above will return:
 
 ```json
-[ 
-  [ 
-    "tina is a friend of john", 
-    "helga is a friend of john", 
-    "alfred is a friend of john" 
-  ], 
-  [ 
-    "sergei is a friend of yves", 
-    "tiffany is a friend of yves" 
-  ], 
-  [ 
-    "bob is a friend of sandra", 
-    "elena is a friend of sandra" 
-  ] 
+[
+  [
+    "tina is a friend of john",
+    "helga is a friend of john",
+    "alfred is a friend of john"
+  ],
+  [
+    "sergei is a friend of yves",
+    "tiffany is a friend of yves"
+  ],
+  [
+    "bob is a friend of sandra",
+    "elena is a friend of sandra"
+  ]
 ]
 ```
 
@@ -156,27 +156,27 @@ arrays. How many levels are collapsed is determined by the amount of <i>\*</i> c
 For example, the following query produces an array of friend names per user:
 
 ```
-FOR u IN users 
+FOR u IN users
   RETURN u.friends[*].name
 ```
 
 As we have multiple users, the overall result is a nested array:
 
 ```json
-[ 
-  [ 
-    "tina", 
-    "helga", 
-    "alfred" 
-  ], 
-  [ 
-    "sergei", 
-    "tiffany" 
-  ], 
-  [ 
-    "bob", 
-    "elena" 
-  ] 
+[
+  [
+    "tina",
+    "helga",
+    "alfred"
+  ],
+  [
+    "sergei",
+    "tiffany"
+  ],
+  [
+    "bob",
+    "elena"
+  ]
 ]
 ```
 
@@ -202,15 +202,15 @@ RETURN (
 ```
 
 ```json
-[ 
-  [ 
-    "tina", 
-    "helga", 
-    "alfred", 
-    "sergei", 
-    "tiffany", 
-    "bob", 
-    "elena" 
-  ] 
+[
+  [
+    "tina",
+    "helga",
+    "alfred",
+    "sergei",
+    "tiffany",
+    "bob",
+    "elena"
+  ]
 ]
 ```

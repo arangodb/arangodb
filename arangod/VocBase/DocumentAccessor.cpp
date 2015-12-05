@@ -49,6 +49,18 @@ DocumentAccessor::DocumentAccessor (triagens::arango::CollectionNameResolver con
     _mptr(mptr),
     _json(),
     _current(nullptr) {
+
+  TRI_ASSERT(mptr != nullptr);
+}
+
+DocumentAccessor::DocumentAccessor (TRI_json_t const* json)
+  : _resolver(nullptr),
+    _document(nullptr),
+    _mptr(nullptr),
+    _json(),
+    _current(json) {
+
+  TRI_ASSERT(_current != nullptr);
 }
 
 DocumentAccessor::~DocumentAccessor () {
@@ -63,7 +75,33 @@ bool DocumentAccessor::hasKey (std::string const& attribute) const {
     return false;
   }
 
-  return true;
+  if (_current == nullptr) {
+    if (attribute.size() > 1 && attribute[0] == '_') {
+      if (attribute == TRI_VOC_ATTRIBUTE_ID ||
+          attribute == TRI_VOC_ATTRIBUTE_KEY ||
+          attribute == TRI_VOC_ATTRIBUTE_REV) {
+        return true;
+      }
+      
+      if (TRI_IS_EDGE_MARKER(_mptr) &&
+          (attribute == TRI_VOC_ATTRIBUTE_FROM ||
+          attribute == TRI_VOC_ATTRIBUTE_TO)) {
+        return true;
+      }
+    }
+
+    auto shaper = _document->getShaper();
+
+    TRI_shape_pid_t pid = shaper->lookupAttributePathByName(attribute.c_str());
+
+    if (pid != 0) {
+      return true;
+    }
+
+    return false;
+  }
+
+  return (TRI_LookupObjectJson(_current, attribute.c_str()) != nullptr);
 }
 
 bool DocumentAccessor::isObject () const {
@@ -124,7 +162,7 @@ DocumentAccessor& DocumentAccessor::at (int64_t index) {
 
     if (index >= 0 && index < static_cast<int64_t>(length)) {
       // only look up the value if it is within array bounds
-      TRI_json_t* found = TRI_LookupArrayJson(_current, static_cast<size_t>(index));
+      TRI_json_t const* found = TRI_LookupArrayJson(_current, static_cast<size_t>(index));
 
       if (found != nullptr) {
         _current = found;
@@ -208,7 +246,12 @@ void DocumentAccessor::setToNull () {
   }
 
   _json.reset(TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+  if (_json.get() == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   _current = _json.get();
+  TRI_ASSERT(_current != nullptr);
 }
 
 void DocumentAccessor::lookupJsonAttribute (char const* name, size_t nameLength) {
@@ -219,7 +262,7 @@ void DocumentAccessor::lookupJsonAttribute (char const* name, size_t nameLength)
     return;
   }
 
-  TRI_json_t* value = TRI_LookupObjectJson(_current, name);
+  TRI_json_t const* value = TRI_LookupObjectJson(_current, name);
 
   if (value == nullptr) {
     // attribute not found
@@ -241,6 +284,11 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
         return;
       }
       _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key)));
+
+      if (_json.get() == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
       _current = _json.get();
       return;
     }
@@ -259,6 +307,9 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
       memcpy(&buffer[pos], key, len);
       buffer[pos + len] = '\0';
       _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+      if (_json.get() == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
       _current = _json.get();
       return;
     }
@@ -269,6 +320,9 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
       TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(_mptr);
       size_t len = TRI_StringUInt64InPlace(rid, &buffer[0]);
       _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], len));
+      if (_json.get() == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
       _current = _json.get();
       return;
     }
@@ -288,6 +342,9 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
         memcpy(&buffer[pos], key, len);
         buffer[pos + len] = '\0';
         _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+        if (_json.get() == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
         _current = _json.get();
         return;
       }
@@ -306,6 +363,9 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
         memcpy(&buffer[pos], key, len);
         buffer[pos + len] = '\0';
         _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+        if (_json.get() == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
         _current = _json.get();
         return;
       }
@@ -335,6 +395,9 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
 
   if (ok && shape != nullptr) {
     _json.reset(TRI_JsonShapedJson(shaper, &json));
+    if (_json.get() == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
     _current = _json.get();
     return;
   }

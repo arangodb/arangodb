@@ -1,0 +1,275 @@
+!CHAPTER Graph traversals in AQL
+
+!SUBSECTION General query idea
+
+This query is only useful if you use edge collections and/or graphs in your data model.
+It is supposed to walk through your graph.
+Therefore it starts at one specific document (*start-vertex*) and follows all edges connected to this document.
+For all documents (*vertices*) that are targeted by these edges it will again follow all edges connected to them and so on.
+It is possible to define how many of these follow iterations should be executed at least (*min-depth*) and at most (*max-depth*).
+For all vertices that where visited during this process in the range between *min-depth* and *max-depth* iterations you will get a result in form of a set with three items:
+
+1. The visited vertex.
+2. The edge pointing to it
+3. The complete path from start-vertex to the visited vertex as a JSON document with an attribute `edges` and an attribute `vertices`, each a list of the coresponding elements. These lists are sorted, s.t. the first element in `vertices` is the start-vertex and the last is the visited vertex. And that the n-th element in `edges` connects the n-th element with the (n+1)-th element in `vertices`.
+
+!SUBSUBSECTION Example execution
+
+Let's take a look at a simple example to explain how it works.
+This is the graph that we are going to traverse:
+
+![traversal graph](../Graphs/traversal_graph.png)
+
+Now we use the following parameters for our query:
+
+1. We start at the vertex **A**.
+2. We use a *min-depth* of 1.
+3. We use a *max-depth* of 2.
+4. We follow only *outbound* direction of edges
+
+![traversal graph step 1](../Graphs/traversal_graph1.png)
+
+Now it walks to one of the direct neighbors of **A**, say **B** (NOTE: ordering is not guaranteed):
+
+![traversal graph step 2](../Graphs/traversal_graph2.png)
+
+The query will remember the state (red circle) and will emit the first result **A** -> **B** (black box).
+Now again it will visit one of the direct neighbors of **B**, say **E**:
+
+![traversal graph step 3](../Graphs/traversal_graph3.png)
+
+We have limited the query with a *max-depth* of *2* then it will not pick any neighbor of **E** as the path from **A** to **E** already requires *2* steps.
+Instead we will go back one level to **B** and continue with any other direct neighbor there:
+
+![traversal graph step 4](../Graphs/traversal_graph4.png)
+
+Again after we produced this result we will step back to **B**.
+But there is no neighbor of **B** left that we have not yet visited.
+Hence we go another step back to **A** and continue with any other neighbor there.
+
+![traversal graph step 5](../Graphs/traversal_graph5.png)
+
+And identical to the iterations before we will visit **H**:
+
+![traversal graph step 6](../Graphs/traversal_graph6.png)
+
+And **J**:
+
+![traversal graph step 7](../Graphs/traversal_graph7.png)
+
+And after these steps there is no further result left.
+So all together this query has returned the following paths:
+
+1. `A -> B`
+2. `A -> B -> E`
+3. `A -> B -> C`
+4. `A -> G`
+5. `A -> G -> H`
+6. `A -> G -> J`
+
+
+!SUBSECTION Syntax
+
+Now let's see how we can write a query that follows this schema.
+You have two options here, you can either use a managed graph (see [the graphs chapter](../Graphs/README.md) on how to create it).
+
+!SUBSUBSECTION Working on managed graphs:
+
+`FOR ` vertex[, edge[, path]]
+ `IN` `MIN`[..`MAX`]
+ `OUTBOUND|INBOUND|ANY` startVertex
+ `GRAPH` graphName
+
+ - `FOR` - emits up to three variables:
+   - **vertex**: the current vertex in a traversal
+   - **edge**: *(optional)* the current edge in a traversal
+   - **path**: *(optional, requires edge to be present)* an object representing the current path with two members:
+     - `vertices`: an array of all vertices on this path.
+     - `edges`: an array of all edges on this path.
+ - `IN` `MIN`..`MAX` `OUTBOUND` startVertex `GRAPH` graphName
+   - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
+   - **startVertex**: one vertex where the traversal will originate from
+   - **graphName**: the name of a managed graph. It's vertex and edge collections will be looked up.
+   - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`.
+   - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
+
+!SUBSUBSECTION Working on collection sets:
+
+`FOR ` vertex[, edge[, path]]
+ `IN` `MIN`[..`MAX`]
+ `OUTBOUND|INBOUND|ANY` startVertex
+ edgeCollection1, .., edgeCollectionN
+
+Instead of the `GRAPH graphName` you may specify a **list of edge collections**. Vertex collections are evaluated from the edges. The rest of the behavior is similar to the managed version.
+
+!SUBSECTION Using filters and the explainer to extrapolate the costs
+
+All three variables emitted by the traversals might as well be used in filter statements.
+For some of these filter statements the optimizer can detect that it is possible to prune paths of traversals earlier, hence filtered results will not be emitted to the variables in the first place.
+This may significantly improve the performance of your query.
+Whenever a filter is not fulfilled the complete set of **vertex**, **edge** and **path** will be skipped.
+All paths with a length greater than `MAX` will never be computed.
+
+In the current state `OR` combined filters cannot be optimized, `AND` combined filters can.
+
+!SUBSUBSECTION Filtering on paths
+
+This allows for the most powerful filtering and may have the highest impact on performance.
+Using the path variable you can filter on specific iteration depths.
+You can filter for absolute positions in the path by **(specifying a positive number)** **(which then qualifies for the optimizations)** or relative positions to the end of the path by specifying a negative number.
+**Note**: In the current state there is no way to define a filter **for all elements on the path**. This will be added in the future.
+
+#### Filtering edges on the path
+
+```
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.edges[0].theTruth == true
+  RETURN p
+```
+
+will filter all paths where the start edge (# 0) has the attribute `theTruth` equaling `true`.
+The resulting paths will be up to 5 items long.
+
+#### Filtering vertices on the path
+
+Similar to filtering the edges on the path you can also filter the vertices:
+
+```
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.vertices[1]._key == "G"
+  RETURN p
+```
+
+#### Combining several filters
+
+And of course you can combine these filters in any way you like: 
+
+```
+FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+  FILTER p.edges[0].theTruth == true
+  AND p.edges[1].theFalse == false
+  FILTER p.vertices[1]._key == "G"
+  RETURN p
+```
+
+will filter all paths where the first edge has the attribute `theTruth` equaling `true`, the first vertex is "G" and the second edge has the attribute `theFalse` equaling `false`.
+The resulting paths will be up to 5 items long.
+**Note here**: Although we have defined a `MIN` of `1` we will only get results of depth `2`.
+This is because for all results in depth `1` the second edge does not exist and hence cannot fulfill the condition.
+
+!SUBSUBSECTION Examples
+We will create a simple symmetric traversal demonstration graph:
+![traversal graph](../Graphs/traversal_graph.png)
+
+    @startDocuBlockInline GRAPHTRAV_01_create_graph
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_01_create_graph}
+    ~addIgnoreCollection("circles");
+    ~addIgnoreCollection("edges");
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var graph = examples.loadGraph("traversalGraph");
+    db.circles.toArray();
+    db.edges.toArray();
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_01_create_graph
+
+To get started we select the full graph; for better overview we only return the vertex ids:
+
+    @startDocuBlockInline GRAPHTRAV_02_traverse_all
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_02_traverse_all}
+    db._query("FOR v IN 0..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' RETURN v._key");
+    db._query("FOR v IN 0..3 OUTBOUND 'circles/A' edges RETURN v._key");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_02_traverse_all
+
+We can nicely see its heading for the first outer vertex, then going back to the branch to descend into the next tree. After that it returns to our start node, to descend again.
+As we can see both queries return the same result, the first one uses the managed graph, the second directly uses the edge collection.
+
+Now we only want the elements of a specific depth - 2 - the ones that are right behind the fork:
+
+    @startDocuBlockInline GRAPHTRAV_03_traverse_3
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_03_traverse_3}
+    db._query("FOR v IN 2..2 OUTBOUND 'circles/A' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 2 OUTBOUND 'circles/A' GRAPH 'traversalGraph' return v._key");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_03_traverse_3
+
+As you can see, we can express this in two ways, one is to omit the `MAX` parameter of the expression.
+
+!SUBSUBSECTION Filter examples
+
+Now lets start to add some filters. 
+We want to cut of the branch on the right side of th graph, we may filter in two ways:
+ - we know the vertex at depth 1 has `_key` == `G`
+ - we know the `label` attribute of the edge connecting *A* to *G* is `right_foo`
+
+    @startDocuBlockInline GRAPHTRAV_04_traverse_4
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_04_traverse_4}
+    db._query("FOR v, e, p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.vertices[1]._key != 'G' RETURN v._key");
+    db._query("FOR v, e, p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label != 'right_foo' RETURN v._key");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_04_traverse_4
+
+As we can see all vertices behind *G* are skipped in both queries.
+The first filters on the vertex `_key`, the second on an edge label.
+Note again as soon as a filter is not fulfilled for any of the three elements `v`, `e` or `p` the complete set of these will be excluded from the result.
+
+We also may combine several filters, for instance to filter out the right branch (*G*), and the *E* branch:
+
+    @startDocuBlockInline GRAPHTRAV_05_traverse_5
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_05_traverse_5}
+    db._query("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.vertices[1]._key != 'G' FILTER p.edges[1].label != 'left_blub' return v._key");
+    db._query("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.vertices[1]._key != 'G' AND    p.edges[1].label != 'left_blub' return v._key");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_05_traverse_5
+
+As you can see combining two `FILTER` statements with an `AND` has the same result.
+
+!SUBSECTION Comparing OUTBOUND / INBOUND / ANY
+All our previous examples traversed the graph into outbound edge directions.
+You may however want to also traverse in reverse direction (`INBOUND`) or both (`ANY`),
+Since `circles/A` only has outbound edges, we start our queries from `circles/E`:
+
+    @startDocuBlockInline GRAPHTRAV_06_traverse_reverse_6
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_06_traverse_reverse_6}
+    db._query("FOR v IN 0..3 OUTBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 0..3 INBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 0..3 ANY 'circles/E' GRAPH 'traversalGraph' return v._key");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_06_traverse_reverse_6
+
+The first traversal will only walk into the forward (`OUTBOUND`) direction. Therefore from *E* we only can see *F*.
+Walking into reverse direction (`INBOUND`) we see the path to *A*: *B*, *A*.
+Walking in forward and reverse direction (`ANY`) we can see a more diverse result.
+First of all we see the simple paths to *F* and *A*.
+However these vertices have edges in other directions and they will be traversed.
+**Note here**: The traverser may use identical edges multiple times.
+For instance if it walks from *E* to *F* it will continue to walk from *F* to *E* using the same edge once again.
+Due to this we will see duplicate nodes in the result.
+
+!SUBSUBSECTION Use the AQL explainer for optimizations
+
+Now lets have a look what the optimizer does behind the curtains and inspect traversal queries using [the explainer](Optimizer.md):
+
+
+    @startDocuBlockInline GRAPHTRAV_07_traverse_7
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_07_traverse_7}
+    db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' LET localScopeVar = RAND() > 0.5 FILTER p.edges[0].theTruth != localScopeVar RETURN v._key", {}, {colors: false});
+    db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label == 'right_foo' RETURN v._key", {}, {colors: false});
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_07_traverse_7
+
+We now see two queries, in one we add a variable `localScopeVar` which is outside the scope of the traversal itself - it is not known inside of the traverser. Therefore this filter can only executed after the traversal, which may be undesired in large graphs.
+The second query on the other hand only operates on the path, and therefore this condition can be used during the execution of the traversal, paths that are filtered out by this condition won't be processed at all.
+
+And finally clean it up again:
+    @startDocuBlockInline GRAPHTRAV_99_drop_graph
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_99_drop_graph}
+    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    examples.dropGraph("traversalGraph");
+    ~removeIgnoreCollection("circles");
+    ~removeIgnoreCollection("edges");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock GRAPHTRAV_99_drop_graph
+
+
+If this traversal is not powerful enough for your needs, so you cannot describe your conditions as AQL filter statements you might want to look at [manually crafted traverser](../Traversals/README.md).
