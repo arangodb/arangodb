@@ -140,6 +140,11 @@ namespace triagens {
                        size_t,
                        size_t,
                        TRI_json_t const*) const;
+
+        void dumpDocs (triagens::basics::Json&,
+                       size_t,
+                       size_t,
+                       VPackSlice const&) const;
         
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

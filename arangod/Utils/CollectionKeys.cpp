@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionReadLocker.h"
@@ -310,6 +311,19 @@ void CollectionKeys::dumpDocs (triagens::basics::Json& json,
 
     json.transfer(doc);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dumps documents into the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectionKeys::dumpDocs (triagens::basics::Json& json, 
+                               size_t chunk,
+                               size_t chunkSize,
+                               VPackSlice const& ids) const {
+  // TODO Only temporary. Will replace the TRI_json_t variant
+  std::unique_ptr<TRI_json_t> jsonIds(triagens::basics::VelocyPackHelper::velocyPackToJson(ids));
+  dumpDocs(json, chunk, chunkSize, jsonIds.get());
 }
 
 // -----------------------------------------------------------------------------
