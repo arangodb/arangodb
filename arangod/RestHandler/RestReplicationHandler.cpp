@@ -33,6 +33,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterComm.h"
 #include "HttpServer/HttpServer.h"
@@ -51,6 +52,9 @@
 #include "VocBase/server.h"
 #include "VocBase/update-policy.h"
 #include "Wal/LogfileManager.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -3325,8 +3329,13 @@ void RestReplicationHandler::handleCommandFetchKeys () {
         collectionKeys->dumpKeys(json, chunk, chunkSize);
       }
       else {
-        std::unique_ptr<TRI_json_t> idsJson(parseJsonBody());
-        collectionKeys->dumpDocs(json, chunk, chunkSize, idsJson.get());
+        bool success;
+        std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+        if (! success) {
+          collectionKeys->release();
+          return;
+        }
+        collectionKeys->dumpDocs(json, chunk, chunkSize, parsedIds->slice());
       }
 
       collectionKeys->release();
@@ -3889,24 +3898,25 @@ void RestReplicationHandler::handleCommandDump () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandMakeSlave () {
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
-
-  if (json == nullptr) {
+  bool success;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (! success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
+  VPackSlice const body = parsedBody->slice();
 
-  std::string const endpoint = JsonHelper::getStringValue(json.get(), "endpoint", "");
-  std::string const database = JsonHelper::getStringValue(json.get(), "database", _vocbase->_name);
-  std::string const username = JsonHelper::getStringValue(json.get(), "username", "");
-  std::string const password = JsonHelper::getStringValue(json.get(), "password", "");
+  std::string const endpoint = VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (endpoint.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
     return;
   }
 
-  std::string const restrictType = JsonHelper::getStringValue(json.get(), "restrictType", "");
+  std::string const database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+  std::string const username = VelocyPackHelper::getStringValue(body, "username", "");
+  std::string const password = VelocyPackHelper::getStringValue(body, "password", "");
+  std::string const restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
 
   // initialize some defaults to copy from
   TRI_replication_applier_configuration_t defaults;
@@ -3920,34 +3930,33 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   config._database                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.size());
   config._username                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, username.c_str(), username.size());
   config._password                = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, password.c_str(), password.size());
-  config._includeSystem           = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
-  config._requestTimeout          = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", defaults._requestTimeout);
-  config._connectTimeout          = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", defaults._connectTimeout);
-  config._ignoreErrors            = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", defaults._ignoreErrors);
-  config._maxConnectRetries       = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", defaults._maxConnectRetries);
-  config._sslProtocol             = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", defaults._sslProtocol);
-  config._chunkSize               = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", defaults._chunkSize);
+  config._includeSystem           = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
+  config._requestTimeout          = VelocyPackHelper::getNumericValue<double>(body, "requestTimeout", defaults._requestTimeout);
+  config._connectTimeout          = VelocyPackHelper::getNumericValue<double>(body, "connectTimeout", defaults._connectTimeout);
+  config._ignoreErrors            = VelocyPackHelper::getNumericValue<uint64_t>(body, "ignoreErrors", defaults._ignoreErrors);
+  config._maxConnectRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "maxConnectRetries", defaults._maxConnectRetries);
+  config._sslProtocol             = VelocyPackHelper::getNumericValue<uint32_t>(body, "sslProtocol", defaults._sslProtocol);
+  config._chunkSize               = VelocyPackHelper::getNumericValue<uint64_t>(body, "chunkSize", defaults._chunkSize);
   config._autoStart               = true;
-  config._adaptivePolling         = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", defaults._adaptivePolling);
-  config._autoResync              = JsonHelper::getBooleanValue(json.get(), "autoResync", defaults._autoResync);
-  config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", defaults._verbose);
-  config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", defaults._requireFromPresent);
-  config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", defaults._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._adaptivePolling         = VelocyPackHelper::getBooleanValue(body, "adaptivePolling", defaults._adaptivePolling);
+  config._autoResync              = VelocyPackHelper::getBooleanValue(body, "autoResync", defaults._autoResync);
+  config._verbose                 = VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
+  config._requireFromPresent      = VelocyPackHelper::getBooleanValue(body, "requireFromPresent", defaults._requireFromPresent);
+  config._restrictType            = VelocyPackHelper::getStringValue(body, "restrictType", defaults._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
   
-  TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
+  VPackSlice const restriction = body.get("restrictCollections");
 
-  if (TRI_IsArrayJson(restriction)) {
-    size_t const n = TRI_LengthArrayJson(restriction);
+  if (restriction.isArray()) {
+    VPackValueLength const n = restriction.length();
 
-    for (size_t i = 0; i < n; ++i) {
-      auto cname = static_cast<TRI_json_t const*>(TRI_AtVector(&restriction->_value._objects, i));
-
-      if (JsonHelper::isString(cname)) {
-        config._restrictCollections.emplace(std::string(cname->_value._string.data, cname->_value._string.length - 1), true);
+    for (VPackValueLength i = 0; i < n; ++i) {
+      VPackSlice const cname = restriction.at(i);
+      if (cname.isString()) {
+        config._restrictCollections.emplace(cname.copyString(), true);
       }
     }
   }
@@ -4129,43 +4138,40 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSync () {
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
-
-  if (json == nullptr) {
+  bool success;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (! success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
+  VPackSlice const body = parsedBody->slice();
 
-  std::string const endpoint = JsonHelper::getStringValue(json.get(), "endpoint", "");
-  std::string const database = JsonHelper::getStringValue(json.get(), "database", _vocbase->_name);
-  std::string const username = JsonHelper::getStringValue(json.get(), "username", "");
-  std::string const password = JsonHelper::getStringValue(json.get(), "password", "");
+  std::string const endpoint = VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (endpoint.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
     return;
   }
 
-  bool const verbose       = JsonHelper::getBooleanValue(json.get(), "verbose", false);
-  bool const includeSystem = JsonHelper::getBooleanValue(json.get(), "includeSystem", true);
-  bool const incremental   = JsonHelper::getBooleanValue(json.get(), "incremental", false);
+  std::string const database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
+  std::string const username = VelocyPackHelper::getStringValue(body, "username", "");
+  std::string const password = VelocyPackHelper::getStringValue(body, "password", "");
+  bool const verbose       = VelocyPackHelper::getBooleanValue(body, "verbose", false);
+  bool const includeSystem = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
+  bool const incremental   = VelocyPackHelper::getBooleanValue(body, "incremental", false);
 
   std::unordered_map<string, bool> restrictCollections;
-  TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
+  VPackSlice const restriction = body.get("restrictCollections");
 
-  if (TRI_IsArrayJson(restriction)) {
-    size_t const n = TRI_LengthArrayJson(restriction);
-
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* cname = static_cast<TRI_json_t const*>(TRI_AtVector(&restriction->_value._objects, i));
-
-      if (JsonHelper::isString(cname)) {
-        restrictCollections.insert(pair<string, bool>(string(cname->_value._string.data, cname->_value._string.length - 1), true));
+  if (restriction.isArray()) {
+    for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
+      if (cname.isString()) {
+        restrictCollections.insert(pair<string, bool>(cname.copyString(), true));
       }
     }
   }
 
-  string restrictType = JsonHelper::getStringValue(json.get(), "restrictType", "");
+  string restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
 
   if ((restrictType.empty() && ! restrictCollections.empty()) ||
       (! restrictType.empty() && restrictCollections.empty()) ||
@@ -4591,20 +4597,21 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_replication_applier_configuration_t config;
   TRI_InitConfigurationReplicationApplier(&config);
 
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
+  bool success;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
 
-  if (json == nullptr) {
+  if (! success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
+  VPackSlice const body = parsedBody->slice();
 
   {
     READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
     TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
   }
 
-  TRI_json_t const* value;
-  const string endpoint = JsonHelper::getStringValue(json.get(), "endpoint", "");
+  const string endpoint = VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (! endpoint.empty()) {
     if (config._endpoint != nullptr) {
@@ -4613,63 +4620,55 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
     config._endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, endpoint.c_str(), endpoint.size());
   }
 
-  value = JsonHelper::getObjectElement(json.get(), "database");
+  std::string database = VelocyPackHelper::getStringValue(body, "database", _vocbase->_name);
   if (config._database != nullptr) {
     // free old value
     TRI_FreeString(TRI_CORE_MEM_ZONE, config._database);
   }
+  config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, database.c_str(), database.length());
 
-  if (JsonHelper::isString(value)) {
-    config._database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
-  }
-  else {
-    config._database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, _vocbase->_name);
-  }
-
-  value = JsonHelper::getObjectElement(json.get(), "username");
-  if (JsonHelper::isString(value)) {
+  VPackSlice const username = body.get("username");
+  if (username.isString()) {
     if (config._username != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._username);
     }
-    config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
+    std::string tmp = username.copyString();
+    config._username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
   }
 
-  value = JsonHelper::getObjectElement(json.get(), "password");
-  if (JsonHelper::isString(value)) {
+  VPackSlice const password = body.get("password");
+  if (password.isString()) {
     if (config._password != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, config._password);
     }
-    config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data, value->_value._string.length - 1);
+    std::string tmp = password.copyString();
+    config._password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, tmp.c_str(), tmp.length());
   }
 
-  config._requestTimeout          = JsonHelper::getNumericValue<double>(json.get(), "requestTimeout", config._requestTimeout);
-  config._connectTimeout          = JsonHelper::getNumericValue<double>(json.get(), "connectTimeout", config._connectTimeout);
-  config._ignoreErrors            = JsonHelper::getNumericValue<uint64_t>(json.get(), "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries       = JsonHelper::getNumericValue<uint64_t>(json.get(), "maxConnectRetries", config._maxConnectRetries);
-  config._sslProtocol             = JsonHelper::getNumericValue<uint32_t>(json.get(), "sslProtocol", config._sslProtocol);
-  config._chunkSize               = JsonHelper::getNumericValue<uint64_t>(json.get(), "chunkSize", config._chunkSize);
-  config._autoStart               = JsonHelper::getBooleanValue(json.get(), "autoStart", config._autoStart);
-  config._adaptivePolling         = JsonHelper::getBooleanValue(json.get(), "adaptivePolling", config._adaptivePolling);
-  config._autoResync              = JsonHelper::getBooleanValue(json.get(), "autoResync", config._autoResync);
-  config._includeSystem           = JsonHelper::getBooleanValue(json.get(), "includeSystem", config._includeSystem);
-  config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", config._verbose);
-  config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", config._requireFromPresent);
-  config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._requestTimeout          = VelocyPackHelper::getNumericValue<double>(body, "requestTimeout", config._requestTimeout);
+  config._connectTimeout          = VelocyPackHelper::getNumericValue<double>(body, "connectTimeout", config._connectTimeout);
+  config._ignoreErrors            = VelocyPackHelper::getNumericValue<uint64_t>(body, "ignoreErrors", config._ignoreErrors);
+  config._maxConnectRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "maxConnectRetries", config._maxConnectRetries);
+  config._sslProtocol             = VelocyPackHelper::getNumericValue<uint32_t>(body, "sslProtocol", config._sslProtocol);
+  config._chunkSize               = VelocyPackHelper::getNumericValue<uint64_t>(body, "chunkSize", config._chunkSize);
+  config._autoStart               = VelocyPackHelper::getBooleanValue(body, "autoStart", config._autoStart);
+  config._adaptivePolling         = VelocyPackHelper::getBooleanValue(body, "adaptivePolling", config._adaptivePolling);
+  config._autoResync              = VelocyPackHelper::getBooleanValue(body, "autoResync", config._autoResync);
+  config._includeSystem           = VelocyPackHelper::getBooleanValue(body, "includeSystem", config._includeSystem);
+  config._verbose                 = VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
+  config._requireFromPresent      = VelocyPackHelper::getBooleanValue(body, "requireFromPresent", config._requireFromPresent);
+  config._restrictType            = VelocyPackHelper::getStringValue(body, "restrictType", config._restrictType);
+  config._connectionRetryWaitTime = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
 
-  value = JsonHelper::getObjectElement(json.get(), "restrictCollections");
-
-  if (TRI_IsArrayJson(value)) {
+  VPackSlice const restriction = body.get("restrictCollections");
+  if (restriction.isArray()) {
     config._restrictCollections.clear();
-    size_t const n = TRI_LengthArrayJson(value);
-
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* collection = TRI_LookupArrayJson(value, i);
-      if (TRI_IsStringJson(collection)) {
-        config._restrictCollections.emplace(std::make_pair(std::string(collection->_value._string.data), true));
+    for (VPackSlice const& collection : VPackArrayIterator(restriction)) {
+      if (collection.isString()) {
+        config._restrictCollections.emplace(std::make_pair(collection.copyString(), true));
       }
     }
   }
