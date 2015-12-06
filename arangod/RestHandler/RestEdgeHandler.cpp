@@ -295,9 +295,7 @@ bool RestEdgeHandler::createDocument () {
     // will hold the result
     TRI_doc_mptr_copy_t mptr;
 
-    // TODO remove this as soon as we can store VPack
-    std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
-    res = trx.createEdge(&mptr, json.get(), waitForSync, &edge);
+    res = trx.createEdge(&mptr, body, waitForSync, &edge);
     res = trx.finish(res);
 
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);

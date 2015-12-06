@@ -346,9 +346,7 @@ bool RestDocumentHandler::createDocument () {
   TRI_voc_cid_t const cid = trx.cid();
 
   TRI_doc_mptr_copy_t mptr;
-  // TODO Remove me as soon as createDocument supports VPack
-  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
-  res = trx.createDocument(&mptr, json.get(), waitForSync);
+  res = trx.createDocument(&mptr, body, waitForSync);
   res = trx.finish(res);
 
   // .............................................................................
@@ -379,10 +377,8 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   map<string, string> resultHeaders;
   string resultBody;
 
-  // TODO Only temporary remove as soon as VPack api is available
-  TRI_json_t* json = triagens::basics::VelocyPackHelper::velocyPackToJson(document);
   int res = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json, headers,
+            dbname, collname, waitForSync, document, headers,
             responseCode, resultHeaders, resultBody);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1643,11 +1639,9 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
     mergeObjects = false;
   }
 
-  // TODO Only temporary
-  TRI_json_t* json = triagens::basics::VelocyPackHelper::velocyPackToJson(document);
   int error = triagens::arango::modifyDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, isPatch,
-            keepNull, mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
+            keepNull, mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
