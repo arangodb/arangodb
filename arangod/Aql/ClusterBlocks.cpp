@@ -1133,7 +1133,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
 
   bool hasCreatedKeyAttribute = false;
 
-  if (TRI_IsStringJson(json)) {
+  if (TRI_IsStringJson(json) && static_cast<DistributeNode const*>(_exeNode)->_allowKeyConversionToObject) { 
     TRI_json_t* obj = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
     if (obj == nullptr) {

@@ -113,7 +113,7 @@ namespace triagens {
               compareTo(nullptr) {
           }
 
-          TraverserExpression (TRI_json_t const*);
+          explicit TraverserExpression (TRI_json_t const*);
 
           virtual ~TraverserExpression () {
             // no need to destroy varAccess here. Its memory is managed via the

@@ -39,6 +39,13 @@ book-check-mdpp-leftovers:
 		exit 1; \
 	fi
 
+ppbook-precheck-bad-code-sections:
+	@if grep -qR  '^``` *.* ' $(NAME); then \
+		echo "tripple tics with blanks afterwards found: "; \
+		grep -R  '^``` *.* ' $(NAME); \
+		exit 1; \
+	fi
+
 ppbook-check-html-link:
 	@if test "`egrep -r '\[.*\]\(.*\)' ppbooks/$(NAME) |grep '\.md:' |grep html |grep -v http://|grep -v https:// |grep -v header.css |wc -l`" -gt 0; then \
 		echo "Found links to .html files inside of the document! use <foo>.md instead!"; \
@@ -111,6 +118,7 @@ build-book-symlinks:
 	bash
 
 build-book:
+	make ppbook-precheck-bad-code-sections $(NAME)
 	test -d ppbooks/$(NAME) || mkdir -p ppbooks/$(NAME)
 	WD=`pwd`; \
 	for dir in `find $(NAME) -type d `; do \

@@ -7,24 +7,70 @@ here. For a list of bugfixes, please consult the
 
 !SECTION AQL improvements
 
+!SUBSECTION AQL Graph Traversals / Pattern Matching
+
+Aql offers a new feature to traverse over a graph without writing JavaScript functions
+but with all the other features you know from AQL.
+Therefore a special version of `FOR variable-name IN expression` has been introduced.
+This special version has the following format: `FOR vertex-variable, edge-variable, path-variable IN traversal-expression`.
+Where `traversal-expression` has the following format:
+`[depth] direction start-vertex graph-definition`
+With the following input parameters:
+
+* depth (optional): can either be an integer value (3) or a range of integer values (1..5). Default is 1. 
+  Defines how many steps are executed.
+* direction: can be OUTBOUND or INBOUND or ANY.
+  Defines which edge directions are followed.
+* start-vertex: A `_id` value or a document.
+  Defines where the traversal is started.
+* graph-definition: Either `GRAPH graph-name` for graphs created with the graph-module, or a list of edge collections `edge-col1, edge-col2, .. edge-colN`.
+  Defines which edge collections are used for the traversal.
+  
+
+The three output variables have the following semantics:
+
+* vertex-variable: The last visited vertex.
+* edge-variable: The last visited edge (optional).
+* path-variable: The complete path from start-vertex to vertex-variable (optional).
+
+This statement can be used identical to the original `FOR variable-name IN expression` and for instance filters
+can be defined on the output variables.
+
+As an example one can now find the friends of a friend for a certain user with this AQL statement:
+
+```
+FOR foaf, e, path IN 2 ANY @startUser GRAPH "relations"
+  FILTER path.edges[0].type == "friend"
+  FILTER path.edges[1].type == "friend"
+  FILTER foaf._id != @startUser
+  RETURN DISTINCT foaf
+```
+
+Optimizer rules have been implemented to gain performance of the traversal statement.
+These rules move filter statements into the traversal statement s.t. paths which can never
+pass the filter are not emitted to the variables.
+As an example take the query above and assume there are edges that do not have `type == "friend"`.
+If in the first edge step there is such a non-friend edge the second steps will never
+be computed for these edges as they cannot fulfill the filter condition.
+
 !SUBSECTION Array Indexes
 
 Hash indexes and skiplist indexes can now optionally be defined for array values 
 so that they index individual array members instead of the entire array value.
-  
+
 To define an index for array values, the attribute name is extended with the
 expansion operator `[*]` in the index definition.
 
 Example:
- 
-``` 
+
+```
 db._create("posts");
 db.posts.ensureHashIndex("tags[*]");
 ```
   
 When given the following document
 
-```json  
+```json
 { 
   "tags": [ 
     "AQL", 
@@ -35,13 +81,13 @@ When given the following document
 ```
 
 this index will now contain the individual values `"AQL"`, `"ArangoDB"` and `"Index"`.
-  
+
 Now the index can be used for finding all documents having `"ArangoDB"` somewhere in 
 their `tags` array using the following AQL query:
 
-```    
+```
 FOR doc IN posts
-  FILTER "ArangoDB" IN doc.tags[*] 
+  FILTER "ArangoDB" IN doc.tags[*]
   RETURN doc
 ```
 
@@ -105,14 +151,14 @@ The following AQL functions have been added in 2.8:
 
 * `IS_DATESTRING(value)`: returns true if *value* is a string that can be used in a date function. 
   This includes partial dates such as *2015* or *2015-10* and strings containing
-  invalid dates such as *2015-02-31*. The function will return false for all 
+  invalid dates such as *2015-02-31*. The function will return false for all
   non-string values, even if some of them may be usable in date functions.
 
 
 !SUBSECTION Miscellaneous improvements
 
 * the ArangoShell now provides the convenience function `db._explain(query)` for retrieving 
-  a human-readable explanation of AQL queries. This function is a shorthand for 
+  a human-readable explanation of AQL queries. This function is a shorthand for
   `require("org/arangodb/aql/explainer").explain(query)`.
 
 * improved performance of skipping over many documents in an AQL query when no
@@ -138,15 +184,15 @@ A deadlock is a situation in which two or more concurrent operations (user trans
 or AQL queries) try to access the same resources (collections, documents) and need to 
 wait for the others to finish, but none of them can make any progress.
 
-In case of such deadlock, there would be no progress for any of the involved 
+In case of such a deadlock, there would be no progress for any of the involved
 transactions, and none of the involved transactions could ever complete. This is
 completely undesirable, so the new automatic deadlock detection mechanism in ArangoDB
-will automatically kick in and abort one of the transactions involved in such deadlock. 
+will automatically kick in and abort one of the transactions involved in such a deadlock. 
 Aborting means that all changes done by the transaction will be rolled back and error 
-29 (`deadlock detected`) will be thrown. 
+29 (`deadlock detected`) will be thrown.
 
 Client code (AQL queries, user transactions) that accesses more than one collection 
-should be aware of the potential of deadlocks and should handle the error 29 
+should be aware of the potential of deadlocks and should handle the error 29
 (`deadlock detected`) properly, either by passing the exception to the caller or 
 retrying the operation.
 
@@ -156,27 +202,27 @@ retrying the operation.
 The following improvements for replication have been made in 2.8 (note: most of them
 have been backported to ArangoDB 2.7 as well):
 
-* added `autoResync` configuration parameter for continuous replication. 
- 
+* added `autoResync` configuration parameter for continuous replication.
+
   When set to `true`, a replication slave will automatically trigger a full data 
   re-synchronization with the master when the master cannot provide the log data 
   the slave had asked for. Note that `autoResync` will only work when the option
   `requireFromPresent` is also set to `true` for the continuous replication, or
   when the continuous syncer is started and detects that no start tick is present.
-    
+
   Automatic re-synchronization may transfer a lot of data from the master to the
-  slave and may be expensive. It is therefore turned off by default. 
+  slave and may be expensive. It is therefore turned off by default.
   When turned off, the slave will never perform an automatic re-synchronization
   with the master.
 
 * added `idleMinWaitTime` and `idleMaxWaitTime` configuration parameters for
-  continuous replication. 
+  continuous replication.
 
-  These parameters can be used to control the minimum and maximum wait time the 
+  These parameters can be used to control the minimum and maximum wait time the
   slave will (intentionally) idle and not poll for master log changes in case the 
-  master had sent the full logs already. 
+  master had sent the full logs already.
   The `idleMaxWaitTime` value will only be used when `adapativePolling` is set
-  to `true`. When `adaptivePolling` is disable, only `idleMinWaitTime` will be
+  to `true`. When `adaptivePolling` is disabled, only `idleMinWaitTime` will be
   used as a constant time span in which the slave will not poll the master for
   further changes. The default values are 0.5 seconds for `idleMinWaitTime` and
   2.5 seconds for `idleMaxWaitTime`, which correspond to the hard-coded values
@@ -185,17 +231,17 @@ have been backported to ArangoDB 2.7 as well):
 * added `initialSyncMaxWaitTime` configuration parameter for initial and continuous
   replication
 
-  This option controls the maximum wait time (in seconds) that the initial 
+  This option controls the maximum wait time (in seconds) that the initial
   synchronization will wait for a response from the master when fetching initial 
   collection data. If no response is received within this time period, the initial
-  synchronization will give up and fail. This option is also relevant for 
+  synchronization will give up and fail. This option is also relevant for
   continuous replication in case *autoResync* is set to *true*, as then the
   continuous replication may trigger a full data re-synchronization in case
   the master cannot the log data the slave had asked for.
 
 * HTTP requests sent from the slave to the master during initial synchronization
   will now be retried if they fail with connection problems.
- 
+
 * the initial synchronization now logs its progress so it can be queried using
   the regular replication status check APIs.
 
@@ -226,7 +272,7 @@ have been backported to ArangoDB 2.7 as well):
 
 
 !SECTION Web Admin Interface
-  
+
 The following improvements have been made for the web admin interface:
 
 * the AQL editor now has support for bind parameters. The bind parameter values can
@@ -255,4 +301,3 @@ The startup option `--server.hide-product-header` can be used to make the server
 not send the HTTP response header `"Server: ArangoDB"` in its HTTP responses. This
 can be used to conceal the server make from HTTP clients.
 By default, the option is turned off so the header is still sent as usual.
-

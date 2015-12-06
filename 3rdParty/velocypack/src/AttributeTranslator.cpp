@@ -75,7 +75,7 @@ uint8_t const* AttributeTranslator::translate(std::string const& key) const {
 // translate from string to id
 uint8_t const* AttributeTranslator::translate(char const* key,
                                               ValueLength length) const {
-  auto it = _keyToId.find(std::string(key, length));
+  auto it = _keyToId.find(std::string(key, checkOverflow(length)));
 
   if (it == _keyToId.end()) {
     return nullptr;

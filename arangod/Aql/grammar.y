@@ -890,11 +890,6 @@ expression_or_query:
       $$ = $1;
     }
   | {
-#if 0    
-      if (parser->isModificationQuery()) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
-      }
-#endif      
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query {
@@ -1191,11 +1186,6 @@ reference:
       }
     }
   | T_OPEN {
-#if 0    
-      if (parser->isModificationQuery()) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
-      }
-#endif      
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query T_CLOSE {

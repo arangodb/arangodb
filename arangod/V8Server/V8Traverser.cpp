@@ -777,8 +777,14 @@ Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
     }
   }
   TRI_doc_mptr_copy_t mptr;
-  trx->readSingle(collection, &mptr, v.key);
+  int res = trx->readSingle(collection, &mptr, v.key);
   ++_readDocuments;
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      return new Json(Json::Null);
+    }
+    THROW_ARANGO_EXCEPTION(res);
+  }
   return new Json(TRI_ExpandShapedJson(
     collection->_collection->_collection->getShaper(),
     resolver,
@@ -849,8 +855,22 @@ bool DepthFirstTraverser::vertexMatchesConditions (VertexId const& v, size_t dep
          int res = _trx->readSingle(collection, &mptr, v.key); 
           ++_readDocuments;
           if (res != TRI_ERROR_NO_ERROR) {
-            // Vertex does not exist. Do not try filter
-            return false;
+            if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+              // Vertex does not exist. Do not try filter
+              triagens::basics::Json tmp(triagens::basics::Json::Null);
+              // This needs a different check method now.
+              // Innerloop here
+              for (auto const& exp2 : it->second) {
+                if (! exp2->isEdgeAccess) {
+                  if (! exp2->matchesCheck(tmp.json())) {
+                    ++_filteredPaths;
+                    return false;
+                  }
+                }
+              }
+              return true;
+            }
+            THROW_ARANGO_EXCEPTION(res);
           }
           docCol = collection->_collection->_collection;
         }

@@ -2716,8 +2716,6 @@ function AQL_IS_DATESTRING (value) {
     return false;
   }
 
-  // argument is a string
-
   // append zulu time specifier if no other present
   if (! value.match(/([zZ]|[+\-]\d+(:\d+)?)$/) ||
       (value.match(/-\d+(:\d+)?$/) && ! value.match(/[tT ]/))) {

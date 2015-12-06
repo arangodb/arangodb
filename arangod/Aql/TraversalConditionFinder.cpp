@@ -52,17 +52,14 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
 
   node->findVariableAccess(currentPath, paths, var);
 
-  for (auto onePath : paths) {
+  for (auto const& onePath : paths) {
     size_t len = onePath.size();
     bool isEdgeAccess = false;
-    bool isVertexAccess = false;
 
     if (onePath[len - 2]->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       isEdgeAccess   = strcmp(onePath[len - 2]->getStringValue(),    "edges") == 0;
-      isVertexAccess = strcmp(onePath[len - 2]->getStringValue(), "vertices") == 0;
 
-      if (!isEdgeAccess && ! isVertexAccess) {
-
+      if (!isEdgeAccess && strcmp(onePath[len - 2]->getStringValue(), "vertices") != 0) {
         /* We can't catch all cases in which this error would occur, so we don't throw here.
            std::string message("TRAVERSAL: path only knows 'edges' and 'vertices', not ");
            message += onePath[len - 2]->getStringValue();

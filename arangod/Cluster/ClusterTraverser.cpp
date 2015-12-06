@@ -191,6 +191,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     }
 
     std::map<std::string, std::string> headers;
+    _traverser->_readDocuments += verticesToFetch.size();
     res = getFilteredDocumentsOnCoordinator(_traverser->_dbname,
                                             expVertices,
                                             headers,
@@ -199,7 +200,12 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    _traverser->_readDocuments += verticesToFetch.size();
+    // By convention verticesToFetch now contains all _ids of vertices that
+    // could not be found.
+    // Store them as NULL
+    for (auto const& it : verticesToFetch) {
+      _traverser->_vertices.emplace(it, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
+    }
     std::string next = stack.top();
     stack.pop();
     last = &_continueConst;

@@ -1,9 +1,0 @@
-fix TODOs in AqlValue.cpp
-fix #if 0 in grammar.y
-prevent subquery and other optimizations for data-modification queries/subqueries
-complete testing
-write tests for read-access after modification (via functions, via collection usage etc.)
-test with new traversal node
-run cluster tests
-run Valgrind tests
-

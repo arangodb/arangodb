@@ -30,6 +30,7 @@
 #include <string>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/velocypack-version-number.h"
 
 namespace arangodb {
 namespace velocypack {

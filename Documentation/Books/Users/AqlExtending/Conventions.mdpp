@@ -44,7 +44,7 @@ effects when executing the function.
 Here is an example that may modify outer scope variables `i` and `name`,
 making the function **not** side effects-free:
 
-``` js
+```js
 function (values) {
   for (i = 0; i < values.length; ++i) {
     name = values[i];
@@ -59,7 +59,7 @@ function (values) {
 The above function can be made free of side effects by using the `var`
 keyword, so the variables become function-local variables:
 
-``` js
+```js
 function (values) {
   for (var i = 0; i < values.length; ++i) {
     var name = values[i];

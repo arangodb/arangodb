@@ -8,6 +8,7 @@
   * [Compiling](Installing/Compiling.md)
   * [Upgrading](Installing/Upgrading.md)
     * [Incompatible changes in 2.8](Upgrading/UpgradingChanges28.md)
+    * [Upgrading to 2.8](Upgrading/Upgrading28.md)
     * [Incompatible changes in 2.7](Upgrading/UpgradingChanges27.md)
     * [Incompatible changes in 2.6](Upgrading/UpgradingChanges26.md)
     * [Upgrading to 2.6](Upgrading/Upgrading26.md)

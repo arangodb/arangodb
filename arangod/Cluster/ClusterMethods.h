@@ -163,6 +163,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a list of filtered documents in a coordinator
 ///        All found documents will be inserted into result.
+///        After execution documentIds will contain all id's of documents
+///        that could not be found.
 ////////////////////////////////////////////////////////////////////////////////
 
     int getFilteredDocumentsOnCoordinator (

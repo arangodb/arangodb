@@ -195,24 +195,24 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
         public:
 
-          SingleServerTraversalPath (
-            const triagens::basics::EnumeratedPath<EdgeInfo, VertexId>& path
-          ) : _path(path) {
+          explicit SingleServerTraversalPath (triagens::basics::EnumeratedPath<EdgeInfo, VertexId> const& path) 
+            : _path(path) {
           }
 
           ~SingleServerTraversalPath () {
           }
 
-          triagens::basics::Json* pathToJson (Transaction*,
-                                              CollectionNameResolver*) override;
+          triagens::basics::Json* pathToJson (triagens::arango::Transaction*,
+                                              triagens::arango::CollectionNameResolver*) override;
 
-          triagens::basics::Json* lastEdgeToJson (Transaction*,
-                                                  CollectionNameResolver*) override;
+          triagens::basics::Json* lastEdgeToJson (triagens::arango::Transaction*,
+                                                  triagens::arango::CollectionNameResolver*) override;
 
-          triagens::basics::Json* lastVertexToJson (Transaction*,
-                                                    CollectionNameResolver*) override;
+          triagens::basics::Json* lastVertexToJson (triagens::arango::Transaction*,
+                                                    triagens::arango::CollectionNameResolver*) override;
 
         private:
 
