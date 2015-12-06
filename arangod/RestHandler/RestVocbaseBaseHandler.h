@@ -31,9 +31,7 @@
 #define ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 #include "Basics/logging.h"
-#include "Basics/json-utilities.h"
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
@@ -373,21 +371,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::shared_ptr<VPackBuilder> parseVelocyPackBody (bool&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_json_t* parseJsonBody ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a string attribute from a JSON array
-///
-/// if the attribute is not there or not a string, this returns 0
-////////////////////////////////////////////////////////////////////////////////
-
-        char const* extractJsonStringValue (TRI_json_t const*,
-                                            char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle, on a cluster this will parse the

@@ -29,7 +29,6 @@
 
 #include "RestVocbaseBaseHandler.h"
 
-#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/string-buffer.h"
@@ -595,44 +594,6 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody (bool&
   return p.steal();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
-  char* errmsg = nullptr;
-  TRI_json_t* json = _request->toJson(&errmsg);
-
-  if (json == nullptr) {
-    if (errmsg == nullptr) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    "cannot parse json object");
-    }
-    else {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    errmsg);
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
-    }
-
-    return nullptr;
-  }
-
-  TRI_ASSERT(errmsg == nullptr);
-
-  if (TRI_HasDuplicateKeyJson(json)) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "cannot parse json object");
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return nullptr;
-  }
-
-  return json;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           HANDLER
 // -----------------------------------------------------------------------------
@@ -640,26 +601,6 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a string attribute from a JSON array
-///
-/// if the attribute is not there or not a string, this returns 0
-////////////////////////////////////////////////////////////////////////////////
-
-char const* RestVocbaseBaseHandler::extractJsonStringValue (TRI_json_t const* json,
-                                                            char const* name) {
-  if (! TRI_IsObjectJson(json)) {
-    return nullptr;
-  }
-
-  TRI_json_t const* value = TRI_LookupObjectJson(json, name);
-  if (! TRI_IsStringJson(value)) {
-    return nullptr;
-  }
-
-  return value->_value._string.data;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle
