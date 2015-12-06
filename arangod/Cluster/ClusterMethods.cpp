@@ -541,6 +541,32 @@ int createDocumentOnCoordinator (
                 string const& dbname,
                 string const& collname,
                 bool waitForSync,
+                VPackSlice const& slice,
+                map<string, string> const& headers,
+                triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                map<string, string>& resultHeaders,
+                string& resultBody) {
+  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  return createDocumentOnCoordinator(dbname,
+                                     collname,
+                                     waitForSync,
+                                     json.get(),
+                                     headers,
+                                     responseCode,
+                                     resultHeaders,
+                                     resultBody);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+int createDocumentOnCoordinator (
+                string const& dbname,
+                string const& collname,
+                bool waitForSync,
                 TRI_json_t* json,
                 map<string, string> const& headers,
                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -1362,6 +1388,31 @@ int getFilteredEdgesOnCoordinator (
   result("stats", stats);
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modify a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+int modifyDocumentOnCoordinator (
+                 string const& dbname,
+                 string const& collname,
+                 string const& key,
+                 TRI_voc_rid_t const rev,
+                 TRI_doc_update_policy_e policy,
+                 bool waitForSync,
+                 bool isPatch,
+                 bool keepNull,   // only counts for isPatch == true
+                 bool mergeObjects,   // only counts for isPatch == true
+                 VPackSlice const& slice,
+                 map<string, string> const& headers,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 map<string, string>& resultHeaders,
+                 string& resultBody) {
+  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  return modifyDocumentOnCoordinator(dbname, collname, key, rev, policy,
+                                     waitForSync, isPatch, keepNull, mergeObjects,
+                                     json.get(), headers, responseCode, resultHeaders, resultBody);
 }
 
 
