@@ -1,5 +1,5 @@
-v2.8.0 (XXXX-XX-XX)
--------------------
+v2.8.0-beta1 (2015-12-06)
+-------------------------
 
 * added AQL function `IS_DATESTRING(value)`
 

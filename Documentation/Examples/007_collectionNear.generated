@@ -1,6 +1,6 @@
 arangosh&gt; db.geo.ensureIndex({ type: <span class="hljs-string">"geo"</span>, fields: [ <span class="hljs-string">"loc"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo/26297177"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo/26293176"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo1"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"loc"</span> 
@@ -22,9 +22,9 @@ arangosh&gt; <span class="hljs-keyword">for</span> (<span class="hljs-keyword">v
 arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-number">0</span>).limit(<span class="hljs-number">2</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/95699801"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"95699801"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"95699801"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/95695800"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"95695800"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"95695800"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -32,9 +32,9 @@ arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-n
     ] 
   }, 
   { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/88425305"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"88425305"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"88425305"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/88421304"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"88421304"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"88421304"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       -<span class="hljs-number">10</span>, 

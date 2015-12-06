@@ -1,12 +1,12 @@
-arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/' GRAPH 'traversalGraph' LET localScopeVar = RAND() &gt; 0.5 FILTER p.edges[0].theTruth != localScopeVar RETURN v._key"</span>, {}, {colors: <span class="hljs-literal">false</span>});
+arangosh&gt; db._explain(<span class="hljs-string">"FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' LET localScopeVar = RAND() &gt; 0.5 FILTER p.edges[0].theTruth != localScopeVar RETURN v._key"</span>, {}, {colors: <span class="hljs-literal">false</span>});
 Query string:
- FOR v,e,p IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span> OUTBOUND <span class="hljs-string">'circles/'</span> GRAPH <span class="hljs-string">'traversalGraph'</span> LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span> FILTER 
- p.edges[<span class="hljs-number">0</span>].theTruth != localScopeVar RETURN v._key
+ FOR v,e,p IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span> OUTBOUND <span class="hljs-string">'circles/A'</span> GRAPH <span class="hljs-string">'traversalGraph'</span> LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span> 
+ FILTER p.edges[<span class="hljs-number">0</span>].theTruth != localScopeVar RETURN v._key
 
 Execution plan:
  Id   NodeType          Est.   Comment
   <span class="hljs-number">1</span>   SingletonNode        <span class="hljs-number">1</span>   * ROOT
-  <span class="hljs-number">2</span>   TraversalNode     <span class="hljs-number">1000</span>     - FOR v  <span class="hljs-comment">/* vertex */</span>  , e  <span class="hljs-comment">/* edge */</span>  , p  <span class="hljs-comment">/* paths */</span>  IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>  <span class="hljs-comment">/* min..maxPathDepth */</span>  OUTBOUND <span class="hljs-string">'circles/'</span>  <span class="hljs-comment">/* Startnode */</span>  GRAPH <span class="hljs-string">'traversalGraph'</span>
+  <span class="hljs-number">2</span>   TraversalNode     <span class="hljs-number">1000</span>     - FOR v  <span class="hljs-comment">/* vertex */</span>  , e  <span class="hljs-comment">/* edge */</span>  , p  <span class="hljs-comment">/* paths */</span>  IN <span class="hljs-number">1.</span>.<span class="hljs-number">3</span>  <span class="hljs-comment">/* min..maxPathDepth */</span>  OUTBOUND <span class="hljs-string">'circles/A'</span>  <span class="hljs-comment">/* Startnode */</span>  GRAPH <span class="hljs-string">'traversalGraph'</span>
   <span class="hljs-number">3</span>   CalculationNode   <span class="hljs-number">1000</span>     - LET localScopeVar = RAND() &gt; <span class="hljs-number">0.5</span>   <span class="hljs-comment">/* simple expression */</span>
   <span class="hljs-number">4</span>   CalculationNode   <span class="hljs-number">1000</span>     - LET #<span class="hljs-number">4</span> = p.<span class="hljs-string">`edges`</span>[<span class="hljs-number">0</span>].<span class="hljs-string">`theTruth`</span> != localScopeVar   <span class="hljs-comment">/* simple expression */</span>
   <span class="hljs-number">5</span>   FilterNode        <span class="hljs-number">1000</span>     - FILTER #<span class="hljs-number">4</span>
