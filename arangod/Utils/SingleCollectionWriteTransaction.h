@@ -144,6 +144,30 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single document within a transaction, using VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        int createDocument (TRI_doc_mptr_copy_t* mptr,
+                            VPackSlice const& slice,
+                            bool forceSync) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+#endif
+
+          TRI_ASSERT(mptr != nullptr);
+
+          return this->create(this->trxCollection(),
+                              mptr,
+                              slice,
+                              nullptr,
+                              forceSync);
+        }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single edge within a transaction, using json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -165,6 +189,30 @@ namespace triagens {
                               data,
                               forceSync);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single edge within a transaction, using VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        int createEdge (TRI_doc_mptr_copy_t* mptr,
+                        VPackSlice const& slice,
+                        bool forceSync,
+                        void const* data) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          if (_numWrites++ > N) {
+            return TRI_ERROR_TRANSACTION_INTERNAL;
+          }
+#endif
+
+          TRI_ASSERT(mptr != nullptr);
+
+          return this->create(this->trxCollection(),
+                              mptr,
+                              slice,
+                              data,
+                              forceSync);
+        }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single document within a transaction, using shaped json

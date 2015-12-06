@@ -34,6 +34,7 @@
 #include "Basics/AssocUnique.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"
@@ -512,6 +513,21 @@ namespace triagens {
 
           return res;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single document, using VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        int create (TRI_transaction_collection_t* trxCollection,
+                    TRI_doc_mptr_copy_t* mptr,
+                    VPackSlice const& slice,
+                    void const* data,
+                    bool forceSync) {
+          std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+          return create(trxCollection, mptr, json.get(), data, forceSync);
+        }
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update a single document, using JSON
