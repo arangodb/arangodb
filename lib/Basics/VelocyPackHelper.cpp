@@ -62,15 +62,29 @@ bool VelocyPackHelper::getBooleanValue (VPackSlice const& slice,
 std::string VelocyPackHelper::checkAndGetStringValue (VPackSlice const& slice,
                                                       char const* name) {
   TRI_ASSERT(slice.isObject());
-  VPackSlice sub = slice.get(name);
+  VPackSlice const sub = slice.get(name);
   if (! sub.isString()) {
     std::string msg = "The attribute '" + std::string(name)  
       + "' was not found or is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
-  VPackValueLength len;
-  char const* res = sub.getString(len);
-  return std::string(res, len);
+  return sub.copyString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or the default value if it does not exist
+/// or it is not a string 
+////////////////////////////////////////////////////////////////////////////////
+
+std::string VelocyPackHelper::getStringValue (VPackSlice const& slice,
+                                             char const* name,
+                                             std::string const& defaultValue) {
+  TRI_ASSERT(slice.isObject());
+  VPackSlice const sub = slice.get(name);
+  if (! sub.isString()) {
+    return defaultValue;
+  }
+  return sub.copyString();
 }
 
 TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
