@@ -29,6 +29,7 @@
 
 #include "RestImportHandler.h"
 
+#include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"

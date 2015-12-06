@@ -29,9 +29,10 @@
 
 #include "RestDocumentHandler.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/json-utilities.h"
 #include "Basics/string-buffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
