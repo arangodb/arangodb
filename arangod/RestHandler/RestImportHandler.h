@@ -181,14 +181,16 @@ namespace triagens {
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<VPackBuilder> parseVelocyPackLine (std::string const&);
+        std::shared_ptr<VPackBuilder> parseVelocyPackLine (std::string const&,
+                                                           bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
         std::shared_ptr<VPackBuilder> parseVelocyPackLine (char const*,
-                                                           char const*);
+                                                           char const*,
+                                                           bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a VPackBuilder object from a key and value list

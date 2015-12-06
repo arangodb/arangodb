@@ -211,20 +211,13 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
                                              size_t i) {
 
   if (! slice.isObject()) {
-    std::string errorMsg;
-
-    if (! slice.isNone()) {
-      string part = VPackDumper::toString(slice);
-      if (part.size() > 255) {
-        // UTF-8 chars in string will be escaped so we can truncate it at any point
-        part = part.substr(0, 255) + "...";
-      }
+    string part = VPackDumper::toString(slice);
+    if (part.size() > 255) {
+      // UTF-8 chars in string will be escaped so we can truncate it at any point
+      part = part.substr(0, 255) + "...";
+    }
     
-      errorMsg = positionise(i) + "invalid JSON type (expecting object), offending document: " + part;
-    }
-    else {
-      errorMsg = buildParseError(i, lineStart);
-    }
+    std::string errorMsg = positionise(i) + "invalid JSON type (expecting object), offending document: " + part;
 
     registerError(result, errorMsg);
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -296,7 +289,6 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
   if (res == TRI_ERROR_NO_ERROR) {
     ++result._numCreated;
   }
-
 
   // special behavior in case of unique constraint violation . . .
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
@@ -850,6 +842,8 @@ bool RestImportHandler::createFromJson (string const& type) {
 
       std::shared_ptr<VPackBuilder> builder;
 
+      bool success = false;
+
       if (pos == ptr) {
         // line starting with \n, i.e. empty line
         ptr = pos + 1;
@@ -861,7 +855,7 @@ bool RestImportHandler::createFromJson (string const& type) {
         *(const_cast<char*>(pos)) = '\0';
         TRI_ASSERT(ptr != nullptr);
         oldPtr = ptr;
-        builder = parseVelocyPackLine(ptr, pos);
+        builder = parseVelocyPackLine(ptr, pos, success);
         ptr = pos + 1;
       }
       else {
@@ -869,8 +863,19 @@ bool RestImportHandler::createFromJson (string const& type) {
         TRI_ASSERT(pos == nullptr);
         TRI_ASSERT(ptr != nullptr);
         oldPtr = ptr;
-        builder = parseVelocyPackLine(ptr);
+        builder = parseVelocyPackLine(ptr, success);
         ptr = end;
+      }
+
+      if (! success) {
+        std::string errorMsg = buildParseError(i, oldPtr);
+        registerError(result, errorMsg);
+        if (complete) {
+          // only perform a full import: abort
+          break;
+        }
+        // Do not try to store illegal document
+        continue;
       }
 
       res = handleSingleDocument(trx, result, oldPtr, builder->slice(), isEdgeCollection, waitForSync, i);
@@ -890,7 +895,17 @@ bool RestImportHandler::createFromJson (string const& type) {
     // the entire request body is one JSON document
     // TODO Workaround for cast char* to uint8_t* 
     std::string body(_request->body(), _request->bodySize());
-    std::shared_ptr<VPackBuilder> parsedDocuments = VPackParser::fromJson(body);
+    std::shared_ptr<VPackBuilder> parsedDocuments;
+    try {
+      parsedDocuments = VPackParser::fromJson(body);
+    }
+    catch (VPackException const& e) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting a JSON array in the request");
+      return false;
+    }
+
     VPackSlice const documents = parsedDocuments->slice();
 
     if (! documents.isArray()) {
@@ -1283,10 +1298,21 @@ bool RestImportHandler::createFromKeyValueList () {
   }
 
   *(const_cast<char*>(lineEnd)) = '\0';
-  std::shared_ptr<VPackBuilder> parsedKeys = parseVelocyPackLine(lineStart, lineEnd);
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedKeys;
+  try {
+    parsedKeys = parseVelocyPackLine(lineStart, lineEnd, success);
+  }
+  catch (...) {
+    // This throws if the body is not parseable
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON string array found in first line");
+    return false;
+  }
   VPackSlice const keys = parsedKeys->slice();
 
-  if (! checkKeys(keys)) {
+  if (! success || ! checkKeys(keys)) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
@@ -1357,13 +1383,18 @@ bool RestImportHandler::createFromKeyValueList () {
       continue;
     }
 
-    try {
-      std::shared_ptr<VPackBuilder> parsedValues = parseVelocyPackLine(lineStart, lineEnd);
+    bool success;
+    std::shared_ptr<VPackBuilder> parsedValues = parseVelocyPackLine(lineStart, lineEnd, success);
+
+    // build the json object from the array
+    string errorMsg;
+    if (! success) {
+      errorMsg = buildParseError(i, lineStart);
+      registerError(result, errorMsg);
+      res = TRI_ERROR_INTERNAL;
+    }
+    else {
       VPackSlice const values = parsedValues->slice();
-
-      // build the json object from the array
-      string errorMsg;
-
       try {
         std::shared_ptr<VPackBuilder> objectBuilder = createVelocyPackObject(keys, values, errorMsg, i);
         res = handleSingleDocument(trx, result, lineStart, objectBuilder->slice(), isEdgeCollection, waitForSync, i);
@@ -1373,19 +1404,15 @@ bool RestImportHandler::createFromKeyValueList () {
         res = TRI_ERROR_INTERNAL;
         registerError(result, errorMsg);
       }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        if (complete) {
-          // only perform a full import: abort
-          break;
-        }
-
-        res = TRI_ERROR_NO_ERROR;
-      }
     }
-    catch (...) {
-      string errorMsg = buildParseError(i, lineStart);
-      registerError(result, errorMsg);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (complete) {
+        // only perform a full import: abort
+        break;
+      }
+
+      res = TRI_ERROR_NO_ERROR;
     }
   }
 
@@ -1450,8 +1477,17 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine (string const& line) {
-  return VPackParser::fromJson(line);
+std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine (string const& line,
+                                                                      bool& success) {
+  try {
+    success = true;
+    return VPackParser::fromJson(line);
+  }
+  catch (VPackException const& e) {
+    success = false;
+    VPackParser p;
+    return p.steal();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1459,9 +1495,18 @@ std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine (string con
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine (char const* start,
-                                                                      char const* end) {
-  std::string tmp(start, end);
-  return VPackParser::fromJson(tmp);
+                                                                      char const* end,
+                                                                      bool& success) {
+  try {
+    std::string tmp(start, end);
+    return parseVelocyPackLine(tmp, success);
+  }
+  catch (std::exception const&) {
+    // The line is invalid and could not be transformed into a string
+    success = false;
+    VPackParser p;
+    return p.steal();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1501,6 +1546,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject (VPackSl
         result->add(tmp, value);
       }
     }
+    result->close();
 
     return result;
   }
