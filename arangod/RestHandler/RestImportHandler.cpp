@@ -263,9 +263,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 
     if (res1 == TRI_ERROR_NO_ERROR && 
         res2 == TRI_ERROR_NO_ERROR) {
-      // TODO only temporary
-      std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
-      res = trx.createEdge(&document, json.get(), waitForSync, &edge);
+      res = trx.createEdge(&document, slice, waitForSync, &edge);
     }
     else {
       res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
@@ -280,10 +278,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
   }
   else {
     // do not acquire an extra lock
-      
-    // TODO only temporary
-    std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
-    res = trx.createDocument(&document, json.get(), waitForSync);
+    res = trx.createDocument(&document, slice, waitForSync);
   }
    
         
@@ -333,9 +328,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
       }
       else if (_onDuplicateAction == DUPLICATE_REPLACE) {
         // replace
-        // TODO only temporary
-        std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
-        res = trx.updateDocument(keyString, &document, json.get(), TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
+        res = trx.updateDocument(keyString, &document, slice, TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
           
         if (res == TRI_ERROR_NO_ERROR) {
           ++result._numUpdated;
