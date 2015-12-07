@@ -16,8 +16,17 @@ fi
 echo Number of Coordinators: $NRCOORDINATORS
 
 if [ ! -z "$3" ] ; then
-    COORDINATORCONSOLE=1
-    echo Starting one coordinator in xterm with --console
+    if [ "$3" == "C" ] ; then
+        COORDINATORCONSOLE=1
+        echo Starting one coordinator in xterm with --console
+    elif [ "$3" == "D" ] ; then
+        CLUSTERDEBUGGER=1
+        echo Running cluster in debugger.
+    fi
+fi
+
+if [ -z "$XTERMOPTIONS" ] ; then
+    XTERMOPTIONS="-fn 10x20 -bg white -fg black -geometry 80x40"
 fi
 
 rm -rf cluster
@@ -53,7 +62,7 @@ startTerminal() {
     PORT=$2
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
-    xterm -e bin/arangod --database.directory cluster/data$PORT \
+    xterm $XTERMOPTIONS -e bin/arangod --database.directory cluster/data$PORT \
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
@@ -64,18 +73,45 @@ startTerminal() {
                 --console &
 }
 
+startDebugger() {
+    TYPE=$1
+    PORT=$2
+    mkdir cluster/data$PORT
+    echo Starting $TYPE on port $PORT with debugger
+    bin/arangod --database.directory cluster/data$PORT \
+                --cluster.agency-endpoint tcp://127.0.0.1:4001 \
+                --cluster.my-address tcp://127.0.0.1:$PORT \
+                --server.endpoint tcp://127.0.0.1:$PORT \
+                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+                --log.file cluster/$PORT.log \
+                --server.disable-statistics true \
+                --server.foxx-queues false &
+    xterm $XTERMOPTIONS -title "$TYPE $PORT" -e gdb bin/arangod -p $! &
+}
+
 PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
 for p in `seq 8629 $PORTTOPDB` ; do
-    start dbserver $p
+    if [ "$CLUSTERDEBUGGER" == "1" ] ; then
+        startDebugger dbserver $p
+    else
+        start dbserver $p
+    fi
 done
 PORTTOPCO=`expr 8530 + $NRCOORDINATORS - 1`
 for p in `seq 8530 $PORTTOPCO` ; do
-    if [ $p == "8530" -a ! -z "$COORDINATORCONSOLE" ] ; then
+    if [ "$CLUSTERDEBUGGER" == "1" ] ; then
+        startDebugger coordinator $p
+    elif [ $p == "8530" -a ! -z "$COORDINATORCONSOLE" ] ; then
         startTerminal coordinator $p
     else
         start coordinator $p
     fi
 done
+
+if [ "$CLUSTERDEBUGGER" == "1" ] ; then
+    echo Waiting for you to setup debugger windows, hit RETURN to continue!
+    read
+fi
 
 echo Waiting for cluster to come up...
 
