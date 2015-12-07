@@ -2228,10 +2228,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     {
       TRI_document_collection_t* doc = nullptr;
       std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(doc));
-
-      // TODO primaryIndex to VelocyPack! 
-      // auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-      // TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
+      std::shared_ptr<VPackBuilder> idxVPack = primaryIndex->toVelocyPack(false);
+      toMerge.add(idxVPack->slice());
     }
 
     VPackSlice const type = parameters.get("type");
@@ -2247,11 +2245,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     if (collectionType == TRI_COL_TYPE_EDGE) {
       // create a dummy edge index
       std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(new_id_tick, nullptr));
-
-      // TODO edgeIndex to VelocyPack
-      // auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-
-      // TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
+      std::shared_ptr<VPackBuilder> idxVPack = edgeIndex->toVelocyPack(false);
+      toMerge.add(idxVPack->slice());
     }
 
     toMerge.close(); // indexes
