@@ -1095,6 +1095,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
        (Value(p.second))
     .close();
   }
+  velocy.close();
 
   velocy("indexes", Value(ValueType::Array));
 

@@ -275,6 +275,7 @@ namespace triagens {
           if (res.get() != nullptr) {
             return res;
           }
+          res.reset(new ShardMap());
           TRI_json_t* const node 
               = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
           if (node != nullptr && TRI_IsObjectJson(node)) {
