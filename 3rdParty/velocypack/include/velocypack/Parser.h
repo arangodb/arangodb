@@ -123,9 +123,6 @@ class Parser {
     _b.reset(&builder, BuilderNonDeleter());
   }
 
-  // FIXME: withdraw this:
-  Builder& builder() { return *_b; }
-
   Builder const& builder() const { return *_b; }
 
   static std::shared_ptr<Builder> fromJson(

@@ -219,7 +219,7 @@ Slice Slice::fromJson(SliceScope& scope, std::string const& json,
   Parser parser(options);
   parser.parse(json);
 
-  Builder& b = parser.builder();  // don't copy Builder contents here
+  Builder const& b = parser.builder();  // don't copy Builder contents here
   return scope.add(b.start(), b.size(), options);
 }
 

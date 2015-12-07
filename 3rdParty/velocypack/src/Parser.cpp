@@ -49,7 +49,20 @@ ValueLength Parser::parseInternal(bool multi) {
 
   ValueLength nr = 0;
   do {
-    parseJson();
+    bool haveReported = false;
+    if (!_b->_stack.empty()) {
+      _b->reportAdd(_b->_stack.back());
+      haveReported = true;
+    }
+    try {
+      parseJson();
+    }
+    catch (...) {
+      if (haveReported) {
+        _b->cleanupAdd();
+      }
+      throw;
+    }
     nr++;
     while (_pos < _size && isWhiteSpace(_start[_pos])) {
       ++_pos;
