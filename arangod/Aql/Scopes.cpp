@@ -88,6 +88,8 @@ std::string Scope::typeName (ScopeType type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scope::addVariable (Variable* variable) {
+  // intentionally like this... must always overwrite the value
+  // if the key already exists
   _variables[variable->name] = variable;
 }
 
