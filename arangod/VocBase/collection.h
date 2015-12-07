@@ -35,6 +35,9 @@
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Data is stored in datafiles. A set of datafiles forms a collection. A
 /// datafile can be read-only and sealed or read-write. All datafiles of a
@@ -236,6 +239,17 @@ void TRI_InitCollectionInfo (TRI_vocbase_t*,
                              TRI_col_type_e,
                              TRI_voc_size_t,
                              struct TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes a collection info block
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitCollectionInfo (TRI_vocbase_t*,
+                             TRI_col_info_t*,
+                             char const*,
+                             TRI_col_type_e,
+                             TRI_voc_size_t,
+                             VPackSlice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fill a collection info struct from the JSON passed

@@ -39,6 +39,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/memory-map.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -878,6 +879,26 @@ static void FillParametersFromJson (TRI_col_info_t* parameters,
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes a collection parameters struct
+/// (options are added to the TRI_col_info_t* and have to be freed by the
+/// TRI_FreeCollectionInfoOptions() function)
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
+                             TRI_col_info_t* parameters,
+                             char const* name,
+                             TRI_col_type_e type,
+                             TRI_voc_size_t maximalSize,
+                             VPackSlice const& keyOptions) {
+  std::unique_ptr<TRI_json_t> json;
+  if (keyOptions.isObject()) {
+    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(keyOptions));
+  }
+  TRI_InitCollectionInfo(vocbase, parameters, name, type, maximalSize, json.get());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a collection parameters struct
