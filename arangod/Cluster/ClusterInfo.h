@@ -895,6 +895,17 @@ namespace triagens {
         int createCollectionCoordinator (std::string const& databaseName,
                                          std::string const& collectionID,
                                          uint64_t numberOfShards,
+                                         VPackSlice const& slice,
+                                         std::string& errorMsg,
+                                         double timeout);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create collection in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+        int createCollectionCoordinator (std::string const& databaseName,
+                                         std::string const& collectionID,
+                                         uint64_t numberOfShards,
                                          TRI_json_t const* json,
                                          std::string& errorMsg,
                                          double timeout);
@@ -923,6 +934,19 @@ namespace triagens {
         int setCollectionStatusCoordinator (std::string const& databaseName,
                                             std::string const& collectionID,
                                             TRI_vocbase_col_status_e status);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure an index in coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+        int ensureIndexCoordinator (std::string const& databaseName,
+                                    std::string const& collectionID,
+                                    VPackSlice const& slice,
+                                    bool create,
+                                    bool (*compare)(TRI_json_t const*, TRI_json_t const*),
+                                    TRI_json_t*& resultJson,
+                                    std::string& errorMsg,
+                                    double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure an index in coordinator.
