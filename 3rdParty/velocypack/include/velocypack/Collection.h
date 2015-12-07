@@ -170,6 +170,10 @@ class Collection {
       std::function<bool(Slice const&, Slice const&)> const& func) {
     visitRecursive(*slice, order, func);
   }
+
+  static Builder sort(
+      Slice const& array,
+      std::function<bool (Slice const&, Slice const&)> lessthan);
 };
 
 struct IsEqualPredicate {

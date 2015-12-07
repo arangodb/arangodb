@@ -1446,7 +1446,7 @@ function rubyTests (options, ssl) {
           instanceInfo.exitStatus = "server is gone.";
           continue;
         }
-        print("\nTrying ",te,"...");
+        print("\n"+ Date() + " rspec Trying ",te,"...");
 
         result[te] = executeAndWait(command, args);
         if (result[te].status === false) {
