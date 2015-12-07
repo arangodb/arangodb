@@ -566,7 +566,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
 
   var shutdownWait = 20;
   if (cmd.valgrind !== '') {
-    shutdownWait *= 10000;
+    shutdownWait *= 600; // should be enough, even with Valgrind
   }
   console.info("Waiting up to " + shutdownWait + " seconds for servers to shutdown gracefully...");
   var j = 0; 
