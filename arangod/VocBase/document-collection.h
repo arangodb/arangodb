@@ -791,6 +791,15 @@ void TRI_UpdateRevisionDocumentCollection (TRI_document_collection_t*,
 bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index, based on a VelocyPack description
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FromVelocyPackIndexDocumentCollection (triagens::arango::Transaction*,
+                                               TRI_document_collection_t*,
+                                               VPackSlice const&,
+                                               triagens::arango::Index**);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a JSON description
 ////////////////////////////////////////////////////////////////////////////////
 

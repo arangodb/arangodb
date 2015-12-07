@@ -2663,6 +2663,18 @@ size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::Transaction* tr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index, based on a VelocyPack description
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FromVelocyPackIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                               TRI_document_collection_t* document,
+                                               VPackSlice const& slice,
+                                               triagens::arango::Index** idx) {
+  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  return TRI_FromJsonIndexDocumentCollection(trx, document, json.get(), idx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a JSON description
 ////////////////////////////////////////////////////////////////////////////////
 
