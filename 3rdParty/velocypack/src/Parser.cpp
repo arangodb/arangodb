@@ -38,8 +38,6 @@ using namespace arangodb::velocypack;
 // build the result (build phase).
 
 ValueLength Parser::parseInternal(bool multi) {
-  _b->options = options;  // copy over options
-
   // skip over optional BOM
   if (_size >= 3 && _start[0] == 0xef && _start[1] == 0xbb &&
       _start[2] == 0xbf) {
