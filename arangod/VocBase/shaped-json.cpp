@@ -35,6 +35,7 @@
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/Legends.h"
 #include "VocBase/VocShaper.h"
 
@@ -2080,6 +2081,17 @@ void TRI_FreeShapedJson (TRI_memory_zone_t* zone,
 void TRI_SortShapeValues (TRI_shape_value_t* values,
                           size_t n) {
   qsort(values, n, sizeof(TRI_shape_value_t), SortShapeValuesFunc);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a VelocyPack object into a shaped json object
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_shaped_json_t* TRI_ShapedJsonVelocyPack (VocShaper* shaper,
+                                             VPackSlice const& slice,
+                                             bool create) {
+  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  return TRI_ShapedJsonJson(shaper, json.get(), create);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
