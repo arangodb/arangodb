@@ -576,8 +576,10 @@ bool RestVocbaseBaseHandler::extractWaitForSync () const {
 
 std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody (bool& success) {
   try {
+    VPackOptions options;
+    options.checkAttributeUniqueness = true;
     success = true;
-    return _request->toVelocyPack();
+    return _request->toVelocyPack(options);
   }
   catch (std::bad_alloc const& e) {
     generateOOMError();
