@@ -20,8 +20,6 @@ import (
 	"strings"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
-	"github.com/coreos/etcd/client"
 )
 
 func NewMemberCommand() cli.Command {
@@ -29,59 +27,28 @@ func NewMemberCommand() cli.Command {
 		Name:  "member",
 		Usage: "member add, remove and list subcommands",
 		Subcommands: []cli.Command{
-			cli.Command{
+			{
 				Name:   "list",
 				Usage:  "enumerate existing cluster members",
 				Action: actionMemberList,
 			},
-			cli.Command{
+			{
 				Name:   "add",
 				Usage:  "add a new member to the etcd cluster",
 				Action: actionMemberAdd,
 			},
-			cli.Command{
+			{
 				Name:   "remove",
 				Usage:  "remove an existing member from the etcd cluster",
 				Action: actionMemberRemove,
 			},
+			{
+				Name:   "update",
+				Usage:  "update an existing member in the etcd cluster",
+				Action: actionMemberUpdate,
+			},
 		},
 	}
-}
-
-func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
-	eps, err := getEndpoints(c)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-
-	tr, err := getTransport(c)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-
-	hc, err := client.NewHTTPClient(tr, eps)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
-
-	if !c.GlobalBool("no-sync") {
-		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-		err := hc.Sync(ctx)
-		cancel()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err.Error())
-			os.Exit(1)
-		}
-	}
-
-	if c.GlobalBool("debug") {
-		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
-	}
-
-	return client.NewMembersAPI(hc)
 }
 
 func actionMemberList(c *cli.Context) {
@@ -90,16 +57,20 @@ func actionMemberList(c *cli.Context) {
 		os.Exit(1)
 	}
 	mAPI := mustNewMembersAPI(c)
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	members, err := mAPI.List(ctx)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
 	for _, m := range members {
-		fmt.Printf("%s: name=%s peerURLs=%s clientURLs=%s\n", m.ID, m.Name, strings.Join(m.PeerURLs, ","), strings.Join(m.ClientURLs, ","))
+		if len(m.Name) == 0 {
+			fmt.Printf("%s[unstarted]: peerURLs=%s\n", m.ID, strings.Join(m.PeerURLs, ","))
+		} else {
+			fmt.Printf("%s: name=%s peerURLs=%s clientURLs=%s\n", m.ID, m.Name, strings.Join(m.PeerURLs, ","), strings.Join(m.ClientURLs, ","))
+		}
 	}
 }
 
@@ -113,9 +84,10 @@ func actionMemberAdd(c *cli.Context) {
 	mAPI := mustNewMembersAPI(c)
 
 	url := args[1]
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
+
 	m, err := mAPI.Add(ctx, url)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
@@ -125,19 +97,17 @@ func actionMemberAdd(c *cli.Context) {
 	newName := args[0]
 	fmt.Printf("Added member named %s with ID %s to cluster\n", newName, newID)
 
-	ctx, cancel = context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	members, err := mAPI.List(ctx)
-	cancel()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 
 	conf := []string{}
-	for _, m := range members {
-		for _, u := range m.PeerURLs {
-			n := m.Name
-			if m.ID == newID {
+	for _, memb := range members {
+		for _, u := range memb.PeerURLs {
+			n := memb.Name
+			if memb.ID == newID {
 				n = newName
 			}
 			conf = append(conf, fmt.Sprintf("%s=%s", n, u))
@@ -159,9 +129,11 @@ func actionMemberRemove(c *cli.Context) {
 	removalID := args[0]
 
 	mAPI := mustNewMembersAPI(c)
+
+	ctx, cancel := contextWithTotalTimeout(c)
+	defer cancel()
 	// Get the list of members.
-	listctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
-	members, err := mAPI.List(listctx)
+	members, err := mAPI.List(ctx)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error while verifying ID against known members:", err.Error())
 		os.Exit(1)
@@ -184,13 +156,33 @@ func actionMemberRemove(c *cli.Context) {
 	}
 
 	// Actually attempt to remove the member.
-	ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
 	err = mAPI.Remove(ctx, removalID)
-	cancel()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Recieved an error trying to remove member %s: %s", removalID, err.Error())
 		os.Exit(1)
 	}
 
 	fmt.Printf("Removed member %s from cluster\n", removalID)
+}
+
+func actionMemberUpdate(c *cli.Context) {
+	args := c.Args()
+	if len(args) != 2 {
+		fmt.Fprintln(os.Stderr, "Provide an ID and a list of comma separated peerURL (0xabcd http://example.com,http://example1.com)")
+		os.Exit(1)
+	}
+
+	mAPI := mustNewMembersAPI(c)
+
+	mid := args[0]
+	urls := args[1]
+	ctx, cancel := contextWithTotalTimeout(c)
+	err := mAPI.Update(ctx, mid, strings.Split(urls, ","))
+	cancel()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	fmt.Printf("Updated member with ID %s in cluster\n", mid)
 }

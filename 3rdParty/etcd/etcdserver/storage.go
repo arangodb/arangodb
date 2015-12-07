@@ -15,14 +15,16 @@
 package etcdserver
 
 import (
-	"log"
+	"io"
+	"os"
+	"path"
 
 	pb "github.com/coreos/etcd/etcdserver/etcdserverpb"
-	"github.com/coreos/etcd/migrate"
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap"
+	"github.com/coreos/etcd/version"
 	"github.com/coreos/etcd/wal"
 	"github.com/coreos/etcd/wal/walpb"
 )
@@ -33,11 +35,6 @@ type Storage interface {
 	Save(st raftpb.HardState, ents []raftpb.Entry) error
 	// SaveSnap function saves snapshot to the underlying stable storage.
 	SaveSnap(snap raftpb.Snapshot) error
-
-	// TODO: WAL should be able to control cut itself. After implement self-controlled cut,
-	// remove it in this interface.
-	// Cut cuts out a new wal file for saving new state and entries.
-	Cut() error
 	// Close closes the Storage and performs finalization.
 	Close() error
 }
@@ -54,15 +51,15 @@ func NewStorage(w *wal.WAL, s *snap.Snapshotter) Storage {
 // SaveSnap saves the snapshot to disk and release the locked
 // wal files since they will not be used.
 func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
-	err := st.Snapshotter.SaveSnap(snap)
-	if err != nil {
-		return err
-	}
 	walsnap := walpb.Snapshot{
 		Index: snap.Metadata.Index,
 		Term:  snap.Metadata.Term,
 	}
-	err = st.WAL.SaveSnapshot(walsnap)
+	err := st.WAL.SaveSnapshot(walsnap)
+	if err != nil {
+		return err
+	}
+	err = st.Snapshotter.SaveSnap(snap)
 	if err != nil {
 		return err
 	}
@@ -74,13 +71,31 @@ func (st *storage) SaveSnap(snap raftpb.Snapshot) error {
 }
 
 func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, st raftpb.HardState, ents []raftpb.Entry) {
-	var err error
-	if w, err = wal.Open(waldir, snap); err != nil {
-		log.Fatalf("etcdserver: open wal error: %v", err)
-	}
-	var wmetadata []byte
-	if wmetadata, st, ents, err = w.ReadAll(); err != nil {
-		log.Fatalf("etcdserver: read wal error: %v", err)
+	var (
+		err       error
+		wmetadata []byte
+	)
+
+	repaired := false
+	for {
+		if w, err = wal.Open(waldir, snap); err != nil {
+			plog.Fatalf("open wal error: %v", err)
+		}
+		if wmetadata, st, ents, err = w.ReadAll(); err != nil {
+			w.Close()
+			// we can only repair ErrUnexpectedEOF and we never repair twice.
+			if repaired || err != io.ErrUnexpectedEOF {
+				plog.Fatalf("read wal error (%v) and cannot be repaired", err)
+			}
+			if !wal.Repair(waldir) {
+				plog.Fatalf("WAL error (%v) cannot be repaired", err)
+			} else {
+				plog.Infof("repaired WAL error (%v)", err)
+				repaired = true
+			}
+			continue
+		}
+		break
 	}
 	var metadata pb.Metadata
 	pbutil.MustUnmarshal(&metadata, wmetadata)
@@ -91,12 +106,36 @@ func readWAL(waldir string, snap walpb.Snapshot) (w *wal.WAL, id, cid types.ID, 
 
 // upgradeWAL converts an older version of the etcdServer data to the newest version.
 // It must ensure that, after upgrading, the most recent version is present.
-func upgradeWAL(cfg *ServerConfig, ver wal.WalVersion) error {
-	if ver == wal.WALv0_4 {
-		log.Print("etcdserver: converting v0.4 log to v2.0")
-		err := migrate.Migrate4To2(cfg.DataDir, cfg.Name)
+func upgradeDataDir(baseDataDir string, name string, ver version.DataDirVersion) error {
+	switch ver {
+	case version.DataDir2_0:
+		err := makeMemberDir(baseDataDir)
 		if err != nil {
-			log.Fatalf("etcdserver: failed migrating data-dir: %v", err)
+			return err
+		}
+		fallthrough
+	case version.DataDir2_0_1:
+		fallthrough
+	default:
+	}
+	return nil
+}
+
+func makeMemberDir(dir string) error {
+	membdir := path.Join(dir, "member")
+	_, err := os.Stat(membdir)
+	switch {
+	case err == nil:
+		return nil
+	case !os.IsNotExist(err):
+		return err
+	}
+	if err := os.MkdirAll(membdir, 0700); err != nil {
+		return err
+	}
+	names := []string{"snap", "wal"}
+	for _, name := range names {
+		if err := os.Rename(path.Join(dir, name), path.Join(membdir, name)); err != nil {
 			return err
 		}
 	}

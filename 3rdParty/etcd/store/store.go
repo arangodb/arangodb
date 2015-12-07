@@ -56,6 +56,9 @@ type Store interface {
 	Save() ([]byte, error)
 	Recovery(state []byte) error
 
+	Clone() Store
+	SaveNoCopy() ([]byte, error)
+
 	JsonStats() []byte
 	DeleteExpiredKeys(cutoff time.Time)
 }
@@ -82,9 +85,9 @@ func New(namespaces ...string) Store {
 func newStore(namespaces ...string) *store {
 	s := new(store)
 	s.CurrentVersion = defaultVersion
-	s.Root = newDir(s, "/", s.CurrentIndex, nil, "", Permanent)
+	s.Root = newDir(s, "/", s.CurrentIndex, nil, Permanent)
 	for _, namespace := range namespaces {
-		s.Root.Add(newDir(s, namespace, s.CurrentIndex, s.Root, "", Permanent))
+		s.Root.Add(newDir(s, namespace, s.CurrentIndex, s.Root, Permanent))
 	}
 	s.Stats = newStats()
 	s.WatcherHub = newWatchHub(1000)
@@ -118,6 +121,11 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 
 	if err != nil {
 		s.Stats.Inc(GetFail)
+		if recursive {
+			reportReadFailure(GetRecursive)
+		} else {
+			reportReadFailure(Get)
+		}
 		return nil, err
 	}
 
@@ -126,6 +134,11 @@ func (s *store) Get(nodePath string, recursive, sorted bool) (*Event, error) {
 	e.Node.loadInternalNode(n, recursive, sorted, s.clock)
 
 	s.Stats.Inc(GetSuccess)
+	if recursive {
+		reportReadSuccess(GetRecursive)
+	} else {
+		reportReadSuccess(Get)
+	}
 
 	return e, nil
 }
@@ -142,8 +155,10 @@ func (s *store) Create(nodePath string, dir bool, value string, unique bool, exp
 		e.EtcdIndex = s.CurrentIndex
 		s.WatcherHub.notify(e)
 		s.Stats.Inc(CreateSuccess)
+		reportWriteSuccess(Create)
 	} else {
 		s.Stats.Inc(CreateFail)
+		reportWriteFailure(Create)
 	}
 
 	return e, err
@@ -159,8 +174,10 @@ func (s *store) Set(nodePath string, dir bool, value string, expireTime time.Tim
 	defer func() {
 		if err == nil {
 			s.Stats.Inc(SetSuccess)
+			reportWriteSuccess(Set)
 		} else {
 			s.Stats.Inc(SetFail)
+			reportWriteFailure(Set)
 		}
 	}()
 
@@ -218,11 +235,13 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	if err != nil {
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndSwap)
 		return nil, err
 	}
 
 	if n.IsDir() { // can only compare and swap file
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndSwap)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
 	}
 
@@ -231,6 +250,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 	if ok, which := n.Compare(prevValue, prevIndex); !ok {
 		cause := getCompareFailCause(n, which, prevValue, prevIndex)
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndSwap)
 		return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, s.CurrentIndex)
 	}
 
@@ -253,6 +273,7 @@ func (s *store) CompareAndSwap(nodePath string, prevValue string, prevIndex uint
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndSwapSuccess)
+	reportWriteSuccess(CompareAndSwap)
 
 	return e, nil
 }
@@ -278,6 +299,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(DeleteFail)
+		reportWriteFailure(Delete)
 		return nil, err
 	}
 
@@ -300,6 +322,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 
 	if err != nil {
 		s.Stats.Inc(DeleteFail)
+		reportWriteFailure(Delete)
 		return nil, err
 	}
 
@@ -309,6 +332,7 @@ func (s *store) Delete(nodePath string, dir, recursive bool) (*Event, error) {
 	s.WatcherHub.notify(e)
 
 	s.Stats.Inc(DeleteSuccess)
+	reportWriteSuccess(Delete)
 
 	return e, nil
 }
@@ -323,11 +347,13 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(CompareAndDeleteFail)
+		reportWriteFailure(CompareAndDelete)
 		return nil, err
 	}
 
 	if n.IsDir() { // can only compare and delete file
 		s.Stats.Inc(CompareAndSwapFail)
+		reportWriteFailure(CompareAndDelete)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, s.CurrentIndex)
 	}
 
@@ -336,6 +362,7 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 	if ok, which := n.Compare(prevValue, prevIndex); !ok {
 		cause := getCompareFailCause(n, which, prevValue, prevIndex)
 		s.Stats.Inc(CompareAndDeleteFail)
+		reportWriteFailure(CompareAndDelete)
 		return nil, etcdErr.NewError(etcdErr.EcodeTestFailed, cause, s.CurrentIndex)
 	}
 
@@ -351,11 +378,14 @@ func (s *store) CompareAndDelete(nodePath string, prevValue string, prevIndex ui
 		s.WatcherHub.notifyWatchers(e, path, true)
 	}
 
-	// delete a key-value pair, no error should happen
-	n.Remove(false, false, callback)
+	err = n.Remove(false, false, callback)
+	if err != nil {
+		return nil, err
+	}
 
 	s.WatcherHub.notify(e)
 	s.Stats.Inc(CompareAndDeleteSuccess)
+	reportWriteSuccess(CompareAndDelete)
 
 	return e, nil
 }
@@ -418,6 +448,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 
 	if err != nil { // if the node does not exist, return error
 		s.Stats.Inc(UpdateFail)
+		reportWriteFailure(Update)
 		return nil, err
 	}
 
@@ -429,6 +460,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	if n.IsDir() && len(newValue) != 0 {
 		// if the node is a directory, we cannot update value to non-empty
 		s.Stats.Inc(UpdateFail)
+		reportWriteFailure(Update)
 		return nil, etcdErr.NewError(etcdErr.EcodeNotFile, nodePath, currIndex)
 	}
 
@@ -450,6 +482,7 @@ func (s *store) Update(nodePath string, newValue string, expireTime time.Time) (
 	s.WatcherHub.notify(e)
 
 	s.Stats.Inc(UpdateSuccess)
+	reportWriteSuccess(Update)
 
 	s.CurrentIndex = nextIndex
 
@@ -462,7 +495,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 	currIndex, nextIndex := s.CurrentIndex, s.CurrentIndex+1
 
 	if unique { // append unique item under the node path
-		nodePath += "/" + strconv.FormatUint(nextIndex, 10)
+		nodePath += "/" + fmt.Sprintf("%020s", strconv.FormatUint(nextIndex, 10))
 	}
 
 	nodePath = path.Clean(path.Join("/", nodePath))
@@ -485,6 +518,7 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 
 	if err != nil {
 		s.Stats.Inc(SetFail)
+		reportWriteFailure(action)
 		err.Index = currIndex
 		return nil, err
 	}
@@ -513,12 +547,12 @@ func (s *store) internalCreate(nodePath string, dir bool, value string, unique, 
 		valueCopy := value
 		eNode.Value = &valueCopy
 
-		n = newKV(s, nodePath, value, nextIndex, d, "", expireTime)
+		n = newKV(s, nodePath, value, nextIndex, d, expireTime)
 
 	} else { // create directory
 		eNode.Dir = true
 
-		n = newDir(s, nodePath, nextIndex, d, "", expireTime)
+		n = newDir(s, nodePath, nextIndex, d, expireTime)
 	}
 
 	// we are sure d is a directory and does not have the children with name n.Name
@@ -587,6 +621,7 @@ func (s *store) DeleteExpiredKeys(cutoff time.Time) {
 		s.ttlKeyHeap.pop()
 		node.Remove(true, true, callback)
 
+		reportExpiredKey()
 		s.Stats.Inc(ExpireCount)
 
 		s.WatcherHub.notify(e)
@@ -609,7 +644,7 @@ func (s *store) checkDir(parent *node, dirName string) (*node, *etcdErr.Error) {
 		return nil, etcdErr.NewError(etcdErr.EcodeNotDir, node.Path, s.CurrentIndex)
 	}
 
-	n := newDir(s, path.Join(parent.Path, dirName), s.CurrentIndex+1, parent, parent.ACL, Permanent)
+	n := newDir(s, path.Join(parent.Path, dirName), s.CurrentIndex+1, parent, Permanent)
 
 	parent.Children[dirName] = n
 
@@ -621,6 +656,24 @@ func (s *store) checkDir(parent *node, dirName string) (*node, *etcdErr.Error) {
 // It will not save the parent field of the node. Or there will
 // be cyclic dependencies issue for the json package.
 func (s *store) Save() ([]byte, error) {
+	b, err := json.Marshal(s.Clone())
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func (s *store) SaveNoCopy() ([]byte, error) {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return b, nil
+}
+
+func (s *store) Clone() Store {
 	s.worldLock.Lock()
 
 	clonedStore := newStore()
@@ -631,14 +684,7 @@ func (s *store) Save() ([]byte, error) {
 	clonedStore.CurrentVersion = s.CurrentVersion
 
 	s.worldLock.Unlock()
-
-	b, err := json.Marshal(clonedStore)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return b, nil
+	return clonedStore
 }
 
 // Recovery recovers the store system from a static state

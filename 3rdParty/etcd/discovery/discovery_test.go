@@ -27,6 +27,7 @@ import (
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+
 	"github.com/coreos/etcd/client"
 )
 
@@ -193,14 +194,14 @@ func TestCheckCluster(t *testing.T) {
 			})
 		}
 		c := &clientWithResp{rs: rs}
-		d := discovery{cluster: cluster, id: 1, c: c}
+		dBase := discovery{cluster: cluster, id: 1, c: c}
 
 		cRetry := &clientWithRetry{failTimes: 3}
 		cRetry.rs = rs
 		fc := clockwork.NewFakeClock()
 		dRetry := discovery{cluster: cluster, id: 1, c: cRetry, clock: fc}
 
-		for _, d := range []discovery{d, dRetry} {
+		for _, d := range []discovery{dBase, dRetry} {
 			go func() {
 				for i := uint(1); i <= maxRetryInTest; i++ {
 					fc.BlockUntil(1)
@@ -225,14 +226,14 @@ func TestCheckCluster(t *testing.T) {
 }
 
 func TestWaitNodes(t *testing.T) {
-	all := client.Nodes{
+	all := []*client.Node{
 		0: {Key: "/1000/1", CreatedIndex: 2},
 		1: {Key: "/1000/2", CreatedIndex: 3},
 		2: {Key: "/1000/3", CreatedIndex: 4},
 	}
 
 	tests := []struct {
-		nodes client.Nodes
+		nodes []*client.Node
 		rs    []*client.Response
 	}{
 		{
@@ -262,8 +263,8 @@ func TestWaitNodes(t *testing.T) {
 
 	for i, tt := range tests {
 		// Basic case
-		c := &clientWithResp{nil, &watcherWithResp{tt.rs}}
-		d := &discovery{cluster: "1000", c: c}
+		c := &clientWithResp{rs: nil, w: &watcherWithResp{rs: tt.rs}}
+		dBase := &discovery{cluster: "1000", c: c}
 
 		// Retry case
 		retryScanResp := make([]*client.Response, 0)
@@ -291,7 +292,7 @@ func TestWaitNodes(t *testing.T) {
 			clock:   fc,
 		}
 
-		for _, d := range []*discovery{d, dRetry} {
+		for _, d := range []*discovery{dBase, dRetry} {
 			go func() {
 				for i := uint(1); i <= maxRetryInTest; i++ {
 					fc.BlockUntil(1)
@@ -312,12 +313,13 @@ func TestWaitNodes(t *testing.T) {
 func TestCreateSelf(t *testing.T) {
 	rs := []*client.Response{{Node: &client.Node{Key: "1000/1", CreatedIndex: 2}}}
 
-	w := &watcherWithResp{rs}
-	errw := &watcherWithErr{errors.New("watch err")}
+	w := &watcherWithResp{rs: rs}
+	errw := &watcherWithErr{err: errors.New("watch err")}
 
-	c := &clientWithResp{rs, w}
-	errc := &clientWithErr{errors.New("create err"), w}
-	errwc := &clientWithResp{rs, errw}
+	c := &clientWithResp{rs: rs, w: w}
+	errc := &clientWithErr{err: errors.New("create err"), w: w}
+	errdupc := &clientWithErr{err: client.Error{Code: client.ErrorCodeNodeExist}}
+	errwc := &clientWithResp{rs: rs, w: errw}
 
 	tests := []struct {
 		c    client.KeysAPI
@@ -329,6 +331,8 @@ func TestCreateSelf(t *testing.T) {
 		{errc, errc.err},
 		// watcher.next retuens an error
 		{errwc, errw.err},
+		// parse key exist error to duplciate ID error
+		{errdupc, ErrDuplicateID},
 	}
 
 	for i, tt := range tests {
@@ -340,21 +344,57 @@ func TestCreateSelf(t *testing.T) {
 }
 
 func TestNodesToCluster(t *testing.T) {
-	nodes := client.Nodes{
-		0: {Key: "/1000/1", Value: "1=1.1.1.1", CreatedIndex: 1},
-		1: {Key: "/1000/2", Value: "2=2.2.2.2", CreatedIndex: 2},
-		2: {Key: "/1000/3", Value: "3=3.3.3.3", CreatedIndex: 3},
+	tests := []struct {
+		nodes    []*client.Node
+		size     int
+		wcluster string
+		werr     error
+	}{
+		{
+			[]*client.Node{
+				0: {Key: "/1000/1", Value: "1=http://1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "3=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=http://1.1.1.1:2380,2=http://2.2.2.2:2380,3=http://3.3.3.3:2380",
+			nil,
+		},
+		{
+			[]*client.Node{
+				0: {Key: "/1000/1", Value: "1=http://1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "2=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=http://1.1.1.1:2380,2=http://2.2.2.2:2380,2=http://3.3.3.3:2380",
+			ErrDuplicateName,
+		},
+		{
+			[]*client.Node{
+				0: {Key: "/1000/1", Value: "1=1.1.1.1:2380", CreatedIndex: 1},
+				1: {Key: "/1000/2", Value: "2=http://2.2.2.2:2380", CreatedIndex: 2},
+				2: {Key: "/1000/3", Value: "2=http://3.3.3.3:2380", CreatedIndex: 3},
+			},
+			3,
+			"1=1.1.1.1:2380,2=http://2.2.2.2:2380,2=http://3.3.3.3:2380",
+			ErrInvalidURL,
+		},
 	}
-	w := "1=1.1.1.1,2=2.2.2.2,3=3.3.3.3"
 
-	cluster := nodesToCluster(nodes)
-	if !reflect.DeepEqual(cluster, w) {
-		t.Errorf("cluster = %v, want %v", cluster, w)
+	for i, tt := range tests {
+		cluster, err := nodesToCluster(tt.nodes, tt.size)
+		if err != tt.werr {
+			t.Errorf("#%d: err = %v, want %v", i, err, tt.werr)
+		}
+		if !reflect.DeepEqual(cluster, tt.wcluster) {
+			t.Errorf("#%d: cluster = %v, want %v", i, cluster, tt.wcluster)
+		}
 	}
 }
 
 func TestSortableNodes(t *testing.T) {
-	ns := client.Nodes{
+	ns := []*client.Node{
 		0: {CreatedIndex: 5},
 		1: {CreatedIndex: 1},
 		2: {CreatedIndex: 3},
@@ -409,9 +449,10 @@ func TestRetryFailure(t *testing.T) {
 type clientWithResp struct {
 	rs []*client.Response
 	w  client.Watcher
+	client.KeysAPI
 }
 
-func (c *clientWithResp) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithResp) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	if len(c.rs) == 0 {
 		return &client.Response{}, nil
 	}
@@ -420,45 +461,39 @@ func (c *clientWithResp) Create(ctx context.Context, key string, value string, t
 	return r, nil
 }
 
-func (c *clientWithResp) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithResp) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	if len(c.rs) == 0 {
-		return &client.Response{}, client.ErrKeyNoExist
+		return &client.Response{}, &client.Error{Code: client.ErrorCodeKeyNotFound}
 	}
 	r := c.rs[0]
 	c.rs = append(c.rs[1:], r)
 	return r, nil
 }
 
-func (c *clientWithResp) Watch(key string, waitIndex uint64) client.Watcher {
-	return c.w
-}
-
-func (c *clientWithResp) RecursiveWatch(key string, waitIndex uint64) client.Watcher {
+func (c *clientWithResp) Watcher(key string, opts *client.WatcherOptions) client.Watcher {
 	return c.w
 }
 
 type clientWithErr struct {
 	err error
 	w   client.Watcher
+	client.KeysAPI
 }
 
-func (c *clientWithErr) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithErr) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
-func (c *clientWithErr) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithErr) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	return &client.Response{}, c.err
 }
 
-func (c *clientWithErr) Watch(key string, waitIndex uint64) client.Watcher {
-	return c.w
-}
-
-func (c *clientWithErr) RecursiveWatch(key string, waitIndex uint64) client.Watcher {
+func (c *clientWithErr) Watcher(key string, opts *client.WatcherOptions) client.Watcher {
 	return c.w
 }
 
 type watcherWithResp struct {
+	client.KeysAPI
 	rs []*client.Response
 }
 
@@ -486,20 +521,20 @@ type clientWithRetry struct {
 	failTimes int
 }
 
-func (c *clientWithRetry) Create(ctx context.Context, key string, value string, ttl time.Duration) (*client.Response, error) {
+func (c *clientWithRetry) Create(ctx context.Context, key string, value string) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
-		return nil, client.ErrTimeout
+		return nil, &client.ClusterError{Errors: []error{context.DeadlineExceeded}}
 	}
-	return c.clientWithResp.Create(ctx, key, value, ttl)
+	return c.clientWithResp.Create(ctx, key, value)
 }
 
-func (c *clientWithRetry) Get(ctx context.Context, key string) (*client.Response, error) {
+func (c *clientWithRetry) Get(ctx context.Context, key string, opts *client.GetOptions) (*client.Response, error) {
 	if c.failCount < c.failTimes {
 		c.failCount++
-		return nil, client.ErrTimeout
+		return nil, &client.ClusterError{Errors: []error{context.DeadlineExceeded}}
 	}
-	return c.clientWithResp.Get(ctx, key)
+	return c.clientWithResp.Get(ctx, key, opts)
 }
 
 // watcherWithRetry will timeout all requests up to failTimes
@@ -512,7 +547,7 @@ type watcherWithRetry struct {
 func (w *watcherWithRetry) Next(context.Context) (*client.Response, error) {
 	if w.failCount < w.failTimes {
 		w.failCount++
-		return nil, client.ErrTimeout
+		return nil, &client.ClusterError{Errors: []error{context.DeadlineExceeded}}
 	}
 	if len(w.rs) == 0 {
 		return &client.Response{}, nil

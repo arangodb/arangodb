@@ -4619,6 +4619,12 @@ function AQL_TEST_MODIFY (test, what) {
     delete what.f; 
     what.g = "foo";
   }
+  else if (test === 'DEADLOCK') {
+    var err = new ArangoError();
+    err.errorNum = INTERNAL.errors.ERROR_DEADLOCK.code;
+    err.errorMessage = INTERNAL.errors.ERROR_DEADLOCK.message;
+    throw err;
+  }
   return what; 
 }
 

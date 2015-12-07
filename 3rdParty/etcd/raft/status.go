@@ -16,7 +16,6 @@ package raft
 
 import (
 	"fmt"
-	"log"
 
 	pb "github.com/coreos/etcd/raft/raftpb"
 )
@@ -51,14 +50,14 @@ func getStatus(r *raft) Status {
 
 // TODO: try to simplify this by introducing ID type into raft
 func (s Status) MarshalJSON() ([]byte, error) {
-	j := fmt.Sprintf(`{"id":"%x","term":%d,"vote":"%x","commit":%d,"lead":"%x","raftState":"%s","progress":{`,
+	j := fmt.Sprintf(`{"id":"%x","term":%d,"vote":"%x","commit":%d,"lead":"%x","raftState":%q,"progress":{`,
 		s.ID, s.Term, s.Vote, s.Commit, s.Lead, s.RaftState)
 
 	if len(s.Progress) == 0 {
 		j += "}}"
 	} else {
 		for k, v := range s.Progress {
-			subj := fmt.Sprintf(`"%x":{"match":%d,"next":%d},`, k, v.Match, v.Next)
+			subj := fmt.Sprintf(`"%x":{"match":%d,"next":%d,"state":%q},`, k, v.Match, v.Next, v.State)
 			j += subj
 		}
 		// remove the trailing ","
@@ -70,7 +69,7 @@ func (s Status) MarshalJSON() ([]byte, error) {
 func (s Status) String() string {
 	b, err := s.MarshalJSON()
 	if err != nil {
-		log.Panicf("unexpected error: %v", err)
+		raftLogger.Panicf("unexpected error: %v", err)
 	}
 	return string(b)
 }

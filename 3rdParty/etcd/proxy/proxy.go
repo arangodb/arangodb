@@ -16,6 +16,18 @@ package proxy
 
 import (
 	"net/http"
+	"time"
+)
+
+const (
+	// DefaultMaxIdleConnsPerHost indicates the default maximum idle connection
+	// count maintained between proxy and each member. We set it to 128 to
+	// let proxy handle 128 concurrent requests in long term smoothly.
+	// If the number of concurrent requests is bigger than this value,
+	// proxy needs to create one new connection when handling each request in
+	// the delta, which is bad because the creation consumes resource and
+	// may eat up ephemeral ports.
+	DefaultMaxIdleConnsPerHost = 128
 )
 
 // GetProxyURLs is a function which should return the current set of URLs to
@@ -27,9 +39,9 @@ type GetProxyURLs func() []string
 // NewHandler creates a new HTTP handler, listening on the given transport,
 // which will proxy requests to an etcd cluster.
 // The handler will periodically update its view of the cluster.
-func NewHandler(t *http.Transport, urlsFunc GetProxyURLs) http.Handler {
+func NewHandler(t *http.Transport, urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) http.Handler {
 	return &reverseProxy{
-		director:  newDirector(urlsFunc),
+		director:  newDirector(urlsFunc, failureWait, refreshInterval),
 		transport: t,
 	}
 }

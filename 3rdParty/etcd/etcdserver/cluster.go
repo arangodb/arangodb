@@ -15,22 +15,23 @@
 package etcdserver
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"log"
-	"net/url"
 	"path"
 	"sort"
 	"strings"
 	"sync"
 
-	"github.com/coreos/etcd/pkg/flags"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/pkg/netutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/store"
+	"github.com/coreos/etcd/version"
 )
 
 const (
@@ -38,7 +39,7 @@ const (
 	attributesSuffix     = "attributes"
 )
 
-type ClusterInfo interface {
+type Cluster interface {
 	// ID returns the cluster ID
 	ID() types.ID
 	// ClientURLs returns an aggregate set of all URLs on which this
@@ -52,42 +53,33 @@ type ClusterInfo interface {
 	// IsIDRemoved checks whether the given ID has been removed from this
 	// cluster at some point in the past
 	IsIDRemoved(id types.ID) bool
+	// ClusterVersion is the cluster-wide minimum major.minor version.
+	Version() *semver.Version
 }
 
 // Cluster is a list of Members that belong to the same raft cluster
-type Cluster struct {
-	id      types.ID
-	token   string
-	members map[types.ID]*Member
+type cluster struct {
+	id    types.ID
+	token string
+	store store.Store
+
+	sync.Mutex // guards the fields below
+	version    *semver.Version
+	members    map[types.ID]*Member
 	// removed contains the ids of removed members in the cluster.
 	// removed id cannot be reused.
 	removed map[types.ID]bool
-	store   store.Store
-	sync.Mutex
 }
 
-// NewClusterFromString returns a Cluster instantiated from the given cluster token
-// and cluster string, by parsing members from a set of discovery-formatted
-// names-to-IPs, like:
-// mach0=http://1.1.1.1,mach0=http://2.2.2.2,mach1=http://3.3.3.3,mach2=http://4.4.4.4
-func NewClusterFromString(token string, cluster string) (*Cluster, error) {
+func newClusterFromURLsMap(token string, urlsmap types.URLsMap) (*cluster, error) {
 	c := newCluster(token)
-
-	v, err := url.ParseQuery(strings.Replace(cluster, ",", "&", -1))
-	if err != nil {
-		return nil, err
-	}
-	for name, urls := range v {
-		if len(urls) == 0 || urls[0] == "" {
-			return nil, fmt.Errorf("Empty URL given for %q", name)
-		}
-		purls := &flags.URLsValue{}
-		if err := purls.Set(strings.Join(urls, ",")); err != nil {
-			return nil, err
-		}
-		m := NewMember(name, types.URLs(*purls), c.token, nil)
+	for name, urls := range urlsmap {
+		m := NewMember(name, urls, token, nil)
 		if _, ok := c.members[m.ID]; ok {
-			return nil, fmt.Errorf("Member exists with identical ID %v", m)
+			return nil, fmt.Errorf("member exists with identical ID %v", m)
+		}
+		if uint64(m.ID) == raft.None {
+			return nil, fmt.Errorf("cannot use %x as member id", raft.None)
 		}
 		c.members[m.ID] = m
 	}
@@ -95,14 +87,7 @@ func NewClusterFromString(token string, cluster string) (*Cluster, error) {
 	return c, nil
 }
 
-func NewClusterFromStore(token string, st store.Store) *Cluster {
-	c := newCluster(token)
-	c.store = st
-	c.members, c.removed = membersFromStore(c.store)
-	return c
-}
-
-func NewClusterFromMembers(token string, id types.ID, membs []*Member) *Cluster {
+func newClusterFromMembers(token string, id types.ID, membs []*Member) *cluster {
 	c := newCluster(token)
 	c.id = id
 	for _, m := range membs {
@@ -111,28 +96,28 @@ func NewClusterFromMembers(token string, id types.ID, membs []*Member) *Cluster 
 	return c
 }
 
-func newCluster(token string) *Cluster {
-	return &Cluster{
+func newCluster(token string) *cluster {
+	return &cluster{
 		token:   token,
 		members: make(map[types.ID]*Member),
 		removed: make(map[types.ID]bool),
 	}
 }
 
-func (c *Cluster) ID() types.ID { return c.id }
+func (c *cluster) ID() types.ID { return c.id }
 
-func (c *Cluster) Members() []*Member {
+func (c *cluster) Members() []*Member {
 	c.Lock()
 	defer c.Unlock()
-	var sms SortableMemberSlice
+	var ms MembersByID
 	for _, m := range c.members {
-		sms = append(sms, m.Clone())
+		ms = append(ms, m.Clone())
 	}
-	sort.Sort(sms)
-	return []*Member(sms)
+	sort.Sort(ms)
+	return []*Member(ms)
 }
 
-func (c *Cluster) Member(id types.ID) *Member {
+func (c *cluster) Member(id types.ID) *Member {
 	c.Lock()
 	defer c.Unlock()
 	return c.members[id].Clone()
@@ -140,14 +125,14 @@ func (c *Cluster) Member(id types.ID) *Member {
 
 // MemberByName returns a Member with the given name if exists.
 // If more than one member has the given name, it will panic.
-func (c *Cluster) MemberByName(name string) *Member {
+func (c *cluster) MemberByName(name string) *Member {
 	c.Lock()
 	defer c.Unlock()
 	var memb *Member
 	for _, m := range c.members {
 		if m.Name == name {
 			if memb != nil {
-				log.Panicf("two members with the given name %q exist", name)
+				plog.Panicf("two members with the given name %q exist", name)
 			}
 			memb = m
 		}
@@ -155,7 +140,7 @@ func (c *Cluster) MemberByName(name string) *Member {
 	return memb.Clone()
 }
 
-func (c *Cluster) MemberIDs() []types.ID {
+func (c *cluster) MemberIDs() []types.ID {
 	c.Lock()
 	defer c.Unlock()
 	var ids []types.ID
@@ -166,7 +151,7 @@ func (c *Cluster) MemberIDs() []types.ID {
 	return ids
 }
 
-func (c *Cluster) IsIDRemoved(id types.ID) bool {
+func (c *cluster) IsIDRemoved(id types.ID) bool {
 	c.Lock()
 	defer c.Unlock()
 	return c.removed[id]
@@ -174,7 +159,7 @@ func (c *Cluster) IsIDRemoved(id types.ID) bool {
 
 // PeerURLs returns a list of all peer addresses.
 // The returned list is sorted in ascending lexicographical order.
-func (c *Cluster) PeerURLs() []string {
+func (c *cluster) PeerURLs() []string {
 	c.Lock()
 	defer c.Unlock()
 	urls := make([]string, 0)
@@ -189,7 +174,7 @@ func (c *Cluster) PeerURLs() []string {
 
 // ClientURLs returns a list of all client addresses.
 // The returned list is sorted in ascending lexicographical order.
-func (c *Cluster) ClientURLs() []string {
+func (c *cluster) ClientURLs() []string {
 	c.Lock()
 	defer c.Unlock()
 	urls := make([]string, 0)
@@ -202,20 +187,25 @@ func (c *Cluster) ClientURLs() []string {
 	return urls
 }
 
-func (c *Cluster) String() string {
+func (c *cluster) String() string {
 	c.Lock()
 	defer c.Unlock()
-	sl := []string{}
+	b := &bytes.Buffer{}
+	fmt.Fprintf(b, "{ClusterID:%s ", c.id)
+	var ms []string
 	for _, m := range c.members {
-		for _, u := range m.PeerURLs {
-			sl = append(sl, fmt.Sprintf("%s=%s", m.Name, u))
-		}
+		ms = append(ms, fmt.Sprintf("%+v", m))
 	}
-	sort.Strings(sl)
-	return strings.Join(sl, ",")
+	fmt.Fprintf(b, "Members:[%s] ", strings.Join(ms, " "))
+	var ids []string
+	for id := range c.removed {
+		ids = append(ids, fmt.Sprintf("%s", id))
+	}
+	fmt.Fprintf(b, "RemovedMemberIDs:[%s]}", strings.Join(ids, " "))
+	return b.String()
 }
 
-func (c *Cluster) genID() {
+func (c *cluster) genID() {
 	mIDs := c.MemberIDs()
 	b := make([]byte, 8*len(mIDs))
 	for i, id := range mIDs {
@@ -225,17 +215,22 @@ func (c *Cluster) genID() {
 	c.id = types.ID(binary.BigEndian.Uint64(hash[:8]))
 }
 
-func (c *Cluster) SetID(id types.ID) { c.id = id }
+func (c *cluster) SetID(id types.ID) { c.id = id }
 
-func (c *Cluster) SetStore(st store.Store) { c.store = st }
+func (c *cluster) SetStore(st store.Store) { c.store = st }
 
-func (c *Cluster) Recover() {
+func (c *cluster) Recover() {
+	c.Lock()
+	defer c.Unlock()
+
 	c.members, c.removed = membersFromStore(c.store)
+	c.version = clusterVersionFromStore(c.store)
+	MustDetectDowngrade(c.version)
 }
 
 // ValidateConfigurationChange takes a proposed ConfChange and
 // ensures that it is still valid.
-func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
+func (c *cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 	members, removed := membersFromStore(c.store)
 	id := types.ID(cc.NodeID)
 	if removed[id] {
@@ -254,7 +249,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			log.Panicf("unmarshal member should never fail: %v", err)
+			plog.Panicf("unmarshal member should never fail: %v", err)
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
@@ -280,7 +275,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 		}
 		m := new(Member)
 		if err := json.Unmarshal(cc.Context, m); err != nil {
-			log.Panicf("unmarshal member should never fail: %v", err)
+			plog.Panicf("unmarshal member should never fail: %v", err)
 		}
 		for _, u := range m.PeerURLs {
 			if urls[u] {
@@ -288,7 +283,7 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 			}
 		}
 	default:
-		log.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
+		plog.Panicf("ConfChange type should be either AddNode, RemoveNode or UpdateNode")
 	}
 	return nil
 }
@@ -296,54 +291,84 @@ func (c *Cluster) ValidateConfigurationChange(cc raftpb.ConfChange) error {
 // AddMember adds a new Member into the cluster, and saves the given member's
 // raftAttributes into the store. The given member should have empty attributes.
 // A Member with a matching id must not exist.
-func (c *Cluster) AddMember(m *Member) {
+func (c *cluster) AddMember(m *Member) {
 	c.Lock()
 	defer c.Unlock()
 	b, err := json.Marshal(m.RaftAttributes)
 	if err != nil {
-		log.Panicf("marshal raftAttributes should never fail: %v", err)
+		plog.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(m.ID), raftAttributesSuffix)
 	if _, err := c.store.Create(p, false, string(b), false, store.Permanent); err != nil {
-		log.Panicf("create raftAttributes should never fail: %v", err)
+		plog.Panicf("create raftAttributes should never fail: %v", err)
 	}
 	c.members[m.ID] = m
 }
 
 // RemoveMember removes a member from the store.
 // The given id MUST exist, or the function panics.
-func (c *Cluster) RemoveMember(id types.ID) {
+func (c *cluster) RemoveMember(id types.ID) {
 	c.Lock()
 	defer c.Unlock()
 	if _, err := c.store.Delete(memberStoreKey(id), true, true); err != nil {
-		log.Panicf("delete member should never fail: %v", err)
+		plog.Panicf("delete member should never fail: %v", err)
 	}
 	delete(c.members, id)
 	if _, err := c.store.Create(removedMemberStoreKey(id), false, "", false, store.Permanent); err != nil {
-		log.Panicf("create removedMember should never fail: %v", err)
+		plog.Panicf("create removedMember should never fail: %v", err)
 	}
 	c.removed[id] = true
 }
 
-func (c *Cluster) UpdateAttributes(id types.ID, attr Attributes) {
+func (c *cluster) UpdateAttributes(id types.ID, attr Attributes) {
 	c.Lock()
 	defer c.Unlock()
-	c.members[id].Attributes = attr
+	if m, ok := c.members[id]; ok {
+		m.Attributes = attr
+		return
+	}
+	_, ok := c.removed[id]
+	if ok {
+		plog.Debugf("skipped updating attributes of removed member %s", id)
+	} else {
+		plog.Panicf("error updating attributes of unknown member %s", id)
+	}
 	// TODO: update store in this function
 }
 
-func (c *Cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
+func (c *cluster) UpdateRaftAttributes(id types.ID, raftAttr RaftAttributes) {
 	c.Lock()
 	defer c.Unlock()
 	b, err := json.Marshal(raftAttr)
 	if err != nil {
-		log.Panicf("marshal raftAttributes should never fail: %v", err)
+		plog.Panicf("marshal raftAttributes should never fail: %v", err)
 	}
 	p := path.Join(memberStoreKey(id), raftAttributesSuffix)
 	if _, err := c.store.Update(p, string(b), store.Permanent); err != nil {
-		log.Panicf("update raftAttributes should never fail: %v", err)
+		plog.Panicf("update raftAttributes should never fail: %v", err)
 	}
 	c.members[id].RaftAttributes = raftAttr
+}
+
+func (c *cluster) Version() *semver.Version {
+	c.Lock()
+	defer c.Unlock()
+	if c.version == nil {
+		return nil
+	}
+	return semver.Must(semver.NewVersion(c.version.String()))
+}
+
+func (c *cluster) SetVersion(ver *semver.Version) {
+	c.Lock()
+	defer c.Unlock()
+	if c.version != nil {
+		plog.Noticef("updated the cluster version from %v to %v", version.Cluster(c.version.String()), version.Cluster(ver.String()))
+	} else {
+		plog.Noticef("set the initial cluster version to %v", version.Cluster(ver.String()))
+	}
+	c.version = ver
+	MustDetectDowngrade(c.version)
 }
 
 func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) {
@@ -354,12 +379,13 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		log.Panicf("get storeMembers should never fail: %v", err)
+		plog.Panicf("get storeMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
-		m, err := nodeToMember(n)
+		var m *Member
+		m, err = nodeToMember(n)
 		if err != nil {
-			log.Panicf("nodeToMember should never fail: %v", err)
+			plog.Panicf("nodeToMember should never fail: %v", err)
 		}
 		members[m.ID] = m
 	}
@@ -369,7 +395,7 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 		if isKeyNotFound(err) {
 			return members, removed
 		}
-		log.Panicf("get storeRemovedMembers should never fail: %v", err)
+		plog.Panicf("get storeRemovedMembers should never fail: %v", err)
 	}
 	for _, n := range e.Node.Nodes {
 		removed[mustParseMemberIDFromKey(n.Key)] = true
@@ -377,21 +403,31 @@ func membersFromStore(st store.Store) (map[types.ID]*Member, map[types.ID]bool) 
 	return members, removed
 }
 
+func clusterVersionFromStore(st store.Store) *semver.Version {
+	e, err := st.Get(path.Join(StoreClusterPrefix, "version"), false, false)
+	if err != nil {
+		if isKeyNotFound(err) {
+			return nil
+		}
+		plog.Panicf("unexpected error (%v) when getting cluster version from store", err)
+	}
+	return semver.Must(semver.NewVersion(*e.Node.Value))
+}
+
 // ValidateClusterAndAssignIDs validates the local cluster by matching the PeerURLs
 // with the existing cluster. If the validation succeeds, it assigns the IDs
 // from the existing cluster to the local cluster.
 // If the validation fails, an error will be returned.
-func ValidateClusterAndAssignIDs(local *Cluster, existing *Cluster) error {
+func ValidateClusterAndAssignIDs(local *cluster, existing *cluster) error {
 	ems := existing.Members()
 	lms := local.Members()
 	if len(ems) != len(lms) {
 		return fmt.Errorf("member count is unequal")
 	}
-	sort.Sort(SortableMemberSliceByPeerURLs(ems))
-	sort.Sort(SortableMemberSliceByPeerURLs(lms))
+	sort.Sort(MembersByPeerURLs(ems))
+	sort.Sort(MembersByPeerURLs(lms))
 
 	for i := range ems {
-		// TODO: Remove URLStringsEqual after improvement of using hostnames #2150 #2123
 		if !netutil.URLStringsEqual(ems[i].PeerURLs, lms[i].PeerURLs) {
 			return fmt.Errorf("unmatched member while checking PeerURLs")
 		}

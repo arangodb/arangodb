@@ -403,14 +403,14 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
             nestingLevel,
             "read-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    res = document->beginReadTimed(timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION);
+    res = document->beginReadTimed(timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
   }
   else {
     LOG_TRX(trx,
             nestingLevel,
             "write-locking collection %llu",
             (unsigned long long) trxCollection->_cid);
-    res = document->beginWriteTimed(timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 50);
+    res = document->beginWriteTimed(timeout, TRI_TRANSACTION_DEFAULT_SLEEP_DURATION * 3);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {

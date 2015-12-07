@@ -16,10 +16,16 @@ package raft
 
 import (
 	"errors"
-	"log"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pb "github.com/coreos/etcd/raft/raftpb"
+)
+
+type SnapshotStatus int
+
+const (
+	SnapshotFinish  SnapshotStatus = 1
+	SnapshotFailure SnapshotStatus = 2
 )
 
 var (
@@ -68,6 +74,8 @@ type Ready struct {
 
 	// Messages specifies outbound messages to be sent AFTER Entries are
 	// committed to stable storage.
+	// If it contains a MsgSnap message, the application MUST report back to raft
+	// when the snapshot has been received or has failed by calling ReportSnapshot.
 	Messages []pb.Message
 }
 
@@ -119,6 +127,10 @@ type Node interface {
 	ApplyConfChange(cc pb.ConfChange) *pb.ConfState
 	// Status returns the current status of the raft state machine.
 	Status() Status
+	// Report reports the given node is not reachable for the last send.
+	ReportUnreachable(id uint64)
+	// ReportSnapshot reports the stutus of the sent snapshot.
+	ReportSnapshot(id uint64, status SnapshotStatus)
 	// Stop performs any necessary termination of the Node
 	Stop()
 }
@@ -128,13 +140,10 @@ type Peer struct {
 	Context []byte
 }
 
-// StartNode returns a new Node given a unique raft id, a list of raft peers, and
-// the election and heartbeat timeouts in units of ticks.
+// StartNode returns a new Node given configuration and a list of raft peers.
 // It appends a ConfChangeAddNode entry for each given peer to the initial log.
-func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage) Node {
-	n := newNode()
-	r := newRaft(id, nil, election, heartbeat, storage, 0)
-
+func StartNode(c *Config, peers []Peer) Node {
+	r := newRaft(c)
 	// become the follower at term 1 and apply initial configuration
 	// entires of term 1
 	r.becomeFollower(1, None)
@@ -165,6 +174,7 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 		r.addNode(peer.ID)
 	}
 
+	n := newNode()
 	go n.run(r)
 	return &n
 }
@@ -173,10 +183,10 @@ func StartNode(id uint64, peers []Peer, election, heartbeat int, storage Storage
 // The current membership of the cluster will be restored from the Storage.
 // If the caller has an existing state machine, pass in the last log index that
 // has been applied to it; otherwise use zero.
-func RestartNode(id uint64, election, heartbeat int, storage Storage, applied uint64) Node {
-	n := newNode()
-	r := newRaft(id, nil, election, heartbeat, storage, applied)
+func RestartNode(c *Config) Node {
+	r := newRaft(c)
 
+	n := newNode()
 	go n.run(r)
 	return &n
 }
@@ -233,7 +243,7 @@ func (n *node) run(r *raft) {
 
 	lead := None
 	prevSoftSt := r.softState()
-	prevHardSt := r.HardState
+	prevHardSt := emptyState
 
 	for {
 		if advancec != nil {
@@ -250,13 +260,13 @@ func (n *node) run(r *raft) {
 		if lead != r.lead {
 			if r.hasLeader() {
 				if lead == None {
-					log.Printf("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
+					raftLogger.Infof("raft.node: %x elected leader %x at term %d", r.id, r.lead, r.Term)
 				} else {
-					log.Printf("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
+					raftLogger.Infof("raft.node: %x changed leader from %x to %x at term %d", r.id, lead, r.lead, r.Term)
 				}
 				propc = n.propc
 			} else {
-				log.Printf("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
+				raftLogger.Infof("raft.node: %x lost leader %x at term %d", r.id, lead, r.Term)
 				propc = nil
 			}
 			lead = r.lead
@@ -270,7 +280,7 @@ func (n *node) run(r *raft) {
 			m.From = r.id
 			r.Step(m)
 		case m := <-n.recvc:
-			// filter out response message from unknow From.
+			// filter out response message from unknown From.
 			if _, ok := r.prs[m.From]; ok || !IsResponseMsg(m) {
 				r.Step(m) // raft never returns an error
 			}
@@ -416,6 +426,22 @@ func (n *node) Status() Status {
 	c := make(chan Status)
 	n.status <- c
 	return <-c
+}
+
+func (n *node) ReportUnreachable(id uint64) {
+	select {
+	case n.recvc <- pb.Message{Type: pb.MsgUnreachable, From: id}:
+	case <-n.done:
+	}
+}
+
+func (n *node) ReportSnapshot(id uint64, status SnapshotStatus) {
+	rej := status == SnapshotFailure
+
+	select {
+	case n.recvc <- pb.Message{Type: pb.MsgSnapStatus, From: id, Reject: rej}:
+	case <-n.done:
+	}
 }
 
 func newReady(r *raft, prevSoftSt *SoftState, prevHardSt pb.HardState) Ready {
