@@ -38,8 +38,9 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/server.h"
 
 #ifdef _WIN32
@@ -1229,6 +1230,24 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
 int ClusterInfo::createCollectionCoordinator (string const& databaseName,
                                               string const& collectionID,
                                               uint64_t numberOfShards,
+                                              VPackSlice const& slice,
+                                              string& errorMsg, 
+                                              double timeout) {
+  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  return createCollectionCoordinator(databaseName, collectionID, numberOfShards,
+         json.get(), errorMsg, timeout);
+}
+ 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create collection in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::createCollectionCoordinator (string const& databaseName,
+                                              string const& collectionID,
+                                              uint64_t numberOfShards,
                                               TRI_json_t const* json,
                                               string& errorMsg, 
                                               double timeout) {
@@ -1551,6 +1570,24 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
 
   return TRI_ERROR_INTERNAL;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ensure an index in coordinator.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
+                                         string const& collectionID,
+                                         VPackSlice const& slice,
+                                         bool create,
+                                         bool (*compare)(TRI_json_t const*, TRI_json_t const*),
+                                         TRI_json_t*& resultJson,
+                                         string& errorMsg,
+                                         double timeout) {
+  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  return ensureIndexCoordinator(databaseName, collectionID, json.get(),
+                                create, compare, resultJson, errorMsg, timeout);
+}
+ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure an index in coordinator.
