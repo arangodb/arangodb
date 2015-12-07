@@ -398,14 +398,14 @@ std::string Index::context () const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeToplevel) const {
   std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
   builder->addObject();
   builder->add("id", VPackValue(std::to_string(_iid)));
   builder->add("type", VPackValue(typeName()));
 
   if (dumpFields()) {
-    builder->add("fields"; VPackValue(VPackValueType::Array));
+    builder->add("fields", VPackValue(VPackValueType::Array));
 
     for (auto const& field : fields()) {
       std::string fieldString;
@@ -419,11 +419,13 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures) const {
   }
 
   if (withFigures) {
-    std::shared_ptr<VPackBuilder> figuresBuilder = toVelocyPackFigures();
+    std::shared_ptr<VPackBuilder> figuresBuilder = toVelocyPackFigures(true);
     VPackSlice const figures = figuresBuilder->slice();
     builder->add("figures", figures);
   }
-  builder->close();
+  if (closeToplevel) {
+    builder->close();
+  }
   return builder;
 }
 
@@ -432,11 +434,13 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures) const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures () const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures (bool closeToplevel) const {
   std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
   builder->addObject();
   builder->add("memory", VPackValue(memory()));
-  builder->close();
+  if (closeToplevel) {
+    builder->close();
+  }
   return builder;
 }
 

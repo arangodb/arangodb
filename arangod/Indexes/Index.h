@@ -39,6 +39,8 @@
 #include "VocBase/voc-types.h"
 
 #include <iosfwd>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -338,8 +340,8 @@ namespace triagens {
         virtual triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const;
         virtual triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const;
 
-        virtual std::shared_ptr<VPackBuilder> toVelocyPack (bool) const;
-        virtual std::shared_ptr<VPackBuilder> toVelocyPackFigures () const;
+        virtual std::shared_ptr<VPackBuilder> toVelocyPack (bool, bool) const;
+        virtual std::shared_ptr<VPackBuilder> toVelocyPackFigures (bool) const;
 
         virtual bool dumpFields () const = 0;
   

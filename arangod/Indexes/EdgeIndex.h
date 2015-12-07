@@ -147,6 +147,10 @@ namespace triagens {
         
         size_t memory () const override final;
 
+
+        std::shared_ptr<VPackBuilder> toVelocyPack (bool, bool) const override final;
+        std::shared_ptr<VPackBuilder> toVelocyPackFigures (bool) const override final;
+
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   

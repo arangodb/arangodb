@@ -44,6 +44,8 @@
 #include "Basics/prime-numbers.h"
 
 #include <thread>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
   namespace basics {
@@ -319,6 +321,23 @@ namespace triagens {
             res += static_cast<size_t>(b._nrUsed);
           }
           return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Appends information about statistics in the given VPackBuilder
+////////////////////////////////////////////////////////////////////////////////
+          
+        void appendToVelocyPack (std::shared_ptr<VPackBuilder> builder) {
+          builder->add("buckets", VPackValue(VPackValueType::Array));
+          for (auto& b : _buckets) {
+            builder->add(VPackValue(VPackValueType::Object));
+            builder->add("nrAlloc", VPackValue(b._nrAlloc));
+            builder->add("nrUsed", VPackValue(b._nrUsed));
+            builder->close();
+          }
+          builder->close(); // buckets
+          builder->add("nrBuckets", VPackValue(_buckets.size()));
+          builder->add("totalUsed", VPackValue(size()));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

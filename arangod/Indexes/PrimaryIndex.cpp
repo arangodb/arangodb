@@ -172,6 +172,36 @@ size_t PrimaryIndex::memory () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the index
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPack (bool withFigures,
+                                                          bool closeToplevel) const {
+  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPack(withFigures, false);
+
+  // hard-coded
+  builder->add("unique", VPackValue(true));
+  builder->add("sparse", VPackValue(false));
+
+  if (closeToplevel) {
+    builder->close();
+  }
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPackFigures (bool closeToplevel) const {
+  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
+  _primaryIndex->appendToVelocyPack(builder);
+  return builder;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
