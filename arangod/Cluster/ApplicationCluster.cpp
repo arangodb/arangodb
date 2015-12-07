@@ -143,6 +143,13 @@ bool ApplicationCluster::prepare () {
   ServerState::instance()->setDisableDispatcherFrontend(_disableDispatcherFrontend);
   ServerState::instance()->setDisableDispatcherKickstarter(_disableDispatcherKickstarter);
 
+  if (_disabled) {
+    // if ApplicationFeature is disabled
+    _enableCluster = false;
+    ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
+    return true;
+  }
+
   // check the cluster state
   _enableCluster = ! _agencyEndpoints.empty();
 
