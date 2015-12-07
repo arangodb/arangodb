@@ -1041,7 +1041,7 @@ AgencyCommResult AgencyComm::setValue (std::string const& key,
       _globalConnectionOptions._requestTimeout,
       result,
       buildUrl(key) + ttlParam(ttl, true),
-      "value=" + triagens::basics::StringUtils::urlEncode(json.toString()),
+      "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
       false);
 
   return result;
