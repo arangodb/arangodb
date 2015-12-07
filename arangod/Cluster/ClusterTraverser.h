@@ -64,7 +64,7 @@ namespace triagens {
 
           ~ClusterTraverser () {
             for (auto& it : _vertices) {
-              delete it.second;
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
             }
           }
 
