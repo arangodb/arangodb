@@ -746,7 +746,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
     return;
   }
 
-  LOG_DEBUG("Error while loading %s httpCode: %d "
+  LOG_ERROR("Error while loading %s httpCode: %d "
             "errorCode: %d errorMessage: %s body: %s",
             prefixPlannedCollections.c_str(),
             result.httpCode(), result.errorCode(),
