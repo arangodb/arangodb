@@ -2228,7 +2228,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     {
       TRI_document_collection_t* doc = nullptr;
       std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(doc));
-      std::shared_ptr<VPackBuilder> idxVPack = primaryIndex->toVelocyPack(false);
+      std::shared_ptr<VPackBuilder> idxVPack = primaryIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
     }
 
@@ -2245,7 +2245,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     if (collectionType == TRI_COL_TYPE_EDGE) {
       // create a dummy edge index
       std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(new_id_tick, nullptr));
-      std::shared_ptr<VPackBuilder> idxVPack = edgeIndex->toVelocyPack(false);
+      std::shared_ptr<VPackBuilder> idxVPack = edgeIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
     }
 
