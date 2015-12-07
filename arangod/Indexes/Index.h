@@ -337,6 +337,10 @@ namespace triagens {
         virtual size_t memory () const = 0;
         virtual triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const;
         virtual triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const;
+
+        virtual std::shared_ptr<VPackBuilder> toVelocyPack (bool) const;
+        virtual std::shared_ptr<VPackBuilder> toVelocyPackFigures () const;
+
         virtual bool dumpFields () const = 0;
   
         virtual int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) = 0;

@@ -394,6 +394,54 @@ std::string Index::context () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures) const {
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  builder->addObject();
+  builder->add("id", VPackValue(std::to_string(_iid)));
+  builder->add("type", VPackValue(typeName()));
+
+  if (dumpFields()) {
+    builder->add("fields"; VPackValue(VPackValueType::Array));
+
+    for (auto const& field : fields()) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder->add(VPackValue(fieldString));
+    }
+  }
+
+  if (hasSelectivityEstimate()) {
+    builder->add("selectivityEstimate", VPackValue(selectivityEstimate()));
+  }
+
+  if (withFigures) {
+    std::shared_ptr<VPackBuilder> figuresBuilder = toVelocyPackFigures();
+    VPackSlice const figures = figuresBuilder->slice();
+    builder->add("figures", figures);
+  }
+  builder->close();
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index figures
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures () const {
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  builder->addObject();
+  builder->add("memory", VPackValue(memory()));
+  builder->close();
+  return builder;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a JSON representation of the index
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
