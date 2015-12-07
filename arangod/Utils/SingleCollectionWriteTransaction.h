@@ -267,6 +267,24 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update (replace!) a single document within a transaction,
+/// using VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        int updateDocument (std::string const& key,
+                            TRI_doc_mptr_copy_t* mptr,
+                            VPackSlice const& slice,
+                            TRI_doc_update_policy_e policy,
+                            bool forceSync,
+                            TRI_voc_rid_t expectedRevision,
+                            TRI_voc_rid_t* actualRevision) {
+          std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+          return updateDocument(key, mptr, json.get(), policy, forceSync,
+                                expectedRevision, actualRevision);
+        }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update (replace!) a single document within a transaction,
 /// using json
 ////////////////////////////////////////////////////////////////////////////////
 
