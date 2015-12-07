@@ -18,9 +18,11 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/pkg/types"
+	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 )
 
@@ -30,6 +32,8 @@ func TestGetIDs(t *testing.T) {
 	removecc := &raftpb.ConfChange{Type: raftpb.ConfChangeRemoveNode, NodeID: 2}
 	removeEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(removecc)}
 	normalEntry := raftpb.Entry{Type: raftpb.EntryNormal}
+	updatecc := &raftpb.ConfChange{Type: raftpb.ConfChangeUpdateNode, NodeID: 2}
+	updateEntry := raftpb.Entry{Type: raftpb.EntryConfChange, Data: pbutil.MustMarshal(updatecc)}
 
 	tests := []struct {
 		confState *raftpb.ConfState
@@ -46,6 +50,8 @@ func TestGetIDs(t *testing.T) {
 			[]raftpb.Entry{addEntry, removeEntry}, []uint64{1}},
 		{&raftpb.ConfState{Nodes: []uint64{1}},
 			[]raftpb.Entry{addEntry, normalEntry}, []uint64{1, 2}},
+		{&raftpb.ConfState{Nodes: []uint64{1}},
+			[]raftpb.Entry{addEntry, normalEntry, updateEntry}, []uint64{1, 2}},
 		{&raftpb.ConfState{Nodes: []uint64{1}},
 			[]raftpb.Entry{addEntry, removeEntry, normalEntry}, []uint64{1}},
 	}
@@ -139,5 +145,29 @@ func TestCreateConfigChangeEnts(t *testing.T) {
 		if !reflect.DeepEqual(gents, tt.wents) {
 			t.Errorf("#%d: ents = %v, want %v", i, gents, tt.wents)
 		}
+	}
+}
+
+func TestStopRaftWhenWaitingForApplyDone(t *testing.T) {
+	n := newReadyNode()
+	r := raftNode{
+		Node:        n,
+		storage:     &storageRecorder{},
+		raftStorage: raft.NewMemoryStorage(),
+		transport:   &nopTransporter{},
+	}
+	r.start(&EtcdServer{r: r})
+	n.readyc <- raft.Ready{}
+	select {
+	case <-r.applyc:
+	case <-time.After(time.Second):
+		t.Fatalf("failed to receive apply struct")
+	}
+
+	r.stopped <- struct{}{}
+	select {
+	case <-r.done:
+	case <-time.After(time.Second):
+		t.Fatalf("failed to stop raft loop")
 	}
 }

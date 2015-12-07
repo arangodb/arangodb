@@ -1,10 +1,10 @@
-### Backward Compatibility
+# Backward Compatibility
 
 The main goal of etcd 2.0 release is to improve cluster safety around bootstrapping and dynamic reconfiguration. To do this, we deprecated the old error-prone APIs and provide a new set of APIs.
 
 The other main focus of this release was a more reliable Raft implementation, but as this change is internal it should not have any notable effects to users.
 
-#### Command Line Flags Changes
+## Command Line Flags Changes
 
 The major flag changes are to mostly related to bootstrapping. The `initial-*` flags provide an improved way to specify the required criteria to start the cluster. The advertised URLs now support a list of values instead of a single value, which allows etcd users to gracefully migrate to the new set of IANA-assigned ports (2379/client and 2380/peers) while maintaining backward compatibility with the old ports.
 
@@ -20,14 +20,30 @@ The major flag changes are to mostly related to bootstrapping. The `initial-*` f
 The documentation of new command line flags can be found at
 https://github.com/coreos/etcd/blob/master/Documentation/configuration.md.
 
-#### Data Dir
-- Default data dir location has changed from {$hostname}.etcd to {name}.etcd.
+## Data Directory Naming
 
-- The disk format within the data dir has changed. etcd 2.0 should be able to auto upgrade the old data format. Instructions on doing so manually are in the [migration tool doc][migrationtooldoc].
+The default data dir location has changed from {$hostname}.etcd to {name}.etcd.
 
-[migrationtooldoc]: https://github.com/coreos/etcd/blob/master/Documentation/0_4_migration_tool.md
+## Key-Value API
 
-#### Standby
+### Read consistency flag
+
+The consistent flag for read operations is removed in etcd 2.0.0. The normal read operations provides the same consistency guarantees with the 0.4.6 read operations with consistent flag set.
+
+The read consistency guarantees are:
+
+The consistent read guarantees the sequential consistency within one client that talks to one etcd server. Read/Write from one client to one etcd member should be observed in order. If one client write a value to a etcd server successfully, it should be able to get the value out of the server immediately. 
+
+Each etcd member will proxy the request to leader and only return the result to user after the result is applied on the local member. Thus after the write succeed, the user is guaranteed to see the value on the member it sent the request to.
+
+Reads do not provide linearizability. If you want linearizable read, you need to set quorum option to true.
+
+**Previous behavior**
+
+We added an option for a consistent read in the old version of etcd since etcd 0.x redirects the write request to the leader. When the user get back the result from the leader, the member it sent the request to originally might not apply the write request yet. With the consistent flag set to true, the client will always send read request to the leader. So one client should be able to see its last write when consistent=true is enabled. There is no order guarantees among different clients.
+
+
+## Standby
 
 etcd 0.4’s standby mode has been deprecated. [Proxy mode][proxymode] is introduced to solve a subset of problems standby was solving.
 
@@ -35,21 +51,21 @@ Standby mode was intended for large clusters that had a subset of the members ac
 
 Proxy mode in 2.0 will provide similar functionality, and with improved control over which machines act as proxies due to the operator specifically configuring them. Proxies also support read only or read/write modes for increased security and durability.
 
-[proxymode]: https://github.com/coreos/etcd/blob/master/Documentation/proxy.md
+[proxymode]: proxy.md
 
-#### Discovery Service
+## Discovery Service
 
 A size key needs to be provided inside a [discovery token][discoverytoken].
-[discoverytoken]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#custom-etcd-discovery-service
+[discoverytoken]: clustering.md#custom-etcd-discovery-service
 
-#### HTTP Admin API
+## HTTP Admin API
 
 `v2/admin` on peer url and `v2/keys/_etcd` are unified under the new [v2/member API][memberapi] to better explain which machines are part of an etcd cluster, and to simplify the keyspace for all your use cases.
 
-[memberapi]: https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md
+[memberapi]: other_apis.md
 
-#### HTTP Key Value API
-- The follower can now transparently proxy write equests to the leader. Clients will no longer see 307 redirections to the leader from etcd.
+## HTTP Key Value API
+- The follower can now transparently proxy write requests to the leader. Clients will no longer see 307 redirections to the leader from etcd.
 
 - Expiration time is in UTC instead of local time.
 

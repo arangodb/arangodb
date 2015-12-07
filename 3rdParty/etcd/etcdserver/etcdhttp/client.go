@@ -20,7 +20,6 @@ import (
 	"expvar"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -28,14 +27,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/jonboulle/clockwork"
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/prometheus/client_golang/prometheus"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 	"github.com/coreos/etcd/etcdserver/etcdserverpb"
 	"github.com/coreos/etcd/etcdserver/stats"
-	"github.com/coreos/etcd/pkg/metrics"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/store"
@@ -43,22 +44,30 @@ import (
 )
 
 const (
+	authPrefix               = "/v2/auth"
 	keysPrefix               = "/v2/keys"
 	deprecatedMachinesPrefix = "/v2/machines"
 	membersPrefix            = "/v2/members"
 	statsPrefix              = "/v2/stats"
-	statsPath                = "/stats"
+	varsPath                 = "/debug/vars"
+	metricsPath              = "/metrics"
 	healthPath               = "/health"
 	versionPath              = "/version"
+	configPath               = "/config"
 )
 
 // NewClientHandler generates a muxed http.Handler with the given parameters to serve etcd client requests.
-func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
+func NewClientHandler(server *etcdserver.EtcdServer, timeout time.Duration) http.Handler {
+	go capabilityLoop(server)
+
+	sec := auth.NewStore(server, timeout)
+
 	kh := &keysHandler{
-		server:      server,
-		clusterInfo: server.Cluster,
-		timer:       server,
-		timeout:     defaultServerTimeout,
+		sec:     sec,
+		server:  server,
+		cluster: server.Cluster(),
+		timer:   server,
+		timeout: timeout,
 	}
 
 	sh := &statsHandler{
@@ -66,110 +75,133 @@ func NewClientHandler(server *etcdserver.EtcdServer) http.Handler {
 	}
 
 	mh := &membersHandler{
-		server:      server,
-		clusterInfo: server.Cluster,
-		clock:       clockwork.NewRealClock(),
+		sec:     sec,
+		server:  server,
+		cluster: server.Cluster(),
+		timeout: timeout,
+		clock:   clockwork.NewRealClock(),
 	}
 
 	dmh := &deprecatedMachinesHandler{
-		clusterInfo: server.Cluster,
+		cluster: server.Cluster(),
+	}
+
+	sech := &authHandler{
+		sec:     sec,
+		cluster: server.Cluster(),
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", http.NotFound)
 	mux.Handle(healthPath, healthHandler(server))
-	mux.HandleFunc(versionPath, serveVersion)
+	mux.HandleFunc(versionPath, versionHandler(server.Cluster(), serveVersion))
 	mux.Handle(keysPrefix, kh)
 	mux.Handle(keysPrefix+"/", kh)
 	mux.HandleFunc(statsPrefix+"/store", sh.serveStore)
 	mux.HandleFunc(statsPrefix+"/self", sh.serveSelf)
 	mux.HandleFunc(statsPrefix+"/leader", sh.serveLeader)
-	mux.HandleFunc(statsPath, serveStats)
+	mux.HandleFunc(varsPath, serveVars)
+	mux.HandleFunc(configPath+"/local/log", logHandleFunc)
+	mux.Handle(metricsPath, prometheus.Handler())
 	mux.Handle(membersPrefix, mh)
 	mux.Handle(membersPrefix+"/", mh)
 	mux.Handle(deprecatedMachinesPrefix, dmh)
-	return mux
+	handleAuth(mux, sech)
+
+	return requestLogger(mux)
 }
 
 type keysHandler struct {
-	server      etcdserver.Server
-	clusterInfo etcdserver.ClusterInfo
-	timer       etcdserver.RaftTimer
-	timeout     time.Duration
+	sec     auth.Store
+	server  etcdserver.Server
+	cluster etcdserver.Cluster
+	timer   etcdserver.RaftTimer
+	timeout time.Duration
 }
 
 func (h *keysHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "HEAD", "GET", "PUT", "POST", "DELETE") {
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
+
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
 	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
 	rr, err := parseKeyRequest(r, clockwork.NewRealClock())
 	if err != nil {
-		writeError(w, err)
+		writeKeyError(w, err)
+		return
+	}
+	// The path must be valid at this point (we've parsed the request successfully).
+	if !hasKeyPrefixAccess(h.sec, r, r.URL.Path[len(keysPrefix):], rr.Recursive) {
+		writeKeyNoAuth(w)
 		return
 	}
 
 	resp, err := h.server.Do(ctx, rr)
 	if err != nil {
 		err = trimErrorPrefix(err, etcdserver.StoreKeysPrefix)
-		writeError(w, err)
+		writeKeyError(w, err)
 		return
 	}
-
 	switch {
 	case resp.Event != nil:
 		if err := writeKeyEvent(w, resp.Event, h.timer); err != nil {
 			// Should never be reached
-			log.Printf("error writing event: %v", err)
+			plog.Errorf("error writing event (%v)", err)
 		}
 	case resp.Watcher != nil:
 		ctx, cancel := context.WithTimeout(context.Background(), defaultWatchTimeout)
 		defer cancel()
 		handleKeyWatch(ctx, w, resp.Watcher, rr.Stream, h.timer)
 	default:
-		writeError(w, errors.New("received response with no Event/Watcher!"))
+		writeKeyError(w, errors.New("received response with no Event/Watcher!"))
 	}
 }
 
 type deprecatedMachinesHandler struct {
-	clusterInfo etcdserver.ClusterInfo
+	cluster etcdserver.Cluster
 }
 
 func (h *deprecatedMachinesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "HEAD") {
 		return
 	}
-	endpoints := h.clusterInfo.ClientURLs()
+	endpoints := h.cluster.ClientURLs()
 	w.Write([]byte(strings.Join(endpoints, ", ")))
 }
 
 type membersHandler struct {
-	server      etcdserver.Server
-	clusterInfo etcdserver.ClusterInfo
-	clock       clockwork.Clock
+	sec     auth.Store
+	server  etcdserver.Server
+	cluster etcdserver.Cluster
+	timeout time.Duration
+	clock   clockwork.Clock
 }
 
 func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r.Method, "GET", "POST", "DELETE", "PUT") {
 		return
 	}
-	w.Header().Set("X-Etcd-Cluster-ID", h.clusterInfo.ID().String())
+	if !hasWriteRootAccess(h.sec, r) {
+		writeNoAuth(w)
+		return
+	}
+	w.Header().Set("X-Etcd-Cluster-ID", h.cluster.ID().String())
 
-	ctx, cancel := context.WithTimeout(context.Background(), defaultServerTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), h.timeout)
 	defer cancel()
 
 	switch r.Method {
 	case "GET":
 		switch trimPrefix(r.URL.Path, membersPrefix) {
 		case "":
-			mc := newMemberCollection(h.clusterInfo.Members())
+			mc := newMemberCollection(h.cluster.Members())
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(mc); err != nil {
-				log.Printf("etcdhttp: %v", err)
+				plog.Warningf("failed to encode members response (%v)", err)
 			}
 		case "leader":
 			id := h.server.Leader()
@@ -177,10 +209,10 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				writeError(w, httptypes.NewHTTPError(http.StatusServiceUnavailable, "During election"))
 				return
 			}
-			m := newMember(h.clusterInfo.Member(id))
+			m := newMember(h.cluster.Member(id))
 			w.Header().Set("Content-Type", "application/json")
 			if err := json.NewEncoder(w).Encode(m); err != nil {
-				log.Printf("etcdhttp: %v", err)
+				plog.Warningf("failed to encode members response (%v)", err)
 			}
 		default:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, "Not found"))
@@ -198,7 +230,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			writeError(w, httptypes.NewHTTPError(http.StatusConflict, err.Error()))
 			return
 		case err != nil:
-			log.Printf("etcdhttp: error adding node %s: %v", m.ID, err)
+			plog.Errorf("error adding member %s (%v)", m.ID, err)
 			writeError(w, err)
 			return
 		}
@@ -206,7 +238,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		if err := json.NewEncoder(w).Encode(res); err != nil {
-			log.Printf("etcdhttp: %v", err)
+			plog.Warningf("failed to encode members response (%v)", err)
 		}
 	case "DELETE":
 		id, ok := getID(r.URL.Path, w)
@@ -220,7 +252,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case err == etcdserver.ErrIDNotFound:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
 		case err != nil:
-			log.Printf("etcdhttp: error removing node %s: %v", id, err)
+			plog.Errorf("error removing member %s (%v)", id, err)
 			writeError(w, err)
 		default:
 			w.WriteHeader(http.StatusNoContent)
@@ -245,7 +277,7 @@ func (h *membersHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case err == etcdserver.ErrIDNotFound:
 			writeError(w, httptypes.NewHTTPError(http.StatusNotFound, fmt.Sprintf("No such member: %s", id)))
 		case err != nil:
-			log.Printf("etcdhttp: error updating node %s: %v", m.ID, err)
+			plog.Errorf("error updating member %s (%v)", m.ID, err)
 			writeError(w, err)
 		default:
 			w.WriteHeader(http.StatusNoContent)
@@ -286,12 +318,11 @@ func (h *statsHandler) serveLeader(w http.ResponseWriter, r *http.Request) {
 	w.Write(stats)
 }
 
-func serveStats(w http.ResponseWriter, r *http.Request) {
+func serveVars(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	// TODO: getting one key or a prefix of keys based on path
 	fmt.Fprintf(w, "{\n")
 	first := true
-	metrics.Do(func(kv expvar.KeyValue) {
+	expvar.Do(func(kv expvar.KeyValue) {
 		if !first {
 			fmt.Fprintf(w, ",\n")
 		}
@@ -330,11 +361,56 @@ func healthHandler(server *etcdserver.EtcdServer) http.HandlerFunc {
 	}
 }
 
-func serveVersion(w http.ResponseWriter, r *http.Request) {
+func versionHandler(c etcdserver.Cluster, fn func(http.ResponseWriter, *http.Request, string)) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		v := c.Version()
+		if v != nil {
+			fn(w, r, v.String())
+		} else {
+			fn(w, r, "not_decided")
+		}
+	}
+}
+
+func serveVersion(w http.ResponseWriter, r *http.Request, clusterV string) {
 	if !allowMethod(w, r.Method, "GET") {
 		return
 	}
-	fmt.Fprintf(w, `{"releaseVersion":"%s","internalVersion":"%s"}`, version.Version, version.InternalVersion)
+	vs := version.Versions{
+		Server:  version.Version,
+		Cluster: clusterV,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	b, err := json.Marshal(&vs)
+	if err != nil {
+		plog.Panicf("cannot marshal versions to json (%v)", err)
+	}
+	w.Write(b)
+}
+
+func logHandleFunc(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r.Method, "PUT") {
+		return
+	}
+
+	in := struct{ Level string }{}
+
+	d := json.NewDecoder(r.Body)
+	if err := d.Decode(&in); err != nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid json body"))
+		return
+	}
+
+	logl, err := capnslog.ParseLevel(strings.ToUpper(in.Level))
+	if err != nil {
+		writeError(w, httptypes.NewHTTPError(http.StatusBadRequest, "Invalid log level "+in.Level))
+		return
+	}
+
+	plog.Noticef("globalLogLevel set to %q", logl.String())
+	capnslog.SetGlobalLogLevel(logl)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // parseKeyRequest converts a received http.Request on keysPrefix to
@@ -503,6 +579,32 @@ func writeKeyEvent(w http.ResponseWriter, ev *store.Event, rt etcdserver.RaftTim
 	return json.NewEncoder(w).Encode(ev)
 }
 
+func writeKeyNoAuth(w http.ResponseWriter) {
+	e := etcdErr.NewError(etcdErr.EcodeUnauthorized, "Insufficient credentials", 0)
+	e.WriteTo(w)
+}
+
+// writeKeyError logs and writes the given Error to the ResponseWriter.
+// If Error is not an etcdErr, the error will be converted to an etcd error.
+func writeKeyError(w http.ResponseWriter, err error) {
+	if err == nil {
+		return
+	}
+	switch e := err.(type) {
+	case *etcdErr.Error:
+		e.WriteTo(w)
+	default:
+		switch err {
+		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost:
+			plog.Error(err)
+		default:
+			plog.Errorf("got unexpected response error (%v)", err)
+		}
+		ee := etcdErr.NewError(etcdErr.EcodeRaftInternal, err.Error(), 0)
+		ee.WriteTo(w)
+	}
+}
+
 func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher, stream bool, rt etcdserver.RaftTimer) {
 	defer wa.Remove()
 	ech := wa.EventChan()
@@ -538,7 +640,7 @@ func handleKeyWatch(ctx context.Context, w http.ResponseWriter, wa store.Watcher
 			ev = trimEventPrefix(ev, etcdserver.StoreKeysPrefix)
 			if err := json.NewEncoder(w).Encode(ev); err != nil {
 				// Should never be reached
-				log.Printf("error writing event: %v\n", err)
+				plog.Warningf("error writing event (%v)", err)
 				return
 			}
 			if !stream {

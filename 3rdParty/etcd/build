@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/sh -e
 
 ORG_PATH="github.com/coreos"
 REPO_PATH="${ORG_PATH}/etcd"
@@ -11,8 +11,16 @@ ln -s ${PWD} $GOPATH/src/${REPO_PATH}
 
 eval $(go env)
 
+GIT_SHA=`git rev-parse --short HEAD || echo "GitNotFound"`
+
+val=$(go version)
+ver=$(echo $val | awk -F ' ' '{print $3}' | awk -F '.' '{print $2}')
+if [ $ver -gt 4 ]; then
+	LINK_OPERATOR="="
+else
+	LINK_OPERATOR=" "
+fi
+
 # Static compilation is useful when etcd is run in a container
-CGO_ENABLED=0 go build -a -ldflags '-s' -o bin/etcd ${REPO_PATH}
-CGO_ENABLED=0 go build -a -ldflags '-s' -o bin/etcdctl ${REPO_PATH}/etcdctl
-go build -o bin/etcd-migrate ${REPO_PATH}/tools/etcd-migrate
-go build -o bin/etcd-dump-logs ${REPO_PATH}/tools/etcd-dump-logs
+CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s -X ${REPO_PATH}/version.GitSHA${LINK_OPERATOR}${GIT_SHA}" -o bin/etcd ${REPO_PATH}
+CGO_ENABLED=0 go build -a -installsuffix cgo -ldflags "-s" -o bin/etcdctl ${REPO_PATH}/etcdctl

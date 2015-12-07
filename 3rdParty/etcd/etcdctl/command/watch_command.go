@@ -16,11 +16,13 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 )
 
 // NewWatchCommand returns the CLI command for "watch".
@@ -34,66 +36,48 @@ func NewWatchCommand() cli.Command {
 			cli.BoolFlag{Name: "recursive", Usage: "returns all values for key and child keys"},
 		},
 		Action: func(c *cli.Context) {
-			handleKey(c, watchCommandFunc)
+			watchCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
 // watchCommandFunc executes the "watch" command.
-func watchCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+func watchCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("Key required")
+		handleError(ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	recursive := c.Bool("recursive")
 	forever := c.Bool("forever")
+	index := c.Int("after-index")
 
-	index := 0
-	if c.Int("after-index") != 0 {
-		index = c.Int("after-index") + 1
-	}
+	stop := false
+	w := ki.Watcher(key, &client.WatcherOptions{AfterIndex: uint64(index), Recursive: recursive})
 
-	if forever {
-		sigch := make(chan os.Signal, 1)
-		signal.Notify(sigch, os.Interrupt)
-		stop := make(chan bool)
+	sigch := make(chan os.Signal, 1)
+	signal.Notify(sigch, os.Interrupt)
 
-		go func() {
-			<-sigch
-			os.Exit(0)
-		}()
+	go func() {
+		<-sigch
+		os.Exit(0)
+	}()
 
-		receiver := make(chan *etcd.Response)
-		errCh := make(chan error, 1)
-
-		go func() {
-			_, err := client.Watch(key, uint64(index), recursive, receiver, stop)
-			errCh <- err
-		}()
-
-		for {
-			select {
-			case resp := <-receiver:
-				printAll(resp, c.GlobalString("output"))
-			case err := <-errCh:
-				handleError(-1, err)
-			}
-		}
-
-	} else {
-		var resp *etcd.Response
-		var err error
-		resp, err = client.Watch(key, uint64(index), recursive, nil, nil)
-
+	for !stop {
+		resp, err := w.Next(context.TODO())
 		if err != nil {
-			handleError(ErrorFromEtcd, err)
+			handleError(ExitServerError, err)
+		}
+		if resp.Node.Dir {
+			continue
+		}
+		if recursive {
+			fmt.Printf("[%s] %s\n", resp.Action, resp.Node.Key)
 		}
 
-		if err != nil {
-			return nil, err
+		printResponseKey(resp, c.GlobalString("output"))
+
+		if !forever {
+			stop = true
 		}
-		printAll(resp, c.GlobalString("output"))
 	}
-
-	return nil, nil
 }

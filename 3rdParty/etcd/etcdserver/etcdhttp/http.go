@@ -16,28 +16,27 @@ package etcdhttp
 
 import (
 	"errors"
-	"log"
 	"math"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 	etcdErr "github.com/coreos/etcd/error"
+	"github.com/coreos/etcd/etcdserver"
+	"github.com/coreos/etcd/etcdserver/auth"
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
 )
 
 const (
-	// time to wait for response from EtcdServer requests
-	// 5s for disk and network delay + 10*heartbeat for commit and possible
-	// leader switch
-	// TODO: use heartbeat set in etcdserver
-	defaultServerTimeout = 5*time.Second + 10*(100*time.Millisecond)
-
 	// time to wait for a Watch request
 	defaultWatchTimeout = time.Duration(math.MaxInt64)
 )
 
-var errClosed = errors.New("etcdhttp: client closed connection")
+var (
+	plog      = capnslog.NewPackageLogger("github.com/coreos/etcd", "etcdhttp")
+	errClosed = errors.New("etcdhttp: client closed connection")
+)
 
 // writeError logs and writes the given Error to the ResponseWriter
 // If Error is an etcdErr, it is rendered to the ResponseWriter
@@ -51,8 +50,16 @@ func writeError(w http.ResponseWriter, err error) {
 		e.WriteTo(w)
 	case *httptypes.HTTPError:
 		e.WriteTo(w)
+	case auth.Error:
+		herr := httptypes.NewHTTPError(e.HTTPStatus(), e.Error())
+		herr.WriteTo(w)
 	default:
-		log.Printf("etcdhttp: unexpected error: %v", err)
+		switch err {
+		case etcdserver.ErrTimeoutDueToLeaderFail, etcdserver.ErrTimeoutDueToConnectionLost:
+			plog.Error(err)
+		default:
+			plog.Errorf("got unexpected response error (%v)", err)
+		}
 		herr := httptypes.NewHTTPError(http.StatusInternalServerError, "Internal Server Error")
 		herr.WriteTo(w)
 	}
@@ -70,4 +77,11 @@ func allowMethod(w http.ResponseWriter, m string, ms ...string) bool {
 	w.Header().Set("Allow", strings.Join(ms, ","))
 	http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 	return false
+}
+
+func requestLogger(handler http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		plog.Debugf("[%s] %s remote:%s", r.Method, r.RequestURI, r.RemoteAddr)
+		handler.ServeHTTP(w, r)
+	})
 }

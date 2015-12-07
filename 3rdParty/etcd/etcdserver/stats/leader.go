@@ -16,7 +16,6 @@ package stats
 
 import (
 	"encoding/json"
-	"log"
 	"math"
 	"sync"
 	"time"
@@ -47,7 +46,7 @@ func (ls *LeaderStats) JSON() []byte {
 	b, err := json.Marshal(stats)
 	// TODO(jonboulle): appropriate error handling?
 	if err != nil {
-		log.Printf("stats: error marshalling leader stats: %v", err)
+		plog.Errorf("error marshalling leader stats (%v)", err)
 	}
 	return b
 }
@@ -66,21 +65,26 @@ func (ls *LeaderStats) Follower(name string) *FollowerStats {
 
 // FollowerStats encapsulates various statistics about a follower in an etcd cluster
 type FollowerStats struct {
-	Latency struct {
-		Current           float64 `json:"current"`
-		Average           float64 `json:"average"`
-		averageSquare     float64
-		StandardDeviation float64 `json:"standardDeviation"`
-		Minimum           float64 `json:"minimum"`
-		Maximum           float64 `json:"maximum"`
-	} `json:"latency"`
-
-	Counts struct {
-		Fail    uint64 `json:"fail"`
-		Success uint64 `json:"success"`
-	} `json:"counts"`
+	Latency LatencyStats `json:"latency"`
+	Counts  CountsStats  `json:"counts"`
 
 	sync.Mutex
+}
+
+// LatencyStats encapsulates latency statistics.
+type LatencyStats struct {
+	Current           float64 `json:"current"`
+	Average           float64 `json:"average"`
+	averageSquare     float64
+	StandardDeviation float64 `json:"standardDeviation"`
+	Minimum           float64 `json:"minimum"`
+	Maximum           float64 `json:"maximum"`
+}
+
+// CountsStats encapsulates raft statistics.
+type CountsStats struct {
+	Fail    uint64 `json:"fail"`
+	Success uint64 `json:"success"`
 }
 
 // Succ updates the FollowerStats with a successful send

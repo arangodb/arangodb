@@ -70,6 +70,13 @@ func TestNewListenerTLSInfo(t *testing.T) {
 	}
 }
 
+func TestNewListenerTLSEmptyInfo(t *testing.T) {
+	_, err := NewListener("127.0.0.1:0", "https", TLSInfo{})
+	if err == nil {
+		t.Errorf("err = nil, want not presented error")
+	}
+}
+
 func TestNewListenerTLSInfoNonexist(t *testing.T) {
 	tlsInfo := TLSInfo{CertFile: "@badname", KeyFile: "@badname"}
 	_, err := NewListener("127.0.0.1:0", "https", tlsInfo)
@@ -91,17 +98,17 @@ func TestNewTransportTLSInfo(t *testing.T) {
 	defer os.Remove(tmp)
 
 	tests := []TLSInfo{
-		TLSInfo{},
-		TLSInfo{
+		{},
+		{
 			CertFile: tmp,
 			KeyFile:  tmp,
 		},
-		TLSInfo{
+		{
 			CertFile: tmp,
 			KeyFile:  tmp,
 			CAFile:   tmp,
 		},
-		TLSInfo{
+		{
 			CAFile: tmp,
 		},
 	}
@@ -150,14 +157,14 @@ func TestTLSInfoMissingFields(t *testing.T) {
 	defer os.Remove(tmp)
 
 	tests := []TLSInfo{
-		TLSInfo{CertFile: tmp},
-		TLSInfo{KeyFile: tmp},
-		TLSInfo{CertFile: tmp, CAFile: tmp},
-		TLSInfo{KeyFile: tmp, CAFile: tmp},
+		{CertFile: tmp},
+		{KeyFile: tmp},
+		{CertFile: tmp, CAFile: tmp},
+		{KeyFile: tmp, CAFile: tmp},
 	}
 
 	for i, info := range tests {
-		if _, err := info.ServerConfig(); err == nil {
+		if _, err = info.ServerConfig(); err == nil {
 			t.Errorf("#%d: expected non-nil error from ServerConfig()", i)
 		}
 
@@ -177,7 +184,7 @@ func TestTLSInfoParseFuncError(t *testing.T) {
 	info := TLSInfo{CertFile: tmp, KeyFile: tmp, CAFile: tmp}
 	info.parseFunc = fakeCertificateParserFunc(tls.Certificate{}, errors.New("fake"))
 
-	if _, err := info.ServerConfig(); err == nil {
+	if _, err = info.ServerConfig(); err == nil {
 		t.Errorf("expected non-nil error from ServerConfig()")
 	}
 

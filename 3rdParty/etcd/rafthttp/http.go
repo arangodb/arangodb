@@ -15,18 +15,16 @@
 package rafthttp
 
 import (
+	"errors"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"path"
-	"strconv"
-	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	pioutil "github.com/coreos/etcd/pkg/ioutil"
 	"github.com/coreos/etcd/pkg/types"
 	"github.com/coreos/etcd/raft/raftpb"
-
-	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/version"
 )
 
 const (
@@ -35,7 +33,11 @@ const (
 
 var (
 	RaftPrefix       = "/raft"
+	ProbingPrefix    = path.Join(RaftPrefix, "probing")
 	RaftStreamPrefix = path.Join(RaftPrefix, "stream")
+
+	errIncompatibleVersion = errors.New("incompatible version")
+	errClusterIDMismatch   = errors.New("cluster ID mismatch")
 )
 
 func NewHandler(r Raft, cid types.ID) http.Handler {
@@ -45,14 +47,21 @@ func NewHandler(r Raft, cid types.ID) http.Handler {
 	}
 }
 
-// NewStreamHandler returns a handler which initiates streamer when receiving
-// stream request from follower.
-func NewStreamHandler(tr *transport, id, cid types.ID) http.Handler {
+type peerGetter interface {
+	Get(id types.ID) Peer
+}
+
+func newStreamHandler(peerGetter peerGetter, r Raft, id, cid types.ID) http.Handler {
 	return &streamHandler{
-		tr:  tr,
-		id:  id,
-		cid: cid,
+		peerGetter: peerGetter,
+		r:          r,
+		id:         id,
+		cid:        cid,
 	}
+}
+
+type writerToResponse interface {
+	WriteTo(w http.ResponseWriter)
 }
 
 type handler struct {
@@ -67,13 +76,19 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := checkVersionCompability(r.Header.Get("X-Server-From"), serverVersion(r.Header), minClusterVersion(r.Header)); err != nil {
+		plog.Errorf("request received was ignored (%v)", err)
+		http.Error(w, errIncompatibleVersion.Error(), http.StatusPreconditionFailed)
+		return
+	}
+
 	wcid := h.cid.String()
 	w.Header().Set("X-Etcd-Cluster-ID", wcid)
 
 	gcid := r.Header.Get("X-Etcd-Cluster-ID")
 	if gcid != wcid {
-		log.Printf("rafthttp: request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
-		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
+		plog.Errorf("request received was ignored (cluster ID mismatch got %s want %s)", gcid, wcid)
+		http.Error(w, errClusterIDMismatch.Error(), http.StatusPreconditionFailed)
 		return
 	}
 
@@ -82,13 +97,13 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	limitedr := pioutil.NewLimitedBufferReader(r.Body, ConnReadLimitByte)
 	b, err := ioutil.ReadAll(limitedr)
 	if err != nil {
-		log.Println("rafthttp: error reading raft message:", err)
+		plog.Errorf("failed to read raft message (%v)", err)
 		http.Error(w, "error reading raft message", http.StatusBadRequest)
 		return
 	}
 	var m raftpb.Message
 	if err := m.Unmarshal(b); err != nil {
-		log.Println("rafthttp: error unmarshaling raft message:", err)
+		plog.Errorf("failed to unmarshal raft message (%v)", err)
 		http.Error(w, "error unmarshaling raft message", http.StatusBadRequest)
 		return
 	}
@@ -97,18 +112,21 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case writerToResponse:
 			v.WriteTo(w)
 		default:
-			log.Printf("rafthttp: error processing raft message: %v", err)
+			plog.Warningf("failed to process raft message (%v)", err)
 			http.Error(w, "error processing raft message", http.StatusInternalServerError)
 		}
 		return
 	}
+	// Write StatusNoContet header after the message has been processed by
+	// raft, which faciliates the client to report MsgSnap status.
 	w.WriteHeader(http.StatusNoContent)
 }
 
 type streamHandler struct {
-	tr  *transport
-	id  types.ID
-	cid types.ID
+	peerGetter peerGetter
+	r          Raft
+	id         types.ID
+	cid        types.ID
 }
 
 func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -118,56 +136,97 @@ func (h *streamHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fromStr := strings.TrimPrefix(r.URL.Path, RaftStreamPrefix+"/")
-	from, err := types.IDFromString(fromStr)
-	if err != nil {
-		log.Printf("rafthttp: path %s cannot be parsed", fromStr)
-		http.Error(w, "invalid path", http.StatusNotFound)
-		return
-	}
-	p := h.tr.Peer(from)
-	if p == nil {
-		log.Printf("rafthttp: fail to find sender %s", from)
-		http.Error(w, "error sender not found", http.StatusNotFound)
+	w.Header().Set("X-Server-Version", version.Version)
+
+	if err := checkVersionCompability(r.Header.Get("X-Server-From"), serverVersion(r.Header), minClusterVersion(r.Header)); err != nil {
+		plog.Errorf("request received was ignored (%v)", err)
+		http.Error(w, errIncompatibleVersion.Error(), http.StatusPreconditionFailed)
 		return
 	}
 
 	wcid := h.cid.String()
+	w.Header().Set("X-Etcd-Cluster-ID", wcid)
+
 	if gcid := r.Header.Get("X-Etcd-Cluster-ID"); gcid != wcid {
-		log.Printf("rafthttp: streaming request ignored due to cluster ID mismatch got %s want %s", gcid, wcid)
-		http.Error(w, "clusterID mismatch", http.StatusPreconditionFailed)
+		plog.Errorf("streaming request ignored (cluster ID mismatch got %s want %s)", gcid, wcid)
+		http.Error(w, errClusterIDMismatch.Error(), http.StatusPreconditionFailed)
+		return
+	}
+
+	var t streamType
+	switch path.Dir(r.URL.Path) {
+	// backward compatibility
+	case RaftStreamPrefix:
+		t = streamTypeMsgApp
+	case path.Join(RaftStreamPrefix, string(streamTypeMsgApp)):
+		t = streamTypeMsgAppV2
+	case path.Join(RaftStreamPrefix, string(streamTypeMessage)):
+		t = streamTypeMessage
+	default:
+		plog.Debugf("ignored unexpected streaming request path %s", r.URL.Path)
+		http.Error(w, "invalid path", http.StatusNotFound)
+		return
+	}
+
+	fromStr := path.Base(r.URL.Path)
+	from, err := types.IDFromString(fromStr)
+	if err != nil {
+		plog.Errorf("failed to parse from %s into ID (%v)", fromStr, err)
+		http.Error(w, "invalid from", http.StatusNotFound)
+		return
+	}
+	if h.r.IsIDRemoved(uint64(from)) {
+		plog.Warningf("rejected the stream from peer %s since it was removed", from)
+		http.Error(w, "removed member", http.StatusGone)
+		return
+	}
+	p := h.peerGetter.Get(from)
+	if p == nil {
+		// This may happen in following cases:
+		// 1. user starts a remote peer that belongs to a different cluster
+		// with the same cluster ID.
+		// 2. local etcd falls behind of the cluster, and cannot recognize
+		// the members that joined after its current progress.
+		plog.Errorf("failed to find member %s in cluster %s", from, wcid)
+		http.Error(w, "error sender not found", http.StatusNotFound)
 		return
 	}
 
 	wto := h.id.String()
 	if gto := r.Header.Get("X-Raft-To"); gto != wto {
-		log.Printf("rafthttp: streaming request ignored due to ID mismatch got %s want %s", gto, wto)
+		plog.Errorf("streaming request ignored (ID mismatch got %s want %s)", gto, wto)
 		http.Error(w, "to field mismatch", http.StatusPreconditionFailed)
-		return
-	}
-
-	termStr := r.Header.Get("X-Raft-Term")
-	term, err := strconv.ParseUint(termStr, 10, 64)
-	if err != nil {
-		log.Printf("rafthttp: streaming request ignored due to parse term %s error: %v", termStr, err)
-		http.Error(w, "invalid term field", http.StatusBadRequest)
-		return
-	}
-
-	sw := newStreamWriter(from, term)
-	err = p.attachStream(sw)
-	if err != nil {
-		log.Printf("rafthttp: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
 	w.(http.Flusher).Flush()
-	go sw.handle(w.(WriteFlusher))
-	<-sw.stopNotify()
+
+	c := newCloseNotifier()
+	conn := &outgoingConn{
+		t:       t,
+		termStr: r.Header.Get("X-Raft-Term"),
+		Writer:  w,
+		Flusher: w.(http.Flusher),
+		Closer:  c,
+	}
+	p.attachOutgoingConn(conn)
+	<-c.closeNotify()
 }
 
-type writerToResponse interface {
-	WriteTo(w http.ResponseWriter)
+type closeNotifier struct {
+	done chan struct{}
 }
+
+func newCloseNotifier() *closeNotifier {
+	return &closeNotifier{
+		done: make(chan struct{}),
+	}
+}
+
+func (n *closeNotifier) Close() error {
+	close(n.done)
+	return nil
+}
+
+func (n *closeNotifier) closeNotify() <-chan struct{} { return n.done }

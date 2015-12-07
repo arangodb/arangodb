@@ -17,9 +17,10 @@ package command
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/client"
 )
 
 // NewSetCommand returns the CLI command for "set".
@@ -33,29 +34,32 @@ func NewSetCommand() cli.Command {
 			cli.IntFlag{Name: "swap-with-index", Value: 0, Usage: "previous index"},
 		},
 		Action: func(c *cli.Context) {
-			handleKey(c, setCommandFunc)
+			setCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
 // setCommandFunc executes the "set" command.
-func setCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+func setCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("Key required")
+		handleError(ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	value, err := argOrStdin(c.Args(), os.Stdin, 1)
 	if err != nil {
-		return nil, errors.New("Value required")
+		handleError(ExitBadArgs, errors.New("value required"))
 	}
 
 	ttl := c.Int("ttl")
 	prevValue := c.String("swap-with-value")
 	prevIndex := c.Int("swap-with-index")
 
-	if prevValue == "" && prevIndex == 0 {
-		return client.Set(key, value, uint64(ttl))
-	} else {
-		return client.CompareAndSwap(key, value, uint64(ttl), prevValue, uint64(prevIndex))
+	ctx, cancel := contextWithTotalTimeout(c)
+	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevIndex: uint64(prevIndex), PrevValue: prevValue})
+	cancel()
+	if err != nil {
+		handleError(ExitServerError, err)
 	}
+
+	printResponseKey(resp, c.GlobalString("output"))
 }

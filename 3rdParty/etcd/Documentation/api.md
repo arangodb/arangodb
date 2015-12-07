@@ -78,11 +78,11 @@ X-Raft-Index: 5398
 X-Raft-Term: 1
 ```
 
-- `X-Etcd-Index` is the current etcd index as explained above.
+- `X-Etcd-Index` is the current etcd index as explained above. When request is a watch on key space, `X-Etcd-Index` is the current etcd index when the watch starts, which means that the watched event may happen after `X-Etcd-Index`.
 - `X-Raft-Index` is similar to the etcd index but is for the underlying raft protocol
 - `X-Raft-Term` is an integer that will increase whenever an etcd master election happens in the cluster. If this number is increasing rapidly, you may need to tune the election timeout. See the [tuning][tuning] section for details.
 
-[tuning]: #tuning
+[tuning]: tuning.md
 
 
 ### Get the value of a key
@@ -277,7 +277,7 @@ The first terminal should get the notification and return with the same response
 However, the watch command can do more than this.
 Using the index, we can watch for commands that have happened in the past.
 This is useful for ensuring you don't miss events between watch commands. 
-Typically, we watch again from the (modifiedIndex + 1) of the node we got.
+Typically, we watch again from the `modifiedIndex` + 1 of the node we got.
 
 Let's try to watch for the set command of index 7 again:
 
@@ -287,48 +287,81 @@ curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
 
 The watch command returns immediately with the same response as previously.
 
-**Note**: etcd only keeps the responses of the most recent 1000 events. 
+If we were to restart the watch from index 8 with:
+
+```sh
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
+```
+
+Then even if etcd is on index 9 or 800, the first event to occur to the `/foo`
+key between 8 and the current index will be returned.
+
+**Note**: etcd only keeps the responses of the most recent 1000 events across all etcd keys. 
 It is recommended to send the response to another thread to process immediately
 instead of blocking the watch while processing the result. 
 
-If we miss all the 1000 events, we need to recover the current state of the 
-watching key space. First, We do a get and then start to watch from the (etcdIndex + 1).
+#### Watch from cleared event index
 
-For example, we set `/foo="bar"` for 2000 times and tries to wait from index 7.
+If we miss all the 1000 events, we need to recover the current state of the 
+watching key space through a get and then start to watch from the
+`X-Etcd-Index` + 1.
+
+For example, we set `/other="bar"` for 2000 times and try to wait from index 8.
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=7'
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=8'
 ```
 
 We get the index is outdated response, since we miss the 1000 events kept in etcd.
+
 ```
-{"errorCode":401,"message":"The event in requested index is outdated and cleared","cause":"the requested history has been cleared [1003/7]","index":2002}
+{"errorCode":401,"message":"The event in requested index is outdated and cleared","cause":"the requested history has been cleared [1008/8]","index":2007}
 ```
 
-To start watch, first we need to fetch the current state of key `/foo` and the etcdIndex.
+To start watch, first we need to fetch the current state of key `/foo`:
+
 ```sh
 curl 'http://127.0.0.1:2379/v2/keys/foo' -vv
 ```
+
 ``` 
 < HTTP/1.1 200 OK
 < Content-Type: application/json
 < X-Etcd-Cluster-Id: 7e27652122e8b2ae
-< X-Etcd-Index: 2002
+< X-Etcd-Index: 2007
 < X-Raft-Index: 2615
 < X-Raft-Term: 2
 < Date: Mon, 05 Jan 2015 18:54:43 GMT
 < Transfer-Encoding: chunked
 < 
-{"action":"get","node":{"key":"/foo","value":"","modifiedIndex":2002,"createdIndex":2002}}
+{"action":"get","node":{"key":"/foo","value":"bar","modifiedIndex":7,"createdIndex":7}}
 ```
 
-The `X-Etcd-Index` is important. It is the index when we got the value of `/foo`.
-So we can watch again from the (`X-Etcd-Index` + 1) without missing an event after the last get.
+Unlike watches we use the `X-Etcd-Index` + 1 of the response as a `waitIndex`
+instead of the node's `modifiedIndex` + 1 for two reasons:
+
+1. The `X-Etcd-Index` is always greater than or equal to the `modifiedIndex` when
+   getting a key because `X-Etcd-Index` is the current etcd index, and the `modifiedIndex`
+   is the index of an event already stored in etcd.
+2. None of the events represented by indexes between `modifiedIndex` and
+   `X-Etcd-Index` will be related to the key being fetched.
+
+Using the `modifiedIndex` + 1 is functionally equivalent for subsequent
+watches, but since it is smaller than the `X-Etcd-Index` + 1, we may receive a
+`401 EventIndexCleared` error immediately.
+
+So the first watch after the get should be:
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=2003'
+curl 'http://127.0.0.1:2379/v2/keys/foo?wait=true&waitIndex=2008'
 ```
 
+#### Connection being closed prematurely
+
+The server may close a long polling connection before emitting any events.
+This can happend due to a timeout or the server being shutdown.
+Since the HTTP header is sent immediately upon accepting the connection, the response will be seen as empty: `200 OK` and empty body.
+The clients should be prepared to deal with this scenario and retry the watch.
 
 ### Atomically Creating In-Order Keys
 
@@ -347,7 +380,7 @@ curl http://127.0.0.1:2379/v2/keys/queue -XPOST -d value=Job1
     "action": "create",
     "node": {
         "createdIndex": 6,
-        "key": "/queue/6",
+        "key": "/queue/00000000000000000006",
         "modifiedIndex": 6,
         "value": "Job1"
     }
@@ -366,7 +399,7 @@ curl http://127.0.0.1:2379/v2/keys/queue -XPOST -d value=Job2
     "action": "create",
     "node": {
         "createdIndex": 29,
-        "key": "/queue/29",
+        "key": "/queue/00000000000000000029",
         "modifiedIndex": 29,
         "value": "Job2"
     }
@@ -390,13 +423,13 @@ curl -s 'http://127.0.0.1:2379/v2/keys/queue?recursive=true&sorted=true'
         "nodes": [
             {
                 "createdIndex": 2,
-                "key": "/queue/2",
+                "key": "/queue/00000000000000000002",
                 "modifiedIndex": 2,
                 "value": "Job1"
             },
             {
                 "createdIndex": 3,
-                "key": "/queue/3",
+                "key": "/queue/00000000000000000003",
                 "modifiedIndex": 3,
                 "value": "Job2"
             }
@@ -439,7 +472,7 @@ curl http://127.0.0.1:2379/v2/keys/dir -XPUT -d ttl=30 -d dir=true -d prevExist=
 Keys that are under this directory work as usual, but when the directory expires, a watcher on a key under the directory will get an expire event:
 
 ```sh
-curl 'http://127.0.0.1:2379/v2/keys/dir/asdf?wait=true'
+curl 'http://127.0.0.1:2379/v2/keys/dir?wait=true'
 ```
 
 ```json
@@ -870,7 +903,7 @@ Here we see the `/message` key but our hidden `/_message` key is not returned.
 
 ### Setting a key from a file
 
-You can also use etcd to store small configuration files, json documents, XML documents, etc directly.
+You can also use etcd to store small configuration files, JSON documents, XML documents, etc directly.
 For example you can use curl to upload a simple text file and encode it:
 
 ```
@@ -913,19 +946,35 @@ curl http://127.0.0.1:2379/v2/stats/leader
 
 ```json
 {
-    "id": "2c7d3e0b8627375b",
-    "leaderInfo": {
-        "leader": "8a69d5f6b7814500",
-        "startTime": "2014-10-24T13:15:51.184719899-07:00",
-        "uptime": "7m17.859616962s"
+    "followers": {
+        "6e3bd23ae5f1eae0": {
+            "counts": {
+                "fail": 0,
+                "success": 745
+            },
+            "latency": {
+                "average": 0.017039507382550306,
+                "current": 0.000138,
+                "maximum": 1.007649,
+                "minimum": 0,
+                "standardDeviation": 0.05289178277920594
+            }
+        },
+        "a8266ecf031671f3": {
+            "counts": {
+                "fail": 0,
+                "success": 735
+            },
+            "latency": {
+                "average": 0.012124141496598642,
+                "current": 0.000559,
+                "maximum": 0.791547,
+                "minimum": 0,
+                "standardDeviation": 0.04187900156583733
+            }
+        }
     },
-    "name": "infra1",
-    "recvAppendRequestCnt": 3949,
-    "recvBandwidthRate": 561.5729321100841,
-    "recvPkgRate": 9.008227977383449,
-    "sendAppendRequestCnt": 0,
-    "startTime": "2014-10-24T13:15:50.070369454-07:00",
-    "state": "StateFollower"
+    "leader": "924e2e83e93f2560"
 }
 ```
 
@@ -979,19 +1028,19 @@ curl http://127.0.0.1:2379/v2/stats/self
 
 ```json
 {
-    "id": "eca0338f4ea31566",
+    "id": "924e2e83e93f2560",
     "leaderInfo": {
-        "leader": "8a69d5f6b7814500",
-        "startTime": "2014-10-24T13:15:51.186620747-07:00",
-        "uptime": "10m47.012122091s"
+        "leader": "924e2e83e93f2560",
+        "startTime": "2015-02-09T11:38:30.177534688-08:00",
+        "uptime": "9m33.891343412s"
     },
-    "name": "node3",
-    "recvAppendRequestCnt": 5835,
-    "recvBandwidthRate": 584.1485698657176,
-    "recvPkgRate": 9.17390765395709,
-    "sendAppendRequestCnt": 0,
-    "startTime": "2014-10-24T13:15:50.072007085-07:00",
-    "state": "StateFollower"
+    "name": "infra3",
+    "recvAppendRequestCnt": 0,
+    "sendAppendRequestCnt": 6535,
+    "sendBandwidthRate": 824.1758351191694,
+    "sendPkgRate": 11.111234716807138,
+    "startTime": "2015-02-09T11:38:28.972034204-08:00",
+    "state": "StateLeader"
 }
 ```
 
@@ -1030,4 +1079,4 @@ curl http://127.0.0.1:2379/v2/stats/store
 
 See the [other etcd APIs][other-apis] for details on the cluster management.
 
-[other-apis]: https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md
+[other-apis]: other_apis.md
