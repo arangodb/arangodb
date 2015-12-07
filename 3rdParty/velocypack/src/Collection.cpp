@@ -456,3 +456,26 @@ void Collection::visitRecursive(
     doVisit<Collection::PostOrder>(slice, func);
   }
 }
+
+Builder Collection::sort(
+      Slice const& array,
+      std::function<bool (Slice const&, Slice const&)> lessthan) {
+  if (!array.isArray()) {
+    throw Exception(Exception::InvalidValueType, "Expecting type Array");
+  }
+  std::vector<Slice> subValues;
+  ValueLength len = array.length();
+  subValues.reserve(len);
+  for (ValueLength i = 0; i < len; i++) {
+    subValues.push_back(array[i]);
+  }
+  std::sort(subValues.begin(), subValues.end(), lessthan);
+  Builder b;
+  b.openArray();
+  for (auto const&s : subValues) {
+    b.add(s);
+  }
+  b.close();
+  return b;
+}
+
