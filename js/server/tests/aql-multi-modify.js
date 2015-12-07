@@ -239,8 +239,8 @@ function ahuacatlMultiModifySuite () {
     },
 
     testMultiRemoveLoopSameCollection : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
-      var q = "FOR i IN 1..10 INSERT { value: i } INTO @@cn REMOVE { _key: CONCAT('test', i) } INTO @@cn";
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
+      var q = "FOR i IN 1..2010 INSERT { value: i } INTO @@cn REMOVE { _key: CONCAT('test', i) } INTO @@cn";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, {"@cn": cn1 });
     },
 
@@ -255,69 +255,105 @@ function ahuacatlMultiModifySuite () {
     },
 
     testMultiRemoveLoopSubquery : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
-      var q = "FOR i IN 1..10 LET sub = (REMOVE { _key: CONCAT('test', i) } INTO @@cn) RETURN 1";
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
+      var q = "FOR i IN 1..2010 LET sub = (REMOVE { _key: CONCAT('test', i) } INTO @@cn) RETURN 1";
       var actual = AQL_EXECUTE(q, { "@cn": cn1 });
-      assertEqual(10, actual.json.length);
-      assertEqual(10, actual.stats.writesExecuted);
+      assertEqual(2010, actual.json.length);
+      assertEqual(2010, actual.stats.writesExecuted);
       assertEqual(0, c1.count());
     },
 
     testMultiRemoveLoopSubquerySameCollection : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
       var q = "FOR i IN @@cn LET sub = (REMOVE { _key: i._key } INTO @@cn) RETURN 1";
       var actual = AQL_EXECUTE(q, { "@cn": cn1 });
-      assertEqual(10, actual.json.length);
-      assertEqual(10, actual.stats.writesExecuted);
+      assertEqual(2010, actual.json.length);
+      assertEqual(2010, actual.stats.writesExecuted);
       assertEqual(0, c1.count());
     },
 
     testMultiRemoveLoopSubqueryOtherCollection : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn2 });
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn2 });
       var q = "FOR i IN @@cn1 LET sub = (REMOVE { _key: i._key } INTO @@cn2) RETURN 1";
       var actual = AQL_EXECUTE(q, { "@cn1": cn1, "@cn2" : cn2 });
-      assertEqual(10, actual.json.length);
-      assertEqual(10, actual.stats.writesExecuted);
-      assertEqual(10, c1.count());
+      assertEqual(2010, actual.json.length);
+      assertEqual(2010, actual.stats.writesExecuted);
+      assertEqual(2010, c1.count());
       assertEqual(0, c2.count());
     },
 
     testMultiRemoveLoopSubquerySameCollectionIndependent : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
       var q = "FOR i IN @@cn LET sub1 = (INSERT { _key: CONCAT('test', i) } INTO @@cn) LET sub2 = (REMOVE { _key: CONCAT('test', i) } INTO @@cn) RETURN 1";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, {"@cn": cn1 });
     },
 
     testRemoveInSubqueryNoResult : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
       var actual = AQL_EXECUTE("FOR doc IN @@cn SORT doc.value LET f = (REMOVE doc IN @@cn) RETURN f", { "@cn" : cn1 }).json; 
       var expected = [ ];
-      for (var i = 1; i <= 10; ++i) {
+      for (var i = 1; i <= 2010; ++i) {
         expected.push([ ]);
       }
       assertEqual(expected, actual);
+      assertEqual(0, c1.count());
     },
 
     testRemoveInSubqueryReturnKeys : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
       var actual = AQL_EXECUTE("FOR doc IN @@cn SORT doc.value LET f = (REMOVE doc IN @@cn RETURN OLD.value) RETURN f", { "@cn" : cn1 }).json; 
       var expected = [ ];
-      for (var i = 1; i <= 10; ++i) {
+      for (var i = 1; i <= 2010; ++i) {
         expected.push([ i ]);
       }
       assertEqual(expected, actual);
+      assertEqual(0, c1.count());
     },
 
     testRemoveInSubqueryReturnKeysDoc : function () {
-      AQL_EXECUTE("FOR i IN 1..10 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { value: i } INTO @@cn", { "@cn" : cn1 });
       var actual = AQL_EXECUTE("FOR doc IN @@cn SORT doc.value LET f = (REMOVE doc IN @@cn RETURN OLD) RETURN f[0].value", { "@cn" : cn1 }).json; 
       var expected = [ ];
-      for (var i = 1; i <= 10; ++i) {
+      for (var i = 1; i <= 2010; ++i) {
         expected.push(i);
       }
       assertEqual(expected, actual);
+      assertEqual(0, c1.count());
     },
+    
+    testInsertRemove : function () {
+      var q = "FOR i IN 1..2010 INSERT { value: i } INTO @@cn LET x = NEW REMOVE x._key IN @@cn";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, {"@cn": cn1 });
+    },
+    
+    testInsertRemove2 : function () {
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i), value: i } INTO @@cn", { "@cn" : cn1 });
+      var actual = AQL_EXECUTE("FOR i IN @@cn1 INSERT { value: i } INTO @@cn2 LET x = i._key REMOVE x IN @@cn1", { "@cn1" : cn1, "@cn2": cn2 }).json;
+      assertEqual([ ], actual);
+      assertEqual(0, c1.count());
+      assertEqual(2010, c2.count());
+    },
+    
+    testMultiInsert : function () {
+      var actual = AQL_EXECUTE("FOR i IN 1..2010 INSERT { value: i * 3 } INTO @@cn1 LET one = NEW._key INSERT { value: i * 5 } INTO @@cn2 LET two = NEW._key RETURN [ one, two ]", { "@cn1" : cn1, "@cn2": cn2 }).json;
+      assertEqual(2010, actual.length);
+      var i, seen = { };
+      for (i = 0; i < actual.length; ++i) {
+        assertTrue(typeof actual[i][0] === 'string');
+        assertFalse(seen.hasOwnProperty(actual[i][0]));
+        seen[actual[i][0]] = true;
+        assertFalse(seen.hasOwnProperty(actual[i][1]));
+        seen[actual[i][1]] = true;
+      }
+      assertEqual(2010, c1.count());
+      assertEqual(2010, c2.count());
+      for (i = 0; i < actual.length; ++i) {
+        assertTrue(c1.document(actual[i][0]).value % 3 === 0);
+        assertTrue(c2.document(actual[i][1]).value % 5 === 0);
+      }
+    },
+    
   };
 }
 
