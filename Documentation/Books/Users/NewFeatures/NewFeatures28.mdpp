@@ -9,32 +9,30 @@ here. For a list of bugfixes, please consult the
 
 !SUBSECTION AQL Graph Traversals / Pattern Matching
 
-Aql offers a new feature to traverse over a graph without writing JavaScript functions
-but with all the other features you know from AQL.
-Therefore a special version of `FOR variable-name IN expression` has been introduced.
-This special version has the following format: `FOR vertex-variable, edge-variable, path-variable IN traversal-expression`.
-Where `traversal-expression` has the following format:
+AQL offers a new feature to traverse over a graph without writing JavaScript functions
+but with all the other features you know from AQL. For this purpose, a special version of 
+`FOR variable-name IN expression` has been introduced.
+
+This special version has the following format: `FOR vertex-variable, edge-variable, path-variable IN traversal-expression`,
+where `traversal-expression` has the following format:
 `[depth] direction start-vertex graph-definition`
-With the following input parameters:
+with the following input parameters:
 
-* depth (optional): can either be an integer value (3) or a range of integer values (1..5). Default is 1. 
-  Defines how many steps are executed.
-* direction: can be OUTBOUND or INBOUND or ANY.
-  Defines which edge directions are followed.
-* start-vertex: A `_id` value or a document.
-  Defines where the traversal is started.
-* graph-definition: Either `GRAPH graph-name` for graphs created with the graph-module, or a list of edge collections `edge-col1, edge-col2, .. edge-colN`.
-  Defines which edge collections are used for the traversal.
+* depth (optional): defines how many steps are executed.
+  The value can either be an integer value (e.g. `3`) or a range of integer values (e.g. `1..5`). The default is 1. 
+* direction: defines which edge directions are followed. Can be either `OUTBOUND`, `INBOUND` or `ANY`.
+* start-vertex: defines where the traversal is started. Must be an `_id` value or a document.
+* graph-definition: defines which edge collections are used for the traversal.
+  Must be either `GRAPH graph-name` for graphs created with the graph-module, or a list of edge collections `edge-col1, edge-col2, .. edge-colN`.
   
-
 The three output variables have the following semantics:
 
 * vertex-variable: The last visited vertex.
 * edge-variable: The last visited edge (optional).
 * path-variable: The complete path from start-vertex to vertex-variable (optional).
 
-This statement can be used identical to the original `FOR variable-name IN expression` and for instance filters
-can be defined on the output variables.
+The traversal statement can be used in the same way as the original `FOR variable-name IN expression`,
+and can be combined with filters and other AQL constructs.
 
 As an example one can now find the friends of a friend for a certain user with this AQL statement:
 
@@ -49,6 +47,7 @@ FOR foaf, e, path IN 2 ANY @startUser GRAPH "relations"
 Optimizer rules have been implemented to gain performance of the traversal statement.
 These rules move filter statements into the traversal statement s.t. paths which can never
 pass the filter are not emitted to the variables.
+
 As an example take the query above and assume there are edges that do not have `type == "friend"`.
 If in the first edge step there is such a non-friend edge the second steps will never
 be computed for these edges as they cannot fulfill the filter condition.
