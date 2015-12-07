@@ -838,6 +838,9 @@ int ArangoServer::startupServer () {
     checkVersion = true;
     // --check-version disables all replication appliers
     _disableReplicationApplier = true;
+    if (_applicationCluster != nullptr) {
+      _applicationCluster->disable();
+    }
   }
 
   // run upgrade script
@@ -847,6 +850,9 @@ int ArangoServer::startupServer () {
     performUpgrade = true;
     // --upgrade disables all replication appliers
     _disableReplicationApplier = true;
+    if (_applicationCluster != nullptr) {
+      _applicationCluster->disable();
+    }
   }
 
   // skip an upgrade even if VERSION is missing

@@ -1,6 +1,12 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* fixed cluster upgrade procedure
+
+
+v2.8.0-beta1 (2015-12-06)
+-------------------------
+
 * added AQL function `IS_DATESTRING(value)`
 
   Returns true if *value* is a string that can be used in a date function. 

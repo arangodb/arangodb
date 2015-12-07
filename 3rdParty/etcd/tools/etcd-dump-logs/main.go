@@ -32,24 +32,47 @@ import (
 
 func main() {
 	from := flag.String("data-dir", "", "")
+	snapfile := flag.String("start-snap", "", "The base name of snapshot file to start dumping")
+	index := flag.Uint64("start-index", 0, "The index to start dumping")
 	flag.Parse()
 	if *from == "" {
-		log.Fatal("Must provide -data-dir flag")
+		log.Fatal("Must provide -data-dir flag.")
+	}
+	if *snapfile != "" && *index != 0 {
+		log.Fatal("start-snap and start-index flags cannot be used together.")
 	}
 
-	ss := snap.New(snapDir(*from))
-	snapshot, err := ss.Load()
-	var walsnap walpb.Snapshot
-	switch err {
-	case nil:
-		walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
-		nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
-		fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
-			walsnap.Term, walsnap.Index, nodes)
-	case snap.ErrNoSnapshot:
-		fmt.Printf("Snapshot:\nempty\n")
-	default:
-		log.Fatalf("Failed loading snapshot: %v", err)
+	var (
+		walsnap  walpb.Snapshot
+		snapshot *raftpb.Snapshot
+		err      error
+	)
+
+	isIndex := *index != 0
+
+	if isIndex {
+		fmt.Printf("Start dumping log entries from index %d.\n", *index)
+		walsnap.Index = *index
+	} else {
+		if *snapfile == "" {
+			ss := snap.New(snapDir(*from))
+			snapshot, err = ss.Load()
+		} else {
+			snapshot, err = snap.Read(path.Join(snapDir(*from), *snapfile))
+		}
+
+		switch err {
+		case nil:
+			walsnap.Index, walsnap.Term = snapshot.Metadata.Index, snapshot.Metadata.Term
+			nodes := genIDSlice(snapshot.Metadata.ConfState.Nodes)
+			fmt.Printf("Snapshot:\nterm=%d index=%d nodes=%s\n",
+				walsnap.Term, walsnap.Index, nodes)
+		case snap.ErrNoSnapshot:
+			fmt.Printf("Snapshot:\nempty\n")
+		default:
+			log.Fatalf("Failed loading snapshot: %v", err)
+		}
+		fmt.Println("Start dupmping log entries from snapshot.")
 	}
 
 	w, err := wal.Open(walDir(*from), walsnap)
@@ -58,7 +81,7 @@ func main() {
 	}
 	wmetadata, state, ents, err := w.ReadAll()
 	w.Close()
-	if err != nil {
+	if err != nil && (!isIndex || err != wal.ErrSnapshotNotFound) {
 		log.Fatalf("Failed reading WAL: %v", err)
 	}
 	id, cid := parseWALMetadata(wmetadata)
@@ -102,9 +125,9 @@ func main() {
 	}
 }
 
-func walDir(dataDir string) string { return path.Join(dataDir, "wal") }
+func walDir(dataDir string) string { return path.Join(dataDir, "member", "wal") }
 
-func snapDir(dataDir string) string { return path.Join(dataDir, "snap") }
+func snapDir(dataDir string) string { return path.Join(dataDir, "member", "snap") }
 
 func parseWALMetadata(b []byte) (id, cid types.ID) {
 	var metadata etcdserverpb.Metadata

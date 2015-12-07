@@ -19,16 +19,18 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/coreos/etcd/pkg/pbutil"
 	"github.com/coreos/etcd/raft"
 	"github.com/coreos/etcd/raft/raftpb"
 	"github.com/coreos/etcd/snap/snappb"
+
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/pkg/capnslog"
 )
 
 const (
@@ -36,6 +38,8 @@ const (
 )
 
 var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/etcd", "snap")
+
 	ErrNoSnapshot    = errors.New("snap: no available snapshot")
 	ErrEmptySnapshot = errors.New("snap: empty snapshot")
 	ErrCRCMismatch   = errors.New("snap: crc mismatch")
@@ -60,6 +64,8 @@ func (s *Snapshotter) SaveSnap(snapshot raftpb.Snapshot) error {
 }
 
 func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
+	start := time.Now()
+
 	fname := fmt.Sprintf("%016x-%016x%s", snapshot.Metadata.Term, snapshot.Metadata.Index, snapSuffix)
 	b := pbutil.MustMarshal(snapshot)
 	crc := crc32.Update(0, crcTable, b)
@@ -67,8 +73,15 @@ func (s *Snapshotter) save(snapshot *raftpb.Snapshot) error {
 	d, err := snap.Marshal()
 	if err != nil {
 		return err
+	} else {
+		marshallingDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Microsecond)))
 	}
-	return ioutil.WriteFile(path.Join(s.dir, fname), d, 0666)
+
+	err = ioutil.WriteFile(path.Join(s.dir, fname), d, 0666)
+	if err == nil {
+		saveDurations.Observe(float64(time.Since(start).Nanoseconds() / int64(time.Microsecond)))
+	}
+	return err
 }
 
 func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
@@ -82,46 +95,54 @@ func (s *Snapshotter) Load() (*raftpb.Snapshot, error) {
 			break
 		}
 	}
-	return snap, err
+	if err != nil {
+		return nil, ErrNoSnapshot
+	}
+	return snap, nil
 }
 
 func loadSnap(dir, name string) (*raftpb.Snapshot, error) {
-	var err error
-	var b []byte
-
 	fpath := path.Join(dir, name)
-	defer func() {
-		if err != nil {
-			renameBroken(fpath)
-		}
-	}()
-
-	b, err = ioutil.ReadFile(fpath)
+	snap, err := Read(fpath)
 	if err != nil {
-		log.Printf("snap: snapshotter cannot read file %v: %v", name, err)
+		renameBroken(fpath)
+	}
+	return snap, err
+}
+
+// Read reads the snapshot named by snapname and returns the snapshot.
+func Read(snapname string) (*raftpb.Snapshot, error) {
+	b, err := ioutil.ReadFile(snapname)
+	if err != nil {
+		plog.Errorf("cannot read file %v: %v", snapname, err)
 		return nil, err
+	}
+
+	if len(b) == 0 {
+		plog.Errorf("unexpected empty snapshot")
+		return nil, ErrEmptySnapshot
 	}
 
 	var serializedSnap snappb.Snapshot
 	if err = serializedSnap.Unmarshal(b); err != nil {
-		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
+		plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
 		return nil, err
 	}
 
 	if len(serializedSnap.Data) == 0 || serializedSnap.Crc == 0 {
-		log.Printf("snap: unexpected empty snapshot")
+		plog.Errorf("unexpected empty snapshot")
 		return nil, ErrEmptySnapshot
 	}
 
 	crc := crc32.Update(0, crcTable, serializedSnap.Data)
 	if crc != serializedSnap.Crc {
-		log.Printf("snap: corrupted snapshot file %v: crc mismatch", name)
+		plog.Errorf("corrupted snapshot file %v: crc mismatch", snapname)
 		return nil, ErrCRCMismatch
 	}
 
 	var snap raftpb.Snapshot
 	if err = snap.Unmarshal(serializedSnap.Data); err != nil {
-		log.Printf("snap: corrupted snapshot file %v: %v", name, err)
+		plog.Errorf("corrupted snapshot file %v: %v", snapname, err)
 		return nil, err
 	}
 	return &snap, nil
@@ -153,7 +174,7 @@ func checkSuffix(names []string) []string {
 		if strings.HasSuffix(names[i], snapSuffix) {
 			snaps = append(snaps, names[i])
 		} else {
-			log.Printf("snap: unexpected non-snap file %v", names[i])
+			plog.Warningf("skipped unexpected non snapshot file %v", names[i])
 		}
 	}
 	return snaps
@@ -162,6 +183,6 @@ func checkSuffix(names []string) []string {
 func renameBroken(path string) {
 	brokenPath := path + ".broken"
 	if err := os.Rename(path, brokenPath); err != nil {
-		log.Printf("snap: cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
+		plog.Warningf("cannot rename broken snapshot file %v to %v: %v", path, brokenPath, err)
 	}
 }
