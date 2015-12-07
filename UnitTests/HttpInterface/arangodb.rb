@@ -67,8 +67,9 @@ class ArangoDB
   # expect json as output/response format
   format :json
 
-  # set timeout to 120 seconds
-  default_timeout 120 
+  # set timeout to 300 seconds - so we will see timeouts in the cluster with ther
+  # respective error messages from the coordinator.
+  default_timeout 300 
 
   # do not verify SSL
   default_options[:verify] = false
