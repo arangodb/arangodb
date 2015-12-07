@@ -15,15 +15,21 @@
 package proxy
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync/atomic"
+
+	"time"
 
 	"github.com/coreos/etcd/etcdserver/etcdhttp/httptypes"
+	"github.com/coreos/etcd/pkg/httputil"
 )
 
 // Hop-by-hop headers. These are removed when sent to the backend.
@@ -54,6 +60,22 @@ type reverseProxy struct {
 func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request) {
 	proxyreq := new(http.Request)
 	*proxyreq = *clientreq
+	startTime := time.Now()
+
+	var (
+		proxybody []byte
+		err       error
+	)
+
+	if clientreq.Body != nil {
+		proxybody, err = ioutil.ReadAll(clientreq.Body)
+		if err != nil {
+			msg := fmt.Sprintf("proxy: failed to read request body: %v", err)
+			e := httptypes.NewHTTPError(http.StatusInternalServerError, msg)
+			e.WriteTo(rw)
+			return
+		}
+	}
 
 	// deep-copy the headers, as these will be modified below
 	proxyreq.Header = make(http.Header)
@@ -66,6 +88,8 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	endpoints := p.director.endpoints()
 	if len(endpoints) == 0 {
 		msg := "proxy: zero endpoints currently available"
+		reportRequestDropped(clientreq, zeroEndpoints)
+
 		// TODO: limit the rate of the error logging.
 		log.Printf(msg)
 		e := httptypes.NewHTTPError(http.StatusServiceUnavailable, msg)
@@ -73,14 +97,40 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 		return
 	}
 
+	var requestClosed int32
+	completeCh := make(chan bool, 1)
+	closeNotifier, ok := rw.(http.CloseNotifier)
+	cancel := httputil.RequestCanceler(p.transport, proxyreq)
+	if ok {
+		go func() {
+			select {
+			case <-closeNotifier.CloseNotify():
+				atomic.StoreInt32(&requestClosed, 1)
+				log.Printf("proxy: client %v closed request prematurely", clientreq.RemoteAddr)
+				cancel()
+			case <-completeCh:
+			}
+		}()
+
+		defer func() {
+			completeCh <- true
+		}()
+	}
+
 	var res *http.Response
-	var err error
 
 	for _, ep := range endpoints {
+		if proxybody != nil {
+			proxyreq.Body = ioutil.NopCloser(bytes.NewBuffer(proxybody))
+		}
 		redirectRequest(proxyreq, ep.URL)
 
 		res, err = p.transport.RoundTrip(proxyreq)
+		if atomic.LoadInt32(&requestClosed) == 1 {
+			return
+		}
 		if err != nil {
+			reportRequestDropped(clientreq, failedSendingRequest)
 			log.Printf("proxy: failed to direct request to %s: %v", ep.URL.String(), err)
 			ep.Failed()
 			continue
@@ -92,6 +142,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	if res == nil {
 		// TODO: limit the rate of the error logging.
 		msg := fmt.Sprintf("proxy: unable to get response from %d endpoint(s)", len(endpoints))
+		reportRequestDropped(clientreq, failedGettingResponse)
 		log.Printf(msg)
 		e := httptypes.NewHTTPError(http.StatusBadGateway, msg)
 		e.WriteTo(rw)
@@ -99,7 +150,7 @@ func (p *reverseProxy) ServeHTTP(rw http.ResponseWriter, clientreq *http.Request
 	}
 
 	defer res.Body.Close()
-
+	reportRequestHandled(clientreq, res, startTime)
 	removeSingleHopHeaders(&res.Header)
 	copyHeader(rw.Header(), res.Header)
 

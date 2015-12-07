@@ -16,6 +16,7 @@ package command
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -23,7 +24,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/bgentry/speakeasy"
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
+	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
+	"github.com/coreos/etcd/client"
 	"github.com/coreos/etcd/pkg/transport"
 )
 
@@ -55,24 +59,62 @@ func argOrStdin(args []string, stdin io.Reader, i int) (string, error) {
 }
 
 func getPeersFlagValue(c *cli.Context) []string {
-	peerstr := c.GlobalString("peers")
+	peerstr := c.GlobalString("endpoint")
 
-	// Use an environment variable if nothing was supplied on the
-	// command line
+	if peerstr == "" {
+		peerstr = os.Getenv("ETCDCTL_ENDPOINT")
+	}
+
+	if peerstr == "" {
+		peerstr = c.GlobalString("peers")
+	}
+
 	if peerstr == "" {
 		peerstr = os.Getenv("ETCDCTL_PEERS")
 	}
 
 	// If we still don't have peers, use a default
 	if peerstr == "" {
-		peerstr = "127.0.0.1:4001"
+		peerstr = "http://127.0.0.1:4001,http://127.0.0.1:2379"
 	}
 
 	return strings.Split(peerstr, ",")
 }
 
+func getDomainDiscoveryFlagValue(c *cli.Context) ([]string, error) {
+	domainstr := c.GlobalString("discovery-srv")
+
+	// Use an environment variable if nothing was supplied on the
+	// command line
+	if domainstr == "" {
+		domainstr = os.Getenv("ETCDCTL_DISCOVERY_SRV")
+	}
+
+	// If we still don't have domain discovery, return nothing
+	if domainstr == "" {
+		return []string{}, nil
+	}
+
+	discoverer := client.NewSRVDiscover()
+	eps, err := discoverer.Discover(domainstr)
+	if err != nil {
+		return nil, err
+	}
+
+	return eps, err
+}
+
 func getEndpoints(c *cli.Context) ([]string, error) {
-	eps := getPeersFlagValue(c)
+	eps, err := getDomainDiscoveryFlagValue(c)
+	if err != nil {
+		return nil, err
+	}
+
+	// If domain discovery returns no endpoints, check peer flag
+	if len(eps) == 0 {
+		eps = getPeersFlagValue(c)
+	}
+
 	for i, ep := range eps {
 		u, err := url.Parse(ep)
 		if err != nil {
@@ -85,6 +127,7 @@ func getEndpoints(c *cli.Context) ([]string, error) {
 
 		eps[i] = u.String()
 	}
+
 	return eps, nil
 }
 
@@ -111,5 +154,116 @@ func getTransport(c *cli.Context) (*http.Transport, error) {
 		KeyFile:  keyfile,
 	}
 	return transport.NewTransport(tls)
+}
 
+func getUsernamePasswordFromFlag(usernameFlag string) (username string, password string, err error) {
+	colon := strings.Index(usernameFlag, ":")
+	if colon == -1 {
+		username = usernameFlag
+		// Prompt for the password.
+		password, err = speakeasy.Ask("Password: ")
+		if err != nil {
+			return "", "", err
+		}
+	} else {
+		username = usernameFlag[:colon]
+		password = usernameFlag[colon+1:]
+	}
+	return username, password, nil
+}
+
+func mustNewKeyAPI(c *cli.Context) client.KeysAPI {
+	return client.NewKeysAPI(mustNewClient(c))
+}
+
+func mustNewMembersAPI(c *cli.Context) client.MembersAPI {
+	return client.NewMembersAPI(mustNewClient(c))
+}
+
+func mustNewClient(c *cli.Context) client.Client {
+	hc, err := newClient(c)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	debug := c.GlobalBool("debug")
+	if debug {
+		client.EnablecURLDebug()
+	}
+
+	if !c.GlobalBool("no-sync") {
+		if debug {
+			fmt.Fprintf(os.Stderr, "start to sync cluster using endpoints(%s)\n", strings.Join(hc.Endpoints(), ","))
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), client.DefaultRequestTimeout)
+		err := hc.Sync(ctx)
+		cancel()
+		if err != nil {
+			if err == client.ErrNoEndpoints {
+				fmt.Fprintf(os.Stderr, "etcd cluster has no published client endpoints.\n")
+				fmt.Fprintf(os.Stderr, "Try '--no-sync' if you want to access non-published client endpoints(%s).\n", strings.Join(hc.Endpoints(), ","))
+			}
+			handleError(ExitServerError, err)
+			os.Exit(1)
+		}
+		if debug {
+			fmt.Fprintf(os.Stderr, "got endpoints(%s) after sync\n", strings.Join(hc.Endpoints(), ","))
+		}
+	}
+
+	if debug {
+		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
+	}
+
+	return hc
+}
+
+func mustNewClientNoSync(c *cli.Context) client.Client {
+	hc, err := newClient(c)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+
+	if c.GlobalBool("debug") {
+		fmt.Fprintf(os.Stderr, "Cluster-Endpoints: %s\n", strings.Join(hc.Endpoints(), ", "))
+		client.EnablecURLDebug()
+	}
+
+	return hc
+}
+
+func newClient(c *cli.Context) (client.Client, error) {
+	eps, err := getEndpoints(c)
+	if err != nil {
+		return nil, err
+	}
+
+	tr, err := getTransport(c)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := client.Config{
+		Transport:               tr,
+		Endpoints:               eps,
+		HeaderTimeoutPerRequest: c.GlobalDuration("timeout"),
+	}
+
+	uFlag := c.GlobalString("username")
+	if uFlag != "" {
+		username, password, err := getUsernamePasswordFromFlag(uFlag)
+		if err != nil {
+			return nil, err
+		}
+		cfg.Username = username
+		cfg.Password = password
+	}
+
+	return client.New(cfg)
+}
+
+func contextWithTotalTimeout(c *cli.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), c.GlobalDuration("total-timeout"))
 }

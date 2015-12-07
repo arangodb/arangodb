@@ -21,6 +21,7 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-semver/semver"
 	"github.com/coreos/etcd/Godeps/_workspace/src/golang.org/x/net/context"
 	etcdErr "github.com/coreos/etcd/error"
 	"github.com/coreos/etcd/etcdserver"
@@ -38,15 +39,16 @@ type fakeCluster struct {
 func (c *fakeCluster) ID() types.ID         { return types.ID(c.id) }
 func (c *fakeCluster) ClientURLs() []string { return c.clientURLs }
 func (c *fakeCluster) Members() []*etcdserver.Member {
-	var sms etcdserver.SortableMemberSlice
+	var ms etcdserver.MembersByID
 	for _, m := range c.members {
-		sms = append(sms, m)
+		ms = append(ms, m)
 	}
-	sort.Sort(sms)
-	return []*etcdserver.Member(sms)
+	sort.Sort(ms)
+	return []*etcdserver.Member(ms)
 }
 func (c *fakeCluster) Member(id types.ID) *etcdserver.Member { return c.members[uint64(id)] }
 func (c *fakeCluster) IsIDRemoved(id types.ID) bool          { return false }
+func (c *fakeCluster) Version() *semver.Version              { return nil }
 
 // errServer implements the etcd.Server interface for testing.
 // It returns the given error from any Do/Process/AddMember/RemoveMember calls.
@@ -74,15 +76,17 @@ func (fs *errServer) UpdateMember(ctx context.Context, m etcdserver.Member) erro
 	return fs.err
 }
 
+func (fs *errServer) ClusterVersion() *semver.Version { return nil }
+
 func TestWriteError(t *testing.T) {
 	// nil error should not panic
-	rw := httptest.NewRecorder()
-	writeError(rw, nil)
-	h := rw.Header()
+	rec := httptest.NewRecorder()
+	writeError(rec, nil)
+	h := rec.Header()
 	if len(h) > 0 {
 		t.Fatalf("unexpected non-empty headers: %#v", h)
 	}
-	b := rw.Body.String()
+	b := rec.Body.String()
 	if len(b) > 0 {
 		t.Fatalf("unexpected non-empty body: %q", b)
 	}

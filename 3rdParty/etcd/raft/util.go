@@ -46,10 +46,12 @@ func max(a, b uint64) uint64 {
 	return b
 }
 
-func IsLocalMsg(m pb.Message) bool { return m.Type == pb.MsgHup || m.Type == pb.MsgBeat }
+func IsLocalMsg(m pb.Message) bool {
+	return m.Type == pb.MsgHup || m.Type == pb.MsgBeat || m.Type == pb.MsgUnreachable || m.Type == pb.MsgSnapStatus
+}
 
 func IsResponseMsg(m pb.Message) bool {
-	return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp || m.Type == pb.MsgHeartbeatResp
+	return m.Type == pb.MsgAppResp || m.Type == pb.MsgVoteResp || m.Type == pb.MsgHeartbeatResp || m.Type == pb.MsgUnreachable
 }
 
 // EntryFormatter can be implemented by the application to provide human-readable formatting
@@ -60,7 +62,7 @@ type EntryFormatter func([]byte) string
 // Message for debugging.
 func DescribeMessage(m pb.Message, f EntryFormatter) string {
 	var buf bytes.Buffer
-	fmt.Fprintf(&buf, "%d->%d %s Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
+	fmt.Fprintf(&buf, "%x->%x %s Term:%d Log:%d/%d", m.From, m.To, m.Type, m.Term, m.LogTerm, m.Index)
 	if m.Reject {
 		fmt.Fprintf(&buf, " Rejected")
 	}
@@ -84,10 +86,25 @@ func DescribeMessage(m pb.Message, f EntryFormatter) string {
 // Entry for debugging.
 func DescribeEntry(e pb.Entry, f EntryFormatter) string {
 	var formatted string
-	if f == nil {
-		formatted = fmt.Sprintf("%q", e.Data)
-	} else {
+	if e.Type == pb.EntryNormal && f != nil {
 		formatted = f(e.Data)
+	} else {
+		formatted = fmt.Sprintf("%q", e.Data)
 	}
 	return fmt.Sprintf("%d/%d %s %s", e.Term, e.Index, e.Type, formatted)
+}
+
+func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
+	if len(ents) == 0 {
+		return ents
+	}
+	size := ents[0].Size()
+	var limit int
+	for limit = 1; limit < len(ents); limit++ {
+		size += ents[limit].Size()
+		if uint64(size) > maxSize {
+			break
+		}
+	}
+	return ents[:limit]
 }

@@ -5,7 +5,7 @@
 
 ![etcd Logo](logos/etcd-horizontal-color.png)
 
-etcd is a distributed, consistent key value store for shared configuration and service discovery with a focus on being:
+etcd is a distributed, consistent key-value store for shared configuration and service discovery, with a focus on being:
 
 * *Simple*: curl'able user facing API (HTTP+JSON)
 * *Secure*: optional SSL client cert authentication
@@ -17,8 +17,6 @@ etcd is written in Go and uses the [Raft][raft] consensus algorithm to manage a 
 See [etcdctl][etcdctl] for a simple command line client.
 Or feel free to just use curl, as in the examples below.
 
-[zookeeper]: http://zookeeper.apache.org/
-[doozer]: https://github.com/ha/doozerd
 [raft]: http://raftconsensus.github.io/
 [etcdctl]: https://github.com/coreos/etcd/tree/master/etcdctl
 
@@ -28,9 +26,14 @@ If you're considering etcd for production use, please see: [production-ready.md]
 
 ### Getting etcd
 
-The latest release and setup instructions are available at [GitHub][github-release].
+The easiest way to get etcd is to install one of the pre-built binaries from the tagged releases: instructions are available on [GitHub][github-release].
+
+For those wanting to try the very latest version, you can build the latest version of etcd from the `master` branch.
+All development occurs on `master`, including new features and bug fixes.
+Bug fixes are first targeted at `master` and subsequently ported to release branches, as described in the [branch management][branch-management] guide.
 
 [github-release]: https://github.com/coreos/etcd/releases/
+[branch-management]: ./Documentation/branch_management.md
 
 ### Running etcd
 
@@ -40,13 +43,13 @@ First start a single-member cluster of etcd:
 ./bin/etcd
 ```
 
-This will bring up etcd listening on port 4001 for client communication and on port 7001 for server-to-server communication.
+This will bring up etcd listening on port 2379 for client communication and on port 2380 for server-to-server communication.
 
 Next, let's set a single key, and then retrieve it:
 
 ```
-curl -L http://127.0.0.1:4001/v2/keys/mykey -XPUT -d value="this is awesome"
-curl -L http://127.0.0.1:4001/v2/keys/mykey
+curl -L http://127.0.0.1:2379/v2/keys/mykey -XPUT -d value="this is awesome"
+curl -L http://127.0.0.1:2379/v2/keys/mykey
 ```
 
 You have successfully started an etcd and written a key to the store.
@@ -55,7 +58,7 @@ You have successfully started an etcd and written a key to the store.
 
 First install [goreman](https://github.com/mattn/goreman), which manages Procfile-based applications.
 
-Our [Profile script](./Procfile) will set up a local example cluster. You can start it with:
+Our [Procfile script](./Procfile) will set up a local example cluster. You can start it with:
 
 ```sh
 goreman start
@@ -75,7 +78,7 @@ Now it's time to dig into the full etcd API and other guides.
 - Find [language bindings and tools][libraries-and-tools].
 - Use TLS to [secure an etcd cluster][security].
 - [Tune etcd][tuning].
-- [Upgrade from 0.4.6 to 2.0.0][upgrade].
+- [Upgrade from 0.4.9+ to 2.2.0][upgrade].
 
 [api]: ./Documentation/api.md
 [clustering]: ./Documentation/clustering.md
@@ -83,18 +86,22 @@ Now it's time to dig into the full etcd API and other guides.
 [libraries-and-tools]: ./Documentation/libraries-and-tools.md
 [security]: ./Documentation/security.md
 [tuning]: ./Documentation/tuning.md
-[upgrade]: ./Documentation/0_4_migration_tool.md
+[upgrade]: ./Documentation/04_to_2_snapshot_migration.md
 
 ## Contact
 
 - Mailing list: [etcd-dev](https://groups.google.com/forum/?hl=en#!forum/etcd-dev)
-- IRC: #[coreos](irc://irc.freenode.org:6667/#coreos) on freenode.org
-- Planning/Roadmap: [milestones](https://github.com/coreos/etcd/milestones)
+- IRC: #[etcd](irc://irc.freenode.org:6667/#etcd) on freenode.org
+- Planning/Roadmap: [milestones](https://github.com/coreos/etcd/milestones), [roadmap](./ROADMAP.md)
 - Bugs: [issues](https://github.com/coreos/etcd/issues)
 
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md) for details on submitting patches and the contribution workflow.
+
+## Reporting bugs
+
+See [reporting bugs](Documentation/reporting_bugs.md) for details about reporting any issue you may encounter..
 
 ## Project Details
 
@@ -108,7 +115,7 @@ New minor versions may add additional features to the API.
 You can get the version of etcd by issuing a request to /version:
 
 ```sh
-curl -L http://127.0.0.1:4001/version
+curl -L http://127.0.0.1:2379/version
 ```
 
 #### API Versioning

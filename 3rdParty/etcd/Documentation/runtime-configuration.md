@@ -4,6 +4,8 @@ etcd comes with support for incremental runtime reconfiguration, which allows us
 
 Reconfiguration requests can only be processed when the the majority of the cluster members are functioning. It is **highly recommended** to always have a cluster size greater than two in production. It is unsafe to remove a member from a two member cluster. The majority of a two member cluster is also two. If there is a failure during the removal process, the cluster might not able to make progress and need to [restart from majority failure][majority failure].
 
+To better understand the design behind runtime reconfiguration, we suggest you read [this](runtime-reconf-design.md).
+
 [majority failure]: #restart-cluster-from-majority-failure
 
 ## Reconfiguration Use Cases
@@ -37,7 +39,7 @@ To replace the machine, follow the instructions for [removing the member][remove
 
 ### Restart Cluster from Majority Failure
 
-If the majority of your cluster is lost, then you need to take manual action in order to recover safely.
+If the majority of your cluster is lost or all of your nodes have changed IP addresses, then you need to take manual action in order to recover safely.
 The basic steps in the recovery process include [creating a new cluster using the old data][disaster recovery], forcing a single member to act as the leader, and finally using runtime configuration to [add new members][add member] to this new cluster one at a time.
 
 [add member]: #add-a-new-member
@@ -52,28 +54,38 @@ This is essentially the same requirement as for any other write to etcd.
 
 All changes to the cluster are done one at a time:
 
-To replace a single member you will make an add then a remove operation
-To increase from 3 to 5 members you will make two add operations
-To decrease from 5 to 3 you will make two remove operations
+* To update a single member peerURLs you will make an update operation
+* To replace a single member you will make an add then a remove operation
+* To increase from 3 to 5 members you will make two add operations
+* To decrease from 5 to 3 you will make two remove operations
 
 All of these examples will use the `etcdctl` command line tool that ships with etcd.
-If you want to use the member API directly you can find the documentation [here](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md).
+If you want to use the member API directly you can find the documentation [here](other_apis.md).
+
+### Update a Member
+
+If you would like to update a member IP address (peerURLs), first, we need to find the target member's ID. You can list all members with `etcdctl`:
+
+```sh
+$ etcdctl member list
+6e3bd23ae5f1eae0: name=node2 peerURLs=http://localhost:23802 clientURLs=http://127.0.0.1:23792
+924e2e83e93f2560: name=node3 peerURLs=http://localhost:23803 clientURLs=http://127.0.0.1:23793
+a8266ecf031671f3: name=node1 peerURLs=http://localhost:23801 clientURLs=http://127.0.0.1:23791
+```
+
+In this example let's `update` a8266ecf031671f3 member ID and change its peerURLs value to http://10.0.1.10:2380
+
+```sh
+$ etcdctl member update a8266ecf031671f3 http://10.0.1.10:2380
+Updated member with ID a8266ecf031671f3 in cluster
+```
 
 ### Remove a Member
-
-First, we need to find the target member's ID. You can list all members with `etcdctl`:
-
-```
-$ etcdctl member list
-6e3bd23ae5f1eae0: name=node2 peerURLs=http://localhost:7002 clientURLs=http://127.0.0.1:4002
-924e2e83e93f2560: name=node3 peerURLs=http://localhost:7003 clientURLs=http://127.0.0.1:4003
-a8266ecf031671f3: name=node1 peerURLs=http://localhost:7001 clientURLs=http://127.0.0.1:4001
-```
 
 Let us say the member ID we want to remove is a8266ecf031671f3.
 We then use the `remove` command to perform the removal:
 
-```
+```sh
 $ etcdctl member remove a8266ecf031671f3
 Removed member a8266ecf031671f3 from cluster
 ```
@@ -90,12 +102,12 @@ It is safe to remove the leader, however the cluster will be inactive while a ne
 
 Adding a member is a two step process:
 
- * Add the new member to the cluster via the [members API](https://github.com/coreos/etcd/blob/master/Documentation/other_apis.md#post-v2members) or the `etcdctl member add` command.
+ * Add the new member to the cluster via the [members API](other_apis.md#post-v2members) or the `etcdctl member add` command.
  * Start the new member with the new cluster configuration, including a list of the updated members (existing members + the new member).
 
-Using `etcdctl` let's add the new member to the cluster by specifing its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
+Using `etcdctl` let's add the new member to the cluster by specifying its [name](configuration.md#-name) and [advertised peer URLs](configuration.md#-initial-advertise-peer-urls):
 
-```
+```sh
 $ etcdctl member add infra3 http://10.0.1.13:2380
 added member 9bf1b35fc7761a23 to cluster
 
@@ -107,11 +119,11 @@ ETCD_INITIAL_CLUSTER_STATE=existing
 `etcdctl` has informed the cluster about the new member and printed out the environment variables needed to successfully start it.
 Now start the new etcd process with the relevant flags for the new member:
 
-```
+```sh
 $ export ETCD_NAME="infra3"
 $ export ETCD_INITIAL_CLUSTER="infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra3=http://10.0.1.13:2380"
 $ export ETCD_INITIAL_CLUSTER_STATE=existing
-$ etcd -listen-client-urls http://10.0.1.13:2379 -advertise-client-urls http://10.0.1.13:2379  -listen-peer-urls http://10.0.1.13:2380 -initial-advertise-peer-urls http://10.0.1.13:2380
+$ etcd -listen-client-urls http://10.0.1.13:2379 -advertise-client-urls http://10.0.1.13:2379  -listen-peer-urls http://10.0.1.13:2380 -initial-advertise-peer-urls http://10.0.1.13:2380 -data-dir %data_dir%
 ```
 
 The new member will run as a part of the cluster and immediately begin catching up with the rest of the cluster.
@@ -124,7 +136,7 @@ If you add a new member to a 1-node cluster, the cluster cannot make progress be
 In the following case we have not included our new host in the list of enumerated nodes.
 If this is a new cluster, the node must be added to the list of initial cluster members.
 
-```
+```sh
 $ etcd -name infra3 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380 \
   -initial-cluster-state existing
@@ -134,7 +146,7 @@ exit 1
 
 In this case we give a different address (10.0.1.14:2380) to the one that we used to join the cluster (10.0.1.13:2380).
 
-```
+```sh
 $ etcd -name infra4 \
   -initial-cluster infra0=http://10.0.1.10:2380,infra1=http://10.0.1.11:2380,infra2=http://10.0.1.12:2380,infra4=http://10.0.1.14:2380 \
   -initial-cluster-state existing
@@ -144,7 +156,7 @@ exit 1
 
 When we start etcd using the data directory of a removed member, etcd will exit automatically if it connects to any alive member in the cluster:
 
-```
+```sh
 $ etcd
 etcd: this member has been permanently removed from the cluster. Exiting.
 exit 1
