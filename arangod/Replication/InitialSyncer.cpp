@@ -622,7 +622,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
   }
   else {
     // only flush WAL once
-    appendix = "&flush=true&flushWait=1";
+    appendix = "&flush=true&flushWait=2";
     _hasFlushed = true;
   }
 
