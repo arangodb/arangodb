@@ -72,9 +72,7 @@ function excludeExtraAttributes(attributes, model) {
   ));
 }
 
-class Model extends EventEmitter {
-  constructor(attributes) {
-    super();
+function Model(attributes) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_attributes
@@ -85,7 +83,7 @@ class Model extends EventEmitter {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    this.attributes = {};
+  this.attributes = {};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_isvalid
@@ -97,7 +95,7 @@ class Model extends EventEmitter {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    this.isValid = true;
+  this.isValid = true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_errors
@@ -109,25 +107,28 @@ class Model extends EventEmitter {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-    this.errors = {};
+  this.errors = {};
 
-    if (this.schema) {
-      if (this.schema.isJoi) {
-        this.schema = _.object(_.map(this.schema._inner.children, function (prop) {
-          return [prop.key, prop.schema];
-        }));
-      }
-      _.each(
-        _.union(_.keys(this.schema), _.keys(attributes)),
-        function (key) {
-          this.set(key, attributes && attributes[key]);
-        },
-        this
-      );
-    } else if (attributes) {
-      this.attributes = _.clone(attributes);
+  if (this.schema) {
+    if (this.schema.isJoi) {
+      this.schema = _.object(_.map(this.schema._inner.children, function (prop) {
+        return [prop.key, prop.schema];
+      }));
     }
+    _.each(
+      _.union(_.keys(this.schema), _.keys(attributes)),
+      function (key) {
+        this.set(key, attributes && attributes[key]);
+      },
+      this
+    );
+  } else if (attributes) {
+    this.attributes = _.clone(attributes);
   }
+}
+
+Model.prototype = Object.create(EventEmitter.prototype);
+_.extend(Model.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_get
@@ -150,7 +151,7 @@ class Model extends EventEmitter {
 
   get(attributeName) {
     return this.attributes[attributeName];
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_set
@@ -207,7 +208,7 @@ class Model extends EventEmitter {
     }
 
     return this;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_has
@@ -232,7 +233,7 @@ class Model extends EventEmitter {
   has(attributeName) {
     return !(_.isUndefined(this.attributes[attributeName]) ||
              _.isNull(this.attributes[attributeName]));
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forDB
@@ -245,7 +246,7 @@ class Model extends EventEmitter {
 
   forDB() {
     return this.attributes;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forClient
@@ -259,7 +260,7 @@ class Model extends EventEmitter {
   forClient() {
     return excludeExtraAttributes(this.attributes, this);
   }
-}
+});
 
 Model.fromClient = function (attributes) {
   var model = new this();

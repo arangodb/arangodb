@@ -75,6 +75,20 @@ from version 2.8 on.
 
 !SECTION Foxx
 
+!SUBSECTION Model and Repository
+
+Due to compatibility issues the Model and Repository types are no longer implemented as ES2015 classes.
+
+The pre-2.7 "extend" style subclassing is supported again and will not emit any deprecation warnings.
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var MyModel = Foxx.Model.extend({
+  // ...
+  schema: {/* ... */}
+});
+```
+
 !SUBSECTION Module resolution
 
 The behaviour of the JavaScript module resolution used by the `require` function has

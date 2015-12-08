@@ -54,6 +54,8 @@ v2.8.0 (XXXX-XX-XX)
   exceptions when invalid parameters are passed that may have not led
   to exceptions in previous versions.
 
+* Foxx: moved Model and Repository back to non-ES6 "classes"
+
 
 v2.8.0-beta1 (2015-12-06)
 -------------------------
