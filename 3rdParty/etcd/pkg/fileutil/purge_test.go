@@ -32,7 +32,7 @@ func TestPurgeFile(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 5; i++ {
-		_, err := os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -41,11 +41,11 @@ func TestPurgeFile(t *testing.T) {
 	stop := make(chan struct{})
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
 	for i := 5; i < 10; i++ {
-		_, err := os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(2 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 	fnames, err := ReadDir(dir)
 	if err != nil {
@@ -71,7 +71,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	for i := 0; i < 10; i++ {
-		_, err := os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
+		_, err = os.Create(path.Join(dir, fmt.Sprintf("%d.test", i)))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -86,7 +86,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 
 	stop := make(chan struct{})
 	errch := PurgeFile(dir, "test", 3, time.Millisecond, stop)
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	fnames, err := ReadDir(dir)
 	if err != nil {
@@ -112,7 +112,7 @@ func TestPurgeFileHoldingLock(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
 
 	fnames, err = ReadDir(dir)
 	if err != nil {

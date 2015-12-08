@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/usr/bin/env bash
 #
 # Run all etcd tests
 # ./test
@@ -8,6 +8,7 @@
 #
 # PKG=./wal ./test
 # PKG=snap ./test
+set -e
 
 # Invoke ./cover for HTML output
 COVER=${COVER:-"-cover"}
@@ -15,12 +16,16 @@ COVER=${COVER:-"-cover"}
 source ./build
 
 # Hack: gofmt ./ will recursively check the .git directory. So use *.go for gofmt.
-TESTABLE_AND_FORMATTABLE="client discovery error etcdctl/command etcdmain etcdserver etcdserver/etcdhttp etcdserver/etcdhttp/httptypes migrate pkg/fileutil pkg/flags pkg/idutil pkg/ioutil pkg/netutil pkg/osutil pkg/pbutil pkg/types pkg/transport pkg/wait proxy raft rafthttp snap store wal"
-FORMATTABLE="$TESTABLE_AND_FORMATTABLE *.go etcdctl/ integration"
+TESTABLE_AND_FORMATTABLE="client discovery error etcdctl/command etcdmain etcdserver etcdserver/auth etcdserver/etcdhttp etcdserver/etcdhttp/httptypes pkg/fileutil pkg/flags pkg/idutil pkg/ioutil pkg/netutil pkg/osutil pkg/pbutil pkg/types pkg/transport pkg/wait proxy raft snap storage storage/backend store version wal"
+# TODO: add it to race testing when the issue is resolved
+# https://github.com/golang/go/issues/9946
+NO_RACE_TESTABLE="rafthttp"
+FORMATTABLE="$TESTABLE_AND_FORMATTABLE $NO_RACE_TESTABLE *.go etcdctl/ integration"
 
 # user has not provided PKG override
 if [ -z "$PKG" ]; then
 	TEST=$TESTABLE_AND_FORMATTABLE
+	NO_RACE_TEST=$NO_RACE_TESTABLE
 	FMT=$FORMATTABLE
 
 # user has provided PKG override
@@ -37,17 +42,26 @@ fi
 # split TEST into an array and prepend REPO_PATH to each local package
 split=(${TEST// / })
 TEST=${split[@]/#/${REPO_PATH}/}
+split=(${NO_RACE_TEST// / })
+NO_RACE_TEST=${split[@]/#/${REPO_PATH}/}
 
 echo "Running tests..."
-go test -timeout 3m ${COVER} $@ ${TEST} --race
+
+MACHINE_TYPE=$(uname -m)
+if [ $MACHINE_TYPE != "armv7l" ]; then
+  RACE="--race"
+fi
+
+go test -timeout 3m ${COVER} $@ ${TEST} ${RACE} -cpu 1,2,4
+go test -timeout 3m ${COVER} $@ ${NO_RACE_TEST} -cpu 1,2,4
 
 if [ -n "$INTEGRATION" ]; then
 	echo "Running integration tests..."
-	go test -timeout 3m $@ ${REPO_PATH}/integration
+	go test -timeout 10m $@ ${REPO_PATH}/integration -v -cpu 1,2,4
 fi
 
 echo "Checking gofmt..."
-fmtRes=$(gofmt -l $FMT)
+fmtRes=$(gofmt -l -s $FMT)
 if [ -n "${fmtRes}" ]; then
 	echo -e "gofmt checking failed:\n${fmtRes}"
 	exit 255
@@ -59,5 +73,14 @@ if [ -n "${vetRes}" ]; then
 	echo -e "govet checking failed:\n${vetRes}"
 	exit 255
 fi
+
+echo "Checking govet -shadow..."
+for path in $FMT; do
+	vetRes=$(go tool vet -shadow ${path})
+	if [ -n "${vetRes}" ]; then
+		echo -e "govet checking ${path} failed:\n${vetRes}"
+		exit 255
+	fi
+done
 
 echo "Success"

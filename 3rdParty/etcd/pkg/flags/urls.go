@@ -15,7 +15,6 @@
 package flags
 
 import (
-	"log"
 	"strings"
 
 	"github.com/coreos/etcd/pkg/types"
@@ -24,7 +23,7 @@ import (
 type URLsValue types.URLs
 
 // Set parses a command line set of URLs formatted like:
-// http://127.0.0.1:7001,http://10.1.1.2:80
+// http://127.0.0.1:2380,http://10.1.1.2:80
 func (us *URLsValue) Set(s string) error {
 	strs := strings.Split(s, ",")
 	nus, err := types.NewURLs(strs)
@@ -47,7 +46,7 @@ func (us *URLsValue) String() string {
 func NewURLsValue(init string) *URLsValue {
 	v := &URLsValue{}
 	if err := v.Set(init); err != nil {
-		log.Panicf("new URLsValue should never fail: %v", err)
+		plog.Panicf("new URLsValue should never fail: %v", err)
 	}
 	return v
 }

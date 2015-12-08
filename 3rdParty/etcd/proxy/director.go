@@ -16,29 +16,22 @@ package proxy
 
 import (
 	"log"
+	"math/rand"
 	"net/url"
 	"sync"
 	"time"
 )
 
-const (
-	// amount of time an endpoint will be held in a failed
-	// state before being reconsidered for proxied requests
-	endpointFailureWait = 5 * time.Second
-
-	// how often the proxy will attempt to refresh its set of endpoints
-	refreshEndpoints = 30 * time.Second
-)
-
-func newDirector(urlsFunc GetProxyURLs) *director {
+func newDirector(urlsFunc GetProxyURLs, failureWait time.Duration, refreshInterval time.Duration) *director {
 	d := &director{
-		uf: urlsFunc,
+		uf:          urlsFunc,
+		failureWait: failureWait,
 	}
 	d.refresh()
 	go func() {
 		for {
 			select {
-			case <-time.After(refreshEndpoints):
+			case <-time.After(refreshInterval):
 				d.refresh()
 			}
 		}
@@ -48,8 +41,10 @@ func newDirector(urlsFunc GetProxyURLs) *director {
 
 type director struct {
 	sync.Mutex
-	ep []*endpoint
-	uf GetProxyURLs
+	ep              []*endpoint
+	uf              GetProxyURLs
+	failureWait     time.Duration
+	refreshInterval time.Duration
 }
 
 func (d *director) refresh() {
@@ -63,8 +58,15 @@ func (d *director) refresh() {
 			log.Printf("proxy: upstream URL invalid: %v", err)
 			continue
 		}
-		endpoints = append(endpoints, newEndpoint(*uu))
+		endpoints = append(endpoints, newEndpoint(*uu, d.failureWait))
 	}
+
+	// shuffle array to avoid connections being "stuck" to a single endpoint
+	for i := range endpoints {
+		j := rand.Intn(i + 1)
+		endpoints[i], endpoints[j] = endpoints[j], endpoints[i]
+	}
+
 	d.ep = endpoints
 }
 
@@ -81,11 +83,11 @@ func (d *director) endpoints() []*endpoint {
 	return filtered
 }
 
-func newEndpoint(u url.URL) *endpoint {
+func newEndpoint(u url.URL, failureWait time.Duration) *endpoint {
 	ep := endpoint{
 		URL:       u,
 		Available: true,
-		failFunc:  timedUnavailabilityFunc(endpointFailureWait),
+		failFunc:  timedUnavailabilityFunc(failureWait),
 	}
 
 	return &ep
@@ -124,7 +126,7 @@ func timedUnavailabilityFunc(wait time.Duration) func(*endpoint) {
 	return func(ep *endpoint) {
 		time.AfterFunc(wait, func() {
 			ep.Available = true
-			log.Printf("proxy: marked endpoint %s available", ep.URL.String())
+			log.Printf("proxy: marked endpoint %s available, to retest connectivity", ep.URL.String())
 		})
 	}
 }

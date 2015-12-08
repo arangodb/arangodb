@@ -226,7 +226,7 @@
         return;
       }
       var out = k.isHealthy();
-      var answer = true;
+      var answer = false;
       if (out.error) {
         _.each(out.results, function(res) {
           if (res.answering) {
@@ -235,6 +235,9 @@
             }));
           }
         });
+      }
+      else {
+        answer = true;
       }
       res.json(answer);
     });

@@ -12,9 +12,9 @@ import (
 type node struct {
 	raft.Node
 	id     uint64
-	paused bool
 	iface  iface
 	stopc  chan struct{}
+	pausec chan bool
 
 	// stable
 	storage *raft.MemoryStorage
@@ -23,12 +23,21 @@ type node struct {
 
 func startNode(id uint64, peers []raft.Peer, iface iface) *node {
 	st := raft.NewMemoryStorage()
-	rn := raft.StartNode(id, peers, 10, 1, st)
+	c := &raft.Config{
+		ID:              id,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         st,
+		MaxSizePerMsg:   1024 * 1024,
+		MaxInflightMsgs: 256,
+	}
+	rn := raft.StartNode(c, peers)
 	n := &node{
 		Node:    rn,
 		id:      id,
 		storage: st,
 		iface:   iface,
+		pausec:  make(chan bool),
 	}
 	n.start()
 	return n
@@ -49,11 +58,11 @@ func (n *node) start() {
 					n.storage.SetHardState(n.state)
 				}
 				n.storage.Append(rd.Entries)
-				go func() {
-					for _, m := range rd.Messages {
-						n.iface.send(m)
-					}
-				}()
+				time.Sleep(time.Millisecond)
+				// TODO: make send async, more like real world...
+				for _, m := range rd.Messages {
+					n.iface.send(m)
+				}
 				n.Advance()
 			case m := <-n.iface.recv():
 				n.Step(context.TODO(), m)
@@ -63,6 +72,19 @@ func (n *node) start() {
 				n.Node = nil
 				close(n.stopc)
 				return
+			case p := <-n.pausec:
+				recvms := make([]raftpb.Message, 0)
+				for p {
+					select {
+					case m := <-n.iface.recv():
+						recvms = append(recvms, m)
+					case p = <-n.pausec:
+					}
+				}
+				// step all pending messages
+				for _, m := range recvms {
+					n.Step(context.TODO(), m)
+				}
 			}
 		}
 	}()
@@ -83,7 +105,15 @@ func (n *node) stop() {
 func (n *node) restart() {
 	// wait for the shutdown
 	<-n.stopc
-	n.Node = raft.RestartNode(n.id, 10, 1, n.storage, 0)
+	c := &raft.Config{
+		ID:              n.id,
+		ElectionTick:    10,
+		HeartbeatTick:   1,
+		Storage:         n.storage,
+		MaxSizePerMsg:   1024 * 1024,
+		MaxInflightMsgs: 256,
+	}
+	n.Node = raft.RestartNode(c)
 	n.start()
 	n.iface.connect()
 }
@@ -92,14 +122,10 @@ func (n *node) restart() {
 // The paused node buffers the received messages and replies
 // all of them when it resumes.
 func (n *node) pause() {
-	panic("unimplemented")
+	n.pausec <- true
 }
 
 // resume resumes the paused node.
 func (n *node) resume() {
-	panic("unimplemented")
-}
-
-func (n *node) isPaused() bool {
-	return n.paused
+	n.pausec <- false
 }

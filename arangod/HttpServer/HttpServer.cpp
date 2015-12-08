@@ -449,7 +449,7 @@ HttpHandler::status_t HttpServer::handleRequestDirectly (HttpCommTask* task, Htt
     try {
       status = handler->execute();
     }
-    catch (const basics::Exception& ex) {
+    catch (basics::Exception const& ex) {
       RequestStatisticsAgentSetExecuteError(handler);
 
       handler->handleError(ex);

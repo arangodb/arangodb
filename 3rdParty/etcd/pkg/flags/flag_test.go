@@ -81,6 +81,54 @@ func TestSetFlagsFromEnvBad(t *testing.T) {
 	}
 }
 
+func TestSetBindAddrFromAddr(t *testing.T) {
+	tests := []struct {
+		args  []string
+		waddr *IPAddressPort
+	}{
+		// no flags set
+		{
+			args:  []string{},
+			waddr: &IPAddressPort{},
+		},
+		// addr flag set
+		{
+			args:  []string{"-addr=192.0.3.17:2379"},
+			waddr: &IPAddressPort{IP: "::", Port: 2379},
+		},
+		// bindAddr flag set
+		{
+			args:  []string{"-bind-addr=127.0.0.1:2379"},
+			waddr: &IPAddressPort{IP: "127.0.0.1", Port: 2379},
+		},
+		// both addr flags set
+		{
+			args:  []string{"-bind-addr=127.0.0.1:2379", "-addr=192.0.3.17:2379"},
+			waddr: &IPAddressPort{IP: "127.0.0.1", Port: 2379},
+		},
+		// both addr flags set, IPv6
+		{
+			args:  []string{"-bind-addr=[2001:db8::4:9]:2379", "-addr=[2001:db8::4:f0]:2379"},
+			waddr: &IPAddressPort{IP: "2001:db8::4:9", Port: 2379},
+		},
+	}
+	for i, tt := range tests {
+		fs := flag.NewFlagSet("test", flag.PanicOnError)
+		fs.Var(&IPAddressPort{}, "addr", "")
+		bindAddr := &IPAddressPort{}
+		fs.Var(bindAddr, "bind-addr", "")
+		if err := fs.Parse(tt.args); err != nil {
+			t.Errorf("#%d: failed to parse flags: %v", i, err)
+			continue
+		}
+		SetBindAddrFromAddr(fs, "bind-addr", "addr")
+
+		if !reflect.DeepEqual(bindAddr, tt.waddr) {
+			t.Errorf("#%d: bindAddr = %+v, want %+v", i, bindAddr, tt.waddr)
+		}
+	}
+}
+
 func TestURLsFromFlags(t *testing.T) {
 	tests := []struct {
 		args     []string
@@ -93,7 +141,7 @@ func TestURLsFromFlags(t *testing.T) {
 			args:    []string{},
 			tlsInfo: transport.TLSInfo{},
 			wantURLs: []url.URL{
-				url.URL{Scheme: "http", Host: "127.0.0.1:2379"},
+				{Scheme: "http", Host: "127.0.0.1:2379"},
 			},
 			wantFail: false,
 		},
@@ -103,8 +151,8 @@ func TestURLsFromFlags(t *testing.T) {
 			args:    []string{"-urls=https://192.0.3.17:2930,http://127.0.0.1:1024"},
 			tlsInfo: transport.TLSInfo{},
 			wantURLs: []url.URL{
-				url.URL{Scheme: "http", Host: "127.0.0.1:1024"},
-				url.URL{Scheme: "https", Host: "192.0.3.17:2930"},
+				{Scheme: "http", Host: "127.0.0.1:1024"},
+				{Scheme: "https", Host: "192.0.3.17:2930"},
 			},
 			wantFail: false,
 		},
@@ -114,7 +162,7 @@ func TestURLsFromFlags(t *testing.T) {
 			args:    []string{"-addr=192.0.2.3:1024"},
 			tlsInfo: transport.TLSInfo{},
 			wantURLs: []url.URL{
-				url.URL{Scheme: "http", Host: "192.0.2.3:1024"},
+				{Scheme: "http", Host: "192.0.2.3:1024"},
 			},
 			wantFail: false,
 		},
@@ -127,7 +175,7 @@ func TestURLsFromFlags(t *testing.T) {
 				KeyFile:  "/tmp/bar",
 			},
 			wantURLs: []url.URL{
-				url.URL{Scheme: "https", Host: "192.0.2.3:1024"},
+				{Scheme: "https", Host: "192.0.2.3:1024"},
 			},
 			wantFail: false,
 		},

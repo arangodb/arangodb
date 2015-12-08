@@ -349,6 +349,8 @@ class Builder {
     return *this;
   }
 
+private:
+
   void addNull() {
     reserveSpace(1);
     _start[_pos++] = 0x18;
@@ -420,6 +422,8 @@ class Builder {
     _pos += strLen;
     return target;
   }
+
+ public:
 
   inline void addArray(bool unindexed = false) {
     addCompoundValue(unindexed ? 0x13 : 0x06);
@@ -582,6 +586,11 @@ class Builder {
   }
 
   void checkAttributeUniqueness(Slice const& obj) const;
+};
+
+struct BuilderNonDeleter {
+  void operator()(Builder*) {
+  }
 };
 
 }  // namespace arangodb::velocypack

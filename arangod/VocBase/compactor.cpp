@@ -781,6 +781,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), document->_vocbase, document->_info._cid);
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
 
   compaction_initial_context_t initial = InitCompaction(&trx, document, compactions);
 

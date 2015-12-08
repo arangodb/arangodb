@@ -29,6 +29,8 @@ func TestConfigParsingMemberFlags(t *testing.T) {
 		"-snapshot-count=10",
 		"-listen-peer-urls=http://localhost:8000,https://localhost:8001",
 		"-listen-client-urls=http://localhost:7000,https://localhost:7001",
+		// it should be set if -listen-client-urls is set
+		"-advertise-client-urls=http://localhost:7000,https://localhost:7001",
 	}
 	wcfg := &config{
 		dir:          "testdir",
@@ -151,21 +153,50 @@ func TestConfigParsingOtherFlags(t *testing.T) {
 	}
 }
 
+func TestConfigParsingV1Flags(t *testing.T) {
+	args := []string{
+		"-peer-addr=127.0.0.1:2380",
+		"-addr=127.0.0.1:2379",
+	}
+	wcfg := NewConfig()
+	wcfg.lpurls = []url.URL{{Scheme: "http", Host: "[::]:2380"}}
+	wcfg.apurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:2380"}}
+	wcfg.lcurls = []url.URL{{Scheme: "http", Host: "[::]:2379"}}
+	wcfg.acurls = []url.URL{{Scheme: "http", Host: "127.0.0.1:2379"}}
+
+	cfg := NewConfig()
+	if err := cfg.Parse(args); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(cfg.lpurls, wcfg.lpurls) {
+		t.Errorf("listen peer urls = %+v, want %+v", cfg.lpurls, wcfg.lpurls)
+	}
+	if !reflect.DeepEqual(cfg.apurls, wcfg.apurls) {
+		t.Errorf("advertise peer urls = %+v, want %+v", cfg.apurls, wcfg.apurls)
+	}
+	if !reflect.DeepEqual(cfg.lcurls, wcfg.lcurls) {
+		t.Errorf("listen client urls = %+v, want %+v", cfg.lcurls, wcfg.lcurls)
+	}
+	if !reflect.DeepEqual(cfg.acurls, wcfg.acurls) {
+		t.Errorf("advertise client urls = %+v, want %+v", cfg.acurls, wcfg.acurls)
+	}
+}
+
 func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 	conflictArgs := [][]string{
-		[]string{
+		{
 			"-initial-cluster=0=localhost:8000",
 			"-discovery=http://example.com/abc",
 		},
-		[]string{
+		{
 			"-discovery-srv=example.com",
 			"-discovery=http://example.com/abc",
 		},
-		[]string{
+		{
 			"-initial-cluster=0=localhost:8000",
 			"-discovery-srv=example.com",
 		},
-		[]string{
+		{
 			"-initial-cluster=0=localhost:8000",
 			"-discovery=http://example.com/abc",
 			"-discovery-srv=example.com",
@@ -177,6 +208,71 @@ func TestConfigParsingConflictClusteringFlags(t *testing.T) {
 		err := cfg.Parse(tt)
 		if err != ErrConflictBootstrapFlags {
 			t.Errorf("%d: err = %v, want %v", i, err, ErrConflictBootstrapFlags)
+		}
+	}
+}
+
+func TestConfigParsingMissedAdvertiseClientURLsFlag(t *testing.T) {
+	tests := []struct {
+		args []string
+		werr error
+	}{
+		{
+			[]string{
+				"-initial-cluster=infra1=http://127.0.0.1:2380",
+				"-listen-client-urls=http://127.0.0.1:2379",
+			},
+			errUnsetAdvertiseClientURLsFlag,
+		},
+		{
+			[]string{
+				"-discovery-srv=example.com",
+				"-listen-client-urls=http://127.0.0.1:2379",
+			},
+			errUnsetAdvertiseClientURLsFlag,
+		},
+		{
+			[]string{
+				"-discovery=http://example.com/abc",
+				"-discovery-fallback=exit",
+				"-listen-client-urls=http://127.0.0.1:2379",
+			},
+			errUnsetAdvertiseClientURLsFlag,
+		},
+		{
+			[]string{
+				"-listen-client-urls=http://127.0.0.1:2379",
+			},
+			errUnsetAdvertiseClientURLsFlag,
+		},
+		{
+			[]string{
+				"-discovery=http://example.com/abc",
+				"-listen-client-urls=http://127.0.0.1:2379",
+			},
+			nil,
+		},
+		{
+			[]string{
+				"-proxy=on",
+				"-listen-client-urls=http://127.0.0.1:2379",
+			},
+			nil,
+		},
+		{
+			[]string{
+				"-proxy=readonly",
+				"-listen-client-urls=http://127.0.0.1:2379",
+			},
+			nil,
+		},
+	}
+
+	for i, tt := range tests {
+		cfg := NewConfig()
+		err := cfg.Parse(tt.args)
+		if err != tt.werr {
+			t.Errorf("%d: err = %v, want %v", i, err, tt.werr)
 		}
 	}
 }

@@ -17,9 +17,10 @@ package command
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/codegangsta/cli"
-	"github.com/coreos/etcd/Godeps/_workspace/src/github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/etcd/client"
 )
 
 // NewMakeCommand returns the CLI command for "mk".
@@ -31,23 +32,34 @@ func NewMakeCommand() cli.Command {
 			cli.IntFlag{Name: "ttl", Value: 0, Usage: "key time-to-live"},
 		},
 		Action: func(c *cli.Context) {
-			handleKey(c, makeCommandFunc)
+			mkCommandFunc(c, mustNewKeyAPI(c))
 		},
 	}
 }
 
-// makeCommandFunc executes the "make" command.
-func makeCommandFunc(c *cli.Context, client *etcd.Client) (*etcd.Response, error) {
+// mkCommandFunc executes the "mk" command.
+func mkCommandFunc(c *cli.Context, ki client.KeysAPI) {
 	if len(c.Args()) == 0 {
-		return nil, errors.New("Key required")
+		handleError(ExitBadArgs, errors.New("key required"))
 	}
 	key := c.Args()[0]
 	value, err := argOrStdin(c.Args(), os.Stdin, 1)
 	if err != nil {
-		return nil, errors.New("Value required")
+		handleError(ExitBadArgs, errors.New("value required"))
 	}
 
 	ttl := c.Int("ttl")
 
-	return client.Create(key, value, uint64(ttl))
+	ctx, cancel := contextWithTotalTimeout(c)
+	// Since PrevNoExist means that the Node must not exist previously,
+	// this Set method always creates a new key. Therefore, mk command
+	// succeeds only if the key did not previously exist, and the command
+	// prevents one from overwriting values accidentally.
+	resp, err := ki.Set(ctx, key, value, &client.SetOptions{TTL: time.Duration(ttl) * time.Second, PrevExist: client.PrevNoExist})
+	cancel()
+	if err != nil {
+		handleError(ExitServerError, err)
+	}
+
+	printResponseKey(resp, c.GlobalString("output"))
 }

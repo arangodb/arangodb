@@ -1,6 +1,7 @@
+syntax = "proto2";
 package snappb;
 
-import "code.google.com/p/gogoprotobuf/gogoproto/gogo.proto";
+import "gogoproto/gogo.proto";
 
 option (gogoproto.marshaler_all) = true;
 option (gogoproto.sizer_all) = true;
@@ -8,6 +9,6 @@ option (gogoproto.unmarshaler_all) = true;
 option (gogoproto.goproto_getters_all) = false;
 
 message snapshot {
-	required uint32 crc  = 1 [(gogoproto.nullable) = false];
+	optional uint32 crc  = 1 [(gogoproto.nullable) = false];
 	optional bytes data  = 2;
 }
