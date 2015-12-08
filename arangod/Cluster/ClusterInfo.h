@@ -808,7 +808,7 @@ namespace triagens {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadPlannedCollections (bool = true);
+        void loadPlannedCollections (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about planned databases
@@ -860,7 +860,7 @@ namespace triagens {
 /// about all shards of a collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadCurrentCollections (bool = true);
+        void loadCurrentCollections (bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection in current. This returns information about

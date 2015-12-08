@@ -153,6 +153,7 @@ static char const* NameFromCid (TRI_replication_dump_t* dump,
 static int AppendCollection (TRI_replication_dump_t* dump,
                              TRI_voc_cid_t cid,
                              bool translateCollectionIds,
+                             bool failOnUnknown,
                              triagens::arango::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
@@ -164,10 +165,20 @@ static int AppendCollection (TRI_replication_dump_t* dump,
         name = resolver->getCollectionName(cid);
       }
       APPEND_STRING(dump->_buffer, name.c_str());
+      if (failOnUnknown && 
+          name[0] == '_' &&
+          name == "_unknown") {
+        return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+      }
+
       return TRI_ERROR_NO_ERROR;
     }
 
     APPEND_STRING(dump->_buffer, "_unknown");
+
+    if (failOnUnknown) {
+      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    }
   }
   else {
     APPEND_UINT64(dump->_buffer, (uint64_t) cid);
@@ -291,6 +302,7 @@ static int StringifyMarkerDump (TRI_replication_dump_t* dump,
                                 TRI_df_marker_t const* marker,
                                 bool withTicks,
                                 bool translateCollectionIds,
+                                bool failOnUnknown,
                                 triagens::arango::CollectionNameResolver* resolver) {
   // This covers two cases:
   //   1. document is not nullptr and marker points into a data file
@@ -427,7 +439,7 @@ static int StringifyMarkerDump (TRI_replication_dump_t* dump,
 
       int res;
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      res = AppendCollection(dump, fromCid, translateCollectionIds, resolver);
+      res = AppendCollection(dump, fromCid, translateCollectionIds, failOnUnknown, resolver);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -436,7 +448,7 @@ static int StringifyMarkerDump (TRI_replication_dump_t* dump,
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      res = AppendCollection(dump, toCid, translateCollectionIds, resolver);
+      res = AppendCollection(dump, toCid, translateCollectionIds, failOnUnknown, resolver);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -1175,6 +1187,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            TRI_voc_tick_t dataMax,
                            bool withTicks,
                            bool translateCollectionIds,
+                           bool failOnUnknown,
                            triagens::arango::CollectionNameResolver* resolver) {
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
@@ -1321,7 +1334,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
 
-      res = StringifyMarkerDump(dump, document, marker, withTicks, translateCollectionIds, resolver);
+      res = StringifyMarkerDump(dump, document, marker, withTicks, translateCollectionIds, failOnUnknown, resolver);
 
       if (res != TRI_ERROR_NO_ERROR) {
         break; // will go to NEXT_DF
@@ -1384,7 +1397,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
                                    TRI_voc_tick_t dataMin,
                                    TRI_voc_tick_t dataMax,
                                    bool withTicks,
-                                   bool translateCollectionIds) {
+                                   bool translateCollectionIds,
+                                   bool failOnUnknown) {
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(col->_collection != nullptr);
 
@@ -1405,7 +1419,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
 
   try {
     res = DumpCollection(dump, document, dataMin, dataMax, withTicks, 
-                         translateCollectionIds, &resolver);
+                         translateCollectionIds, failOnUnknown, &resolver);
   }
   catch (...) {
     res = TRI_ERROR_INTERNAL;

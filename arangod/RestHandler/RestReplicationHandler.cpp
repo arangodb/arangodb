@@ -2459,7 +2459,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
                                                        const TRI_voc_key_t key,
                                                        const TRI_voc_rid_t rid,
                                                        VPackSlice const& slice,
-                                                       string& errorMsg) {
+                                                       std::string& errorMsg) {
 
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_EDGE) {
@@ -2472,8 +2472,6 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
     TRI_shaped_json_t* shaped = TRI_ShapedJsonVelocyPack(document->getShaper(), slice, true);  // PROTECTED by trx in trxCollection
 
     if (shaped == nullptr) {
-      errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -2489,6 +2487,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
           // edge
           if (document->_info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+            errorMsg = "expecting edge collection, got document collection";
           }
           else {
             res = TRI_ERROR_NO_ERROR;
@@ -2501,11 +2500,13 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
             TRI_document_edge_t edge;
             if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
               res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+              errorMsg = std::string("handle bad or collection unknown '") + from.c_str() + "'";
             }
 
             // parse _to
             if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
               res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+              errorMsg = std::string("handle bad or collection unknown '") + to.c_str() + "'";
             }
 
             if (res == TRI_ERROR_NO_ERROR) {
@@ -2517,6 +2518,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
           // document
           if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+            errorMsg = std::string(TRI_errno_string(res)) + ": expecting document collection, got edge collection";
           }
           else {
             res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, false, false, true);
@@ -2701,7 +2703,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
                                                 TRI_voc_cid_t cid,
                                                 bool useRevision,
                                                 bool force,
-                                                string& errorMsg) {
+                                                std::string& errorMsg) {
 
   SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
 
@@ -2770,12 +2772,17 @@ void RestReplicationHandler::handleCommandRestoreData () {
     force = StringUtils::boolean(value);
   }
 
-  string errorMsg;
+  std::string errorMsg;
 
   int res = processRestoreData(resolver, cid, recycleIds, force, errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    if (errorMsg.empty()) {
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    else {
+      generateError(HttpResponse::responseCode(res), res, std::string(TRI_errno_string(res)) + ": " + errorMsg);
+    }
   }
   else {
     try {
@@ -3430,6 +3437,9 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// @RESTQUERYPARAM{includeSystem,boolean,optional}
 /// Include system collections in the result. The default value is *true*.
 ///
+/// @RESTQUERYPARAM{failOnUnknown,boolean,optional}
+/// Produce an error when dumped edges refer to now-unknown collections.
+///
 /// @RESTQUERYPARAM{ticks,boolean,optional}
 /// Whether or not to include tick values in the dump. The default value is *true*.
 ///
@@ -3562,6 +3572,7 @@ void RestReplicationHandler::handleCommandDump () {
   bool flush                  = true; // flush WAL before dumping?
   bool withTicks              = true;
   bool translateCollectionIds = true;
+  bool failOnUnknown          = false;
   uint64_t flushWait          = 0;
 
   bool found;
@@ -3572,6 +3583,13 @@ void RestReplicationHandler::handleCommandDump () {
 
   if (found) {
     flush = StringUtils::boolean(value);
+  }
+  
+  // fail on unknown collection names referenced in edges
+  value = _request->value("failOnUnknown", found);
+
+  if (found) {
+    failOnUnknown = StringUtils::boolean(value);
   }
   
   // determine flush WAL wait time value
@@ -3656,7 +3674,7 @@ void RestReplicationHandler::handleCommandDump () {
     // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
 
-    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks, translateCollectionIds);
+    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks, translateCollectionIds, failOnUnknown);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

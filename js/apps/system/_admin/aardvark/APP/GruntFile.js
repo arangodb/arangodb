@@ -55,6 +55,7 @@
             "frontend/js/lib/highlight.7.3.pack.min.js",
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.min.js",
+            "frontend/js/lib/filesize.min.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",
