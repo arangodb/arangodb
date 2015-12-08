@@ -81,8 +81,8 @@ book-check-markdown-leftovers:
 
 book-check-dangling-anchors:
 	@grep -R "a href.*#" books/$(NAME) | \
-		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://)" | \
-		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
+		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
+		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
 	@NO=0; \
 	for i in `cat /tmp/anchorlist.txt`; do \
@@ -155,7 +155,6 @@ build-book:
 	python deprecated.py
 
 	make book-check-markdown-leftovers
-	make book-check-dangling-anchors
 
 clean-book:
 	@rm -rvf books/$(NAME) ppbooks/$(NAME)
