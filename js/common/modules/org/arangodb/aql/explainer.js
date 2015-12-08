@@ -683,10 +683,16 @@ function processQuery (query, explain) {
         }
         rc += "  " +
           keyword("IN") + " " +
-          node.minMaxDepth + "  " + annotation("/* min..maxPathDepth */") + "  " +
+          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  " +
           keyword("OUTBOUND") +
-          " '" + node.vertexId + "'  " + annotation("/* Startnode */") + "  " +
-          keyword("GRAPH") +  " '" + node.graph + "'";
+          " '" + value(node.vertexId) + "'  " + annotation("/* startnode */") + "  ";
+          
+        if (Array.isArray(node.graph)) {
+          rc += node.graph.map(function(g) { return collection(g); }).join(", ");
+        }
+        else {
+          rc += keyword("GRAPH") +  " '" + value(node.graph) + "'";
+        }
 
         traversalDetails.push(node);
         if (node.hasOwnProperty('simpleExpressions')) {
