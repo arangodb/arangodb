@@ -54,7 +54,19 @@ v2.8.0 (XXXX-XX-XX)
   exceptions when invalid parameters are passed that may have not led
   to exceptions in previous versions.
 
-* Foxx: moved Model and Repository back to non-ES6 "classes"
+* deprecation warnings now log stack traces
+
+* Foxx: improved backwards compatibility with 2.5 and 2.6
+
+  - reverted Model and Repository back to non-ES6 "classes" because of
+    compatibility issues when using the extend method with a constructor
+
+  - removed deprecation warnings for extend and controller.del
+
+  - restored deprecated method Model.toJSONSchema
+
+  - restored deprecated `type`, `jwt` and `sessionStorageApp` options
+    in Controller#activateSessions
 
 
 v2.8.0-beta1 (2015-12-06)
