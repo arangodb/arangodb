@@ -542,9 +542,11 @@ static int UseCollections (TRI_transaction_t* trx,
 
     if (nestingLevel == 0 && trxCollection->_accessType == TRI_TRANSACTION_WRITE) {
       // read-lock the compaction lock
-      if (! trxCollection->_compactionLocked) {
-        TRI_ReadLockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
-        trxCollection->_compactionLocked = true;
+      if (! HasHint(trx, TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK)) {
+        if (! trxCollection->_compactionLocked) {
+          TRI_ReadLockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
+          trxCollection->_compactionLocked = true;
+        }
       }
     }
 
@@ -595,11 +597,13 @@ static int UnuseCollections (TRI_transaction_t* trx,
     // the top level transaction releases all collections
     if (nestingLevel == 0 && trxCollection->_collection != nullptr) {
 
-      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
-          trxCollection->_compactionLocked) {
-        // read-unlock the compaction lock
-        TRI_ReadUnlockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
-        trxCollection->_compactionLocked = false;
+      if (! HasHint(trx, TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK)) {
+        if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
+            trxCollection->_compactionLocked) {
+          // read-unlock the compaction lock
+          TRI_ReadUnlockReadWriteLock(&trxCollection->_collection->_collection->_compactionLock);
+          trxCollection->_compactionLocked = false;
+        }
       }
 
       trxCollection->_lockType = TRI_TRANSACTION_NONE;
