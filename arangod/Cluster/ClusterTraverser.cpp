@@ -259,7 +259,7 @@ void ClusterTraverser::setStartVertex (triagens::arango::traverser::VertexId con
     }
     ++_readDocuments;
     if (responseCode == triagens::rest::HttpResponse::HttpResponseCode::NOT_FOUND) {
-      _vertices.emplace(id, nullptr);
+      _vertices.emplace(id, TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
     }
     else {
       _vertices.emplace(id, triagens::basics::JsonHelper::fromString(vertexResult));
