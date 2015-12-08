@@ -1592,12 +1592,14 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
   auto it = previous._values.begin();
+  TRI_json_t const* previousVal;
   if (it == previous._values.end()) {
-    LOG_ERROR("Entry for collection in Plan does not exist!");
-    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, errorMsg);
+    LOG_INFO("Entry for collection in Plan does not exist!");
+    previousVal = nullptr;
   }
-
-  TRI_json_t const* previousVal = it->second._json;
+  else {
+    previousVal = it->second._json;
+  }
 
   loadPlannedCollections();
   // It is possible that between the fetching of the planned collections
@@ -1710,8 +1712,13 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, idx, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
 
-    AgencyCommResult result = ac.casValue(key, previousVal, collectionJson,
-                                          0.0, 0.0);
+    AgencyCommResult result;
+    if (previousVal != nullptr) {
+      result = ac.casValue(key, previousVal, collectionJson, 0.0, 0.0);
+    }
+    else {  // only when there is no previous value
+      result = ac.setValue(key, collectionJson, 0.0);
+    }
 
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
 
