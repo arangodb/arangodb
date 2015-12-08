@@ -162,8 +162,8 @@ const manifestSchema = {
     .pattern(RE_NOT_EMPTY, joi.string().required())
     .default(Object, 'empty scripts object')
   ),
-  setup: joi.string().optional(), // TODO remove in 2.8
-  teardown: joi.string().optional(), // TODO remove in 2.8
+  setup: joi.string().optional(),
+  teardown: joi.string().optional(),
   tests: (
     joi.alternatives()
     .try(
@@ -336,7 +336,7 @@ function checkManifest(filename, manifest) {
   }
 
   if (manifest.setup && manifest.setup !== manifest.scripts.setup) {
-    deprecated('2.8', (
+    deprecated('3.0', (
       `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "setup",`
       + ` use "scripts.setup" instead.`
     ));
@@ -345,7 +345,7 @@ function checkManifest(filename, manifest) {
   }
 
   if (manifest.teardown && manifest.teardown !== manifest.scripts.teardown) {
-    deprecated('2.8', (
+    deprecated('3.0', (
       `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "teardown",`
       + ` use "scripts.teardown" instead.`
     ));
@@ -354,7 +354,7 @@ function checkManifest(filename, manifest) {
   }
 
   if (manifest.assets) {
-    deprecated('2.8', (
+    deprecated('3.0', (
       `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "assets",`
       + ` use "files" and an external build tool instead.`
     ));
