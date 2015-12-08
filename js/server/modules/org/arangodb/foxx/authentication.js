@@ -866,8 +866,7 @@ Sessions.prototype.terminate = function (token) {
 
 Sessions.prototype.get = function (token) {
   var storage = this.storage(),
-    session,
-    sessionLifetime;
+    session;
 
   try {
     session = storage.document(token);
@@ -875,10 +874,8 @@ Sessions.prototype.get = function (token) {
     if (session.expires >= internal.time()) {
       // session still valid
 
-      sessionLifetime = this._options.sessionLifetime;
-
       return {
-        errorNum: internal.errors.ERROR_NO_ERROR,
+        errorNum: internal.errors.ERROR_NO_ERROR.code,
         session : this._toObject(session)
       };
     }
