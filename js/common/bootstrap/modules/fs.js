@@ -350,11 +350,9 @@ else {
 
 exports.safeJoin = function () {
   var args = Array.prototype.slice.call(arguments);
-  var path = safeJoin(args.shift(), args.shift());
-  while (args.length) {
-    path = safeJoin(path, args.shift());
-  }
-  return path;
+  return args.reduce(function (base, relative) {
+    return safeJoin(base, relative);
+  }, args.shift());
 };
 
 ////////////////////////////////////////////////////////////////////////////////
