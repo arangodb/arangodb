@@ -119,12 +119,3 @@ let response = request({
   returnBodyOnError: false
 });
 ```
-
-
-!SUBSECTION Controllers
-
-* the property `assets` in manifests has been removed entirely. Please use the `files` 
-  property and an external build tool instead.
-
-* properties `setup` and `teardown` in manifests have been removed entirely. Please use the 
-  `scripts` property instead.
