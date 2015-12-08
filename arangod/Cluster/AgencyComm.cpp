@@ -35,6 +35,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
+#include "Basics/random.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
@@ -992,6 +993,24 @@ bool AgencyComm::increaseVersion (std::string const& key) {
   return result.successful();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a version number in the agency, retry until it works
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyComm::increaseVersionRepeated (std::string const& key) {
+  bool ok = false;
+  while (! ok) {
+    ok = increaseVersion(key);
+    if (ok) {
+      return;
+    }
+    uint32_t val = 300 + TRI_UInt32Random() % 400;
+    LOG_INFO("Could not increase %s in agency, retrying in %dms!",
+             key.c_str(), val);
+    usleep(val * 1000);
+  }
+}
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////

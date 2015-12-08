@@ -808,7 +808,7 @@ namespace triagens {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadPlannedCollections (bool = true);
+        void loadPlannedCollections ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about planned databases
