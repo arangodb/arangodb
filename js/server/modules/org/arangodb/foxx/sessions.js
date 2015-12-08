@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
+const deprecated = require('org/arangodb/deprecated');
 const Foxx = require('org/arangodb/foxx');
 const paramSchema = joi.string().optional().description('Foxx session ID');
 
@@ -161,6 +162,22 @@ class Sessions {
       opts = {};
     }
 
+    if (opts.type) {
+      deprecated('3.0', (
+        'The Foxx session option "type" is deprecated.'
+        + ' Use the options "cookie" and/or "header" instead.'
+      ));
+      if (opts.type === 'cookie') {
+        delete opts.header;
+        opts.cookie = opts.cookie || true;
+      } else if (opts.type === 'header') {
+        delete opts.cookie;
+        opts.header = opts.header || true;
+      } else {
+        throw new Error('Only the following session types are supported at this time: ' + sessionTypes.join(', '));
+      }
+    }
+
     if (opts.cookie) {
       if (opts.cookie === true) {
         opts.cookie = {};
@@ -195,9 +212,19 @@ class Sessions {
     if (opts.autoCreateSession !== false) {
       opts.autoCreateSession = true;
     }
+
     if (!opts.sessionStorage) {
-      opts.sessionStorage = '/_system/sessions';
+      if (opts.sessionStorageApp) {
+        deprecated('3.0',
+          'The Foxx session option "sessionStorageApp" has been renamed to "sessionStorage".'
+          + ' Use the option "sessionStorage" instead.'
+        );
+        opts.sessionStorage = opts.sessionStorageApp;
+      } else {
+        opts.sessionStorage = '/_system/sessions';
+      }
     }
+
     this.configuration = opts;
   }
 
