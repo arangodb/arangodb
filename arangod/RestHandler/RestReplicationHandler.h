@@ -40,7 +40,7 @@
 
 struct TRI_replication_log_state_s;
 struct TRI_transaction_collection_s;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            RestReplicationHandler
@@ -98,14 +98,14 @@ namespace triagens {
 /// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int sortCollections (const void*,
-                                    const void*);
+        static bool sortCollections (TRI_vocbase_col_t const*,
+                                     TRI_vocbase_col_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief filter a collection based on collection attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool filterCollection (struct TRI_vocbase_col_s*, void*);
+        static bool filterCollection (TRI_vocbase_col_t*, void*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -203,7 +203,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createCollection (VPackSlice const&,
-                              TRI_vocbase_col_s**,
+                              TRI_vocbase_col_t**,
                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////

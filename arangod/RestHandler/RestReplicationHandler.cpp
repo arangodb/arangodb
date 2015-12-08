@@ -1,4 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
+//
 /// @brief replication request handler
 ///
 /// @file
@@ -348,22 +349,12 @@ BAD_CALL:
 /// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::sortCollections (const void* l,
-                                             const void* r) {
-  TRI_json_t const* left  = JsonHelper::getObjectElement(static_cast<TRI_json_t const*>(l), "parameters");
-  TRI_json_t const* right = JsonHelper::getObjectElement(static_cast<TRI_json_t const*>(r), "parameters");
-
-  int leftType  = JsonHelper::getNumericValue<int>(left,  "type", (int) TRI_COL_TYPE_DOCUMENT);
-  int rightType = JsonHelper::getNumericValue<int>(right, "type", (int) TRI_COL_TYPE_DOCUMENT);
-
-  if (leftType != rightType) {
-    return leftType - rightType;
+bool RestReplicationHandler::sortCollections (TRI_vocbase_col_t const* l,
+                                              TRI_vocbase_col_t const* r) {
+  if (l->_type != r->_type) {
+    return l->_type < r->_type;
   }
-
-  string leftName  = JsonHelper::getStringValue(left,  "name", "");
-  string rightName = JsonHelper::getStringValue(right, "name", "");
-
-  return strcasecmp(leftName.c_str(), rightName.c_str());
+  return strcasecmp(l->_name, r->_name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1588,53 +1579,41 @@ void RestReplicationHandler::handleCommandInventory () {
   }
 
   // collections and indexes
-  TRI_json_t* collections = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, (void*) &includeSystem);
+  std::shared_ptr<VPackBuilder> collectionsBuilder;
+  try {
+    collectionsBuilder = TRI_InventoryCollectionsVocBase(_vocbase, tick, &filterCollection, (void*) &includeSystem, true, RestReplicationHandler::sortCollections);
+    VPackSlice const collections = collectionsBuilder->slice();
 
-  if (collections == nullptr) {
+    TRI_ASSERT(collections.isArray());
+
+    VPackBuilder builder;
+    builder.addObject();
+
+    // add collections data
+    builder.add("collections", collections);
+
+    // "state"
+    builder.add("state", VPackValue(VPackValueType::Object));
+
+    triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
+
+    builder.add("running", VPackValue(true));
+    char* logTickString = TRI_StringUInt64(s.lastTick);
+    builder.add("lastLogTick", VPackValue(logTickString));
+    builder.add("totalEvents", VPackValue(s.numEvents));
+    builder.add("time", VPackValue(s.timeString));
+    builder.close(); // state
+
+    std::string const tickString(std::to_string(tick));
+    builder.add("tick", VPackValue(tickString));
+    builder.close(); // Toplevel
+
+    generateResult(builder.slice());
+  }
+  catch (std::bad_alloc& ) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-
-  TRI_ASSERT(JsonHelper::isArray(collections));
-
-  // sort collections by type, then name
-  size_t const n = TRI_LengthArrayJson(collections);
-
-  if (n > 1) {
-    // sort by collection type (vertices before edges), then name
-    qsort(collections->_value._objects._buffer, n, sizeof(TRI_json_t), &sortCollections);
-  }
-
-
-  TRI_json_t json;
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
-
-  // add collections data
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "collections", collections);
-
-  // "state"
-  TRI_json_t* state = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (state == nullptr) {
-    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
-  }
-
-  triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-  char* logTickString = TRI_StringUInt64(s.lastTick);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, logTickString, strlen(logTickString)));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) s.numEvents));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str(), s.timeString.size()));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "state", state);
-
-  std::string const tickString(std::to_string(tick));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString.c_str(), tickString.size()));
-
-  generateResult(&json);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

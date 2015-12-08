@@ -42,7 +42,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_document_collection_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 class VocShaper;
 
