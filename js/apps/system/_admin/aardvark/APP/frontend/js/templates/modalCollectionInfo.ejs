@@ -1,16 +1,8 @@
 <script id="modalCollectionInfo.ejs" type="text/template">
 <%
-    var roundNumber = function(number, n) {
-      var factor;
-      factor = Math.pow(10,n);
-      var returnVal = (Math.round(number * factor) / factor);
-      return returnVal;
-    };
-
     var figuresData = content.getFigures();
     var revision    = content.getRevision();
     var index       = content.getIndex();
-
 %>
 
     <ul id="infoTab" class="nav nav-tabs">
@@ -25,10 +17,10 @@
 
         <table id="collectionInfoTable">
           <tr id="collectionSizeBox">
-            <th class="collectionInfoTh2">Journal size (MB):</th>
+            <th class="collectionInfoTh2">Journal size:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-size" class="modal-text">
-                <%=roundNumber(figuresData.journalSize / 1024 / 1024, 2)%>
+                <%=filesize(figuresData.journalSize)%>
               </div>
             </th>
             <th class="tooltipInfoTh">
@@ -102,14 +94,14 @@
           <tr class="figuresHeader">
             <th class="">Type</th>
             <th>Count</th>
-            <th>Size (MB)</th>
+            <th>Size</th>
             <th>Info</th>
           </tr>
           <tr>
             <th class="modal-text">Datafiles</th>
             <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.datafiles.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.datafiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <div>
@@ -123,7 +115,7 @@
             <th class="modal-text">Journals</th>
             <th class="modal-text"><%=figuresData.figures.journals.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.journals.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.journals.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of journal files.">
@@ -134,7 +126,7 @@
             <th class="modal-text">Compactors</th>
             <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.compactors.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.compactors.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of compactor files.">
@@ -145,7 +137,7 @@
             <th class="modal-text">Shape files</th>
             <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.shapefiles.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.shapefiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of shape files.">
@@ -156,7 +148,7 @@
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.indexes.size / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.indexes.size)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total memory usage of indexes.">
@@ -193,7 +185,7 @@
           <tr class="figuresHeader">
             <th>Type</th>
             <th>Count</th>
-            <th>Size (MB)</th>
+            <th>Size</th>
             <th>Deletion</th>
             <th>Info</th>
           </tr>
@@ -201,7 +193,7 @@
             <th class="modal-text">Alive</th>
             <th class="modal-text"><%=figuresData.figures.alive.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.alive.size/1024/1024, 2)%>
+            <%=filesize(figuresData.figures.alive.size)%>
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
@@ -214,7 +206,7 @@
             <th class="modal-text">Dead</th>
             <th class="modal-text"><%=figuresData.figures.dead.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.dead.size/1024/1024, 2)%>
+            <%=filesize(figuresData.figures.dead.size)%>
             </th>
             <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
 
