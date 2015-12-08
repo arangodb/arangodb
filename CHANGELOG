@@ -5,6 +5,7 @@ v2.7.3 (XXXX-XX-XX)
   `syncCollection` if the collection was dropped right before synchronization 
   and drop and (re-)create collection markers were located in the same WAL file
 
+* Foxx: moved Model and Repository back to non-ES6 "classes"
 
 v2.7.2 (2015-12-01)
 -------------------

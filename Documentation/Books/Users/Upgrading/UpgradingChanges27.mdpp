@@ -29,31 +29,6 @@ can be fixed by using the usual combination of `FOR`, `FILTER` and `LIMIT`, e.g.
 
 !SECTION Foxx changes
 
-!SUBSECTION ES2015 Classes
-
-All Foxx constructors have been replaced with ES2015 classes and can be extended using the class syntax. 
-The `extend` method is still supported at the moment but will become deprecated in ArangoDB 2.8 and removed in ArangoDB 2.9.
-
-**Before:**
-
-```js
-var Foxx = require('org/arangodb/foxx');
-var MyModel = Foxx.Model.extend({
-  // ...
-  schema: {/* ... */}
-});
-```
-
-**After:**
-
-```js
-var Foxx = require('org/arangodb/foxx');
-class MyModel extends Foxx.Model {
-  // ...
-}
-MyModel.prototype.schema = {/* ... */};
-```
-
 !SUBSECTION Bundling and compilation
 
 The `assets` property is no longer supported in Foxx manifests and is scheduled to be removed in a future version of ArangoDB. The `files` property can still be used to serve static assets but it is recommended to use separate tooling to compile and bundle your assets.
