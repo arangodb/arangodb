@@ -808,11 +808,9 @@ static int ScanPath (TRI_vocbase_t* vocbase,
                      char const* path,
                      bool isUpgrade,
                      bool iterateMarkers) {
-  TRI_vector_string_t files;
   regmatch_t matches[2];
   regex_t re;
   int res;
-  size_t i, n;
 
   res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
 
@@ -822,23 +820,21 @@ static int ScanPath (TRI_vocbase_t* vocbase,
     return res;
   }
 
-  files = TRI_FilesDirectory(path);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(path);
 
   if (iterateMarkers) {
     LOG_TRACE("scanning all collection markers in database '%s", vocbase->_name);
   }
 
-  for (i = 0;  i < n;  ++i) {
-    char* name = files._buffer[i];
-    TRI_ASSERT(name != nullptr);
+  for (auto const& name : files) {
+    TRI_ASSERT(! name.empty());
 
-    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // no match, ignore this file
       continue;
     }
 
-    char* filePtr = TRI_Concatenate2File(path, name);
+    char* filePtr = TRI_Concatenate2File(path, name.c_str());
 
     if (filePtr == nullptr) {
       LOG_FATAL_AND_EXIT("out of memory");
@@ -856,7 +852,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         // encounter this situation
         LOG_ERROR("database subdirectory '%s' is not writable for current user", file.c_str());
 
-        TRI_DestroyVectorString(&files);
         regfree(&re);
 
         return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
@@ -885,7 +880,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
 
         LOG_ERROR("cannot read collection info file in directory '%s': %s", file.c_str(), TRI_errno_string(res));
-        TRI_DestroyVectorString(&files);
         TRI_FreeCollectionInfoOptions(&info);
         regfree(&re);
         return TRI_set_errno(res);
@@ -893,7 +887,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       else if (info._deleted) {
         // we found a collection that is marked as deleted.
         // deleted collections should be removed on startup. this is the default
-        LOG_DEBUG("collection '%s' was deleted, wiping it", name);
+        LOG_DEBUG("collection '%s' was deleted, wiping it", name.c_str());
 
         res = TRI_RemoveDirectory(file.c_str());
 
@@ -913,7 +907,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
             LOG_ERROR("collection '%s' has a too old version. Please start the server with the --upgrade option.",
                       info._name);
 
-            TRI_DestroyVectorString(&files);
             TRI_FreeCollectionInfoOptions(&info);
             regfree(&re);
 
@@ -936,7 +929,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
             if (res != TRI_ERROR_NO_ERROR) {
               LOG_ERROR("upgrading collection '%s' failed.", info._name);
 
-              TRI_DestroyVectorString(&files);
               TRI_FreeCollectionInfoOptions(&info);
               regfree(&re);
 
@@ -950,7 +942,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         if (c == nullptr) {
           LOG_ERROR("failed to add document collection from '%s'", file.c_str());
 
-          TRI_DestroyVectorString(&files);
           TRI_FreeCollectionInfoOptions(&info);
           regfree(&re);
 
@@ -979,8 +970,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   }
 
   regfree(&re);
-
-  TRI_DestroyVectorString(&files);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1425,6 +1414,8 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack (bool includeIndex
 
 
 void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder) {
+  TRI_ASSERT(! builder.isClosed());
+  
   // TODO !!
   // TRI_IterateJsonIndexesCollectionInfo
   // with FilterCollectionIndex
@@ -1704,7 +1695,6 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
                                                                void* data,
                                                                bool shouldSort,
                                                                std::function<bool (TRI_vocbase_col_t* , TRI_vocbase_col_t*)> sortCallback) {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
 
   std::vector<TRI_vocbase_col_t*> collections;
 
@@ -1722,6 +1712,7 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
     std::sort(collections.begin(), collections.end(), sortCallback);
   }
 
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
   builder->addArray();
 
   for (auto& collection : collections) {
@@ -1745,11 +1736,18 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
-    builder->addObject();
-    collection->toVelocyPack(*builder, true);
-    builder->close();
+    try {
+      builder->addObject();
+      collection->toVelocyPack(*builder, true);
+      builder->close();
+    } 
+    catch (...) {
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+      throw;
+    }
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   }
+  builder->close(); // Array
   return builder;
 
     /* Not needed any more

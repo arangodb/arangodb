@@ -143,6 +143,19 @@ static int FilenameComparator (const void* lhs, const void* rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename. this is used to sort datafile filenames on startup
+////////////////////////////////////////////////////////////////////////////////
+
+static bool FilenameStringComparator (std::string const& lhs, std::string const& rhs) {
+
+  const uint64_t numLeft  = GetNumericFilenamePart(lhs.c_str());
+  const uint64_t numRight = GetNumericFilenamePart(rhs.c_str());
+  return numLeft < numRight;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two datafiles, based on the numeric part contained in
 /// the filename
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,10 +203,8 @@ static void SortDatafiles (TRI_vector_pointer_t* files) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_tick_t GetDatafileId (const char* path) {
-  TRI_vector_string_t files;
   regex_t re;
   uint64_t lastId;
-  size_t i, n;
 
   if (regcomp(&re, "^(journal|datafile|compactor)-[0-9][0-9]*\\.db$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -201,16 +212,14 @@ static TRI_voc_tick_t GetDatafileId (const char* path) {
     return (TRI_voc_tick_t) 1;
   }
 
-  files = TRI_FilesDirectory(path);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(path);
   lastId = 0;
 
-  for (i = 0;  i < n;  ++i) {
+  for (auto const& file : files) {
     regmatch_t matches[2];
-    char const* file = files._buffer[i];
 
-    if (regexec(&re, file, sizeof(matches) / sizeof(matches[1]), matches, 0) == 0) {
-      uint64_t id = GetNumericFilenamePart(file);
+    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[1]), matches, 0) == 0) {
+      uint64_t id = GetNumericFilenamePart(file.c_str());
 
       if (lastId == 0 || (id > 0 && id < lastId)) {
         lastId = (id - 1);
@@ -218,7 +227,6 @@ static TRI_voc_tick_t GetDatafileId (const char* path) {
     }
   }
 
-  TRI_DestroyVectorString(&files);
   regfree(&re);
 
   return (TRI_voc_tick_t) lastId;
@@ -254,9 +262,7 @@ static void InitCollection (TRI_vocbase_t* vocbase,
 
 static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   TRI_col_file_structure_t structure;
-  TRI_vector_string_t files;
   regex_t re;
-  size_t i, n;
 
   TRI_InitVectorString(&structure._journals, TRI_CORE_MEM_ZONE);
   TRI_InitVectorString(&structure._compactors, TRI_CORE_MEM_ZONE);
@@ -270,20 +276,18 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
   }
 
   // check files within the directory
-  files = TRI_FilesDirectory(path);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(path);
 
-  for (i = 0;  i < n;  ++i) {
-    char const* file = files._buffer[i];
+  for (auto const& file : files) {
     regmatch_t matches[5];
 
-    if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       // file type: (journal|datafile|index|compactor)
-      char const* first = file + matches[1].rm_so;
+      char const* first = file.c_str() + matches[1].rm_so;
       size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
 
       // extension
-      char const* third = file + matches[3].rm_so;
+      char const* third = file.c_str() + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
 
       // isdead?
@@ -296,7 +300,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
       if (fourthLen > 0) {
         char* filename;
 
-        filename = TRI_Concatenate2File(path, file);
+        filename = TRI_Concatenate2File(path, file.c_str());
 
         if (filename != nullptr) {
           LOG_TRACE("removing .dead file '%s'", filename);
@@ -312,7 +316,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
       else if (TRI_EqualString2("index", first, firstLen) && TRI_EqualString2("json", third, thirdLen)) {
         char* filename;
 
-        filename = TRI_Concatenate2File(path, file);
+        filename = TRI_Concatenate2File(path, file.c_str());
         TRI_PushBackVectorString(&structure._indexes, filename);
       }
 
@@ -321,7 +325,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
       // .............................................................................
 
       else if (TRI_EqualString2("db", third, thirdLen)) {
-        string filename = TRI_Concatenate2File(path, file);
+        string filename = TRI_Concatenate2File(path, file.c_str());
 
         // file is a journal
         if (TRI_EqualString2("journal", first, firstLen)) {
@@ -338,7 +342,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
           char* relName;
           char* newName;
 
-          relName = TRI_Concatenate2String("datafile-", file + strlen("compaction-"));
+          relName = TRI_Concatenate2String("datafile-", file.c_str() + strlen("compaction-"));
           newName = TRI_Concatenate2File(path, relName);
           TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
 
@@ -380,16 +384,14 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 
         // ups, what kind of file is that
         else {
-          LOG_ERROR("unknown datafile type '%s'", file);
+          LOG_ERROR("unknown datafile type '%s'", file.c_str());
         }
       }
       else {
-        LOG_ERROR("unknown datafile type '%s'", file);
+        LOG_ERROR("unknown datafile type '%s'", file.c_str());
       }
     }
   }
-
-  TRI_DestroyVectorString(&files);
 
   regfree(&re);
 
@@ -417,10 +419,8 @@ static bool CheckCollection (TRI_collection_t* collection,
   TRI_vector_pointer_t datafiles;
   TRI_vector_pointer_t journals;
   TRI_vector_pointer_t sealed;
-  TRI_vector_string_t files;
   bool stop;
   regex_t re;
-  size_t i, n;
 
   if (regcomp(&re, "^(temp|compaction|journal|datafile|index|compactor)-([0-9][0-9]*)\\.(db|json)(\\.dead)?$", REG_EXTENDED) != 0) {
     LOG_ERROR("unable to compile regular expression");
@@ -431,8 +431,7 @@ static bool CheckCollection (TRI_collection_t* collection,
   stop = false;
 
   // check files within the directory
-  files = TRI_FilesDirectory(collection->_directory);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(collection->_directory);
 
   TRI_InitVectorPointer(&journals, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&compactors, TRI_UNKNOWN_MEM_ZONE);
@@ -440,15 +439,14 @@ static bool CheckCollection (TRI_collection_t* collection,
   TRI_InitVectorPointer(&sealed, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&all, TRI_UNKNOWN_MEM_ZONE);
 
-  for (i = 0;  i < n;  ++i) {
-    char const* file = files._buffer[i];
+  for (auto const& file : files) {
     regmatch_t matches[5];
 
-    if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
-      char const* first = file + matches[1].rm_so;
+    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+      char const* first = file.c_str() + matches[1].rm_so;
       size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
 
-      char const* third = file + matches[3].rm_so;
+      char const* third = file.c_str() + matches[3].rm_so;
       size_t thirdLen = matches[3].rm_eo - matches[3].rm_so;
 
       size_t fourthLen = matches[4].rm_eo - matches[4].rm_so;
@@ -459,7 +457,7 @@ static bool CheckCollection (TRI_collection_t* collection,
         // found a temporary file. we can delete it!
         char* filename;
 
-        filename = TRI_Concatenate2File(collection->_directory, file);
+        filename = TRI_Concatenate2File(collection->_directory, file.c_str());
 
         LOG_TRACE("found temporary file '%s', which is probably a left-over. deleting it", filename);
         TRI_UnlinkFile(filename);
@@ -474,7 +472,7 @@ static bool CheckCollection (TRI_collection_t* collection,
       if (TRI_EqualString2("index", first, firstLen) && TRI_EqualString2("json", third, thirdLen)) {
         char* filename;
 
-        filename = TRI_Concatenate2File(collection->_directory, file);
+        filename = TRI_Concatenate2File(collection->_directory, file.c_str());
         TRI_PushBackVectorString(&collection->_indexFiles, filename);
       }
 
@@ -492,8 +490,8 @@ static bool CheckCollection (TRI_collection_t* collection,
           char* relName;
           char* newName;
 
-          filename = TRI_Concatenate2File(collection->_directory, file);
-          relName  = TRI_Concatenate2String("datafile-", file + strlen("compaction-"));
+          filename = TRI_Concatenate2File(collection->_directory, file.c_str());
+          relName  = TRI_Concatenate2String("datafile-", file.c_str() + strlen("compaction-"));
           newName  = TRI_Concatenate2File(collection->_directory, relName);
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, relName);
@@ -526,7 +524,7 @@ static bool CheckCollection (TRI_collection_t* collection,
           filename = newName;
         }
         else {
-          filename = TRI_Concatenate2File(collection->_directory, file);
+          filename = TRI_Concatenate2File(collection->_directory, file.c_str());
         }
 
         TRI_ASSERT(filename != nullptr);
@@ -605,21 +603,20 @@ static bool CheckCollection (TRI_collection_t* collection,
         }
 
         else {
-          LOG_ERROR("unknown datafile '%s'", file);
+          LOG_ERROR("unknown datafile '%s'", file.c_str());
         }
 
         TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
       }
       else {
-        LOG_ERROR("unknown datafile '%s'", file);
+        LOG_ERROR("unknown datafile '%s'", file.c_str());
       }
     }
   }
 
-  TRI_DestroyVectorString(&files);
-
   regfree(&re);
 
+  size_t i, n;
   // convert the sealed journals into datafiles
   if (! stop) {
     n = sealed._length;
@@ -1272,9 +1269,7 @@ TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
 int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
                                           int (*filter)(TRI_vocbase_col_t*, char const*, void*),
                                           void* data) {
-  TRI_vector_string_t files;
   regex_t re;
-  size_t i, n;
   int res;
 
   if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) != 0) {
@@ -1283,18 +1278,15 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  files = TRI_FilesDirectory(collection->_path);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(collection->_path);
   res = TRI_ERROR_NO_ERROR;
 
   // sort by index id
-  SortFilenames(&files);
+  std::sort(files.begin(), files.end(), FilenameStringComparator);
 
-  for (i = 0;  i < n;  ++i) {
-    char const* file = files._buffer[i];
-
-    if (regexec(&re, file, (size_t) 0, nullptr, 0) == 0) {
-      char* fqn = TRI_Concatenate2File(collection->_path, file);
+  for (auto const& file : files) {
+    if (regexec(&re, file.c_str(), (size_t) 0, nullptr, 0) == 0) {
+      char* fqn = TRI_Concatenate2File(collection->_path, file.c_str());
 
       res = filter(collection, fqn, data);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
@@ -1304,8 +1296,6 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
       }
     }
   }
-
-  TRI_DestroyVectorString(&files);
 
   regfree(&re);
 
@@ -1736,14 +1726,12 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
                              TRI_col_info_t* info) {
 
   regex_t re;
-  TRI_vector_string_t files;
   TRI_voc_tick_t datafileId;
   char* shapes;
   char* outfile;
   char* fname;
   char* number;
   ssize_t written;
-  size_t i, n;
   int fdout;
   int res;
 
@@ -1787,17 +1775,15 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
   written = 0;
 
   // find all files in the collection directory
-  files = TRI_FilesDirectory(shapes);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(shapes);
   fdout = 0;
 
-  for (i = 0;  i < n;  ++i) {
+  for (auto const& file : files) {
     regmatch_t matches[1];
-    char const* file = files._buffer[i];
 
-    if (regexec(&re, file, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    if (regexec(&re, file.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       TRI_datafile_t* df;
-      char* fqn = TRI_Concatenate2File(shapes, file);
+      char* fqn = TRI_Concatenate2File(shapes, file.c_str());
 
       if (fqn == nullptr) {
         res = TRI_ERROR_OUT_OF_MEMORY;
@@ -1902,7 +1888,6 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
     }
   }
 
-  TRI_DestroyVectorString(&files);
   TRI_Free(TRI_CORE_MEM_ZONE, outfile);
 
   // try to remove SHAPES directory after upgrade

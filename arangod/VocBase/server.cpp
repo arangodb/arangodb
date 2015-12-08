@@ -333,6 +333,20 @@ static int DatabaseIdComparator (const void* lhs, const void* rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename. this is used to sort database filenames on startup
+////////////////////////////////////////////////////////////////////////////////
+
+static bool DatabaseIdStringComparator (std::string const& lhs, std::string const& rhs) {
+  const uint64_t numLeft  = GetNumericFilenamePart(lhs.c_str());
+  const uint64_t numRight = GetNumericFilenamePart(rhs.c_str());
+
+  return numLeft < numRight;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create base app directory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -439,15 +453,14 @@ static int OpenDatabases (TRI_server_t* server,
     LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
   }
 
-  TRI_vector_string_t files;
-  files = TRI_FilesDirectory(server->_databasePath);
+  std::vector<std::string> files = TRI_FilesDirectory(server->_databasePath);
 
   int res = TRI_ERROR_NO_ERROR;
-  size_t n = files._length;
+  size_t n = files.size();
 
   // open databases in defined order
   if (n > 1) {
-    qsort(files._buffer, n, sizeof(char**), &DatabaseIdComparator);
+    std::sort(files.begin(), files.end(), DatabaseIdStringComparator);
   }
 
   MUTEX_LOCKER(server->_databasesMutex);
@@ -455,7 +468,7 @@ static int OpenDatabases (TRI_server_t* server,
   auto newLists = new DatabasesLists(*oldLists);
   // No try catch here, if we crash here because out of memory...
 
-  for (size_t i = 0;  i < n;  ++i) {
+  for (auto const& name : files) {
     TRI_vocbase_t* vocbase;
     TRI_json_t* json;
     TRI_json_t const* deletedJson;
@@ -465,14 +478,13 @@ static int OpenDatabases (TRI_server_t* server,
     TRI_vocbase_defaults_t defaults;
     char* parametersFile;
     char* databaseName;
-    char const* name = files._buffer[i];
-    TRI_ASSERT(name != nullptr);
+    TRI_ASSERT(! name.empty());
 
     // .........................................................................
     // construct and validate path
     // .........................................................................
 
-    char* databaseDirectory = TRI_Concatenate2File(server->_databasePath, name);
+    char* databaseDirectory = TRI_Concatenate2File(server->_databasePath, name.c_str());
 
     if (databaseDirectory == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
@@ -484,7 +496,7 @@ static int OpenDatabases (TRI_server_t* server,
       continue;
     }
    
-    if (regexec(regex, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+    if (regexec(regex, name.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // name does not match the pattern, ignore this directory
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
@@ -668,7 +680,7 @@ static int OpenDatabases (TRI_server_t* server,
 
       LOG_ERROR("could not process database directory '%s' for database '%s': %s",
                 databaseDirectory,
-                name,
+                name.c_str(),
                 TRI_errno_string(res));
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
@@ -690,7 +702,7 @@ static int OpenDatabases (TRI_server_t* server,
     catch (...) {
       res = TRI_ERROR_OUT_OF_MEMORY;
       LOG_ERROR("could not add database '%s': out of memory",
-                name);
+                name.c_str());
       break;
     }
 
@@ -704,8 +716,6 @@ static int OpenDatabases (TRI_server_t* server,
   server->_databasesLists = newLists;
   server->_databasesProtector.scan();
   delete oldLists;
-
-  TRI_DestroyVectorString(&files);
 
   return res;
 }
@@ -832,23 +842,20 @@ static int GetDatabases (TRI_server_t* server,
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_vector_string_t files;
-  files = TRI_FilesDirectory(server->_databasePath);
+  std::vector<std::string> files = TRI_FilesDirectory(server->_databasePath);
 
   res = TRI_ERROR_NO_ERROR;
-  size_t const n = files._length;
 
-  for (size_t i = 0;  i < n;  ++i) {
-    char const* name = files._buffer[i];
-    TRI_ASSERT(name != nullptr);
+  for (auto const& name : files) {
+    TRI_ASSERT(! name.empty());
 
-    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // found some other file
       continue;
     }
 
     // found a database name
-    char* dname = TRI_Concatenate2File(server->_databasePath, name);
+    char* dname = TRI_Concatenate2File(server->_databasePath, name.c_str());
 
     if (dname == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
@@ -856,13 +863,12 @@ static int GetDatabases (TRI_server_t* server,
     }
 
     if (TRI_IsDirectory(dname)) {
-      TRI_PushBackVectorString(databases, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name));
+      TRI_PushBackVectorString(databases, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name.c_str()));
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
   }
 
-  TRI_DestroyVectorString(&files);
   regfree(&re);
 
   // sort by id
@@ -909,9 +915,7 @@ static int MoveVersionFile (TRI_server_t* server,
 static bool HasOldCollections (TRI_server_t* server) {
   regex_t re;
   regmatch_t matches[2];
-  TRI_vector_string_t files;
   bool found;
-  size_t i, n;
 
   TRI_ASSERT(server != nullptr);
 
@@ -922,21 +926,18 @@ static bool HasOldCollections (TRI_server_t* server) {
   }
 
   found = false;
-  files = TRI_FilesDirectory(server->_basePath);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(server->_basePath);
 
-  for (i = 0;  i < n;  ++i) {
-    char const* name = files._buffer[i];
-    TRI_ASSERT(name != nullptr);
+  for (auto const& name : files) {
+    TRI_ASSERT(! name.empty());
 
-    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       // found "collection-xxxx". we can ignore the rest
       found = true;
       break;
     }
   }
 
-  TRI_DestroyVectorString(&files);
   regfree(&re);
 
   return found;
@@ -951,9 +952,7 @@ static int MoveOldCollections (TRI_server_t* server,
                                char const* systemName) {
   regex_t re;
   regmatch_t matches[2];
-  TRI_vector_string_t files;
   int res;
-  size_t i, n;
 
   TRI_ASSERT(server != nullptr);
   TRI_ASSERT(systemName != nullptr);
@@ -970,23 +969,20 @@ static int MoveOldCollections (TRI_server_t* server,
   }
 
   res = TRI_ERROR_NO_ERROR;
-  files = TRI_FilesDirectory(server->_basePath);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(server->_basePath);
 
-  for (i = 0;  i < n;  ++i) {
-    char const* name;
+  for (auto const& name : files) {
     char* oldName;
     char* targetName;
 
-    name = files._buffer[i];
-    TRI_ASSERT(name != nullptr);
+    TRI_ASSERT(! name.empty());
 
-    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // found something else than "collection-xxxx". we can ignore these files/directories
       continue;
     }
 
-    oldName = TRI_Concatenate2File(server->_basePath, name);
+    oldName = TRI_Concatenate2File(server->_basePath, name.c_str());
 
     if (oldName == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
@@ -1001,7 +997,7 @@ static int MoveOldCollections (TRI_server_t* server,
 
     // move into system database directory
 
-    targetName = TRI_Concatenate3File(server->_databasePath, systemName, name);
+    targetName = TRI_Concatenate3File(server->_databasePath, systemName, name.c_str());
 
     if (targetName == nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, oldName);
@@ -1026,7 +1022,6 @@ static int MoveOldCollections (TRI_server_t* server,
     }
   }
 
-  TRI_DestroyVectorString(&files);
   regfree(&re);
 
   return res;
@@ -1247,9 +1242,7 @@ static int CreateDatabaseDirectory (TRI_server_t* server,
 static int Move14AlphaDatabases (TRI_server_t* server) {
   regex_t re;
   regmatch_t matches[2];
-  TRI_vector_string_t files;
   int res;
-  size_t i, n;
 
   TRI_ASSERT(server != nullptr);
 
@@ -1262,28 +1255,25 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
   }
 
   res = TRI_ERROR_NO_ERROR;
-  files = TRI_FilesDirectory(server->_databasePath);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(server->_databasePath);
 
-  for (i = 0;  i < n;  ++i) {
-    char const* name;
+  for (auto const& name : files) {
     char* tickString;
     char* dname;
     char* targetName;
     char* oldName;
     TRI_voc_tick_t tick;
 
-    name = files._buffer[i];
-    TRI_ASSERT(name != nullptr);
+    TRI_ASSERT(! name.empty());
 
-    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
+    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) == 0) {
       // found "database-xxxx". this is the desired format already
       continue;
     }
 
     // found some other format. we need to adjust the name
 
-    oldName = TRI_Concatenate2File(server->_databasePath, name);
+    oldName = TRI_Concatenate2File(server->_databasePath, name.c_str());
 
     if (oldName == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
@@ -1321,7 +1311,7 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
       break;
     }
 
-    res = SaveDatabaseParameters(tick, name, false, &server->_defaults, oldName);
+    res = SaveDatabaseParameters(tick, name.c_str(), false, &server->_defaults, oldName);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, targetName);
@@ -1345,7 +1335,6 @@ static int Move14AlphaDatabases (TRI_server_t* server) {
     }
   }
 
-  TRI_DestroyVectorString(&files);
   regfree(&re);
 
   return res;

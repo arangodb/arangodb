@@ -231,21 +231,19 @@ static void InitializeLockFiles (void) {
 static void ListTreeRecursively (char const* full,
                                  char const* path,
                                  TRI_vector_string_t* result) {
-  size_t i;
   size_t j;
-  TRI_vector_string_t dirs = TRI_FilesDirectory(full);
+  std::vector<std::string> dirs = TRI_FilesDirectory(full);
 
   for (j = 0;  j < 2;  ++j) {
-    for (i = 0;  i < dirs._length;  ++i) {
-      char const* filename = dirs._buffer[i];
-      char* newfull = TRI_Concatenate2File(full, filename);
+    for (auto const& filename : dirs) {
+      char* newfull = TRI_Concatenate2File(full, filename.c_str());
       char* newpath;
 
       if (*path) {
-        newpath = TRI_Concatenate2File(path, filename);
+        newpath = TRI_Concatenate2File(path, filename.c_str());
       }
       else {
-        newpath = TRI_DuplicateString(filename);
+        newpath = TRI_DuplicateString(filename.c_str());
       }
 
       if (j == 0) {
@@ -272,8 +270,6 @@ static void ListTreeRecursively (char const* full,
       TRI_FreeString(TRI_CORE_MEM_ZONE, newfull);
     }
   }
-
-  TRI_DestroyVectorString(&dirs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -636,20 +632,17 @@ int TRI_RemoveEmptyDirectory (char const* filename) {
 
 int TRI_RemoveDirectory (char const* filename) {
   if (TRI_IsDirectory(filename)) {
-    TRI_vector_string_t files;
-    size_t i;
     int res;
 
     LOG_TRACE("removing directory '%s'", filename);
 
     res = TRI_ERROR_NO_ERROR;
-    files = TRI_FilesDirectory(filename);
-
-    for (i = 0;  i < files._length;  ++i) {
+    std::vector<std::string> files = TRI_FilesDirectory(filename);
+    for (auto const& dir : files) {
       char* full;
       int subres;
 
-      full = TRI_Concatenate2File(filename, files._buffer[i]);
+      full = TRI_Concatenate2File(filename, dir.c_str());
 
       subres = TRI_RemoveDirectory(full);
       TRI_FreeString(TRI_CORE_MEM_ZONE, full);
@@ -658,8 +651,6 @@ int TRI_RemoveDirectory (char const* filename) {
         res = subres;
       }
     }
-
-    TRI_DestroyVectorString(&files);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_RemoveEmptyDirectory(filename);
@@ -827,14 +818,12 @@ char* TRI_Concatenate3File (char const* path1, char const* path2, char const* na
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
 
-TRI_vector_string_t TRI_FilesDirectory (char const* path) {
-  TRI_vector_string_t result;
+std::vector<std::string> TRI_FilesDirectory (char const* path) {
+  std::vector<std::string> result;
 
   struct _finddata_t fd;
   intptr_t handle;
   char* filter;
-
-  TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
 
   filter = TRI_Concatenate2String(path, "\\*");
   if (! filter) {
@@ -850,7 +839,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 
   do {
     if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
-      TRI_PushBackVectorString(&result, TRI_DuplicateString(fd.name));
+      result.emplace_back(fd.name);
     }
   }
   while (_findnext(handle, &fd) != -1);
@@ -862,13 +851,11 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 
 #else
 
-TRI_vector_string_t TRI_FilesDirectory (char const* path) {
-  TRI_vector_string_t result;
+std::vector<std::string> TRI_FilesDirectory (char const* path) {
+  std::vector<std::string> result;
 
   DIR * d;
   struct dirent * de;
-
-  TRI_InitVectorString(&result, TRI_CORE_MEM_ZONE);
 
   d = opendir(path);
 
@@ -880,8 +867,7 @@ TRI_vector_string_t TRI_FilesDirectory (char const* path) {
 
   while (de != 0) {
     if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
-
-      TRI_PushBackVectorString(&result, TRI_DuplicateString(de->d_name));
+      result.emplace_back(de->d_name);
     }
 
     de = readdir(d);
