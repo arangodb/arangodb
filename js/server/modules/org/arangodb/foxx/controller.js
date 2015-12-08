@@ -365,7 +365,6 @@ class Controller {
       this.allRoutes, this.models, newRoute, route, this.rootElement, constraints, this.extensions
     );
     var summary;
-    var undocumentedBody;
 
     this.routingInfo.routes.push(newRoute);
 
@@ -381,10 +380,10 @@ class Controller {
 
     if (method === 'post' || method === 'put' || method === 'patch') {
       const Model = require('org/arangodb/foxx').Model;
-      undocumentedBody = class UndocumentedBody extends Model {};
+      let UndocumentedBody = Model.extend({});
       requestContext.bodyParam('undocumented body', {
         description: 'Undocumented body param',
-        type: undocumentedBody,
+        type: UndocumentedBody,
         allowInvalid: true
       });
     }
