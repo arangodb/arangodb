@@ -266,9 +266,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "PASSTHRU",                    Function("PASSTHRU",                    "AQL_PASSTHRU", ".", false, false, false, true, true, &Functions::Passthru ) },
   { "NOOPT",                       Function("NOOPT",                       "AQL_PASSTHRU", ".", false, false, false, true, true, &Functions::Passthru ) },
   { "V8",                          Function("V8",                          "AQL_PASSTHRU", ".", false, false, false, true, true) },
-#ifdef TRI_ENABLE_FAILURE_TESTS
-  { "TEST_MODIFY",                 Function("TEST_MODIFY",                 "AQL_TEST_MODIFY", "s,.", false, false, false, true, false) },
-#endif
+  { "TEST_INTERNAL",               Function("TEST_INTERNAL",               "AQL_TEST_INTERNAL", "s,.", false, false, false, true, false) },
   { "SLEEP",                       Function("SLEEP",                       "AQL_SLEEP", "n", false, false, true, true, true) },
   { "COLLECTIONS",                 Function("COLLECTIONS",                 "AQL_COLLECTIONS", "", false, false, true, false, true) },
   { "NOT_NULL",                    Function("NOT_NULL",                    "AQL_NOT_NULL", ".|+", true, true, false, true, true, &Functions::NotNull ) },
