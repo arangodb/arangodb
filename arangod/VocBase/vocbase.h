@@ -40,6 +40,9 @@
 #include "Basics/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -49,7 +52,7 @@ struct TRI_document_collection_t;
 struct TRI_json_t;
 class TRI_replication_applier_t;
 struct TRI_server_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 struct TRI_vocbase_defaults_s;
 
 namespace triagens {
@@ -278,8 +281,8 @@ struct TRI_vocbase_t {
   triagens::basics::DeadlockDetector<TRI_document_collection_t> _deadlockDetector;
 
   triagens::basics::ReadWriteLock         _collectionsLock;    // collection iterator lock
-  std::vector<struct TRI_vocbase_col_s*>  _collections;        // pointers to ALL collections
-  std::vector<struct TRI_vocbase_col_s*>  _deadCollections;    // pointers to collections dropped that can be removed later
+  std::vector<TRI_vocbase_col_t*>         _collections;        // pointers to ALL collections
+  std::vector<TRI_vocbase_col_t*>         _deadCollections;    // pointers to collections dropped that can be removed later
 
   TRI_associative_pointer_t               _collectionsByName;  // collections by name
   TRI_associative_pointer_t               _collectionsById;    // collections by id
@@ -356,31 +359,60 @@ TRI_vocbase_col_status_e;
 /// For the lock, handling see the document "LOCKS.md".
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vocbase_col_s {
-  TRI_vocbase_t*                    _vocbase;
+class TRI_vocbase_col_t {
+  // Leftover from struct
+  public:
+    TRI_vocbase_t*                    _vocbase;
 
-  TRI_voc_cid_t                     _cid;        // local collecttion identifier
-  TRI_voc_cid_t                     _planId;     // cluster-wide collecttion identifier
-  TRI_col_type_t                    _type;       // collection type
+    TRI_voc_cid_t                     _cid;        // local collecttion identifier
+    TRI_voc_cid_t                     _planId;     // cluster-wide collecttion identifier
+    TRI_col_type_t                    _type;       // collection type
 
-  TRI_read_write_lock_t             _lock;       // lock protecting the status and name
+    TRI_read_write_lock_t             _lock;       // lock protecting the status and name
 
-  uint32_t                          _internalVersion; // is incremented when a collection is renamed
-                                                 // this is used to prevent caching of collection objects
-                                                 // with "wrong" names in the "db" object
-  TRI_vocbase_col_status_e          _status;     // status of the collection
-  struct TRI_document_collection_t*  _collection; // NULL or pointer to loaded collection
-  char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
-  char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
-  char _dbName[TRI_COL_NAME_LENGTH + 1];         // name of the database
+    uint32_t                          _internalVersion; // is incremented when a collection is renamed
+                                                   // this is used to prevent caching of collection objects
+                                                   // with "wrong" names in the "db" object
+    TRI_vocbase_col_status_e          _status;     // status of the collection
+    struct TRI_document_collection_t*  _collection; // NULL or pointer to loaded collection
+    char _name[TRI_COL_NAME_LENGTH + 1];           // name of the collection
+    char _path[TRI_COL_PATH_LENGTH + 1];           // path to the collection files
+    char _dbName[TRI_COL_NAME_LENGTH + 1];         // name of the database
 
-  bool                              _isLocal;    // if true, the collection is local. if false,
-                                                 // the collection is a remote (cluster) collection
-  bool                              _canDrop;    // true if the collection can be dropped
-  bool                              _canUnload;  // true if the collection can be unloaded
-  bool                              _canRename;  // true if the collection can be renamed
-}
-TRI_vocbase_col_t;
+    bool                              _isLocal;    // if true, the collection is local. if false,
+                                                   // the collection is a remote (cluster) collection
+    bool                              _canDrop;    // true if the collection can be dropped
+    bool                              _canUnload;  // true if the collection can be unloaded
+    bool                              _canRename;  // true if the collection can be renamed
+
+  public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform the information for this collection to velocypack
+///        creates the Builder.
+////////////////////////////////////////////////////////////////////////////////
+
+    std::shared_ptr<VPackBuilder> toVelocyPack (bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform the information for this collection to velocypack
+////////////////////////////////////////////////////////////////////////////////
+
+    void toVelocyPack (VPackBuilder&, bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform the information for the indexes of this collection to velocypack
+////////////////////////////////////////////////////////////////////////////////
+
+    std::shared_ptr<VPackBuilder> toVelocyPackIndexes ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Transform the information for this collection to velocypack
+////////////////////////////////////////////////////////////////////////////////
+
+    void toVelocyPackIndexes (VPackBuilder&);
+
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -448,12 +480,15 @@ std::vector<std::string> TRI_CollectionNamesVocBase (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
 /// and optionally indexes
+/// The result is sorted by type and name (vertices before edges)
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
-                                                    TRI_voc_tick_t,
-                                                    bool (*)(TRI_vocbase_col_t*, void*),
-                                                    void*);
+std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
+                                                               TRI_voc_tick_t,
+                                                               bool (*)(TRI_vocbase_col_t*, void*),
+                                                               void*,
+                                                               bool,
+                                                               std::function<bool (TRI_vocbase_col_t*, TRI_vocbase_col_t*)>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a translation of a collection status

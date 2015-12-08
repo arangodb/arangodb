@@ -49,7 +49,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 struct TRI_vocbase_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 TRANSACTION TYPES
@@ -163,7 +163,7 @@ typedef struct TRI_transaction_collection_s {
   TRI_voc_cid_t                        _cid;               // collection id
   TRI_transaction_type_e               _accessType;        // access type (read|write)
   int                                  _nestingLevel;      // the transaction level that added this collection
-  struct TRI_vocbase_col_s*            _collection;        // vocbase collection pointer
+  TRI_vocbase_col_t*                   _collection;        // vocbase collection pointer
   triagens::arango::DocumentDitch*     _ditch;
   std::vector<triagens::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start

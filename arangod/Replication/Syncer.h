@@ -46,7 +46,7 @@ struct TRI_json_t;
 struct TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 namespace triagens {
 
@@ -139,7 +139,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createCollection (struct TRI_json_t const*,
-                              struct TRI_vocbase_col_s**);
+                              TRI_vocbase_col_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection, based on the JSON provided

@@ -65,7 +65,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -318,7 +318,7 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_t* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
+struct TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the index (JSON) files of a collection, using a callback
@@ -328,8 +328,8 @@ struct TRI_json_t* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_IterateJsonIndexesCollectionInfo (struct TRI_vocbase_col_s*,
-                                          int (*)(struct TRI_vocbase_col_s*, char const*, void*),
+int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t*,
+                                          int (*)(TRI_vocbase_col_t*, char const*, void*),
                                           void*);
 
 ////////////////////////////////////////////////////////////////////////////////

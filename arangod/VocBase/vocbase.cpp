@@ -62,6 +62,10 @@
 #include "V8Server/v8-user-structures.h"
 #include "Wal/LogfileManager.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -473,14 +477,6 @@ static bool DropCollectionCallback (TRI_collection_t* col,
 
   return true;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           VOCBASE
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
@@ -1397,8 +1393,58 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t* collection) {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           class TRI_vocbase_col_t
+// -----------------------------------------------------------------------------
+
+void TRI_vocbase_col_t::toVelocyPack (VPackBuilder& builder,
+                                      bool includeIndexes) {
+  TRI_ASSERT(! builder.isClosed());
+  char* filename = TRI_Concatenate2File(_path, TRI_VOC_PARAMETER_FILE);
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
+  std::shared_ptr<VPackBuilder> fileInfoBuilder = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
+  builder.add("parameters", fileInfoBuilder->slice());
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  if (includeIndexes) {
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+    toVelocyPackIndexes(builder);
+    builder.close();
+  }
+ 
+}
+
+std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack (bool includeIndexes) {
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  builder->addObject();
+  toVelocyPack(*builder, includeIndexes);
+  builder->close();
+
+  return builder;
+}
+
+
+void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder) {
+  // TODO !!
+  // TRI_IterateJsonIndexesCollectionInfo
+  // with FilterCollectionIndex
+}
+
+
+std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes () {
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  builder->addArray();
+  toVelocyPackIndexes(*builder);
+  builder->close();
+  return builder;
+}
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes
@@ -1649,17 +1695,16 @@ std::vector<std::string> TRI_CollectionNamesVocBase (TRI_vocbase_t* vocbase) {
 /// and indexes, up to a specific tick value
 /// while the collections are iterated over, there will be a global lock so
 /// that there will be consistent view of collections & their properties
+/// The list of collections will be sorted if sort function is given
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
-                                             TRI_voc_tick_t maxTick,
-                                             bool (*filter)(TRI_vocbase_col_t*, void*),
-                                             void* data) {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
-    return nullptr;
-  }
+std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                                               TRI_voc_tick_t maxTick,
+                                                               bool (*filter)(TRI_vocbase_col_t*, void*),
+                                                               void* data,
+                                                               bool shouldSort,
+                                                               std::function<bool (TRI_vocbase_col_t* , TRI_vocbase_col_t*)> sortCallback) {
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
 
   std::vector<TRI_vocbase_col_t*> collections;
 
@@ -1672,6 +1717,12 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
     READ_LOCKER(vocbase->_collectionsLock);
     collections = vocbase->_collections;
   }
+
+  if (shouldSort && collections.size() > 1) {
+    std::sort(collections.begin(), collections.end(), sortCallback);
+  }
+
+  builder->addArray();
 
   for (auto& collection : collections) {
     TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1694,14 +1745,21 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
+    builder->addObject();
+    collection->toVelocyPack(*builder, true);
+    builder->close();
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  }
+  return builder;
 
-    TRI_json_t* result = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
+    /* Not needed any more
+    // FORMER TRI_json_t* collectionInfo = TRI_ReadJsonCollectionInfo(collection);
+    std::shared_ptr<VPackBuilder> collectionInfo = TRI_ReadVelocyPackCollectionInfo(collection);
 
-    if (result != nullptr) {
-      TRI_json_t* collectionInfo = TRI_ReadJsonCollectionInfo(collection);
+    builder->add("parameters", collectionInfo->slice());
+    builder->add("indexes", VPackValue(VPackValueType::Array));
 
-      if (collectionInfo != nullptr) {
-        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
+
 
         TRI_json_t* indexesInfo = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
@@ -1716,12 +1774,7 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
       }
 
       TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, json, result);
-    }
-
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-  }
-
-  return json;
+      */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
