@@ -4598,7 +4598,7 @@ function AQL_PASSTHRU (value) {
 /// this is no actual function the end user should call
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_TEST_MODIFY (test, what) {
+function AQL_TEST_INTERNAL (test, what) {
   'use strict';
   if (test === 'MODIFY_ARRAY') {
     what[0] = 1; 
@@ -4618,6 +4618,12 @@ function AQL_TEST_MODIFY (test, what) {
     what.e.f = { a: 1, b: 2 };
     delete what.f; 
     what.g = "foo";
+  }
+  else if (test === 'DEADLOCK') {
+    var err = new ArangoError();
+    err.errorNum = INTERNAL.errors.ERROR_DEADLOCK.code;
+    err.errorMessage = INTERNAL.errors.ERROR_DEADLOCK.message;
+    throw err;
   }
   return what; 
 }
@@ -9269,7 +9275,7 @@ exports.AQL_MERGE_RECURSIVE = AQL_MERGE_RECURSIVE;
 exports.AQL_TRANSLATE = AQL_TRANSLATE;
 exports.AQL_MATCHES = AQL_MATCHES;
 exports.AQL_PASSTHRU = AQL_PASSTHRU;
-exports.AQL_TEST_MODIFY = AQL_TEST_MODIFY;
+exports.AQL_TEST_INTERNAL = AQL_TEST_INTERNAL;
 exports.AQL_SLEEP = AQL_SLEEP;
 exports.AQL_CURRENT_DATABASE = AQL_CURRENT_DATABASE;
 exports.AQL_CURRENT_USER = AQL_CURRENT_USER;

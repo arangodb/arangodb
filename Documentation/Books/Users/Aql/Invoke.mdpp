@@ -24,9 +24,10 @@ To pass bind parameters into a query, they can be specified as second argument t
 
     @startDocuBlockInline 02_workWithAQL_bindValues
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_bindValues}
-    | db._query('FOR c IN @@collection FILTER c._key == @key RETURN c._key', { 
-    |  '@collection': 'mycollection', 
-    |  'key': 'testKey'
+    |db._query(
+    | 'FOR c IN @@collection FILTER c._key == @key RETURN c._key', {
+    |   '@collection': 'mycollection', 
+    |   'key': 'testKey'
     }).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_bindValues
@@ -37,7 +38,9 @@ a template string generator function named *aqlQuery*:
     @startDocuBlockInline 02_workWithAQL_aqlQuery
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlQuery}
       var key = 'testKey';
-      db._query(aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`).toArray();
+      |db._query(
+      | aqlQuery`FOR c IN mycollection FILTER c._key == ${key} RETURN c._key`
+        ).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_aqlQuery
 
@@ -47,7 +50,8 @@ Arbitrary JavaScript expressions can be used in queries that are generated with 
     @startDocuBlockInline 02_workWithAQL_aqlCollectionQuery
     @EXAMPLE_ARANGOSH_OUTPUT{02_workWithAQL_aqlCollectionQuery}
       var key = 'testKey';
-      db._query(aqlQuery`FOR doc IN ${ db.mycollection } RETURN doc`).toArray();
+      |db._query(aqlQuery`FOR doc IN ${ db.mycollection } RETURN doc`
+          ).toArray();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_aqlCollectionQuery
 
@@ -59,7 +63,10 @@ It is always possible to retrieve statistics for a query with the *getExtra* met
 
     @startDocuBlockInline 03_workWithAQL_getExtra
     @EXAMPLE_ARANGOSH_OUTPUT{03_workWithAQL_getExtra}
-    db._query("FOR i IN 1..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } INTO mycollection").getExtra();
+    |db._query(`FOR i IN 1..100
+    |             INSERT { _key: CONCAT('test', TO_STRING(i)) }
+    |                INTO mycollection`
+      ).getExtra();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 03_workWithAQL_getExtra
 
@@ -72,7 +79,8 @@ ArangoStatement object as follows:
 
     @startDocuBlockInline 04_workWithAQL_statements1
     @EXAMPLE_ARANGOSH_OUTPUT{04_workWithAQL_statements1}
-    stmt = db._createStatement( { "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
+    |stmt = db._createStatement( {
+        "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 04_workWithAQL_statements1
 
@@ -121,7 +129,8 @@ and then bind the parameters to it before execution:
 
     @startDocuBlockInline 05_workWithAQL_statements5
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements5}
-    var stmt = db._createStatement( { "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
+    |var stmt = db._createStatement( {
+        "query": "FOR i IN [ @one, @two ] RETURN i * 2" } );
     stmt.bind("one", 1);
     stmt.bind("two", 2);
     c = stmt.execute();
@@ -173,7 +182,9 @@ To make the server return the total number of results, you may set the *count* a
     
     @startDocuBlockInline 05_workWithAQL_statements9
     @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statements9}
-    stmt = db._createStatement( { "query": "FOR i IN [ 1, 2, 3, 4 ] RETURN i", "count": true } );
+    |stmt = db._createStatement( {
+    | "query": "FOR i IN [ 1, 2, 3, 4 ] RETURN i",
+      "count": true } );
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements9
 
@@ -213,8 +224,22 @@ can be retrieved by calling `getExtra()` on the cursor. The statistics are retur
 return value's `stats` attribute:
 
     @startDocuBlockInline 06_workWithAQL_statementsExtra
-    @EXAMPLE_ARANGOSH_OUTPUT{05_workWithAQL_statementsExtra}
-    db._query("FOR i IN 1..100 INSERT { _key: CONCAT('anothertest', TO_STRING(i)) } INTO mycollection").getExtra();
+    @EXAMPLE_ARANGOSH_OUTPUT{06_workWithAQL_statementsExtra}
+    |db._query(`
+    |   FOR i IN 1..@count INSERT
+    |     { _key: CONCAT('anothertest', TO_STRING(i)) }
+    |     INTO mycollection`,
+    |  {count: 100},
+    |  {},
+    |  {fullCount: true}
+      ).getExtra();
+    |db._query({
+    |  "query": `FOR i IN 200..@count INSERT
+    |              { _key: CONCAT('anothertest', TO_STRING(i)) }
+    |              INTO mycollection`,
+    |  "bindVars": {count: 300},
+    |  "options": { fullCount: true}
+      }).getExtra();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 06_workWithAQL_statementsExtra
 
@@ -276,7 +301,8 @@ Here is an example for retrieving the execution plan of a simple query:
 
     @startDocuBlockInline 07_workWithAQL_statementsExplain
     @EXAMPLE_ARANGOSH_OUTPUT{07_workWithAQL_statementsExplain}
-    var stmt = db._createStatement("FOR user IN _users RETURN user");
+    |var stmt = db._createStatement(
+     "FOR user IN _users RETURN user");
     stmt.explain();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 07_workWithAQL_statementsExplain
@@ -286,7 +312,10 @@ scripting to make the output less verbose:
 
     @startDocuBlockInline 08_workWithAQL_statementsPlans
     @EXAMPLE_ARANGOSH_OUTPUT{08_workWithAQL_statementsPlans}
-    var formatPlan = function (plan) { return { estimatedCost: plan.estimatedCost, nodes: plan.nodes.map(function(node) { return node.type; }) }; };
+    |var formatPlan = function (plan) {
+    |    return { estimatedCost: plan.estimatedCost,
+    |        nodes: plan.nodes.map(function(node) {
+                return node.type; }) }; };
     formatPlan(stmt.explain().plan);
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 08_workWithAQL_statementsPlans
@@ -296,7 +325,9 @@ If a query contains bind parameters, they must be added to the statement **befor
 
     @startDocuBlockInline 09_workWithAQL_statementsPlansBind
     @EXAMPLE_ARANGOSH_OUTPUT{09_workWithAQL_statementsPlansBind}
-    var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.user == @user RETURN doc");
+    |var stmt = db._createStatement(
+    | `FOR doc IN @@collection FILTER doc.user == @user RETURN doc`
+    );
     stmt.bind({ "@collection" : "_users", "user" : "root" });
     stmt.explain();
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -311,7 +342,8 @@ In the following example, the optimizer has created two plans:
 
     @startDocuBlockInline 10_workWithAQL_statementsPlansOptimizer0
     @EXAMPLE_ARANGOSH_OUTPUT{10_workWithAQL_statementsPlansOptimizer0}
-    var stmt = db._createStatement("FOR user IN _users FILTER user.user == 'root' RETURN user");
+    |var stmt = db._createStatement(
+      "FOR user IN _users FILTER user.user == 'root' RETURN user");
     stmt.explain({ allPlans: true }).plans.length;
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 10_workWithAQL_statementsPlansOptimizer0
@@ -321,7 +353,8 @@ To see a slightly more compact version of the plan, the following transformation
     @startDocuBlockInline 10_workWithAQL_statementsPlansOptimizer1
     @EXAMPLE_ARANGOSH_OUTPUT{10_workWithAQL_statementsPlansOptimizer1}
     ~var stmt = db._createStatement("FOR user IN _users FILTER user.user == 'root' RETURN user");
-    stmt.explain({ allPlans: true }).plans.map(function(plan) { return formatPlan(plan); });
+    |stmt.explain({ allPlans: true }).plans.map(
+        function(plan) { return formatPlan(plan); });
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 10_workWithAQL_statementsPlansOptimizer1
 
@@ -337,7 +370,8 @@ The following example disables all optimizer rules but `remove-redundant-calcula
     @startDocuBlockInline 10_workWithAQL_statementsPlansOptimizer2
     @EXAMPLE_ARANGOSH_OUTPUT{10_workWithAQL_statementsPlansOptimizer2}
     ~var stmt = db._createStatement("FOR user IN _users FILTER user.user == 'root' RETURN user");
-    stmt.explain({ optimizer: { rules: [ "-all", "+remove-redundant-calculations" ] } });
+    |stmt.explain({ optimizer: {
+       rules: [ "-all", "+remove-redundant-calculations" ] } });
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 10_workWithAQL_statementsPlansOptimizer2
 
@@ -373,7 +407,8 @@ will be returned without any optimizations applied to it.
 
     @startDocuBlockInline 11_workWithAQL_parseQueries
     @EXAMPLE_ARANGOSH_OUTPUT{11_workWithAQL_parseQueries}
-    var stmt = db._createStatement("FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc");
+    |var stmt = db._createStatement(
+      "FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc");
     stmt.parse();
     ~removeIgnoreCollection("mycollection")
     ~db._drop("mycollection")

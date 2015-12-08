@@ -380,8 +380,8 @@ void ClusterInfo::flush () {
   loadCurrentCoordinators();
   loadPlannedDatabases();
   loadCurrentDatabases();
-  loadPlannedCollections();
-  loadCurrentCollections();
+  loadPlannedCollections(true);
+  loadCurrentCollections(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -714,6 +714,10 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       if (locker.successful()) {
         result = _agency.getValues(prefixPlannedCollections, true);
       }
+      else {
+        LOG_ERROR("Error while locking %s", prefixPlannedCollections.c_str());
+        return;
+      }
     }
     else {
       result = _agency.getValues(prefixPlannedCollections, true);
@@ -800,7 +804,7 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
     return;
   }
 
-  LOG_DEBUG("Error while loading %s httpCode: %d "
+  LOG_ERROR("Error while loading %s httpCode: %d "
             "errorCode: %d errorMessage: %s body: %s",
             prefixPlannedCollections.c_str(),
             result.httpCode(), result.errorCode(),
@@ -1324,12 +1328,12 @@ int ClusterInfo::createCollectionCoordinator (
       return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
     }
 
-    if (ac.exists("Plan/Collections/" + databaseName + "/"+collectionID)) {
+    if (ac.exists("Plan/Collections/" + databaseName + "/" + collectionID)) {
       return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
     }
 
     AgencyCommResult result
-      = ac.setValue("Plan/Collections/" + databaseName + "/"+collectionID,
+      = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID,
                     json, 0.0);
     if (!result.successful()) {
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
@@ -1338,7 +1342,7 @@ int ClusterInfo::createCollectionCoordinator (
   }
 
   // Update our cache:
-  loadPlannedCollections();
+  loadPlannedCollections(true);
 
   // Now wait for it to appear and be complete:
   AgencyCommResult res = ac.getValues("Current/Version", false);
@@ -1366,7 +1370,7 @@ int ClusterInfo::createCollectionCoordinator (
                   = TRI_LookupObjectJson(json, "errorMessage");
             if (TRI_IsStringJson(errorMessage)) {
               tmpMsg += string(errorMessage->_value._string.data,
-                               errorMessage->_value._string.length-1);
+                               errorMessage->_value._string.length - 1);
             }
             TRI_json_t const* errorNum = TRI_LookupObjectJson(json, "errorNum");
             if (TRI_IsNumberJson(errorNum)) {
@@ -1381,7 +1385,7 @@ int ClusterInfo::createCollectionCoordinator (
           errorMsg = "Error in creation of collection:" + tmpMsg;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         }
-        loadPlannedCollections();
+        loadPlannedCollections(true);
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
@@ -1390,6 +1394,8 @@ int ClusterInfo::createCollectionCoordinator (
     res = ac.watchValue("Current/Version", index, interval, false);
     index = res._index;
   }
+
+  // LOG_ERROR("GOT TIMEOUT. NUMBEROFSHARDS: %d", (int) numberOfShards);
   return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
 }
 
@@ -1464,7 +1470,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
           return setErrormsg(
             TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, errorMsg);
         }
-        loadCurrentCollections();
+        loadCurrentCollections(true);
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
@@ -1835,7 +1841,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
           resultJson = newIndex;
           TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
-          loadCurrentCollections();
+          loadCurrentCollections(true);
 
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
@@ -1970,7 +1976,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
   }
 
   // load our own cache:
-  loadPlannedCollections();
+  loadPlannedCollections(true);
 
   TRI_ASSERT(numberOfShards > 0);
 
@@ -2016,7 +2022,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
         }
 
         if (! found) {
-          loadCurrentCollections();
+          loadCurrentCollections(true);
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
       }
@@ -2442,7 +2448,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   // from Plan, since they are immutable. Later we will have to switch
   // this to Current, when we allow to add and remove shards.
   if (! _plannedCollectionsProt.isValid) {
-    loadPlannedCollections();
+    loadPlannedCollections(true);
   }
 
   int tries = 0;

@@ -401,6 +401,11 @@ Chrome's security policies are pretty strict about localhost and file://
 protocol. You may access the docs through a local web server to lift the
 restrictions.
 
+To only regereneate one file (faster) you may specify a filter:
+
+    make FILTER=Users/Aql/Invoke.mdpp
+
+(regular expressions allowed)
 
 Using Gitbook
 =============
@@ -599,3 +604,23 @@ Attributes:
                can be either a swaggertype, or a *RESTRUCT*
     - format: if type is a native swagger type, some support a format to specify them
 
+Local cluster startup
+=====================
+
+There are two scripts `scripts/startLocalCluster` and
+`scripts/stopLocalCluster` which help you to quickly fire up a testing
+cluster on your local machine. `scripts/startLocalCluster` takes 0, 2 or
+three arguments. In the 0 argument version, it simply starts 2 DBservers
+and one coordinator in the background, running on ports 8629, 8630 and
+8530 respectively. The agency runs on port 4001. With 2 arguments the
+first is the number of DBServers and the second is the number of 
+coordinators.
+
+If there is a third argument and it is "C", then the first coordinator
+will be started with `--console`` in a separate window (using an
+`xterm`). 
+
+If there is a third argument and it is "D", then all servers are started
+up in the GNU debugger in separate windows (using `xterm`s). In that
+case one has to hit ENTER in the original terminal where the script runs
+to continue, once all processes have been start up in the debugger.

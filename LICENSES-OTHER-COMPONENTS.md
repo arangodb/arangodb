@@ -257,6 +257,12 @@
 * Project Home: http://www.embeddedjs.com
 * License: [MIT License](http://www.embeddedjs.com/) under Highlights
 
+#### filesize.js
+
+* Project Home: http://filesizejs.com/
+* GITHUB: https://github.com/avoidwork/filesize.js
+* License: [BSD-style 3-Clause License](https://github.com/avoidwork/filesize.js/blob/master/LICENSE)
+
 #### jq-console
 
 * Project Home: http://replit.github.io/jq-console/

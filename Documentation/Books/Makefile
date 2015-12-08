@@ -81,8 +81,8 @@ book-check-markdown-leftovers:
 
 book-check-dangling-anchors:
 	@grep -R "a href.*#" books/$(NAME) | \
-		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://)" | \
-		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' > /tmp/anchorlist.txt
+		egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
+		sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
 	@NO=0; \
 	for i in `cat /tmp/anchorlist.txt`; do \
@@ -119,14 +119,16 @@ build-book-symlinks:
 
 build-book:
 	make ppbook-precheck-bad-code-sections $(NAME)
-	test -d ppbooks/$(NAME) || mkdir -p ppbooks/$(NAME)
-	WD=`pwd`; \
-	for dir in `find $(NAME) -type d `; do \
-		cd $${WD}/ppbooks; \
-		test -d $${dir} || mkdir -p $${dir}; \
-	done
-	cd ppbooks/$(NAME); test -L SUMMARY.md || ln -s ../../$(NAME)/SUMMARY.md .
-	cd ppbooks/$(NAME); test -L book.json || ln -s ../../$(NAME)/book.json .
+	if test ! -d ppbooks/$(NAME); then \
+	  mkdir -p ppbooks/$(NAME); \
+	  WD=`pwd`; \
+	  for dir in `find $(NAME) -type d `; do \
+	  	cd $${WD}/ppbooks; \
+	  	test -d $${dir} || mkdir -p $${dir}; \
+	  done; \
+	fi
+	cd ppbooks/$(NAME); if ! test -L SUMMARY.md; then ln -s ../../$(NAME)/SUMMARY.md . ; fi
+	cd ppbooks/$(NAME); if ! test -f book.json ; then cp ../../$(NAME)/book.json . ; fi
 	cd ppbooks/$(NAME); cp -a ../../$(NAME)/styles/* styles/
 	WD=`pwd`; \
 	for pic in `find $(NAME) -name \*.png`; do \
@@ -135,7 +137,7 @@ build-book:
 		echo cp $${WD}/$${pic} $${pic}; \
 		cp $${WD}/$${pic} $${pic}; \
 	done
-	python generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json
+	python generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
 
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
@@ -155,13 +157,13 @@ build-book:
 	python deprecated.py
 
 	make book-check-markdown-leftovers
-	make book-check-dangling-anchors
 
 clean-book:
-	@rm -rvf books/$(NAME) ppbooks/$(NAME)
+	@rm -rvf books/$(NAME)
+	@if test -z "$(FILTER)"; then rm -rvf ppbooks/$(NAME); fi
 
 clean-book-intermediate:
-	@rm -rvf ppbooks/$(NAME)
+	@if test -z "$(FILTER)"; then rm -rvf ppbooks/$(NAME); fi
 
 
 ################################################################################
@@ -235,7 +237,7 @@ check-docublocks:
 	fi
 
 clean-intermediate:
-	make clean-book-intermediate NAME=Users
+	make clean-book-intermediate NAME=Users FILTER=$(FILTER)
 
 
 clean: clean-intermediate
