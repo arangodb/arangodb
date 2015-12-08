@@ -1592,7 +1592,11 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   AgencyCommResult previous = ac.getValues(key, false);
   previous.parse("", false);
   auto it = previous._values.begin();
-  TRI_ASSERT(it != previous._values.end());
+  if (it == previous._values.end()) {
+    LOG_ERROR("Entry for collection in Plan does not exist!");
+    return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, errorMsg);
+  }
+
   TRI_json_t const* previousVal = it->second._json;
 
   loadPlannedCollections();
