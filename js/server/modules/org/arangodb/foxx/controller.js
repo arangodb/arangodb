@@ -340,7 +340,6 @@ class Controller {
   }
 
   addInjector(name, factory) {
-    deprecated('2.9', '"addInjector" is deprecated, use regular variables instead');
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {
@@ -856,7 +855,7 @@ class Controller {
 ///   // Will only be invoked if the request has parameter value and it is less or equal 5.
 /// }).myParam(5);
 /// ```
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
