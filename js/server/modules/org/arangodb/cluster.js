@@ -695,7 +695,7 @@ function dropLocalCollections (plannedCollections) {
 
             var remove = removeAll ||
                          (! shardMap.hasOwnProperty(collection)) ||
-                         (shardMap[collection] !== ourselves);
+                         (shardMap[collection].indexOf(ourselves) === -1);
 
             if (remove) {
               console.info("dropping local shard '%s/%s' of '%s/%s",
@@ -760,7 +760,7 @@ function cleanupCurrentCollections (plannedCollections) {
 
               if (shards[shard].DBServer === ourselves &&
                   (! shardMap.hasOwnProperty(shard) ||
-                   shardMap[shard] !== ourselves)) {
+                   shardMap[shard].indexOf(ourselves) === -1)) {
                 // found a shard we are entered for but that we don't have locally
                 console.info("cleaning up entry for unknown shard '%s' of '%s/%s",
                              shard,
@@ -790,7 +790,7 @@ function handleCollectionChanges (plan) {
   var ok = true;
 
   try {
-    createLocalCollections(plannedCollections, plan.Version);
+    createLocalCollections(plannedCollections, plan["Plan/Version"]);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
   }

@@ -274,9 +274,11 @@ function ClusterEnabledSuite () {
         type: 2,
         status: 3, // LOADED 
         shardKeys: [ "_key" ],
-        shards: { "s1" : "myself", "s2" : "other" }
+        shards: { "s1" : ["myself"], "s2" : ["other"] }
       };
       assertTrue(agency.set("Plan/Collections/test/" + collection.id, collection));
+
+      ci.flush();
 
       var data = ci.getCollectionInfo("test", collection.id);
 
@@ -299,7 +301,7 @@ function ClusterEnabledSuite () {
         type: 3,
         status: 2, // LOADED 
         shardKeys: [ "_key", "a", "bc" ],
-        shards: { "s1" : "myself", "s2" : "other", "s3" : "foo", "s4" : "bar" }
+        shards: { "s1" : ["myself"], "s2" : ["other"], "s3" : ["foo"], "s4" : ["bar"] }
       };
 
       assertTrue(agency.set("Plan/Collections/test/" + collection.id, collection));
@@ -321,36 +323,33 @@ function ClusterEnabledSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetResponsibleServer : function () {
-      var collection = {
-        id: "12345868390663",
-        name: "mycollection_test",
-        type: 3,
-        status: 2, // LOADED 
-        shardKeys: [ "_key", "a", "bc" ],
-        shards: { "s1" : "myself" },
-        error: false,
-        errorNum: 0,
-        DBServer: "myself"
+      var id = "12345868390663";
+
+      var current = {
+        "error": false,
+        "errorNum": 0,
+        "errorMessage": "",
+        "index": [],   // fake
+        "servers": ["myself"]
       };
 
-      assertTrue(agency.set("Current/Collections/test/" + collection.id +
-                            "/s1", collection));
+      assertTrue(agency.set("Current/Collections/test/" + id +
+                            "/s1", current));
       ci.flush();
 
-      assertEqual("myself", ci.getResponsibleServer("s1"));
-      assertEqual("", ci.getResponsibleServer("s9999"));
+      assertEqual(["myself"], ci.getResponsibleServer("s1"));
+      assertEqual([], ci.getResponsibleServer("s9999"));
      
-      collection.shards = { s1: "other", s2: "myself" }; 
-      collection.DBServer = "myself";
-      assertTrue(agency.set("Current/Collections/test/" + collection.id +
-                            "/s2", collection));
-      collection.DBServer = "other";
-      assertTrue(agency.set("Current/Collections/test/" + collection.id +
-                            "/s1", collection));
+      current.servers = ["other"];
+      assertTrue(agency.set("Current/Collections/test/" + id +
+                            "/s1", current));
+      current.servers = ["myself"];
+      assertTrue(agency.set("Current/Collections/test/" + id +
+                            "/s2", current));
       ci.flush();
 
-      assertEqual("other", ci.getResponsibleServer("s1"));
-      assertEqual("myself", ci.getResponsibleServer("s2"));
+      assertEqual(["other"], ci.getResponsibleServer("s1"));
+      assertEqual(["myself"], ci.getResponsibleServer("s2"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

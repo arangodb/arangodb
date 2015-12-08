@@ -1076,7 +1076,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
         ("isSystem",     Value(parameters._isSystem))
         ("isVolatile",   Value(parameters._isVolatile))
         ("waitForSync",  Value(parameters._waitForSync))
-        ("maximalSize",  Value(parameters._maximalSize))
+        ("journalSize",  Value(parameters._maximalSize))
         ("indexBuckets", Value(parameters._indexBuckets))
         ("keyOptions",   Value(ValueType::Object))
             ("type",          Value("traditional"))
