@@ -297,7 +297,7 @@ function encodePassword(password) {
 
   random = crypto.rand();
   if (random === undefined) {
-    random = "time:" + Date.now();
+    random = "time:" + internal.time();
   } else {
     random = "random:" + random;
   }
@@ -711,7 +711,7 @@ Sessions.prototype._toObject = function (session) {
 
       if (!this._changed) {
         oldExpires = this.expires;
-        newExpires = Date.now() + (that._options.sessionLifetime * 1000);
+        newExpires = internal.time() + that._options.sessionLifetime;
 
         if (newExpires - oldExpires > that._options.minUpdateResolution) {
           this.expires = newExpires;
@@ -811,7 +811,7 @@ Sessions.prototype.generate = function (identifier, data) {
     token = generateToken();
     session = {
       _key: token,
-      expires: Date.now() + (this._options.sessionLifetime * 1000),
+      expires: internal.time() + this._options.sessionLifetime,
       identifier: identifier,
       data: data || {}
     };
@@ -839,7 +839,7 @@ Sessions.prototype.generate = function (identifier, data) {
 Sessions.prototype.update = function (token, data) {
 
   this.storage().update(token, {
-    expires: Date.now() + (this._options.sessionLifetime * 1000),
+    expires: internal.time() + this._options.sessionLifetime,
     data: data
   }, true, false);
 };
@@ -868,7 +868,7 @@ Sessions.prototype.get = function (token) {
   try {
     session = storage.document(token);
 
-    if (session.expires >= Date.now()) {
+    if (session.expires >= internal.time()) {
       // session still valid
 
       return {
@@ -909,7 +909,7 @@ function CookieAuthentication(applicationContext, options) {
   this._applicationContext = applicationContext;
 
   this._options = {
-    name: options.cookieName || options.name || this._applicationContext.name + "-session",
+    name: options.name || this._applicationContext.name + "-session",
     cookieLifetime: options.cookieLifetime || 3600,
     path: options.path || "/",
     domain: options.domain || undefined,
