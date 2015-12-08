@@ -20,6 +20,7 @@ def brTrim(text):
     return removeLeadingBR.sub("", removeTrailingBR.sub("", text.strip(' ')))
 
 swagger = None
+fileFilter = None
 dokuBlocks = [{},{}]
 thisVerb = {}
 route = ''
@@ -345,12 +346,21 @@ def replaceCodeFullFile(lines):
 # main loop over all files
 ################################################################################
 def walk_on_files(inDirPath, outDirPath):
+    global fileFilter
+    count = 0
+    skipped = 0
     for root, dirs, files in os.walk(inDirPath):
         for file in files:
             if file.endswith(".mdpp"):
+                count += 1
                 inFileFull = os.path.join(root, file)
                 outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull))
-                print "%s -> %s" % (inFileFull, outFileFull)
+                if fileFilter != None:
+                    if fileFilter.match(inFileFull) == None:
+                        skipped += 1
+                        # print "Skipping %s -> %s" % (inFileFull, outFileFull)
+                        continue;
+                # print "%s -> %s" % (inFileFull, outFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
                 mdpp = open(inFileFull, "r")
                 md = open(outFileFull, "w")
@@ -358,6 +368,7 @@ def walk_on_files(inDirPath, outDirPath):
                 mdpp.close()
                 md.close()
                 findStartCode(md, outFileFull)
+    print "Processed %d files, skipped %d" % (count, skipped)
 
 def findStartCode(fd,full_path):
     inFD = open(full_path, "r")
@@ -369,7 +380,7 @@ def findStartCode(fd,full_path):
     if matchInline:
         for find in matchInline:
             #print "7"*80
-            print full_path + " " + find
+            #print full_path + " " + find
             textFile = replaceTextInline(textFile, full_path, find)
             #print textFile
 
@@ -498,11 +509,14 @@ def loadDokuBlocks():
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("usage: input-directory output-directory")
+        print("usage: input-directory output-directory swaggerJson [filter]")
         exit(1)
     inDir = sys.argv[1]
     outDir = sys.argv[2]
     swaggerJson = sys.argv[3]
+    if len(sys.argv) > 4 and sys.argv[4].strip() != '':
+        print "filtering " + sys.argv[4]
+        fileFilter = re.compile(sys.argv[4])
     f=open(swaggerJson, 'rU')
     swagger= json.load(f)
     f.close()
