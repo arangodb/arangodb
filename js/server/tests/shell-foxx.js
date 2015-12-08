@@ -1419,24 +1419,6 @@ function SetupAuthorization () {
       assertEqual(err.message, "Please provide the cookieLifetime");
     },
 
-    testRefusesMissingCookieName: function () {
-      var err;
-
-      app = new FoxxController(fakeContext);
-
-      try {
-        app.activateAuthentication({
-          type: "cookie",
-          cookieLifetime: 360000,
-          sessionLifetime: 600
-        });
-      } catch (e) {
-        err = e;
-      }
-
-      assertEqual(err.message, "Please provide the cookieName");
-    },
-
     testRefusesMissingSessionLifetime: function () {
       var err;
 
