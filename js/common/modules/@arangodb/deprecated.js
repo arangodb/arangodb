@@ -25,11 +25,12 @@ function deprecated(version, graceReleases, message) {
     message = 'This feature is deprecated.';
   }
   if (arangoMajor >= deprecateMajor) {
+    const error = new Error(`DEPRECATED: ${message}`);
     if (arangoMajor > deprecateMajor || arangoMinor >= deprecateMinor) {
-      throw new Error(`DEPRECATED: ${message}`);
+      throw error;
     }
     if (arangoMinor >= (deprecateMinor - graceReleases)) {
-      console.warn(`DEPRECATED: ${message}`);
+      console.warn(error.stack);
     }
   }
 }
