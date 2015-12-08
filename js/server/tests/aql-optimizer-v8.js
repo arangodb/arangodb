@@ -31,7 +31,6 @@
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var aqlfunctions = require("org/arangodb/aql/functions");
-var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
