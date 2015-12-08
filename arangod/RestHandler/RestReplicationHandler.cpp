@@ -2464,7 +2464,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
                                                        const TRI_voc_key_t key,
                                                        const TRI_voc_rid_t rid,
                                                        TRI_json_t const* json,
-                                                       string& errorMsg) {
+                                                       std::string& errorMsg) {
 
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_EDGE) {
@@ -2477,8 +2477,6 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
 
     if (shaped == nullptr) {
-      errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -2494,6 +2492,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           // edge
           if (document->_info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+            errorMsg = "expecting edge collection, got document collection";
           }
           else {
             res = TRI_ERROR_NO_ERROR;
@@ -2506,11 +2505,13 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             TRI_document_edge_t edge;
             if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
               res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+              errorMsg = std::string("handle bad or collection unknown '") + from.c_str() + "'";
             }
 
             // parse _to
             if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
               res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+              errorMsg = std::string("handle bad or collection unknown '") + to.c_str() + "'";
             }
 
             if (res == TRI_ERROR_NO_ERROR) {
@@ -2522,6 +2523,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           // document
           if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+            errorMsg = std::string(TRI_errno_string(res)) + ": expecting document collection, got edge collection";
           }
           else {
             res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, false, false, true);
@@ -2613,13 +2615,9 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
 
     if (pos - ptr > 1) {
       // found something
-      TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, ptr);
+      std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_CORE_MEM_ZONE, ptr));
 
-      if (! JsonHelper::isObject(json)) {
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-        }
-
+      if (! JsonHelper::isObject(json.get())) {
         errorMsg = invalidMsg;
 
         return TRI_ERROR_HTTP_CORRUPTED_JSON;
@@ -2630,20 +2628,19 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
       TRI_voc_rid_t rid     = 0;
       TRI_json_t const* doc = nullptr;
 
-      size_t const n = TRI_LengthVector(&json->_value._objects);
+      size_t const n = TRI_LengthVector(&(json.get()->_value._objects));
 
       for (size_t i = 0; i < n; i += 2) {
-        TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+        auto const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
 
         if (! JsonHelper::isString(element)) {
-          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
           errorMsg = invalidMsg;
 
           return TRI_ERROR_HTTP_CORRUPTED_JSON;
         }
 
-        const char* attributeName = element->_value._string.data;
-        TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+        char const* attributeName = element->_value._string.data;
+        auto const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i + 1));
 
         if (TRI_EqualString(attributeName, "type")) {
           if (JsonHelper::isNumber(value)) {
@@ -2672,15 +2669,12 @@ int RestReplicationHandler::processRestoreDataBatch (CollectionNameResolver cons
 
       // key must not be 0, but doc can be 0!
       if (key == nullptr) {
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         errorMsg = invalidMsg;
 
         return TRI_ERROR_HTTP_BAD_PARAMETER;
       }
 
       int res = applyCollectionDumpMarker(resolver, trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
-
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
       if (res != TRI_ERROR_NO_ERROR && ! force) {
         return res;
@@ -2701,7 +2695,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
                                                 TRI_voc_cid_t cid,
                                                 bool useRevision,
                                                 bool force,
-                                                string& errorMsg) {
+                                                std::string& errorMsg) {
 
   SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
 
@@ -2770,12 +2764,17 @@ void RestReplicationHandler::handleCommandRestoreData () {
     force = StringUtils::boolean(value);
   }
 
-  string errorMsg;
+  std::string errorMsg;
 
   int res = processRestoreData(resolver, cid, recycleIds, force, errorMsg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::responseCode(res), res);
+    if (errorMsg.empty()) {
+      generateError(HttpResponse::responseCode(res), res);
+    }
+    else {
+      generateError(HttpResponse::responseCode(res), res, std::string(TRI_errno_string(res)) + ": " + errorMsg);
+    }
   }
   else {
     TRI_json_t result;
@@ -3415,6 +3414,9 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
 /// @RESTQUERYPARAM{includeSystem,boolean,optional}
 /// Include system collections in the result. The default value is *true*.
 ///
+/// @RESTQUERYPARAM{failOnUnknown,boolean,optional}
+/// Produce an error when dumped edges refer to now-unknown collections.
+///
 /// @RESTQUERYPARAM{ticks,boolean,optional}
 /// Whether or not to include tick values in the dump. The default value is *true*.
 ///
@@ -3547,6 +3549,7 @@ void RestReplicationHandler::handleCommandDump () {
   bool flush                  = true; // flush WAL before dumping?
   bool withTicks              = true;
   bool translateCollectionIds = true;
+  bool failOnUnknown          = false;
   uint64_t flushWait          = 0;
 
   bool found;
@@ -3557,6 +3560,13 @@ void RestReplicationHandler::handleCommandDump () {
 
   if (found) {
     flush = StringUtils::boolean(value);
+  }
+  
+  // fail on unknown collection names referenced in edges
+  value = _request->value("failOnUnknown", found);
+
+  if (found) {
+    failOnUnknown = StringUtils::boolean(value);
   }
   
   // determine flush WAL wait time value
@@ -3641,7 +3651,7 @@ void RestReplicationHandler::handleCommandDump () {
     // initialize the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
 
-    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks, translateCollectionIds);
+    res = TRI_DumpCollectionReplication(&dump, col, tickStart, tickEnd, withTicks, translateCollectionIds, failOnUnknown);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

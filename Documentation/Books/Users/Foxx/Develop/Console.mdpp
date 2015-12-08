@@ -1,8 +1,12 @@
 !CHAPTER Foxx console
 
-Foxx injects a **console** object into each Foxx app that allows writing log entries to the database and querying them from within the app itself.
+Foxx injects a **console** object into each Foxx app that allows writing log entries to the database in addition to the ArangoDB log file and querying them from within the app itself.
 
 The **console** object supports the CommonJS Console API found in Node.js and modern browsers, while also providing some ArangoDB-specific additions.
+
+ArangoDB also provides [the `console` module](../../ModuleConsole/README.md) which only supports the CommonJS Console API and only writes log entries to the ArangoDB log.
+
+When working with transactions, keep in mind that the Foxx console will attempt to write to the `_foxxlog` system collection. This behaviour can be disabled using the `setDatabaseLogging` method if you don't want to explicitly allow writing to the log collection during transactions or for performance reasons.
 
 !SECTION Logging
 
@@ -19,8 +23,6 @@ If the first argument is not a formatting string or any of the additional argume
 **Examples**
 
 ```js
-var console = require("console");
-
 console.log("%s, %s!", "Hello", "World"); // => "Hello, World!"
 console.log("%s, World!", "Hello", "extra"); // => "Hello, World! extra"
 console.log("Hello,", "beautiful", "world!"); // => "Hello, beautiful world!"
@@ -40,11 +42,11 @@ By default, `console.log` uses log level **INFO**, making it functionally equiva
 
 The built-in log levels are:
 
-* -2: **TRACE**
-* -1: **DEBUG**
+* -200: **TRACE**
+* -100: **DEBUG**
 * 0: **INFO**
-* 1: **WARN**
-* 2: **ERROR**
+* 100: **WARN**
+* 200: **ERROR**
 
 !SUBSECTION Logging with timers
 
@@ -160,7 +162,7 @@ This method returns a function that logs messages with the given log level (e.g.
 **Parameter**
 
 * **name**: name of the log level as it appears in the database, usually all-uppercase
-* **value** (optional): value of the log level. Default: `999`
+* **value** (optional): value of the log level. Default: `50`
 
 The **value** is used when determining whether a log entry meets the minimum log level that can be defined in various places. For a list of the built-in log levels and their values see the section on logging with different log levels above.
 
@@ -187,6 +189,24 @@ You can toggle the logging of stack trace objects for every log entry.
 If **trace** is set to `true`, all log entries will be logged with a parsed stack trace as an additional `stack` property that can be useful for identifying where the entry originated and how the code triggering it was called.
 
 Because this results in every logging call creating a stack trace (which may have a significant performance impact), this option is disabled by default.
+
+!SUBSECTION Disabling logging to the ArangoDB console
+
+You can toggle whether logs should be written to the ArangoDB console.
+
+`console.setNativeLogging(nativeLogging)`
+
+If **nativeLogging** is set to `false`, log entries will not be logged to the ArangoDB console (which usually writes to the file system).
+
+!SUBSECTION Disabling logging to the database
+
+You can toggle whether logs should be written to the database.
+
+`console.setDatabaseLogging(databaseLogging)`
+
+If **databaseLogging** is set to `false`, log entries will not be logged to the internal `_foxxlog` collection.
+
+This is only useful if logging to the ArangoDB console is not also disabled.
 
 !SUBSECTION Enabling assertion errors
 

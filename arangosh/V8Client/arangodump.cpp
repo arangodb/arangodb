@@ -282,7 +282,7 @@ static void LocalExitFunction (int exitCode, void* data) {
 
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
   StringBuffer const& body = result->getBody();
-  string details;
+  std::string details;
 
   std::unique_ptr<TRI_json_t> json(JsonHelper::fromString(body.c_str(), body.length()));
 
@@ -503,6 +503,13 @@ static int DumpCollection (int fd,
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick);
+    }
+
+    if (Force) {
+      url += "&failOnUnknown=false";
+    }
+    else {
+      url += "&failOnUnknown=true";
     }
 
     Stats._totalBatches++;
@@ -746,9 +753,11 @@ static int RunDump (string& errorMsg) {
       return TRI_ERROR_INTERNAL;
     }
 
-    const string cid   = JsonHelper::getStringValue(parameters, "cid", "");
-    const string name  = JsonHelper::getStringValue(parameters, "name", "");
-    const bool deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
+    std::string const cid   = JsonHelper::getStringValue(parameters, "cid", "");
+    std::string const name  = JsonHelper::getStringValue(parameters, "name", "");
+    bool const deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
+    int type = JsonHelper::getNumericValue<int>(parameters, "type", 2);
+    std::string const collectionType(type == 2 ? "document" : "edge");
 
     if (cid == "" || name == "") {
       errorMsg = "got malformed JSON response from server";
@@ -774,7 +783,7 @@ static int RunDump (string& errorMsg) {
 
     // found a collection!
     if (Progress) {
-      cout << "dumping collection '" << name << "'..." << endl;
+      cout << "# Dumping " << collectionType << " collection '" << name << "'..." << endl;
     }
 
     // now save the collection meta data and/or the actual data
@@ -1054,7 +1063,7 @@ static int RunClusterDump (string& errorMsg) {
 
     // found a collection!
     if (Progress) {
-      cout << "dumping collection '" << name << "'..." << endl;
+      cout << "# Dumping collection '" << name << "'..." << endl;
     }
 
     // now save the collection meta data and/or the actual data
@@ -1124,7 +1133,7 @@ static int RunClusterDump (string& errorMsg) {
         string shardName = it->first;
         string DBserver = it->second;
         if (Progress) {
-          cout << "dumping shard '" << shardName << "' from DBserver '"
+          cout << "# Dumping shard '" << shardName << "' from DBserver '"
                << DBserver << "' ..." << endl;
         }
         res = StartBatch(DBserver, errorMsg);
@@ -1380,6 +1389,17 @@ int main (int argc, char* argv[]) {
     cerr << "Error: caught unknown exception" << endl;
     res = TRI_ERROR_INTERNAL;
   }
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (! errorMsg.empty()) {
+      cerr << "Error: " << errorMsg << endl;
+    }
+    else {
+      cerr << "An error occurred" << endl;
+    }
+    ret = EXIT_FAILURE;
+  }
+
 
   if (Progress) {
     if (DumpData) {
@@ -1390,13 +1410,6 @@ int main (int argc, char* argv[]) {
     else {
       cout << "Processed " << Stats._totalCollections << " collection(s)" << endl;
     }
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (! errorMsg.empty()) {
-      cerr << "Error: " << errorMsg << endl;
-    }
-    ret = EXIT_FAILURE;
   }
 
   delete Client;

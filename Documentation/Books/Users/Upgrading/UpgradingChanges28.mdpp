@@ -26,6 +26,13 @@ FOR doc IN `OUTBOUND`
   RETURN doc.`any`
 ```
 
+!SUBSECTION Changed behavior
+
+The AQL functions `NEAR` and `WITHIN` now have stricter validations
+for their input parameters `limit`, `radius` and `distance`. They may now throw
+exceptions when invalid parameters are passed that may have not led
+to exceptions in previous versions.
+
 
 !SUBSECTION Deadlock handling
 
@@ -123,3 +130,10 @@ let response = request({
 
 * the built-in support for CoffeeScript source files is deprecated, it will raise a warning 
   if you use it. Please pre-compile CoffeeScript source files.
+
+
+!SECTION Client tools
+
+arangodump will now fail by default when trying to dump edges that
+refer to already dropped collections. This can be circumvented by 
+specifying the option `--force true` when invoking arangodump
