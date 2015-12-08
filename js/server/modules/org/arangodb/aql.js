@@ -4039,7 +4039,12 @@ function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, lon
     return null;
   }
   
-  return COLLECTION(collection, "WITHIN_RECTANGLE").withinRectangle(latitude1, longitude1, latitude2, longitude2).toArray();
+  return COLLECTION(collection, "WITHIN_RECTANGLE").withinRectangle(
+    latitude1, 
+    longitude1, 
+    latitude2, 
+    longitude2
+  ).toArray();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6916,14 +6921,17 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   let startVertices;
   if (options.hasOwnProperty("startVertexCollectionRestriction")
     && Array.isArray(options.startVertexCollectionRestriction)) {
-    startVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", options.startVertexCollectionRestriction, startVertexExample);
+    startVertices = DOCUMENT_IDS_BY_EXAMPLE(
+      "GRAPH_SHORTEST_PATH", options.startVertexCollectionRestriction, startVertexExample);
   } 
   else if (options.hasOwnProperty("startVertexCollectionRestriction") 
     && typeof options.startVertexCollectionRestriction === 'string') {
-    startVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", [ options.startVertexCollectionRestriction ], startVertexExample);
+    startVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", 
+      [ options.startVertexCollectionRestriction ], startVertexExample);
   }
   else {
-    startVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", vertexCollections, startVertexExample);
+    startVertices = DOCUMENT_IDS_BY_EXAMPLE(
+      "GRAPH_SHORTEST_PATH", vertexCollections, startVertexExample);
   }
   if (startVertices.length === 0) {
     return [];
@@ -6932,14 +6940,17 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   let endVertices;
   if (options.hasOwnProperty("endVertexCollectionRestriction")
     && Array.isArray(options.endVertexCollectionRestriction)) {
-    endVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", options.endVertexCollectionRestriction, endVertexExample);
+    endVertices = DOCUMENT_IDS_BY_EXAMPLE(
+      "GRAPH_SHORTEST_PATH", options.endVertexCollectionRestriction, endVertexExample);
   } 
   else if (options.hasOwnProperty("endVertexCollectionRestriction")
     && typeof options.endVertexCollectionRestriction === 'string') {
-    endVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", [ options.endVertexCollectionRestriction ], endVertexExample);
+    endVertices = DOCUMENT_IDS_BY_EXAMPLE(
+      "GRAPH_SHORTEST_PATH", [ options.endVertexCollectionRestriction ], endVertexExample);
   } 
   else {
-    endVertices = DOCUMENT_IDS_BY_EXAMPLE("GRAPH_SHORTEST_PATH", vertexCollections, endVertexExample);
+    endVertices = DOCUMENT_IDS_BY_EXAMPLE(
+      "GRAPH_SHORTEST_PATH", vertexCollections, endVertexExample);
   }
   if (endVertices.length === 0) {
     return [];

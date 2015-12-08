@@ -245,8 +245,6 @@ function ahuacatlGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidCollectionArgument : function () {
-      var cluster = require("org/arangodb/cluster");
-
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(1234, 0, 0, 10)"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(false, 0, 0, 10)");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(true, 0, 0, 10)"); 
