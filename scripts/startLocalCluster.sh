@@ -26,7 +26,7 @@ if [ ! -z "$3" ] ; then
 fi
 
 if [ -z "$XTERMOPTIONS" ] ; then
-    XTERMOPTIONS="-fn 10x20 -bg white -fg black -geometry 80x40"
+    XTERMOPTIONS="-fa Monospace-14 -bg white -fg black -geometry 80x48"
 fi
 
 rm -rf cluster
