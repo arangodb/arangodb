@@ -3686,6 +3686,12 @@ int triagens::aql::patchUpdateStatementsRule (Optimizer* opt,
           modified = true;
         }
       }
+      
+      if (type == EN::TRAVERSAL) {
+        // unclear what will be read by the traversal
+        modified = false;
+        break;
+      }
 
       dep = dep->getFirstDependency();
     }
