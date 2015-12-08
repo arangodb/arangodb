@@ -83,7 +83,8 @@ function AgencySuite () {
 
     testVersion : function () {
       var agencyVersion = JSON.parse(agency.version());
-      assertEqual(agencyVersion.internalVersion, "2");
+      assertEqual(agencyVersion.etcdserver, "2.2.2");
+      assertEqual(agencyVersion.etcdcluster, "2.2.0");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
