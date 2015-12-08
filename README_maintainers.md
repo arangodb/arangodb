@@ -401,6 +401,11 @@ Chrome's security policies are pretty strict about localhost and file://
 protocol. You may access the docs through a local web server to lift the
 restrictions.
 
+To only regereneate one file (faster) you may specify a filter:
+
+    make FILTER=Users/Aql/Invoke.mdpp
+
+(regular expressions allowed)
 
 Using Gitbook
 =============
