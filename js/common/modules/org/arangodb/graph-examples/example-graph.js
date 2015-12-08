@@ -81,11 +81,13 @@ var createRoutePlannerGraph = function() {
   );
 
   var g = Graph._create("routeplanner", edgeDefinition);
-  var berlin = g.germanCity.save({_key: "Berlin", population : 3000000, isCapital : true});
-  var cologne = g.germanCity.save({_key: "Cologne", population : 1000000, isCapital : false});
-  var hamburg = g.germanCity.save({_key: "Hamburg", population : 1000000, isCapital : false});
-  var lyon = g.frenchCity.save({_key: "Lyon", population : 80000, isCapital : false});
-  var paris = g.frenchCity.save({_key: "Paris", population : 4000000, isCapital : true});
+  var berlin = g.germanCity.save({_key: "Berlin", population : 3000000, isCapital : true, loc: [52.5167, 13.3833]});
+  var cologne = g.germanCity.save({_key: "Cologne", population : 1000000, isCapital : false, loc: [50.9364, 6.9528]});
+  var hamburg = g.germanCity.save({_key: "Hamburg", population : 1000000, isCapital : false, loc: [53.5653, 10.0014]});
+  var lyon = g.frenchCity.save({_key: "Lyon", population : 80000, isCapital : false, loc: [45.7600, 4.8400]});
+  var paris = g.frenchCity.save({_key: "Paris", population : 4000000, isCapital : true, loc: [48.8567, 2.3508]});
+  g.germanCity.ensureGeoIndex("loc");
+  g.frenchCity.ensureGeoIndex("loc");
   g.germanHighway.save(berlin._id, cologne._id, {distance: 850});
   g.germanHighway.save(berlin._id, hamburg._id, {distance: 400});
   g.germanHighway.save(hamburg._id, cologne._id, {distance: 500});

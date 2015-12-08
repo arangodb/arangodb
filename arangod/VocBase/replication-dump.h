@@ -120,6 +120,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
                                    TRI_voc_tick_t,
                                    TRI_voc_tick_t,
                                    bool,
+                                   bool,
                                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////

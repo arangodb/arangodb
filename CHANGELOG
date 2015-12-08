@@ -1,6 +1,12 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* better error reporting for arangodump and arangorestore
+
+* arangodump will now fail by default when trying to dump edges that
+  refer to already dropped collections. This can be circumvented by 
+  specifying the option `--force true` when invoking arangodump
+
 * fixed cluster upgrade procedure
 
 
