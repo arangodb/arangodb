@@ -102,6 +102,7 @@
     * [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
     * [Joins](AqlExamples/Join.md)
     * [Grouping](AqlExamples/Grouping.md)
+    * [Traversals](AqlExamples/CombiningGraphTraversals.md)
 * [Graphs](Graphs/README.md)
   * [General Graphs](GeneralGraphs/README.md)
     * [Graph Management](GeneralGraphs/Management.md)
