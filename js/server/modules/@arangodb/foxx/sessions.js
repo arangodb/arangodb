@@ -29,6 +29,7 @@
 
 const joi = require('joi');
 const Foxx = require('@arangodb/foxx');
+const crypto = require('@arangodb/crypto');
 const paramSchema = joi.string().optional().description('Foxx session ID');
 
 // -----------------------------------------------------------------------------
@@ -64,6 +65,9 @@ function decorateController(auth, controller) {
       sid = req.headers[cfg.header.toLowerCase()];
     }
     if (sid) {
+      if (cfg.jwt) {
+        sid = crypto.jwtDecode(cfg.jwt.secret, sid, !cfg.jwt.verify);
+      }
       try {
         req.session = sessions.get(sid);
       } catch (e) {
@@ -80,6 +84,9 @@ function decorateController(auth, controller) {
   controller.after('/*', function (req, res) {
     if (req.session) {
       var sid = req.session.forClient();
+      if (cfg.jwt) {
+        sid = crypto.jwtEncode(cfg.jwt.secret, sid, cfg.jwt.algorithm);
+      }
       if (cfg.cookie) {
         res.cookie(cfg.cookie.name, sid, {
           ttl: req.session.getTTL() / 1000,
@@ -206,6 +213,39 @@ class Sessions {
         opts.param = 'FOXXSID';
       } else if (typeof opts.param !== 'string') {
         throw new Error('Param name must be true, a string or empty.');
+      }
+    }
+    if (opts.jwt) {
+      deprecated('3.0',
+        'The Foxx session option "jwt" is deprecated.'
+        + ' Please use the session-jwt app instead.'
+      );
+      if (opts.jwt === true) {
+        opts.jwt = {};
+      } else if (typeof opts.jwt === 'string') {
+        opts.jwt = {secret: opts.jwt};
+      } else if (typeof opts.jwt !== 'object') {
+        throw new Error('Expected JWT settings to be an object, boolean or string.');
+      }
+      if (opts.jwt.verify !== false) {
+        opts.jwt.verify = true;
+      }
+      if (!opts.jwt.secret) {
+        opts.jwt.secret = '';
+        if (!opts.jwt.algorithm) {
+          opts.jwt.algorithm = 'none';
+        } else if (opts.jwt.algorithm !== 'none') {
+          throw new Error('Must provide a JWT secret to use any algorithm other than "none".');
+        }
+      } else {
+        if (typeof opts.jwt.secret !== 'string') {
+          throw new Error('Header JWT secret must be a string or empty.');
+        }
+        if (!opts.jwt.algorithm) {
+          opts.jwt.algorithm = 'HS256';
+        } else {
+          opts.jwt.algorithm = crypto.jwtCanonicalAlgorithmName(opts.jwt.algorithm);
+        }
       }
     }
     if (opts.autoCreateSession !== false) {
