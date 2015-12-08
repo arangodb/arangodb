@@ -31,10 +31,37 @@
 var qb = require('aqb');
 var util = require('util');
 var extend = require('underscore').extend;
+var arangoConsole = require('console');
 var ErrorStackParser = require('error-stack-parser');
 var AssertionError = require('assert').AssertionError;
 var exists = require('org/arangodb/is').existy;
 var db = require('org/arangodb').db;
+
+const NATIVE_LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
+
+function nativeLogger(level, levelNum, mount) {
+  let logLevel = String(level).toLowerCase();
+  if (logLevel === 'trace' && levelNum === -200) {
+    logLevel = 'info'; // require('console').trace also uses INFO level
+  }
+  if (NATIVE_LOG_LEVELS.indexOf(logLevel) !== -1) {
+    return function (message) {
+      arangoConsole._log(logLevel, `${mount} ${message}`);
+    };
+  }
+  if (levelNum >= 200) {
+    logLevel = 'error';
+  } else if (levelNum >= 100) {
+    logLevel = 'warn';
+  } else if (levelNum <= -100) {
+    logLevel = 'debug';
+  } else {
+    logLevel = 'info';
+  }
+  return function (message) {
+    arangoConsole._log(logLevel, `(${level}) ${mount} ${message}`);
+  };
+}
 
 function ConsoleLogs(console) {
   this._console = console;
@@ -131,8 +158,10 @@ function Console(mount, tracing) {
   this._mount = mount;
   this._timers = Object.create(null);
   this._tracing = Boolean(tracing);
+  this._nativeLogging = true;
+  this._databaseLogging = true;
   this._logLevel = -999;
-  this._logLevels = {TRACE: -2};
+  this._logLevels = {TRACE: -200};
   this._assertThrows = false;
   this.logs = new ConsoleLogs(this);
 
@@ -142,10 +171,10 @@ function Console(mount, tracing) {
     }
   }.bind(this));
 
-  this.debug = this.custom('DEBUG', -1);
+  this.debug = this.custom('DEBUG', -100);
   this.info = this.custom('INFO', 0);
-  this.warn = this.custom('WARN', 1);
-  this.error = this.custom('ERROR', 2);
+  this.warn = this.custom('WARN', 100);
+  this.error = this.custom('ERROR', 200);
 
   this.assert.level = 'ERROR';
   this.dir.level = 'INFO';
@@ -170,14 +199,28 @@ extend(Console.prototype, {
       level: level,
       levelNum: this._logLevels[level],
       time: Date.now(),
-      message: message
+      message: String(message)
     };
 
+    let logLine;
+
+    if (this._nativeLogging) {
+      logLine = nativeLogger(level, doc.levelNum, doc.mount);
+      doc.message.split('\n').forEach(logLine);
+    }
+
     if (this._tracing) {
-      var e = new Error();
+      let e = new Error();
       Error.captureStackTrace(e, callee || this._log);
       e.stack = e.stack.replace(/\n+$/, '');
       doc.stack = ErrorStackParser.parse(e).slice(1);
+      if (this._nativeLogging) {
+        e.stack.split('\n').slice(2).forEach(logLine);
+      }
+    }
+
+    if (!this._databaseLogging) {
+      return;
     }
 
     if (!db._foxxlog) {
@@ -240,7 +283,7 @@ extend(Console.prototype, {
   custom: function (level, weight) {
     level = String(level);
     weight = Number(weight);
-    weight = weight === weight ? weight : 999;
+    weight = weight === weight ? weight : 50;
     this._logLevels[level] = weight;
     var logWithLevel = function() {
       this._log(level, util.format.apply(null, arguments), logWithLevel);
@@ -262,6 +305,16 @@ extend(Console.prototype, {
   setTracing: function (tracing) {
     this._tracing = Boolean(tracing);
     return this._tracing;
+  },
+
+  setNativeLogging: function (nativeLogging) {
+    this._nativeLogging = Boolean(nativeLogging);
+    return this._nativeLogging;
+  },
+
+  setDatabaseLogging: function (databaseLogging) {
+    this._databaseLogging = Boolean(databaseLogging);
+    return this._databaseLogging;
   },
 
   setAssertThrows: function (assertThrows) {

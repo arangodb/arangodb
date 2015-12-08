@@ -346,6 +346,7 @@ class FoxxService {
     filename = path.resolve(this.main.context.__dirname, filename);
 
     var module = new Module(filename, this.main);
+    module.context.console = this.main.context.console;
     module.context.applicationContext = _.extend(
       new AppContext(this.main.context.applicationContext._service),
       this.main.context.applicationContext,
