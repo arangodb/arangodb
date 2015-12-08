@@ -32,7 +32,7 @@ var db = require("org/arangodb").db,
   internal = require("internal"),
   is = require("org/arangodb/is"),
   _ = require("underscore"),
-  errors = require("internal").errors,
+  errors = internal.errors,
   defaultsFor = {};
 
 // -----------------------------------------------------------------------------
@@ -85,9 +85,6 @@ function checkAuthenticationOptions(options) {
   }
   if (is.falsy(options.cookieLifetime)) {
     throw new Error("Please provide the cookieLifetime");
-  }
-  if (is.falsy(options.cookieName)) {
-    throw new Error("Please provide the cookieName");
   }
   if (is.falsy(options.sessionLifetime)) {
     throw new Error("Please provide the sessionLifetime");
@@ -300,7 +297,7 @@ function encodePassword(password) {
 
   random = crypto.rand();
   if (random === undefined) {
-    random = "time:" + internal.time();
+    random = "time:" + Date.now();
   } else {
     random = "random:" + random;
   }
@@ -714,7 +711,7 @@ Sessions.prototype._toObject = function (session) {
 
       if (!this._changed) {
         oldExpires = this.expires;
-        newExpires = internal.time() + that._options.sessionLifetime;
+        newExpires = Date.now() + (that._options.sessionLifetime * 1000);
 
         if (newExpires - oldExpires > that._options.minUpdateResolution) {
           this.expires = newExpires;
@@ -814,7 +811,7 @@ Sessions.prototype.generate = function (identifier, data) {
     token = generateToken();
     session = {
       _key: token,
-      expires: internal.time() + this._options.sessionLifetime,
+      expires: Date.now() + (this._options.sessionLifetime * 1000),
       identifier: identifier,
       data: data || {}
     };
@@ -842,7 +839,7 @@ Sessions.prototype.generate = function (identifier, data) {
 Sessions.prototype.update = function (token, data) {
 
   this.storage().update(token, {
-    expires: internal.time() + this._options.sessionLifetime,
+    expires: Date.now() + (this._options.sessionLifetime * 1000),
     data: data
   }, true, false);
 };
@@ -866,19 +863,16 @@ Sessions.prototype.terminate = function (token) {
 
 Sessions.prototype.get = function (token) {
   var storage = this.storage(),
-    session,
-    sessionLifetime;
+    session;
 
   try {
     session = storage.document(token);
 
-    if (session.expires >= internal.time()) {
+    if (session.expires >= Date.now()) {
       // session still valid
 
-      sessionLifetime = this._options.sessionLifetime;
-
       return {
-        errorNum: internal.errors.ERROR_NO_ERROR,
+        errorNum: internal.errors.ERROR_NO_ERROR.code,
         session : this._toObject(session)
       };
     }
@@ -915,7 +909,7 @@ function CookieAuthentication(applicationContext, options) {
   this._applicationContext = applicationContext;
 
   this._options = {
-    name: options.name || this._applicationContext.name + "-session",
+    name: options.cookieName || options.name || this._applicationContext.name + "-session",
     cookieLifetime: options.cookieLifetime || 3600,
     path: options.path || "/",
     domain: options.domain || undefined,
