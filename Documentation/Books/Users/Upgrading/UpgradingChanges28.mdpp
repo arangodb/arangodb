@@ -130,9 +130,6 @@ let response = request({
 
 !SUBSECTION Controllers
 
-* the method `del` of Foxx controllers is deprecated, it will raise a warning if you use 
-  it. Please use the `delete` method instead.
-
 * the method `addInjector` of controllers is deprecated, it will raise a warning if you use it. 
   Please use regular variables instead.
 
@@ -141,9 +138,6 @@ let response = request({
 
 * properties `setup` and `teardown` in manifests have been removed entirely. Please use the 
   `scripts` property instead.
-
-* the built-in support for CoffeeScript source files is deprecated, it will raise a warning 
-  if you use it. Please pre-compile CoffeeScript source files.
 
 
 !SECTION Client tools

@@ -101,20 +101,18 @@ function createRequire(module) {
   // Enable support to add extra extension types
   require.extensions = Module._extensions;
 
-  require.cache = module.cache;
+  require.cache = Module._cache;
 
   return require;
 }
 
-function Module(id, parent, cache) {
+function Module(id, parent) {
   this.id = id;
   this.exports = {};
   this.parent = parent;
   if (parent && parent.children) {
     parent.children.push(this);
   }
-
-  this.cache = cache || (parent ? parent.cache : Module._cache);
 
   this.context = {
     print: internal.print,
@@ -128,7 +126,6 @@ function Module(id, parent, cache) {
   };
 
   if (parent) {
-    this.root = parent.root;
     this.preprocess = parent.preprocess;
     Object.keys(parent.context).forEach(function (key) {
       if (!hasOwnProperty(this.context, key)) {
@@ -406,7 +403,6 @@ function isGlobalModule(filename) {
 //    Then have it load  the file contents before returning its exports
 //    object.
 Module._load = function(request, parent, isMain) {
-
   var filename = request;
   var dbModule = false;
   var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
@@ -515,7 +511,6 @@ Module.prototype.load = function(filename) {
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
   Module._extensions[extension](this, filename);
-
   this.loaded = true;
 };
 
@@ -631,11 +626,6 @@ Module._extensions['.json'] = function(module, filename) {
 
 
 Module._extensions['.coffee'] = function(module, filename) {
-  require('@arangodb/deprecated')(
-    '2.9',
-    'CoffeeScript support is deprecated,'
-    + ' please pre-compile CoffeeScript modules to JavaScript using external build tools.'
-  );
   var content = fs.readFileSync(filename, 'utf8');
   var cs = require('coffee-script');
   module._compile(cs.compile(stripBOM(content), {bare: true}), filename);
