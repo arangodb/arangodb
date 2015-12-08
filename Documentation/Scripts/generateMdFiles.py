@@ -43,6 +43,16 @@ def getReference(name, source, verb):
         raise Exception("invalid reference: " + ref + " in " + fn)
     return ref
 
+removeDoubleLF = re.compile("\n\n")
+removeLF = re.compile("\n")
+
+def TrimThisParam(text, indent):
+    text = text.rstrip('\n').lstrip('\n')
+    text = removeDoubleLF.sub("\n", text)
+    if (indent > 0):
+        indent = (indent + 2) # align the text right of the list...
+    return removeLF.sub("\n" + ' ' * indent, text)
+
 def unwrapPostJson(reference, layer):
     global swagger
     rc = ''
@@ -54,34 +64,28 @@ def unwrapPostJson(reference, layer):
         if '$ref' in thisParam:
             subStructRef = getReference(thisParam, reference, None)
 
-            rc += "<li><strong>" + param + "</strong>: "
-            rc += swagger['definitions'][subStructRef]['description'] + "<ul class=\"swagger-list\">"
+            rc += ' ' * layer + " - **" + param + "**:\n"
             rc += unwrapPostJson(subStructRef, layer + 1)
-            rc += "</li></ul>"
-        
+    
         elif thisParam['type'] == 'object':
-            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + brTrim(thisParam['description']) + "</li>"
+            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + brTrim(thisParam['description'])
+            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer)
             if 'type' in thisParam['items']:
-                rc += " of type " + thisParam['items']['type']#
+                rc += " of type " + thisParam['items']['type']  + "\n"
             else:
                 if len(thisParam['items']) == 0:
-                    rc += "anonymous json object"
+                    rc += "anonymous json object\n"
                 else:
                     try:
                         subStructRef = getReference(thisParam['items'], reference, None)
                     except:
                         print >>sys.stderr, "while analyzing: " + param
                         print >>sys.stderr, thisParam
-                    rc += "\n<ul class=\"swagger-list\">"
-                    rc += unwrapPostJson(subStructRef, layer + 1)
-                    rc += "</ul>"
-                    rc += '</li>'
+                    rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
         else:
-            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + thisParam['description'] + '</li>'
+            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
-
 
 def getRestBodyParam():
     rc = "\n**Body Parameters**\n"
@@ -93,13 +97,13 @@ def getRestBodyParam():
             if 'additionalProperties' in thisVerb['parameters'][nParam]['schema']:
                 addText = "free style json body"
             else:
-                addText = "<ul class=\"swagger-list\">" + unwrapPostJson(
-                    getReference(thisVerb['parameters'][nParam]['schema'], route, verb),0) + "</ul>"
+                addText = unwrapPostJson(
+                    getReference(thisVerb['parameters'][nParam]['schema'], route, verb),0)
     rc += addText
     return rc
 
 def getRestReplyBodyParam(param):
-    rc = "\n**Reply Body**\n<ul>"
+    rc = "\n**Reply Body**\n"
 
     try:
         rc += unwrapPostJson(getReference(thisVerb['responses'][param]['schema'], route, verb), 0)
@@ -107,7 +111,7 @@ def getRestReplyBodyParam(param):
         print >>sys.stderr,"failed to search " + param + " in: "
         print >>sys.stderr,json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True)
         raise
-    return rc + "</ul>\n"
+    return rc + "\n"
 
 
 SIMPL_REPL_DICT = {
