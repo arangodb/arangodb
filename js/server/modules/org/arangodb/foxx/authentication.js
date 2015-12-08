@@ -44,7 +44,7 @@ function createAuthenticationMiddleware(auth, applicationContext) {
     var users = new Users(applicationContext),
       authResult = auth.authenticate(req);
 
-    if (authResult.errorNum === errors.ERROR_NO_ERROR) {
+    if (authResult.errorNum === errors.ERROR_NO_ERROR.code) {
       req.currentSession = authResult.session;
       req.user = users.get(authResult.session.identifier);
     } else {
