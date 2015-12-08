@@ -47,7 +47,6 @@ RestEdgesHandler::RestEdgesHandler (HttpRequest* request)
   : RestVocbaseBaseHandler(request) {
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
@@ -274,8 +273,10 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
       generateError(responseCode, res);
       return false;
     }
+
     resultDocument.set("error", triagens::basics::Json(false));
     resultDocument.set("code", triagens::basics::Json(200));
+    generateResult(resultDocument.json());
     return true;
   }
 
@@ -375,7 +376,6 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   return true;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// Internal function for optimized edge retrieval.
 /// Allows to send an TraverserExpression for filtering in the body
@@ -402,7 +402,7 @@ bool RestEdgesHandler::readFilteredEdges () {
   if (! TRI_IsArrayJson(json.get())) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "Expected a list of traverser expressions as body parameter");
+                  "Expected an array of traverser expressions as body parameter");
     return false;
   }
 
@@ -419,3 +419,4 @@ bool RestEdgesHandler::readFilteredEdges () {
   }
   return readEdges(expressions);
 }
+
