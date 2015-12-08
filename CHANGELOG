@@ -3,11 +3,19 @@ v2.8.0 (XXXX-XX-XX)
 
 * fixed cluster upgrade procedure
 
-* Foxx: removed deprecation warnings for extend and controller.del
-
 * deprecation warnings now log stack traces
 
-* Foxx: moved Model and Repository back to non-ES6 "classes"
+* Foxx: improved backwards compatibility with 2.5 and 2.6
+
+  - reverted Model and Repository back to non-ES6 "classes" because of
+    compatibility issues when using the extend method with a constructor
+
+  - removed deprecation warnings for extend and controller.del
+
+  - restored deprecated method Model.toJSONSchema
+
+  - restored deprecated `type`, `jwt` and `sessionStorageApp` options
+    in Controller#activateSessions
 
 
 v2.8.0-beta1 (2015-12-06)
