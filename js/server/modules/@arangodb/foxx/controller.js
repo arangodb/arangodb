@@ -27,7 +27,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const deprecated = require('@arangodb/deprecated');
 const RequestContext = require('@arangodb/foxx/request_context');
 const BaseMiddleware = require('@arangodb/foxx/base_middleware').BaseMiddleware;
 const _ = require('underscore');
