@@ -451,6 +451,12 @@ namespace triagens {
         bool increaseVersion (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update a version number in the agency, retry until it works
+////////////////////////////////////////////////////////////////////////////////
+
+        void increaseVersionRepeated (std::string const& key);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -499,6 +505,18 @@ namespace triagens {
 
         AgencyCommResult casValue (std::string const&,
                                    TRI_json_t const*,
+                                   bool,
+                                   double,
+                                   double);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares and swaps a single value in the backend
+/// the CAS condition is whether or not a previous value existed for the key
+/// velocypack variant
+////////////////////////////////////////////////////////////////////////////////
+
+        AgencyCommResult casValue (std::string const&,
+                                   arangodb::velocypack::Slice const,
                                    bool,
                                    double,
                                    double);

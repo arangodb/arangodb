@@ -35,6 +35,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
+#include "Basics/random.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"
@@ -993,6 +994,24 @@ bool AgencyComm::increaseVersion (std::string const& key) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief update a version number in the agency, retry until it works
+////////////////////////////////////////////////////////////////////////////////
+
+void AgencyComm::increaseVersionRepeated (std::string const& key) {
+  bool ok = false;
+  while (! ok) {
+    ok = increaseVersion(key);
+    if (ok) {
+      return;
+    }
+    uint32_t val = 300 + TRI_UInt32Random() % 400;
+    LOG_INFO("Could not increase %s in agency, retrying in %dms!",
+             key.c_str(), val);
+    usleep(val * 1000);
+  }
+}
+      
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory in the backend
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1139,6 +1158,30 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
                    buildUrl(key) + "?prevExist="
                      + (prevExist ? "true" : "false") + ttlParam(ttl, false),
                    "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(json)),
+                   false);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares and swaps a single value in the backend
+/// the CAS condition is whether or not a previous value existed for the key
+/// velocypack variant
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::casValue (std::string const& key,
+                                       arangodb::velocypack::Slice const json,
+                                       bool prevExist,
+                                       double ttl,
+                                       double timeout) {
+  AgencyCommResult result;
+
+  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
+                   result,
+                   buildUrl(key) + "?prevExist="
+                     + (prevExist ? "true" : "false") + ttlParam(ttl, false),
+                   "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
                    false);
 
   return result;
