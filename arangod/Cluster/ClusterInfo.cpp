@@ -2399,7 +2399,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList (
                          CollectionID const& collectionID) {
   
   if (! _plannedCollectionsProt.isValid) {
-    loadPlannedCollections();
+    loadPlannedCollections(true);
   }
 
   int tries = 0;
