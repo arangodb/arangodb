@@ -30,6 +30,7 @@
 const _ = require('underscore');
 const joi = require('joi');
 const is = require('@arangodb/is');
+const toJSONSchema = require('@arangodb/foxx/schema').toJSONSchema;
 const extend = require('@arangodb/extend').extend;
 const EventEmitter = require('events').EventEmitter;
 const metadataSchema = {
@@ -261,6 +262,11 @@ _.extend(Model.prototype, {
     return excludeExtraAttributes(this.attributes, this);
   }
 });
+
+Model.toJSONSchema = function (id) {
+  deprecated('3.0', 'Model.toJSONSchema(id) is deprecated, use Foxx.toJSONSchema(id, Model) instead');
+  return toJSONSchema(id, this);
+};
 
 Model.fromClient = function (attributes) {
   var model = new this();
