@@ -109,9 +109,6 @@ let response = request({
 
 !SUBSECTION Controllers
 
-* the method `del` of Foxx controllers is deprecated, it will raise a warning if you use 
-  it. Please use the `delete` method instead.
-
 * the method `addInjector` of controllers is deprecated, it will raise a warning if you use it. 
   Please use regular variables instead.
 

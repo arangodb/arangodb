@@ -3,6 +3,10 @@ v2.8.0 (XXXX-XX-XX)
 
 * fixed cluster upgrade procedure
 
+* Foxx: removed deprecation warnings for extend and controller.del
+
+* deprecation warnings now log stack traces
+
 
 v2.8.0-beta1 (2015-12-06)
 -------------------------
