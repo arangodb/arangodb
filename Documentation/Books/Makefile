@@ -137,7 +137,7 @@ build-book:
 		echo cp $${WD}/$${pic} $${pic}; \
 		cp $${WD}/$${pic} $${pic}; \
 	done
-	python generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
+	python ../Scripts/generateMdFiles.py $(NAME) ppbooks/ ../../js/apps/system/_admin/aardvark/APP/api-docs.json $(FILTER)
 
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' styles/header.js
 	cd ppbooks/$(NAME) && sed -i -e 's/VERSION_NUMBER/v$(newVersionNumber)/g' README.md
@@ -154,7 +154,7 @@ build-book:
 
 	cd ppbooks/$(NAME) && gitbook install
 	cd ppbooks/$(NAME) && gitbook build ./ ./../../books/$(NAME)
-	python deprecated.py
+	python ../Scripts/deprecated.py
 
 	make book-check-markdown-leftovers
 	# make book-check-dangling-anchors
@@ -184,8 +184,6 @@ check-docublocks:
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
-		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py |\
 		grep -v '.*~:.*' |\
 		grep -v '.*#.*:.*' \
 		   > /tmp/rawindoc.txt
@@ -193,8 +191,6 @@ check-docublocks:
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
-		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py |\
 		grep -v '.*~:.*' |\
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawindoc.txt
@@ -205,8 +201,6 @@ check-docublocks:
 		grep -v ppbook |\
 		grep -v allComments.txt |\
 		grep -v Makefile |\
-		grep -v codeBlockReader.py |\
-		grep -v generateMdFiles.py |\
 		grep -v '.*~:.*' |\
 		grep -v '.*#.*:.*' \
 		   >> /tmp/rawinprog.txt
@@ -249,7 +243,7 @@ clean: clean-intermediate
 
 build-books-keep-md:
 	@test -d books || mkdir books
-	python codeBlockReader.py
+	python ../Scripts/codeBlockReader.py
 	make build-book NAME=Users
 
 build-books: clean-intermediate build-books-keep-md check-docublocks
