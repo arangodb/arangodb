@@ -41,7 +41,7 @@ exports.getExports = function (path) {
   return manager.requireApp('/' + path.replace(/(^\/+|\/+$)/, ''));
 };
 exports.requireApp = function (path) {
-  deprecated('2.8', 'Foxx.requireApp has been renamed to Foxx.getExports.');
+  deprecated('3.0', 'Foxx.requireApp has been renamed to Foxx.getExports.');
   return exports.getExports(path);
 };
 

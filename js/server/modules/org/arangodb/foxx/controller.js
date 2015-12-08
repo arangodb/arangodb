@@ -27,7 +27,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const deprecated = require('org/arangodb/deprecated');
 const RequestContext = require('org/arangodb/foxx/request_context');
 const BaseMiddleware = require('org/arangodb/foxx/base_middleware').BaseMiddleware;
 const _ = require('underscore');
@@ -340,7 +339,6 @@ class Controller {
   }
 
   addInjector(name, factory) {
-    deprecated('2.9', '"addInjector" is deprecated, use regular variables instead');
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {
@@ -856,7 +854,7 @@ class Controller {
 ///   // Will only be invoked if the request has parameter value and it is less or equal 5.
 /// }).myParam(5);
 /// ```
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
