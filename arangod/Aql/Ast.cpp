@@ -123,7 +123,8 @@ Ast::Ast (Query* query)
     _root(nullptr),
     _queries(),
     _writeCollections(),
-    _functionsMayAccessDocuments(false) {
+    _functionsMayAccessDocuments(false),
+    _containsTraversal(false) {
 
   TRI_ASSERT(_query != nullptr);
 
@@ -1230,6 +1231,8 @@ AstNode* Ast::createNodeTraversal (char const* vertexVarName,
 
   TRI_ASSERT(node->numMembers() == 4);
 
+  _containsTraversal = true;
+
   return node;
 }
 
@@ -1253,6 +1256,8 @@ AstNode* Ast::createNodeTraversal (char const* vertexVarName,
   node->addMember(edgeVar);
 
   TRI_ASSERT(node->numMembers() == 5);
+  
+  _containsTraversal = true;
 
   return node;
 }
@@ -1280,6 +1285,8 @@ AstNode* Ast::createNodeTraversal (char const* vertexVarName,
   node->addMember(pathVar);
 
   TRI_ASSERT(node->numMembers() == 6);
+  
+  _containsTraversal = true;
 
   return node;
 }
