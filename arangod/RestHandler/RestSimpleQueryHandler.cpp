@@ -200,7 +200,7 @@ void RestSimpleQueryHandler::allDocuments () {
     }
 
     VPackBuilder bindVars;
-    bindVars.addObject();
+    bindVars.openObject();
     bindVars.add("@collection", VPackValue(collectionName));
 
     std::string aql("FOR doc IN @@collection ");
@@ -228,7 +228,7 @@ void RestSimpleQueryHandler::allDocuments () {
     aql.append("RETURN doc");
 
     VPackBuilder data;
-    data.addObject();
+    data.openObject();
     data.add("query", VPackValue(aql));
     data.add("bindVars", bindVars.slice());
     data.add("count", VPackValue(true));

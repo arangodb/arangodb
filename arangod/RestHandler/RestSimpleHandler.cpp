@@ -304,7 +304,7 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
     }
 
     VPackBuilder bindVars;
-    bindVars.addObject();
+    bindVars.openObject();
     bindVars.add("@collection", VPackValue(collectionName));
     bindVars.add("keys", keys);
     bindVars.close();

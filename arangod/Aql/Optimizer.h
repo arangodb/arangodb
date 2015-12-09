@@ -57,7 +57,7 @@ namespace triagens {
 
         VPackBuilder toVelocyPack () const {
           VPackBuilder result;
-          result.addObject();
+          result.openObject();
           result.add("rulesExecuted", VPackValue(rulesExecuted));
           result.add("rulesSkipped", VPackValue(rulesSkipped));
           result.add("plansCreated", VPackValue(plansCreated));

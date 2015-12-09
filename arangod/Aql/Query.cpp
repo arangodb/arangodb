@@ -150,7 +150,7 @@ void Profile::setDone (ExecutionState state) {
 
 VPackBuilder Profile::toVelocyPack () {
   VPackBuilder result;
-  result.addObject();
+  result.openObject();
   for (auto const& it : results) {
     result.add(StateNames[static_cast<int>(it.first)], VPackValue(it.second));
   }

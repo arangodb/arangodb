@@ -282,7 +282,7 @@ bool RestCursorHandler::wasCanceled () {
 
 VPackBuilder RestCursorHandler::buildOptions (VPackSlice const& slice) const {
   VPackBuilder options;
-  options.addObject();
+  options.openObject();
 
   VPackSlice count = slice.get("count");
   if (count.isBool()) {

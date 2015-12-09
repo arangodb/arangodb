@@ -1529,7 +1529,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject (VPackSl
 
   try {
     std::shared_ptr<VPackBuilder> result(new VPackBuilder());
-    result->addObject();
+    result->openObject();
 
     for (size_t i = 0;  i < n;  ++i) {
       VPackSlice const key = keys.at(i);

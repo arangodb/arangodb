@@ -109,7 +109,7 @@ HttpHandler::status_t RestExportHandler::execute () {
 
 VPackBuilder RestExportHandler::buildOptions (VPackSlice const& slice) {
   VPackBuilder options;
-  options.addObject();
+  options.openObject();
 
   VPackSlice count = slice.get("count");
   if (count.isBool()) {
@@ -396,7 +396,7 @@ void RestExportHandler::createCursor () {
     }
     else {
       // create an empty options object
-      optionsBuilder.addObject();
+      optionsBuilder.openObject();
     }
 
     VPackSlice options = optionsBuilder.slice();
@@ -540,7 +540,7 @@ void RestExportHandler::deleteCursor () {
   _response = createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   VPackBuilder result;
-  result.addObject();
+  result.openObject();
   result.add("id", VPackValue(id));
   result.add("error", VPackValue(false));
   result.add("code", VPackValue(_response->responseCode()));

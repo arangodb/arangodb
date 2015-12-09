@@ -45,7 +45,7 @@ using JsonHelper = triagens::basics::JsonHelper;
 
 VPackBuilder ExecutionStats::toVelocyPack () const {
   VPackBuilder result;
-  result.addObject();
+  result.openObject();
   result.add("writesExecuted", VPackValue(writesExecuted));
   result.add("writesIgnored", VPackValue(writesIgnored));
   result.add("scannedFull", VPackValue(scannedFull));
@@ -63,7 +63,7 @@ VPackBuilder ExecutionStats::toVelocyPack () const {
 
 VPackBuilder ExecutionStats::toVelocyPackStatic () {
   VPackBuilder result;
-  result.addObject();
+  result.openObject();
   result.add("writesExecuted", VPackValue(0));
   result.add("writesIgnored", VPackValue(0));
   result.add("scannedFull", VPackValue(0));

@@ -400,7 +400,7 @@ std::string Index::context () const {
 
 std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeToplevel) const {
   std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
-  builder->addObject();
+  builder->openObject();
   builder->add("id", VPackValue(std::to_string(_iid)));
   builder->add("type", VPackValue(typeName()));
 
@@ -436,7 +436,7 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeT
 
 std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures (bool closeToplevel) const {
   std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
-  builder->addObject();
+  builder->openObject();
   builder->add("memory", VPackValue(memory()));
   if (closeToplevel) {
     builder->close();
