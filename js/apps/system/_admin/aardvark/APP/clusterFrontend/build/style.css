@@ -5668,6 +5668,11 @@ div.headerBar {
     margin-top: -4px; }
     .modal-delete-confirmation button .modal-confirm-delete {
       margin-right: -18px; }
+  .modal-delete-confirmation fieldset input {
+    float: left; }
+  .modal-delete-confirmation fieldset label {
+    float: left;
+    margin-left: 10px; }
 
 .createModalDialog table {
   width: 100%; }

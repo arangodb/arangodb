@@ -1735,17 +1735,9 @@ if (list.length > 0) {
 
 <script id="modalCollectionInfo.ejs" type="text/template">
 <%
-    var roundNumber = function(number, n) {
-      var factor;
-      factor = Math.pow(10,n);
-      var returnVal = (Math.round(number * factor) / factor);
-      return returnVal;
-    };
-
     var figuresData = content.getFigures();
     var revision    = content.getRevision();
     var index       = content.getIndex();
-
 %>
 
     <ul id="infoTab" class="nav nav-tabs">
@@ -1760,10 +1752,10 @@ if (list.length > 0) {
 
         <table id="collectionInfoTable">
           <tr id="collectionSizeBox">
-            <th class="collectionInfoTh2">Journal size (MB):</th>
+            <th class="collectionInfoTh2">Journal size:</th>
             <th class="collectionInfoTh">
               <div id="show-collection-size" class="modal-text">
-                <%=roundNumber(figuresData.journalSize / 1024 / 1024, 2)%>
+                <%=filesize(figuresData.journalSize)%>
               </div>
             </th>
             <th class="tooltipInfoTh">
@@ -1825,7 +1817,19 @@ if (list.length > 0) {
           <tr>
             <th class="collectionInfoTh2">Index buckets:</th>
             <th class="collectionInfoTh">
-              <div class="modal-text"><%=figuresData["indexBuckets"]%></div>
+              <div class="modal-text"><%=figuresData.indexBuckets%></div>
+            </th>
+          </tr>
+          <tr>
+            <th class="collectionInfoTh2">Compaction status:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
+            </th>
+          </tr>
+          <tr>
+            <th class="collectionInfoTh2">Waiting for:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=figuresData.figures.waitingFor%></div>
             </th>
           </tr>
         </table>
@@ -1837,14 +1841,14 @@ if (list.length > 0) {
           <tr class="figuresHeader">
             <th class="">Type</th>
             <th>Count</th>
-            <th>Size (MB)</th>
+            <th>Size</th>
             <th>Info</th>
           </tr>
           <tr>
             <th class="modal-text">Datafiles</th>
             <th class="modal-text"><%=figuresData.figures.datafiles.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.datafiles.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.datafiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <div>
@@ -1858,7 +1862,7 @@ if (list.length > 0) {
             <th class="modal-text">Journals</th>
             <th class="modal-text"><%=figuresData.figures.journals.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.journals.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.journals.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of journal files.">
@@ -1869,7 +1873,7 @@ if (list.length > 0) {
             <th class="modal-text">Compactors</th>
             <th class="modal-text"><%=figuresData.figures.compactors.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.compactors.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.compactors.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of compactor files.">
@@ -1880,7 +1884,7 @@ if (list.length > 0) {
             <th class="modal-text">Shape files</th>
             <th class="modal-text"><%=figuresData.figures.shapefiles.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.shapefiles.fileSize / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.shapefiles.fileSize)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total size of shape files.">
@@ -1891,7 +1895,7 @@ if (list.length > 0) {
             <th class="modal-text">Indexes</th>
             <th class="modal-text"><%=figuresData.figures.indexes.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.indexes.size / 1024 / 1024, 2)%>
+            <%=filesize(figuresData.figures.indexes.size)%>
             </th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Number and total memory usage of indexes.">
@@ -1922,13 +1926,29 @@ if (list.length > 0) {
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
+          <tr>
+            <th class="modal-text">Uncollected</th>
+            <th class="modal-text"><%=figuresData.figures.uncollectedLogfileEntries%></th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of uncollected WAL entries">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">References</th>
+            <th class="modal-text"><%=figuresData.figures.documentReferences%></th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of objects pointing to documents in collection datafiles">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
         </table>
 
         <table class="figures3">
           <tr class="figuresHeader">
             <th>Type</th>
             <th>Count</th>
-            <th>Size (MB)</th>
+            <th>Size</th>
             <th>Deletion</th>
             <th>Info</th>
           </tr>
@@ -1936,7 +1956,7 @@ if (list.length > 0) {
             <th class="modal-text">Alive</th>
             <th class="modal-text"><%=figuresData.figures.alive.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.alive.size/1024/1024, 2)%>
+            <%=filesize(figuresData.figures.alive.size)%>
             </th>
             <th class="modal-text"> -</th>
             <th class="tooltipInfoTh">
@@ -1949,7 +1969,7 @@ if (list.length > 0) {
             <th class="modal-text">Dead</th>
             <th class="modal-text"><%=figuresData.figures.dead.count%></th>
             <th class="modal-text">
-            <%=roundNumber(figuresData.figures.dead.size/1024/1024, 2)%>
+            <%=filesize(figuresData.figures.dead.size)%>
             </th>
             <th class="modal-text"><%=figuresData.figures.dead.deletion%></th>
 
@@ -2029,127 +2049,166 @@ if (list.length > 0) {
 </script>
 
 <script id="modalGraphTable.ejs" type="text/template">
-  <%
-  var createTR = function(row, disableSubmitOnEnter) {
-    var mandatory = '';
-    if (row.mandatory) {
-      mandatory = '*';
-    }
 
-    %>
-      <tr class="tableRow" id="<%='row_' + row.id%>">
-        <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
-        <th class="collectionTh">
-          <%
-            switch(row.type) {
-              case "text":
-          %>
-          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <%
-              break;
-            case "password":
-          %>
-          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <%
-              break;
-            case "readonly":
-          %>
-          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>" disabled></input>
-          <%
-              break;
-              case "checkbox":
-                var checked = '',
-                  disabled = '';
-                if (row.checked) {
-                  checked = 'checked';
-                }
-                if (row.disabled) {
-                  disabled = 'disabled';
-                }
-          %>
-          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
-          <%
-              break;
-              case "select":
-          %>
-          <select id="<%=row.id%>" class="modalSelect">
-          <%
-                _.each(row.options, function(opt) {
-          %>
-            <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
-          <%
-                });
-          %>
-          </select>
-          <%
-              break;
-              case "select2":
-          %>
-          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
-          <% if (row.addAdd) {%>
-            <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add"></button>
-          <% } %>
-          <% if (row.addDelete) {%>
-            <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
-          <% } %>
-          <%
-              break;
-            }
+  <ul id="graphTab" class="nav nav-tabs">
+    <li class="active"><a href="#createGraph" data-toggle="tab" id="tab-createGraph">Create Graph</a></li>
+    <li><a href="#exampleGraphs" data-toggle="tab" id="tab-exampleGraphs">Example Graphs</a></li>
+  </ul>
 
-            if (row.info) {
-          %>
-        <th>
-          <a class="modalTooltips" title="<%=row.info%>">
-            <span class="arangoicon icon_arangodb_info"></span>
-          </a>
-        </th>
-      <%
-        }
-      %>
-      </tr>
+  <div class="tab-content" id="tab-content-create-graph">
+
+    <div class="tab-pane" id="exampleGraphs">
+      <table style="margin-bottom: 10px">
+        <tbody>
+          <tr>
+            <td>Knows Graph</td>
+            <td>
+              <button style="float: right" graph-id="knows_graph" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Social Graph</td>
+            <td>
+              <button style="float: right" graph-id="social" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+          <tr>
+            <td>Routeplanner Graph</td>
+            <td>
+              <button style="float: right" graph-id="routeplanner" class="button-success createExampleGraphs">Create</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+     <p style="width: 100%; text-align: center;">Need help? Visit our <a style="font-weight: bold" href="https://docs.arangodb.com/Graphs/index.html#example-graphs">Graph Documentation</a></p>
+
+    </div>
+
+    <div class="active tab-pane" id="createGraph">
     <%
-  }//createTR
-  %>
+    var createTR = function(row, disableSubmitOnEnter) {
+      var mandatory = '';
+      if (row.mandatory) {
+        mandatory = '*';
+      }
 
-  <table>
-    <tbody>
-      <%
-      _.each(content, function(row) {
-        createTR(row);
-      });
       %>
+        <tr class="tableRow" id="<%='row_' + row.id%>">
+          <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
+          <th class="collectionTh">
+            <%
+              switch(row.type) {
+                case "text":
+            %>
+            <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <%
+                break;
+              case "password":
+            %>
+            <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <%
+                break;
+              case "readonly":
+            %>
+            <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>" disabled></input>
+            <%
+                break;
+                case "checkbox":
+                  var checked = '',
+                    disabled = '';
+                  if (row.checked) {
+                    checked = 'checked';
+                  }
+                  if (row.disabled) {
+                    disabled = 'disabled';
+                  }
+            %>
+            <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+            <%
+                break;
+                case "select":
+            %>
+            <select id="<%=row.id%>" class="modalSelect">
+            <%
+                  _.each(row.options, function(opt) {
+            %>
+              <option value="<%=opt.value%>" <%=row.selected === opt.value?"selected":""%>><%=opt.label%></option>
+            <%
+                  });
+            %>
+            </select>
+            <%
+                break;
+                case "select2":
+            %>
+            <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+            <% if (row.addAdd) {%>
+              <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add"></button>
+            <% } %>
+            <% if (row.addDelete) {%>
+              <button id="<%='remove_' + row.id%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
+            <% } %>
+            <%
+                break;
+              }
 
-    </tbody>
-  </table>
-    <%
-    if (advancedContent) {
+              if (row.info) {
+            %>
+          <th>
+            <a class="modalTooltips" title="<%=row.info%>">
+              <span class="arangoicon icon_arangodb_info"></span>
+            </a>
+          </th>
+        <%
+          }
+        %>
+        </tr>
+      <%
+    }//createTR
     %>
-    <div class="accordion" id="accordion2">
-      <div class="accordion-group">
-        <div class="accordion-heading">
-          <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
-            <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
-          </a>
-        </div>
-        <div id="collapseOne" class="accordion-body collapse out">
-          <div class="accordion-inner">
-            <table>
-              <tbody>
-                <%
-                _.each(advancedContent.content, function(row) {
-                  createTR(row);
-                });
-                %>
-              </tbody>
-            </table>
+
+    <table>
+      <tbody>
+        <%
+        _.each(content, function(row) {
+          createTR(row);
+        });
+        %>
+
+      </tbody>
+    </table>
+      <%
+      if (advancedContent) {
+      %>
+      <div class="accordion" id="accordion2">
+        <div class="accordion-group">
+          <div class="accordion-heading">
+            <a class="accordion-toggle collapsed" data-toggle="collapse" data-parent="#accordion2" href="#collapseOne">
+              <span><%=advancedContent.header%></span><span><b class="caret"></b></span>
+            </a>
+          </div>
+          <div id="collapseOne" class="accordion-body collapse out">
+            <div class="accordion-inner">
+              <table>
+                <tbody>
+                  <%
+                  _.each(advancedContent.content, function(row) {
+                    createTR(row);
+                  });
+                  %>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
+      <%
+      }
+      %>
     </div>
-    <%
-    }
-    %>
+  </div>
 </script>
+
 <script id="modalHotkeys.ejs" type="text/template">
 
   <ul class="hotkeysList">
@@ -2946,9 +3005,9 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="sharedLibs.js?version=1448995160514"></script>
-<script src="libs.js?version=1448995160514"></script>
-<script src="app.js?version=1448995160514"></script>
+<script src="sharedLibs.js?version=1449683735035"></script>
+<script src="libs.js?version=1449683735035"></script>
+<script src="app.js?version=1449683735035"></script>
 
   </body>
 </html>
