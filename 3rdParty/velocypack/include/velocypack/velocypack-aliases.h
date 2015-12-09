@@ -50,6 +50,8 @@ using VPackObjectIterator = arangodb::velocypack::ObjectIterator;
 #ifndef VELOCYPACK_ALIAS_BUILDER
 #define VELOCYPACK_ALIAS_BUILDER
 using VPackBuilder = arangodb::velocypack::Builder;
+using VPackObjectBuilder = arangodb::velocypack::ObjectBuilder;
+using VPackArrayBuilder = arangodb::velocypack::ArrayBuilder;
 #endif
 #endif
 
