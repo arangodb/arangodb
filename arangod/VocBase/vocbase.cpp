@@ -63,6 +63,7 @@
 #include "Wal/LogfileManager.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -1381,51 +1382,146 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t* collection) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the numeric part from a filename
+/// the filename must look like this: /.*type-abc\.ending$/, where abc is
+/// a number, and type and ending are arbitrary letters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetNumericFilenamePart (const char* filename) {
+  const char* pos1 = strrchr(filename, '.');
+
+  if (pos1 == nullptr) {
+    return 0;
+  }
+
+  const char* pos2 = strrchr(filename, '-');
+
+  if (pos2 == nullptr || pos2 > pos1) {
+    return 0;
+  }
+
+  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename. this is used to sort datafile filenames on startup
+////////////////////////////////////////////////////////////////////////////////
+
+static bool FilenameStringComparator (std::string const& lhs, std::string const& rhs) {
+
+  const uint64_t numLeft  = GetNumericFilenamePart(lhs.c_str());
+  const uint64_t numRight = GetNumericFilenamePart(rhs.c_str());
+  return numLeft < numRight;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief parses a json file to VelocyPack
+//////////////////////////////////////////////////////////////////////////////////
+
+
+static std::shared_ptr<VPackBuilder> TRI_VelocyPackFile (char const* path) {
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path, &length);
+  // The Parser might THROW
+  return VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class TRI_vocbase_col_t
 // -----------------------------------------------------------------------------
 
 void TRI_vocbase_col_t::toVelocyPack (VPackBuilder& builder,
-                                      bool includeIndexes) {
+                                      bool includeIndexes,
+                                      TRI_voc_tick_t maxTick) {
   TRI_ASSERT(! builder.isClosed());
   char* filename = TRI_Concatenate2File(_path, TRI_VOC_PARAMETER_FILE);
-  size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
-  std::shared_ptr<VPackBuilder> fileInfoBuilder = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
+
+  std::shared_ptr<VPackBuilder> fileInfoBuilder = TRI_VelocyPackFile(filename);
   builder.add("parameters", fileInfoBuilder->slice());
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (includeIndexes) {
     builder.add("indexes", VPackValue(VPackValueType::Array));
-    toVelocyPackIndexes(builder);
+    toVelocyPackIndexes(builder, maxTick);
     builder.close();
   }
- 
+
 }
 
-std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack (bool includeIndexes) {
+std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack (bool includeIndexes,
+                                                               TRI_voc_tick_t maxTick) {
   std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
-  builder->addObject();
-  toVelocyPack(*builder, includeIndexes);
+  builder->openObject();
+  toVelocyPack(*builder, includeIndexes, maxTick);
   builder->close();
 
   return builder;
 }
 
 
-void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder) {
+void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
+                                             TRI_voc_tick_t maxTick) {
   TRI_ASSERT(! builder.isClosed());
-  
+  regex_t re;
+
+  if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  std::vector<std::string> files = TRI_FilesDirectory(_path);
+
+  // sort by index id
+  std::sort(files.begin(), files.end(), FilenameStringComparator);
+
+  for (auto const& file : files) {
+    if (regexec(&re, file.c_str(), (size_t) 0, nullptr, 0) == 0) {
+      char* fqn = TRI_Concatenate2File(_path, file.c_str());
+      std::shared_ptr<VPackBuilder> indexVPack = TRI_VelocyPackFile(fqn);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
+
+      VPackSlice const indexSlice = indexVPack->slice();
+      VPackSlice const id = indexSlice.get("id");
+
+      if (id.isNumber()) {
+        uint64_t iid = id.getNumericValue<uint64_t>();
+        if (iid <= static_cast<uint64_t>(maxTick)) {
+          // convert "id" to string
+          VPackBuilder toMerge;
+          toMerge.openObject();
+          char* idString = TRI_StringUInt64(iid);
+          toMerge.add("id", VPackValue(idString));
+          toMerge.close();
+          VPackBuilder mergedBuilder = VPackCollection::merge(indexSlice, toMerge.slice(), false);
+          builder.add(mergedBuilder.slice());
+        }
+      }
+      else if (id.isString()) {
+        std::string data = id.copyString();
+        uint64_t iid = TRI_UInt64String2(data.c_str(), data.length());
+        if (iid <= static_cast<uint64_t>(maxTick)) {
+          builder.add(indexSlice);
+        }
+      }
+    }
+  }
+
+  regfree(&re);
+
   // TODO !!
   // TRI_IterateJsonIndexesCollectionInfo
   // with FilterCollectionIndex
 }
 
 
-std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes () {
+std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes (TRI_voc_tick_t maxTick) {
   std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
-  builder->addArray();
-  toVelocyPackIndexes(*builder);
+  builder->openArray();
+  toVelocyPackIndexes(*builder, maxTick);
   builder->close();
   return builder;
 }
@@ -1713,7 +1809,7 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
   }
 
   std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
-  builder->addArray();
+  builder->openArray();
 
   for (auto& collection : collections) {
     TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -1737,8 +1833,8 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
       continue;
     }
     try {
-      builder->addObject();
-      collection->toVelocyPack(*builder, true);
+      builder->openObject();
+      collection->toVelocyPack(*builder, true, maxTick);
       builder->close();
     } 
     catch (...) {
@@ -1747,6 +1843,7 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
     }
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   }
+
   builder->close(); // Array
   return builder;
 

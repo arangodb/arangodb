@@ -354,7 +354,7 @@ bool RestReplicationHandler::sortCollections (TRI_vocbase_col_t const* l,
   if (l->_type != r->_type) {
     return l->_type < r->_type;
   }
-  return strcasecmp(l->_name, r->_name);
+  return strcasecmp(l->_name, r->_name) < 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1587,7 +1587,7 @@ void RestReplicationHandler::handleCommandInventory () {
     TRI_ASSERT(collections.isArray());
 
     VPackBuilder builder;
-    builder.addObject();
+    builder.openObject();
 
     // add collections data
     builder.add("collections", collections);
@@ -1685,6 +1685,33 @@ void RestReplicationHandler::handleCommandClusterInventory () {
         }
         else {
           map<string, AgencyCommResultEntry>::iterator it;
+          /*
+          VPackBuilder resultBuilder;
+          resultBuilder.openObject();
+          resultBuilder.add("collections", VPackValue(VPackValueType::Array));
+          for (auto const& it : result._values) {
+            // Only temporary until AgencyResult has _velocy
+            // Requires JsonHelper::toVelocyPack from Max
+            std::shared_ptr<VPackBuilder> parsedSubResult = JsonHelper::toVelocyPack(it.second._json);
+            VPackSlice const subResultSlice = parsedSubResult->slice();
+            if (subResultSlice.isObject()) {
+              if (includeSystem ||
+                  ! triagens::basics::VelocyPackHelper::getBooleanValue(subResultSlice, "isSystem", true)) {
+                resultBuilder.openObject();
+                resultBuilder.add("indexes", subResultSlice.get("indexes"));
+                resultBuilder.add("parameters", subResultSlice.get("parameters"));
+                resultBuilder.close();
+              }
+            }
+          }
+          TRI_voc_tick_t tick = TRI_CurrentTickServer();
+          char* tickString = TRI_StringUInt64(tick);
+          resultBuilder.add("tick", VPackValue(tickString));
+          resultBuilder.add("state", VPackValue("unused"));
+          resultBuilder.close();
+          generateResult(HttpResponse::OK, resultBuilder.slice());
+          */
+
           TRI_json_t json;
           TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json, result._values.size());
           for (it = result._values.begin();
@@ -1980,7 +2007,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   else {
     try {
       VPackBuilder result;
-      result.addObject();
+      result.openObject();
       result.add("result", VPackValue(true));
       result.close();
       VPackSlice s = result.slice();
@@ -2197,7 +2224,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     TRI_voc_tick_t new_id_tick = ci->uniqid(1);
     VPackBuilder toMerge;
     std::string new_id = StringUtils::itoa(new_id_tick);
-    toMerge.addObject();
+    toMerge.openObject();
     toMerge.add("id", VPackValue(new_id));
 
     // Now put in the primary and an edge index if needed:

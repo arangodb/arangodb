@@ -392,27 +392,27 @@ class TRI_vocbase_col_t {
 ///        creates the Builder.
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<VPackBuilder> toVelocyPack (bool);
+    std::shared_ptr<VPackBuilder> toVelocyPack (bool, TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform the information for this collection to velocypack
 ///        The builder has to be an opened Type::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-    void toVelocyPack (VPackBuilder&, bool);
+    void toVelocyPack (VPackBuilder&, bool, TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform the information for the indexes of this collection to velocypack
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<VPackBuilder> toVelocyPackIndexes ();
+    std::shared_ptr<VPackBuilder> toVelocyPackIndexes (TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform the information for this collection to velocypack
 ///        The builder has to be an opened Type::Array
 ////////////////////////////////////////////////////////////////////////////////
 
-    void toVelocyPackIndexes (VPackBuilder&);
+    void toVelocyPackIndexes (VPackBuilder&, TRI_voc_tick_t);
 
 };
 
