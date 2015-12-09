@@ -32,10 +32,9 @@
 
 #include <sstream>
 
-#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
-#include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -107,27 +106,28 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       _version = "arango";
       _mode = "unknown mode";
 
-      // convert response body to json
-      std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().c_str()));
-
-      if (json != nullptr) {
-        // look up "server" value
-        const string server = JsonHelper::getStringValue(json.get(), "server", "");
+      try {
+        VPackOptions options;
+        options.checkAttributeUniqueness = true;
+        std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack(options);
+        VPackSlice const body = parsedBody->slice();
+        const string server = triagens::basics::VelocyPackHelper::getStringValue(body, "server", "");
 
         // "server" value is a string and content is "arango"
         if (server == "arango") {
           // look up "version" value
-          _version = JsonHelper::getStringValue(json.get(), "version", "");
-          auto const* details = TRI_LookupObjectJson(json.get(), "details");
-
-          if (TRI_IsObjectJson(details)) {
-            auto const* mode = TRI_LookupObjectJson(details, "mode");
-
-            if (TRI_IsStringJson(mode)) {
-              _mode = std::string(mode->_value._string.data, mode->_value._string.length - 1); 
+          _version = triagens::basics::VelocyPackHelper::getStringValue(body, "version", "");
+          VPackSlice const details = body.get("details");
+          if (details.isObject()) {
+            VPackSlice const mode = details.get("mode");
+            if (mode.isString()) {
+              _mode = mode.copyString();
             }
           }
         }
+      }
+      catch (...) {
+        // Ignore all parse errors
       }
     }
     else {
