@@ -3938,14 +3938,10 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
   // now the configuration is complete
 
-  // destroy now unneeded default values
-  TRI_DestroyConfigurationReplicationApplier(&defaults);
-  
   
   if ((restrictType.empty() && ! config._restrictCollections.empty()) ||
       (! restrictType.empty() && config._restrictCollections.empty()) ||
       (! restrictType.empty() && restrictType != "include" && restrictType != "exclude")) {
-    TRI_DestroyConfigurationReplicationApplier(&config);
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
@@ -3954,7 +3950,6 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   int res = _vocbase->_replicationApplier->forget();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyConfigurationReplicationApplier(&config);
     generateError(HttpResponse::responseCode(res), res);
     return;
   }
@@ -3980,7 +3975,6 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyConfigurationReplicationApplier(&config);
     generateError(HttpResponse::responseCode(res), res, errorMsg);
     return;
   }
@@ -3988,13 +3982,10 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_DestroyConfigurationReplicationApplier(&config);
     generateError(HttpResponse::responseCode(res), res);
     return;
   }
     
-  TRI_DestroyConfigurationReplicationApplier(&config);
-  
   res =_vocbase->_replicationApplier->start(lastLogTick, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4164,7 +4155,6 @@ void RestReplicationHandler::handleCommandSync () {
   config._verbose = verbose;
       
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType, verbose);
-  TRI_DestroyConfigurationReplicationApplier(&config);
 
   int res = TRI_ERROR_NO_ERROR;
   string errorMsg = "";
@@ -4390,17 +4380,13 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
     READ_LOCKER(_vocbase->_replicationApplier->_statusLock);
     TRI_CopyConfigurationReplicationApplier(&_vocbase->_replicationApplier->_configuration, &config);
   }
-
-  TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
-  TRI_DestroyConfigurationReplicationApplier(&config);
-
-  if (json == nullptr) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-    return;
+  try {
+    std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
+    generateResult(configBuilder->slice());
   }
-
-  generateResult(json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4648,8 +4634,6 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   }
 
   int res = TRI_ConfigureReplicationApplier(_vocbase->_replicationApplier, &config);
-
-  TRI_DestroyConfigurationReplicationApplier(&config);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);

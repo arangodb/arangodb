@@ -96,7 +96,8 @@ static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
 
 static int LoadConfiguration (TRI_vocbase_t* vocbase,
                               TRI_replication_applier_configuration_t* config) {
-  TRI_DestroyConfigurationReplicationApplier(config);
+  // Clear
+  config->freeInternalStrings();
   TRI_InitConfigurationReplicationApplier(config);
 
   char* filename = GetConfigurationFilename(vocbase);
@@ -483,7 +484,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
     if (res != TRI_ERROR_NO_ERROR &&
         res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
-      TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
       delete applier;
       TRI_set_errno(res);
 
@@ -495,7 +495,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
     if (res != TRI_ERROR_NO_ERROR &&
         res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
-      TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
       delete applier;
       TRI_set_errno(res);
 
@@ -512,6 +511,36 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                     class TRI_replication_applier_configuration_t
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Frees all internal strings
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_replication_applier_configuration_t::freeInternalStrings () {
+  if (_endpoint != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _endpoint);
+    _endpoint = nullptr;
+  }
+
+  if (_database != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _database);
+    _database = nullptr;
+  }
+
+  if (_username != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _username);
+    _username = nullptr;
+  }
+
+  if (_password != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _password);
+    _password = nullptr;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a VelocyPack representation
@@ -872,32 +901,6 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy an applier configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
-  if (config->_endpoint != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
-    config->_endpoint = nullptr;
-  }
-
-  if (config->_database != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_database);
-    config->_database = nullptr;
-  }
-
-  if (config->_username != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_username);
-    config->_username = nullptr;
-  }
-
-  if (config->_password != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_password);
-    config->_password = nullptr;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copy an applier configuration
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1042,7 +1045,6 @@ TRI_replication_applier_t::TRI_replication_applier_t (TRI_server_t* server,
 TRI_replication_applier_t::~TRI_replication_applier_t () {
   stop(true);
   TRI_DestroyStateReplicationApplier(&_state);
-  TRI_DestroyConfigurationReplicationApplier(&_configuration);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1255,7 +1257,6 @@ int TRI_replication_applier_t::forget () {
   TRI_InitStateReplicationApplier(&_state);
 
   TRI_RemoveConfigurationReplicationApplier(_vocbase);
-  TRI_DestroyConfigurationReplicationApplier(&_configuration);
   TRI_InitConfigurationReplicationApplier(&_configuration);
 
   return TRI_ERROR_NO_ERROR;
@@ -1427,7 +1428,6 @@ void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
     []() -> void { },
     [&state, &config]() -> void {
       TRI_DestroyStateReplicationApplier(&state);
-      TRI_DestroyConfigurationReplicationApplier(&config);
     }
   };
 

@@ -146,7 +146,6 @@ Syncer::~Syncer () {
   delete _connection;
   delete _endpoint;
 
-  TRI_DestroyConfigurationReplicationApplier(&_configuration);
   TRI_DestroyMasterInfoReplication(&_masterInfo);
 }
 

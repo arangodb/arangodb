@@ -288,7 +288,6 @@ static void JS_SynchronizeReplication (const v8::FunctionCallbackInfo<v8::Value>
 
   string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType, verbose);
-  TRI_DestroyConfigurationReplicationApplier(&config);
 
   int res = TRI_ERROR_NO_ERROR;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -374,7 +373,6 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     }
 
     TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
-    TRI_DestroyConfigurationReplicationApplier(&config);
 
     if (json == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -551,7 +549,6 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     if ((config._restrictType.empty() && ! config._restrictCollections.empty()) ||
         (! config._restrictType.empty() && config._restrictCollections.empty()) ||
         (! config._restrictType.empty() && config._restrictType != "include" && config._restrictType != "exclude")) {
-      TRI_DestroyConfigurationReplicationApplier(&config);
       TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <restrictCollections> or <restrictType>");
     }
     
@@ -594,12 +591,10 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
     int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_DestroyConfigurationReplicationApplier(&config);
       TRI_V8_THROW_EXCEPTION(res);
     }
 
     TRI_json_t* json = TRI_JsonConfigurationReplicationApplier(&config);
-    TRI_DestroyConfigurationReplicationApplier(&config);
 
     if (json == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
