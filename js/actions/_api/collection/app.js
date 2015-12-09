@@ -789,6 +789,25 @@ function get_api_collections (req, res) {
 /// The number of markers in the write-ahead
 /// log for this collection that have not been transferred to journals or datafiles.
 ///
+/// @RESTSTRUCT{documentReferences,collection_figures,integer,optional,int64}
+/// The number of references to documents in datafiles that JavaScript code 
+/// currently holds. This information can be used for debugging compaction and 
+/// unload issues.
+///
+/// @RESTSTRUCT{waitingFor,collection_figures,string,optional,string}
+/// An optional string value that contains information about which object type is at the 
+/// head of the collection's cleanup queue. This information can be used for debugging 
+/// compaction and unload issues.
+///
+/// @RESTSTRUCT{compactionStatus,collection_figures,object,optional,compactionStatus_attributes}
+/// @RESTSTRUCT{message,compactionStatus_attributes,string,optional,string}
+/// The action that was performed when the compaction was last run for the collection. 
+/// This information can be used for debugging compaction issues.
+///
+/// @RESTSTRUCT{time,compactionStatus_attributes,string,optional,string}
+/// The point in time the compaction for the collection was last executed. 
+/// This information can be used for debugging compaction issues.
+///
 /// @RESTREPLYBODY{journalSize,integer,required,int64}
 /// The maximal size of a journal or datafile in bytes.
 ///
@@ -1243,6 +1262,18 @@ function put_api_collection_load (req, res, collection) {
 
 function put_api_collection_unload (req, res, collection) {
   try {
+    if (req.parameters.hasOwnProperty('flush')) {
+      var value = req.parameters.flush.toLowerCase();
+      if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
+        if (collection.status() === 3 /* loaded */ && 
+            collection.figures().uncollectedLogfileEntries > 0) {
+          // flush WAL so uncollected logfile entries can get collected
+          require("internal").wal.flush();
+        }
+      }
+    }
+
+    // then unload
     collection.unload();
 
     var result = collectionRepresentation(collection);
@@ -1612,6 +1643,9 @@ function put_api_collection (req, res) {
   }
   else if (sub === "unload") {
     put_api_collection_unload(req, res, collection);
+    collection = null;
+    // run garbage collection once in all threads
+    require("internal").executeGlobalContextFunction("collectGarbage");
   }
   else if (sub === "truncate") {
     put_api_collection_truncate(req, res, collection);
