@@ -1052,7 +1052,7 @@ function performTests(options, testList, testname, remote) {
         print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
-        continue;
+        break;
       }
 
       print("\n" + Date() + " arangod: Trying",te,"...");
@@ -1290,7 +1290,7 @@ testFuncs.shell_client = function(options) {
         print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
-        continue;
+        break;
       }
 
       print("\narangosh: Trying",te,"...");
@@ -1444,7 +1444,7 @@ function rubyTests (options, ssl) {
           print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
-          continue;
+          break;
         }
         print("\n"+ Date() + " rspec Trying ",te,"...");
 
@@ -1973,7 +1973,7 @@ testFuncs.arangob = function (options) {
         print("Skipping " + benchTodo[i] + ", server is gone.");
         results[i] = {status: false, message: instanceInfo.exitStatus};
         instanceInfo.exitStatus = "server is gone.";
-        continue;
+        break;
       }
       var args = benchTodo[i];
       if (options.hasOwnProperty('benchargs')) {
@@ -2097,7 +2097,7 @@ testFuncs.authentication_parameters = function (options) {
         };
         instanceInfo.exitStatus = "server is gone.";
         all_ok = false;
-        continue;
+        break;
       }
 
       r = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);

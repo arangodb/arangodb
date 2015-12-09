@@ -27,8 +27,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var extend = require("underscore").extend,
-  coffeeScript = require("coffee-script");
+var extend = require('underscore').extend;
 
 function ArrayIterator(arr) {
   this.array = arr;
@@ -54,7 +53,7 @@ extend(ArrayIterator.prototype, {
   },
 
   entireString: function () {
-      return this.array.join("\n");
+      return this.array.join('\n');
   },
 
   getCurrentLineNumber: function () {
@@ -64,22 +63,21 @@ extend(ArrayIterator.prototype, {
   }
 });
 
-function Preprocessor(input, type) {
-  if (type === 'coffee') {
-    input = coffeeScript.compile(input, {bare: true});
-  }
-
-  this.iterator = new ArrayIterator(input.replace('\r', '').split("\n"));
+function Preprocessor(input) {
+  this.iterator = new ArrayIterator(input.replace('\r', '').split('\n'));
   this.inJSDoc = false;
 }
 
 extend(Preprocessor.prototype, {
   result: function () {
-      return this.iterator.entireString();
+    return this.iterator.entireString();
   },
 
-  convert: function () {
-      while (this.searchNext()) {
+  convert: function (filename) {
+    if (filename && filename.indexOf('node_modules') !== -1) {
+      return this;
+    }
+    while (this.searchNext()) {
       this.convertLine();
     }
     return this;
@@ -94,8 +92,8 @@ extend(Preprocessor.prototype, {
   },
 
   convertLine: function () {
-      this.iterator.replaceWith(
-      "applicationContext.comment(\"" + this.stripComment(this.iterator.current()) + "\");"
+    this.iterator.replaceWith(
+      `applicationContext.comment("${this.stripComment(this.iterator.current())}");`
     );
   },
 
@@ -139,9 +137,9 @@ extend(Preprocessor.prototype, {
   }
 });
 
-function preprocess(input, type) {
-  var processor = new Preprocessor(input, type);
-  return processor.convert().result();
+function preprocess(input, filename) {
+  var processor = new Preprocessor(input);
+  return processor.convert(filename).result();
 }
 
 // Only Exported for Tests, please use `process`

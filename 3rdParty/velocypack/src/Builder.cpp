@@ -43,6 +43,13 @@ std::string Builder::toString() const {
   return std::move(buffer);
 }
 
+std::string Builder::toJson() const {
+  std::string buffer;
+  StringSink sink(&buffer);
+  Dumper::dump(slice(), &sink);
+  return std::move(buffer);
+}
+
 void Builder::doActualSort(std::vector<SortEntry>& entries) {
   VELOCYPACK_ASSERT(entries.size() > 1);
   std::sort(entries.begin(), entries.end(),
@@ -401,7 +408,7 @@ Slice Builder::getKey(std::string const& key) const {
   if (_stack.empty()) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
-  ValueLength const& tos = _stack.back();
+  ValueLength const tos = _stack.back();
   if (_start[tos] != 0x0b && _start[tos] != 0x14) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
@@ -421,6 +428,8 @@ Slice Builder::getKey(std::string const& key) const {
 uint8_t* Builder::set(Value const& item) {
   auto const oldPos = _start + _pos;
   auto ctype = item.cType();
+
+  checkKeyIsString(item.valueType() == ValueType::String);
 
   // This method builds a single further VPack item at the current
   // append position. If this is an array or object, then an index
@@ -666,6 +675,9 @@ uint8_t* Builder::set(Value const& item) {
 }
 
 uint8_t* Builder::set(Slice const& item) {
+
+  checkKeyIsString(item.isString());
+
   ValueLength const l = item.byteSize();
   reserveSpace(l);
   memcpy(_start + _pos, item.start(), checkOverflow(l));
@@ -678,6 +690,9 @@ uint8_t* Builder::set(ValuePair const& pair) {
   // append position. This is the case for ValueType::String,
   // ValueType::Binary, or ValueType::Custom, which can be built
   // with two pieces of information
+
+  checkKeyIsString(pair.valueType() == ValueType::String);
+
   if (pair.valueType() == ValueType::Binary) {
     uint64_t v = pair.getSize();
     appendUInt(v, 0xbf);
