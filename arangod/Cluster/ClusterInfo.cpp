@@ -774,7 +774,6 @@ void ClusterInfo::loadPlannedCollections () {
                   return   std::strtol(a.c_str()+1, nullptr, 10) 
                          < std::strtol(b.c_str()+1, nullptr, 10);
                 });
-      newShards.emplace(std::make_pair(collectionData->name(), shards));
       newShards.emplace(std::make_pair(collection, shards));
 
       // insert the collection into the existing map, insert it under its

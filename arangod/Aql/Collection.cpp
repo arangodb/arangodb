@@ -130,14 +130,7 @@ TRI_voc_cid_t Collection::getPlanId () const {
 
 std::shared_ptr<std::vector<std::string>> Collection::shardIds () const {
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  std::shared_ptr<std::vector<std::string>> res 
-      = clusterInfo->getShardList(std::string(name));
-  if (res.get() == nullptr || res->size() == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
-                                  "collection not found '%s' -> '%s'",
-                                  vocbase->_name, name.c_str());
-  }
-  return res;
+  return clusterInfo->getShardList(triagens::basics::StringUtils::itoa(getPlanId()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

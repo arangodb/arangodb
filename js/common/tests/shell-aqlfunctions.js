@@ -70,6 +70,7 @@ function AqlFunctionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._useDatabase("_system");
       aqlfunctions.unregisterGroup("UnitTests::");
     },
 

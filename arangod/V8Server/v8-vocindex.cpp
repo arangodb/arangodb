@@ -1097,7 +1097,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
       ObjectBuilder ob(&velocy, "shards");
       for (auto const& p : shards) {
         ArrayBuilder ab(&velocy, p.first);
-        velocy(Value(p.second))
+        velocy(Value(p.second));
       }
     }
 

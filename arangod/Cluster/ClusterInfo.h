@@ -983,7 +983,7 @@ namespace triagens {
         std::unordered_map<CollectionID,
                            std::shared_ptr<std::vector<std::string>>>
             _shards;                    // from Plan/Collections/
-                               // (may later come from Current/Colletions/ )
+                               // (may later come from Current/Collections/ )
         std::unordered_map<CollectionID,
                            std::shared_ptr<std::vector<std::string>>>
             _shardKeys;                 // from Plan/Collections/
