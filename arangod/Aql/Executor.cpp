@@ -577,7 +577,7 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
           std::string errorMessage(TRI_ObjectToString(errorMessageValue));
     
           if (*stacktrace && stacktrace.length() > 0) {
-            errorMessage += "\nstacktrace of offending AQL js Function  : ";
+            errorMessage += "\nstacktrace of offending AQL function: ";
             errorMessage += *stacktrace;
           }
 
@@ -589,7 +589,7 @@ void Executor::HandleV8Error (v8::TryCatch& tryCatch,
       std::string details(TRI_ObjectToString(tryCatch.Exception()));
 
       if (*stacktrace && stacktrace.length() > 0) {
-        details += "\nstacktrace of offending AQL js Function  : ";
+        details += "\nstacktrace of offending AQL function: ";
         details += *stacktrace;
       }
 
