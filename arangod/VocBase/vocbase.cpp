@@ -1262,56 +1262,6 @@ static int DropCollection (TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief filter callback function for indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
-                                  char const* filename,
-                                  void* data) {
-  index_json_helper_t* ij = (index_json_helper_t*) data;
-
-  TRI_json_t* indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
-
-  if (indexJson == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // compare index id with tick value
-  TRI_json_t* id = TRI_LookupObjectJson(indexJson, "id");
-
-  // index id is numeric
-  if (TRI_IsNumberJson(id)) {
-    uint64_t iid = (uint64_t) id->_value._number;
-
-    if (iid > (uint64_t) ij->_maxTick) {
-      // index too new
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
-    }
-    else {
-      // convert "id" to string
-      char* idString = TRI_StringUInt64(iid);
-      TRI_InitStringJson(id, idString, strlen(idString));
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
-    }
-  }
-
-  // index id is a string
-  else if (TRI_IsStringJson(id)) {
-    uint64_t iid = TRI_UInt64String2(id->_value._string.data, id->_value._string.length - 1);
-
-    if (iid > (uint64_t) ij->_maxTick) {
-      // index too new
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
-    }
-    else {
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check if collection _trx is present and build a set of entries
 /// with it. this is done to ensure compatibility with old datafiles
 ////////////////////////////////////////////////////////////////////////////////
