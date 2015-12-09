@@ -4002,15 +4002,14 @@ void RestReplicationHandler::handleCommandMakeSlave () {
     return;
   }
 
-  TRI_json_t* result = TRI_JsonReplicationApplier(_vocbase->_replicationApplier);
-
-  if (result == nullptr) {
+  try {
+    std::shared_ptr<VPackBuilder> result = _vocbase->_replicationApplier->toVelocyPack();
+    generateResult(result->slice());
+  }
+  catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-
-  generateResult(result);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4934,15 +4933,14 @@ void RestReplicationHandler::handleCommandApplierStop () {
 void RestReplicationHandler::handleCommandApplierGetState () {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
-  TRI_json_t* json = TRI_JsonReplicationApplier(_vocbase->_replicationApplier);
-
-  if (json == nullptr) {
+  try {
+    std::shared_ptr<VPackBuilder> result = _vocbase->_replicationApplier->toVelocyPack();
+    generateResult(result->slice());
+  }
+  catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-
-  generateResult(json);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
