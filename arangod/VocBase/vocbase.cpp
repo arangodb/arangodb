@@ -1372,7 +1372,6 @@ static bool FilenameStringComparator (std::string const& lhs, std::string const&
 ///// @brief parses a json file to VelocyPack
 //////////////////////////////////////////////////////////////////////////////////
 
-
 static std::shared_ptr<VPackBuilder> TRI_VelocyPackFile (char const* path) {
   size_t length;
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path, &length);
