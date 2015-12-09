@@ -508,7 +508,7 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 /// error occurs during query processing, the server will respond with *HTTP 400*.
 /// Again, the body of the response will contain details about the error.
 ///
-/// A list of query errors can be found (../ArangoErrors/README.md) here.
+/// A [list of query errors can be found here](../ErrorCodes/README.md).
 ///
 ///
 /// @RESTRETURNCODE{404}

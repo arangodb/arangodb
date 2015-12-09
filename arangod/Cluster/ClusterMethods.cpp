@@ -1256,13 +1256,13 @@ int getAllDocumentsOnCoordinator (
 ////////////////////////////////////////////////////////////////////////////////
 
 int getAllEdgesOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
-                 string const& vertex,
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& vertex,
                  TRI_edge_direction_e const& direction,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
-                 string& resultBody ) {
+                 std::string& contentType,
+                 std::string& resultBody) {
   triagens::basics::Json result(triagens::basics::Json::Object);
   std::vector<traverser::TraverserExpression*> expTmp;
   int res = getFilteredEdgesOnCoordinator(dbname, collname, vertex, direction, expTmp, responseCode, contentType, result);
@@ -1271,14 +1271,14 @@ int getAllEdgesOnCoordinator (
 }
 
 int getFilteredEdgesOnCoordinator (
-                 string const& dbname,
-                 string const& collname,
-                 string const& vertex,
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& vertex,
                  TRI_edge_direction_e const& direction,
                  std::vector<traverser::TraverserExpression*> const& expressions, 
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 string& contentType,
-                 triagens::basics::Json& result ) {
+                 std::string& contentType,
+                 triagens::basics::Json& result) {
   TRI_ASSERT(result.isObject());
   TRI_ASSERT(result.members() == 0);
 
@@ -1294,8 +1294,8 @@ int getFilteredEdgesOnCoordinator (
 
   ClusterCommResult* res;
 
-  map<ShardID, ServerID> shards = collinfo->shardIds();
-  map<ShardID, ServerID>::iterator it;
+  std::map<ShardID, ServerID> shards = collinfo->shardIds();
+  std::map<ShardID, ServerID>::iterator it;
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   std::string queryParameters = "?vertex=" + StringUtils::urlEncode(vertex);
   if (direction == TRI_EDGE_IN) {
@@ -1315,7 +1315,7 @@ int getFilteredEdgesOnCoordinator (
     reqBodyString->append(body.toString());
   }
   for (it = shards.begin(); it != shards.end(); ++it) {
-    map<string, string>* headers = new map<string, string>;
+    std::map<std::string, std::string>* headers = new std::map<std::string, std::string>;
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/edges/" + it->first + queryParameters,
@@ -1338,18 +1338,26 @@ int getFilteredEdgesOnCoordinator (
       cc->drop( "", coordTransactionID, 0, "");
       return TRI_ERROR_CLUSTER_TIMEOUT;
     }
-    if (res->status == CL_COMM_ERROR || res->status == CL_COMM_DROPPED ||
-        res->answer_code == triagens::rest::HttpResponse::NOT_FOUND) {
+    if (res->status == CL_COMM_ERROR || res->status == CL_COMM_DROPPED) {
       delete res;
       cc->drop( "", coordTransactionID, 0, "");
       return TRI_ERROR_INTERNAL;
     }
-
+    if (res->status == CL_COMM_RECEIVED) {
+    }
+    
     std::unique_ptr<TRI_json_t> shardResult(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, res->answer->body()));
 
     if (shardResult == nullptr || ! TRI_IsObjectJson(shardResult.get())) {
       delete res;
       return TRI_ERROR_INTERNAL;
+    }
+      
+    bool const isError = triagens::basics::JsonHelper::checkAndGetBooleanValue(shardResult.get(), "error");
+    if (isError) {
+      // shared returned an error
+      delete res;
+      return triagens::basics::JsonHelper::getNumericValue<int>(shardResult.get(), "errorNum", TRI_ERROR_INTERNAL);
     }
 
     auto docs = TRI_LookupObjectJson(shardResult.get(), "edges");
@@ -1414,8 +1422,6 @@ int modifyDocumentOnCoordinator (
                                      waitForSync, isPatch, keepNull, mergeObjects,
                                      json.get(), headers, responseCode, resultHeaders, resultBody);
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator

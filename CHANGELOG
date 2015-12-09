@@ -1,7 +1,18 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* better error reporting for arangodump and arangorestore
+
+* arangodump will now fail by default when trying to dump edges that
+  refer to already dropped collections. This can be circumvented by 
+  specifying the option `--force true` when invoking arangodump
+
 * fixed cluster upgrade procedure
+
+* the AQL functions `NEAR` and `WITHIN` now have stricter validations
+  for their input parameters `limit`, `radius` and `distance`. They may now throw
+  exceptions when invalid parameters are passed that may have not led
+  to exceptions in previous versions.
 
 
 v2.8.0-beta1 (2015-12-06)

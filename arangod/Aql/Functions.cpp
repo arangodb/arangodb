@@ -3032,6 +3032,7 @@ static Json getDocumentByIdentifier (triagens::arango::AqlTransaction* trx,
                                      std::string const& collectionName,
                                      std::string const& identifier) {
   std::vector<std::string> parts = triagens::basics::StringUtils::split(identifier, "/");
+
   TRI_doc_mptr_copy_t mptr;
   if (parts.size() == 1) {
     int res = trx->readSingle(collection, &mptr, parts[0]);
@@ -3062,24 +3063,37 @@ static Json getDocumentByIdentifier (triagens::arango::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper function to get a document by it's _id
+/// @brief Helper function to get a document by its _id
 ///        This function will lazy read-lock the collection.
+/// this function will not throw if the document or the collection cannot be 
+/// found 
 ////////////////////////////////////////////////////////////////////////////////
 
 static Json getDocumentByIdentifier (triagens::arango::AqlTransaction* trx,
                                      CollectionNameResolver const* resolver,
-                                     std::string& identifier) {
+                                     std::string const& identifier) {
   std::vector<std::string> parts = triagens::basics::StringUtils::split(identifier, "/");
+
   if (parts.size() != 2) {
     return Json(Json::Null);
   }
   std::string collectionName = parts[0];
   TRI_transaction_collection_t* collection = nullptr;
   TRI_voc_cid_t cid = 0;
-  RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+  try {
+    RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+  }
+  catch (triagens::basics::Exception const& ex) {
+    // don't throw if collection is not found
+    if (ex.code() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      return Json(Json::Null);
+    }
+    throw ex;
+  }
 
   TRI_doc_mptr_copy_t mptr;
   int res = trx->readSingle(collection, &mptr, parts[1]);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return Json(Json::Null);
   }
@@ -3090,8 +3104,7 @@ static Json getDocumentByIdentifier (triagens::arango::AqlTransaction* trx,
     cid,
     &mptr
   );
-};
- 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function Document
@@ -3147,15 +3160,32 @@ AqlValue Functions::Document (triagens::aql::Query* query,
 
   TRI_transaction_collection_t* collection = nullptr;
   TRI_voc_cid_t cid;
-  RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+  bool notFound = false;
+
+  try {
+    RegisterCollectionInTransaction(trx, collectionName, cid, collection);
+  }
+  catch (triagens::basics::Exception const& ex) {
+    // don't throw if collection is not found
+    if (ex.code() != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      throw ex;
+    }
+    notFound = true;
+  }
 
   Json id = ExtractFunctionParameter(trx, parameters, 1, false);
   if (id.isString()) {
+    if (notFound) {
+      return AqlValue(new Json(Json::Null));
+    }
     std::string identifier = triagens::basics::JsonHelper::getStringValue(id.json(), "");
     Json result = getDocumentByIdentifier(trx, resolver, collection, cid, collectionName, identifier);
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
   }
   else if (id.isArray()) {
+    if (notFound) {
+      return AqlValue(new Json(Json::Array));
+    }
     size_t const n = id.size();
     Json result(Json::Array, n);
     for (size_t i = 0; i < n; ++i) {

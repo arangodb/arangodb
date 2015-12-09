@@ -289,10 +289,10 @@ def Typography(txt):
         txt = txt[0:-1]
 
 #    txt = BackTicks(txt)
-    txt = AsteriskBold(txt)
-    txt = AsteriskItalic(txt)
+#    txt = AsteriskBold(txt)
+#    txt = AsteriskItalic(txt)
 #    txt = FN(txt)
-    txt = LIT(txt)
+#    txt = LIT(txt)
 #    txt = FA(txt)
 #
     # no way to find out the correct link for Swagger, 
@@ -487,32 +487,8 @@ def generic_handler_desc(cargo, r, message, op, para, name):
             continue
 
         line = Typography(line)
+        para[name] += line + '\n'
 
-        if r.DESCRIPTION_LI.match(line):
-            line = "<li>" + line[2:]
-            inLI = True
-        elif inLI and r.DESCRIPTION_SP.match(line):
-            line = line[2:]
-        elif inLI and r.DESCRIPTION_BL.match(line):
-            line = ""
-        else:
-            inLI = False
-
-        if not inUL and inLI:
-            line = " <ul class=\"swagger-list\">" + line
-            inUL = True
-        elif inUL and r.EMPTY_LINE.match(line):
-            line = "</ul> " + line
-            inUL = False
-
-        elif inLI and r.EMPTY_LINE.match(line):
-            line = "</li> " + line
-            inUL = False
-
-        if not inLI and r.EMPTY_LINE.match(line):
-            line = "<br>"
-
-        para[name] += line + ' '
     para[name] = removeTrailingBR.sub("", para[name])
 
 def start_docublock(cargo, r=Regexen()):
@@ -675,7 +651,7 @@ def restbodyparam(cargo, r=Regexen()):
     if restBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
         # once this is solved we can skip this:
-        operation['description'] += "**A json post document with these Properties is required:**"
+        operation['description'] += "**A json post document with these Properties is required:**\n"
         restBodyParam = {
             'name': 'Json Post Body',
             'x-description-offset': len(swagger['paths'][httpPath][method]['description']),
@@ -913,7 +889,7 @@ def restreplybody(cargo, r=Regexen()):
     if restReplyBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
         # once this is solved we can skip this:
-        operation['description'] += "**A json document with these Properties is returned:**"
+        operation['description'] += "**A json document with these Properties is returned:**\n"
         swagger['paths'][httpPath][method]['responses'][currentReturnCode][
             'x-description-offset'] = len(swagger['paths'][httpPath][method]['description'])
         swagger['paths'][httpPath][method]['responses'][currentReturnCode]['schema'] = {
@@ -1169,6 +1145,16 @@ def getReference(name, source, verb):
         raise Exception("invalid reference: " + ref + " in " + fn)
     return ref
 
+removeDoubleLF = re.compile("\n\n")
+removeLF = re.compile("\n")
+
+def TrimThisParam(text, indent):
+    text = text.rstrip('\n').lstrip('\n')
+    text = removeDoubleLF.sub("\n", text)
+    if (indent > 0):
+        indent = (indent + 2) # align the text right of the list...
+    return removeLF.sub("\n" + ' ' * indent, text)
+
 def unwrapPostJson(reference, layer):
     global swagger
     rc = ''
@@ -1180,32 +1166,27 @@ def unwrapPostJson(reference, layer):
         if '$ref' in thisParam:
             subStructRef = getReference(thisParam, reference, None)
 
-            rc += "<li><strong>" + param + "</strong>: "
-            rc += swagger['definitions'][subStructRef]['description'] + "<ul class=\"swagger-list\">"
+            rc += ' ' * layer + " - **" + param + "**:\n"
             rc += unwrapPostJson(subStructRef, layer + 1)
-            rc += "</li></ul>"
-        
+    
         elif thisParam['type'] == 'object':
-            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + brTrim(thisParam['description']) + "</li>"
+            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
         elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + brTrim(thisParam['description'])
+            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer)
             if 'type' in thisParam['items']:
-                rc += " of type " + thisParam['items']['type']#
+                rc += " of type " + thisParam['items']['type']  + "\n"
             else:
                 if len(thisParam['items']) == 0:
-                    rc += "anonymous json object"
+                    rc += "anonymous json object\n"
                 else:
                     try:
                         subStructRef = getReference(thisParam['items'], reference, None)
                     except:
                         print >>sys.stderr, "while analyzing: " + param
                         print >>sys.stderr, thisParam
-                    rc += "\n<ul class=\"swagger-list\">"
-                    rc += unwrapPostJson(subStructRef, layer + 1)
-                    rc += "</ul>"
-                    rc += '</li>'
+                    rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
         else:
-            rc += ' ' * layer + "<li><strong>" + param + "</strong>: " + thisParam['description'] + '</li>'
+            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
 
 
@@ -1299,12 +1280,14 @@ for route in swagger['paths'].keys():
             if thisVerb['parameters'][nParam]['in'] == 'body':
                 descOffset = thisVerb['parameters'][nParam]['x-description-offset']
                 addText = ''
-                postText = thisVerb['description'][:descOffset]
+                postText = ''
+                paramDesc = thisVerb['description'][:descOffset]
+                if len(paramDesc) > 0: 
+                    postText += paramDesc
                 if 'additionalProperties' in thisVerb['parameters'][nParam]['schema']:
-                    addText = "free style json body"
+                    addText = "\nfree style json body\n\n"
                 else:
-                    addText = "<ul class=\"swagger-list\">" + unwrapPostJson(
-                        getReference(thisVerb['parameters'][nParam]['schema'], route, verb),0) + "</ul>"
+                    addText = "\n" + unwrapPostJson(getReference(thisVerb['parameters'][nParam]['schema'], route, verb),1) + "\n\n"
                 
                 postText += addText
                 postText += thisVerb['description'][descOffset:]
@@ -1315,30 +1298,34 @@ for route in swagger['paths'].keys():
         if 'responses' in thisVerb:
             for nRC in thisVerb['responses']:
                 if 'x-description-offset' in thisVerb['responses'][nRC]:
-
                     descOffset = thisVerb['responses'][nRC]['x-description-offset']
                     #print descOffset 
                     #print offsetPlus
                     descOffset += offsetPlus
-                    addText = ''
+                    addText = '\n##HTTP ' + nRC
                     #print thisVerb['responses'][nRC]['description']
                     postText = thisVerb['description'][:descOffset]
                     #print postText
+                    replyDescription = TrimThisParam(thisVerb['responses'][nRC]['description'], 0)
+                    if (len(replyDescription) > 0): 
+                        addText += '\n' + replyDescription + '\n'
                     if 'additionalProperties' in thisVerb['responses'][nRC]['schema']:
-                        addText = "free style json body"
+                        addText += "\n free style json body\n"
                     else:
-                        addText = "<ul class=\"swagger-list\">" + unwrapPostJson(
-                            getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + "</ul>"
+                        addText += "\n" + unwrapPostJson(
+                            getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + '\n'
                     #print addText
                     postText += addText
-                    postText += thisVerb['responses'][nRC]['description'][descOffset:]
+                    postText += thisVerb['description'][descOffset:]
                     offsetPlus += len(addText)
                     thisVerb['description'] = postText
 
+            #print '-'*80
+            #print thisVerb['description']
 
         # Append the examples to the description:
         if 'x-examples' in thisVerb and len(thisVerb['x-examples']) > 0:
-            thisVerb['description'] += '<br>'
+            thisVerb['description'] += '\n'
             for nExample in range(0, len(thisVerb['x-examples'])):
                 thisVerb['description'] +=  thisVerb['x-examples'][nExample]
             thisVerb['x-examples'] = []# todo unset!
