@@ -68,7 +68,7 @@ textarea,
 
 .fa {
   display: inline-block;
-  font: normal normal normal 14px/1 FontAwesome;
+  font: normal normal normal 14px / 1 FontAwesome;
   font-size: inherit;
   text-rendering: auto;
   -webkit-font-smoothing: antialiased;
@@ -113,7 +113,7 @@ textarea,
     left: -1.8571428571em; }
 
 .fa-border {
-  padding: 0.2em 0.25em 0.15em;
+  padding: .2em .25em .15em;
   border: solid 0.08em #eee;
   border-radius: .1em; }
 
@@ -2154,11 +2154,14 @@ textarea,
     background-color: #f87c0f; }
 
 [class^='button-']:disabled,
-button.disabled, .button-inactive {
+button.disabled,
+[class*=' button-']:disabled, .button-inactive {
   background-color: #d3d3d3; }
   [class^='button-']:hover:disabled,
-  button.disabled:hover, .button-inactive:hover, [class^='button-']:focus:disabled,
-  button.disabled:focus, .button-inactive:focus {
+  button.disabled:hover,
+  [class*=' button-']:hover:disabled, .button-inactive:hover, [class^='button-']:focus:disabled,
+  button.disabled:focus,
+  [class*=' button-']:focus:disabled, .button-inactive:focus {
     background-color: #d3d3d3; }
 
 a.headerButton.disabled {
@@ -5653,6 +5656,11 @@ div.headerBar {
     margin-top: -4px; }
     .modal-delete-confirmation button .modal-confirm-delete {
       margin-right: -18px; }
+  .modal-delete-confirmation fieldset input {
+    float: left; }
+  .modal-delete-confirmation fieldset label {
+    float: left;
+    margin-left: 10px; }
 
 .createModalDialog table {
   width: 100%; }
@@ -6893,7 +6901,7 @@ toolbar {
   clear: both; }
 
 .swagger-section #swagger-ui-container {
-  margin: 0.3em 1em !important; }
+  margin: .3em 1em !important; }
 
 .alert {
   padding: 15px 35px 15px 14px; }
@@ -7181,6 +7189,7 @@ input.gv-radio-button {
   width: 100%; }
 
 #infoTab,
+#graphTab,
 #collectionTab {
   border-bottom: 0;
   margin-bottom: 1px;
@@ -7188,10 +7197,12 @@ input.gv-radio-button {
   padding-right: 10px; }
 
 #infoTab li,
+#graphTab li,
 #collectionTab li {
   float: right; }
 
 #infoTab a,
+#graphTab a,
 #collectionTab a {
   background-color: #8c8a89;
   border-bottom: 1px solid #666;
@@ -7205,6 +7216,7 @@ input.gv-radio-button {
   padding: 2px 15px !important; }
 
 #infoTab .active > a,
+#graphTab .active > a,
 #collectionTab .active > a {
   background-color: #fff;
   border-color: #888 #888 transparent !important;
