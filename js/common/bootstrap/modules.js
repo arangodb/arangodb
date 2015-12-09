@@ -101,18 +101,20 @@ function createRequire(module) {
   // Enable support to add extra extension types
   require.extensions = Module._extensions;
 
-  require.cache = Module._cache;
+  require.cache = module.cache;
 
   return require;
 }
 
-function Module(id, parent) {
+function Module(id, parent, cache) {
   this.id = id;
   this.exports = {};
   this.parent = parent;
   if (parent && parent.children) {
     parent.children.push(this);
   }
+
+  this.cache = cache || (parent ? parent.cache : Module._cache);
 
   this.context = {
     print: internal.print,
@@ -126,6 +128,7 @@ function Module(id, parent) {
   };
 
   if (parent) {
+    this.root = parent.root;
     this.preprocess = parent.preprocess;
     Object.keys(parent.context).forEach(function (key) {
       if (!hasOwnProperty(this.context, key)) {
@@ -403,6 +406,7 @@ function isGlobalModule(filename) {
 //    Then have it load  the file contents before returning its exports
 //    object.
 Module._load = function(request, parent, isMain) {
+
   var filename = request;
   var dbModule = false;
   var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
