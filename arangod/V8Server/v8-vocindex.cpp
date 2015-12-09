@@ -1065,57 +1065,62 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   arangodb::velocypack::Builder velocy;
   using arangodb::velocypack::Value;
   using arangodb::velocypack::ValueType;
+  using arangodb::velocypack::ObjectBuilder;
+  using arangodb::velocypack::ArrayBuilder;
 
-  velocy.openObject();
-  velocy("id",           Value(cid))
-        ("name",         Value(name))
-        ("type",         Value((int) collectionType))
-        ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
-        ("deleted",      Value(parameters._deleted))
-        ("doCompact",    Value(parameters._doCompact))
-        ("isSystem",     Value(parameters._isSystem))
-        ("isVolatile",   Value(parameters._isVolatile))
-        ("waitForSync",  Value(parameters._waitForSync))
-        ("journalSize",  Value(parameters._maximalSize))
-        ("indexBuckets", Value(parameters._indexBuckets))
-        ("keyOptions",   Value(ValueType::Object))
-            ("type",          Value("traditional"))
-            ("allowUserKeys", Value(allowUserKeys))
-         .close();
+  {
+    ObjectBuilder ob(&velocy);
+    velocy("id",           Value(cid))
+          ("name",         Value(name))
+          ("type",         Value((int) collectionType))
+          ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
+          ("deleted",      Value(parameters._deleted))
+          ("doCompact",    Value(parameters._doCompact))
+          ("isSystem",     Value(parameters._isSystem))
+          ("isVolatile",   Value(parameters._isVolatile))
+          ("waitForSync",  Value(parameters._waitForSync))
+          ("journalSize",  Value(parameters._maximalSize))
+          ("indexBuckets", Value(parameters._indexBuckets))
+          ("keyOptions",   Value(ValueType::Object))
+              ("type",          Value("traditional"))
+              ("allowUserKeys", Value(allowUserKeys))
+           .close();
 
-  velocy("shardKeys", Value(ValueType::Array));
-  for (auto const& sk : shardKeys) {
-    velocy(Value(sk));
+    {
+      ArrayBuilder ab(&velocy, "shardKeys");
+      for (auto const& sk : shardKeys) {
+        velocy(Value(sk));
+      }
+    }
+
+    { 
+      ObjectBuilder ob(&velocy, "shards");
+      for (auto const& p : shards) {
+        ArrayBuilder ab(&velocy, p.first);
+        velocy(Value(p.second))
+      }
+    }
+
+    {
+      ArrayBuilder ab(&velocy, "indexes");
+
+      // create a dummy primary index
+      TRI_document_collection_t* doc = nullptr;
+      std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex
+          (new triagens::arango::PrimaryIndex(doc));
+
+      auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+      triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+
+      if (collectionType == TRI_COL_TYPE_EDGE) {
+        // create a dummy edge index
+        std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(id, nullptr));
+
+        idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+        triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+      }
+    }
   }
-  velocy.close();
-
-  velocy("shards", Value(ValueType::Object));
-  for (auto const& p : shards) {
-    velocy(p.first, Value(ValueType::Array))
-       (Value(p.second))
-    .close();
-  }
-  velocy.close();
-
-  velocy("indexes", Value(ValueType::Array));
-
-  // create a dummy primary index
-  TRI_document_collection_t* doc = nullptr;
-  std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex
-      (new triagens::arango::PrimaryIndex(doc));
-
-  auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-  triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
-
-  if (collectionType == TRI_COL_TYPE_EDGE) {
-    // create a dummy edge index
-    std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(id, nullptr));
-
-    idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-    triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
-  }
-  velocy.close();  // closes indexes array
-  velocy.close();  // closes top level
 
   string errorMsg;
   int myerrno = ci->createCollectionCoordinator(databaseName,
