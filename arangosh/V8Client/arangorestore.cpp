@@ -281,18 +281,16 @@ static void LocalExitFunction (int exitCode, void* data) {
 /// @brief extract an error message from a response
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetHttpErrorMessage (SimpleHttpResult* result) {
-  const StringBuffer& body = result->getBody();
-  string details;
+static std::string GetHttpErrorMessage (SimpleHttpResult* result) {
+  StringBuffer const& body = result->getBody();
+  std::string details;
   LastErrorCode = TRI_ERROR_NO_ERROR;
 
-  TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
+  std::unique_ptr<TRI_json_t> json(JsonHelper::fromString(body.c_str(), body.length()));
 
   if (json != nullptr) {
-    const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
-    const int errorNum = JsonHelper::getNumericValue<int>(json, "errorNum", 0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    std::string const& errorMessage = JsonHelper::getStringValue(json.get(), "errorMessage", "");
+    int const errorNum = JsonHelper::getNumericValue<int>(json.get(), "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
@@ -311,7 +309,6 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int TryCreateDatabase (std::string const& name) {
-
   triagens::basics::Json json(triagens::basics::Json::Object);
   json("name", triagens::basics::Json(name));
 
@@ -466,6 +463,9 @@ static int SendRestoreCollection (TRI_json_t const* json,
 
   if (response->wasHttpError()) {
     errorMsg = GetHttpErrorMessage(response.get());
+    if (LastErrorCode != TRI_ERROR_NO_ERROR) {
+      return LastErrorCode;
+    }
 
     return TRI_ERROR_INTERNAL;
   }
@@ -495,6 +495,9 @@ static int SendRestoreIndexes (TRI_json_t const* json,
 
   if (response->wasHttpError()) {
     errorMsg = GetHttpErrorMessage(response.get());
+    if (LastErrorCode != TRI_ERROR_NO_ERROR) {
+      return LastErrorCode;
+    }
 
     return TRI_ERROR_INTERNAL;
   }
@@ -528,6 +531,9 @@ static int SendRestoreData (string const& cname,
 
   if (response->wasHttpError()) {
     errorMsg = GetHttpErrorMessage(response.get());
+    if (LastErrorCode != TRI_ERROR_NO_ERROR) {
+      return LastErrorCode;
+    }
 
     return TRI_ERROR_INTERNAL;
   }
@@ -563,7 +569,7 @@ static int SortCollections (const void* l,
 /// @brief process all files from the input directory
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessInputDirectory (string& errorMsg) {
+static int ProcessInputDirectory (std::string& errorMsg) {
   // create a lookup table for collections
   map<string, bool> restrictList;
   for (size_t i = 0; i < Collections.size(); ++i) {
@@ -674,20 +680,23 @@ static int ProcessInputDirectory (string& errorMsg) {
   // step2: run the actual import
   {
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* json = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
+      TRI_json_t const* json = static_cast<TRI_json_t const*>(TRI_AtVector(&collections->_value._objects, i));
       TRI_json_t const* parameters = JsonHelper::getObjectElement(json, "parameters");
       TRI_json_t const* indexes = JsonHelper::getObjectElement(json, "indexes");
-      const string cname = JsonHelper::getStringValue(parameters, "name", "");
-      const string cid   = JsonHelper::getStringValue(parameters, "cid", "");
+      std::string const cname = JsonHelper::getStringValue(parameters, "name", "");
+      std::string const cid   = JsonHelper::getStringValue(parameters, "cid", "");
+          
+      int type = JsonHelper::getNumericValue<int>(parameters, "type", 2);
+      std::string const collectionType(type == 2 ? "document" : "edge");
 
       if (ImportStructure) {
         // re-create collection
         if (Progress) {
           if (Overwrite) {
-            cout << "Re-creating collection '" << cname << "'..." << endl;
+            cout << "# Re-creating " << collectionType << " collection '" << cname << "'..." << endl;
           }
           else {
-            cout << "Creating collection '" << cname << "'..." << endl;
+            cout << "# Creating " << collectionType << " collection '" << cname << "'..." << endl;
           }
         }
 
@@ -718,7 +727,7 @@ static int ProcessInputDirectory (string& errorMsg) {
           // found a datafile
 
           if (Progress) {
-            cout << "Loading data into collection '" << cname << "'..." << endl;
+            cout << "# Loading data into " << collectionType << " collection '" << cname << "'..." << endl;
           }
 
           int fd = TRI_OPEN(datafile.c_str(), O_RDONLY);
@@ -829,7 +838,7 @@ static int ProcessInputDirectory (string& errorMsg) {
         if (TRI_LengthVector(&indexes->_value._objects) > 0) {
           // we actually have indexes
           if (Progress) {
-            cout << "Creating indexes for collection '" << cname << "'..." << endl;
+            cout << "# Creating indexes for collection '" << cname << "'..." << endl;
           }
 
           int res = SendRestoreIndexes(json, errorMsg);
@@ -1005,7 +1014,7 @@ int main (int argc, char* argv[]) {
   }
 
   if (Progress) {
-    cout << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << endl;
+    cout << "# Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification() << "'" << endl;
   }
 
   memset(&Stats, 0, sizeof(Stats));
@@ -1025,6 +1034,16 @@ int main (int argc, char* argv[]) {
     res = TRI_ERROR_INTERNAL;
   }
 
+  if (res != TRI_ERROR_NO_ERROR) {
+    if (! errorMsg.empty()) {
+      cerr << "Error: " << errorMsg << endl;
+    }
+    else {
+      cerr << "An error occurred" << endl;
+    }
+    ret = EXIT_FAILURE;
+  }
+
 
   if (Progress) {
     if (ImportData) {
@@ -1035,14 +1054,6 @@ int main (int argc, char* argv[]) {
     else if (ImportStructure) {
       cout << "Processed " << Stats._totalCollections << " collection(s)" << endl;
     }
-  }
-
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (! errorMsg.empty()) {
-      cerr << "Error: " << errorMsg << endl;
-    }
-    ret = EXIT_FAILURE;
   }
 
   if (Client != nullptr) {
