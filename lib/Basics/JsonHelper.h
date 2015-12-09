@@ -36,6 +36,9 @@
 #include "Basics/StringBuffer.h"
 #include <iosfwd>
 
+#include "velocypack/Parser.h"
+#include "velocypack/Builder.h"
+
 namespace triagens {
   namespace basics {
 
@@ -281,6 +284,45 @@ namespace triagens {
 
         static TRI_json_t const* checkAndGetArrayValue (TRI_json_t const*, 
                                                        char const*); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TRI_json_t to VelocyPack, this is a temporary, inefficient method
+/// which must be removed later on.
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack (
+                TRI_json_t const* json) {
+          std::string tmp = toString(json);
+          arangodb::velocypack::Parser parser;
+          try {
+            parser.parse(tmp);
+          }
+          catch (...) {
+            return std::shared_ptr<arangodb::velocypack::Builder>();
+          }
+          return parser.steal();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief TRI_json_t to VelocyPack, writing into an existing Builder
+////////////////////////////////////////////////////////////////////////////////
+
+        static int toVelocyPack (
+                TRI_json_t const* json,
+                arangodb::velocypack::Builder& builder) {
+          std::string tmp = toString(json);
+          arangodb::velocypack::Options opt;
+          opt.clearBuilderBeforeParse = false;
+          arangodb::velocypack::Parser parser(builder, &opt);
+          try {
+            parser.parse(tmp);
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
+          return TRI_ERROR_NO_ERROR;
+        }
+
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1150,7 +1192,6 @@ namespace triagens {
           }
         }
          
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
