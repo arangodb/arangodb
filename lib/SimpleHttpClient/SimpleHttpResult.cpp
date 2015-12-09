@@ -31,6 +31,9 @@
 #include "SimpleHttpResult.h"
 #include "Basics/StringUtils.h"
 
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::basics;
 using namespace std;
 
@@ -79,6 +82,12 @@ namespace triagens {
     
     StringBuffer const& SimpleHttpResult::getBody () const {
       return _resultBody;
+    }
+
+    std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack (VPackOptions const& options) const {
+      VPackParser parser(&options);
+      parser.parse(_resultBody.c_str());
+      return parser.steal();
     }
 
     string SimpleHttpResult::getResultTypeMessage () const {
