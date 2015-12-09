@@ -999,19 +999,26 @@ static int RunClusterDump (string& errorMsg) {
   }
 
 
-  StringBuffer const& data = response->getBody();
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  }
+  catch (...) {
+    errorMsg = "got malformed JSON response from server";
 
-  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
+    return TRI_ERROR_INTERNAL;
+  }
+  VPackSlice const body = parsedBody->slice();
 
-  if (! JsonHelper::isObject(json.get())) {
+  if (! body.isObject()) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getObjectElement(json.get(), "collections");
+  VPackSlice const collections = body.get("collections");
 
-  if (! JsonHelper::isArray(collections)) {
+  if (! collections.isArray()) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
@@ -1024,28 +1031,24 @@ static int RunClusterDump (string& errorMsg) {
   }
 
   // iterate over collections
-  size_t const n = TRI_LengthArrayJson(collections);
+  for (auto const& collection : VPackArrayIterator(collections)) {
 
-  for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
+    if (! collection.isObject()) {
+      errorMsg = "got malformed JSON response from server";
 
-    if (! JsonHelper::isObject(collection)) {
+      return TRI_ERROR_INTERNAL;
+    }
+    VPackSlice const parameters = collection.get("parameters");
+
+    if (! parameters.isObject()) {
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
     }
 
-    TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
-
-    if (! JsonHelper::isObject(parameters)) {
-      errorMsg = "got malformed JSON response from server";
-
-      return TRI_ERROR_INTERNAL;
-    }
-
-    const string id    = JsonHelper::getStringValue(parameters, "id", "");
-    const string name  = JsonHelper::getStringValue(parameters, "name", "");
-    const bool deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
+    const string id    = triagens::basics::VelocyPackHelper::getStringValue(parameters, "id", "");
+    const string name  = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+    const bool deleted = triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false);
 
     if (id == "" || name == "") {
       errorMsg = "got malformed JSON response from server";
@@ -1095,7 +1098,8 @@ static int RunClusterDump (string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      const string collectionInfo = JsonHelper::toString(collection);
+      // TODO We might want to store VelocyPack instead of JSON
+      const string collectionInfo = collection.toJson();
 
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
         TRI_CLOSE(fd);
@@ -1110,12 +1114,6 @@ static int RunClusterDump (string& errorMsg) {
 
     if (DumpData) {
       // save the actual data
-
-      // First we have to go through all the shards, what are they?
-      TRI_json_t const* shards = JsonHelper::getObjectElement(parameters,
-                                                             "shards");
-      map<string, string> shardTab = JsonHelper::stringObject(shards);
-      // This is now a map from shardIDs to DBservers
 
       // Now set up the output file:
       std::string const hexString(triagens::rest::SslInterface::sslMD5(name));
@@ -1134,10 +1132,15 @@ static int RunClusterDump (string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      map<string, string>::iterator it;
-      for (it = shardTab.begin(); it != shardTab.end(); it++) {
-        string shardName = it->first;
-        string DBserver = it->second;
+      // First we have to go through all the shards, what are they?
+      VPackSlice const shards = parameters.get("shards");
+
+      // Iterate over the Map of shardId to server
+      for (auto const it : VPackObjectIterator(shards)) {
+        TRI_ASSERT(it.key.isString());
+        TRI_ASSERT(it.value.isString());
+        string shardName = it.key.copyString();
+        string DBserver = it.value.copyString();
         if (Progress) {
           cout << "# Dumping shard '" << shardName << "' from DBserver '"
                << DBserver << "' ..." << endl;
