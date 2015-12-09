@@ -471,12 +471,18 @@ ModificationOptions ExecutionPlan::createModificationOptions (AstNode const* nod
     // no functions in the query can access document data...
     bool isReadWrite = false;
 
-    auto const collections = _ast->query()->collections();
+    if (_ast->containsTraversal()) {
+      // its unclear which collections the traversal will access
+      isReadWrite = true;
+    }
+    else {
+      auto const collections = _ast->query()->collections();
 
-    for (auto const& it : *(collections->collections())) {
-      if (it.second->isReadWrite) {
-        isReadWrite = true;
-        break;
+      for (auto const& it : *(collections->collections())) {
+        if (it.second->isReadWrite) {
+          isReadWrite = true;
+          break;
+        }
       }
     }
 

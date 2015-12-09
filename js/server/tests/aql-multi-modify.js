@@ -73,6 +73,43 @@ function ahuacatlMultiModifySuite () {
       c3 = null;
     },
     
+    testTraversalAndModification : function () {
+      c1.insert({ _key: "1" });
+      c1.insert({ _key: "2" });
+      c1.insert({ _key: "3" });
+      c1.insert({ _key: "4" });
+      c3.insert(cn1 + "/1", cn1 + "/2", { });
+      c3.insert(cn1 + "/2", cn1 + "/3", { });
+
+      var q = "FOR v IN 1..99 OUTBOUND '" + cn1 + "/1' @@e REMOVE v._key IN @@cn";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1, "@e": cn3 });
+      assertEqual([ ], actual.json);
+      assertEqual(2, actual.stats.writesExecuted);
+      assertEqual(2, c1.count());
+      assertTrue(c1.exists("1"));
+      assertTrue(c1.exists("4"));
+      assertEqual(2, c3.count());
+    },
+    
+    testTraversalAndModificationBig : function () {
+      var i;
+      for (i = 1; i <= 2010; ++i) {
+        c1.insert({ _key: String(i) });
+        if (i !== 2010) {
+          c3.insert(cn1 + "/" + String(i), cn1 + "/" + String(i + 1), { });
+        }
+      }
+
+      var q = "FOR v IN 1..2010 OUTBOUND '" + cn1 + "/1' @@e REMOVE v._key IN @@cn";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1, "@e": cn3 });
+
+      assertEqual([ ], actual.json);
+      assertEqual(2009, actual.stats.writesExecuted);
+      assertEqual(1, c1.count());
+      assertTrue(c1.exists("1"));
+      assertEqual(2009, c3.count());
+    },
+    
     testTraversalAfterModification : function () {
       var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn FOR doc IN OUTBOUND 'v/1' @@e RETURN doc";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1, "@e": cn3 });
