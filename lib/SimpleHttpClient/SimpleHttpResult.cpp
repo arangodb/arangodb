@@ -90,6 +90,13 @@ namespace triagens {
       return parser.steal();
     }
 
+    // Default case
+    std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack () const {
+      VPackOptions options;
+      options.checkAttributeUniqueness = true;
+      return getBodyVelocyPack(options);
+    }
+
     string SimpleHttpResult::getResultTypeMessage () const {
       switch (_requestResultType) {
         case (COMPLETE):

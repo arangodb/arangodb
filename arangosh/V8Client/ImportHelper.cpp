@@ -683,9 +683,7 @@ namespace triagens {
 
       std::shared_ptr<VPackBuilder> parsedBody;
       try {
-        VPackOptions options;
-        options.checkAttributeUniqueness = true;
-        parsedBody = result->getBodyVelocyPack(options);
+        parsedBody = result->getBodyVelocyPack();
       }
       catch (...) {
         // No action required

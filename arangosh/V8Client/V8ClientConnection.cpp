@@ -107,9 +107,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
       _mode = "unknown mode";
 
       try {
-        VPackOptions options;
-        options.checkAttributeUniqueness = true;
-        std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack(options);
+        std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
         VPackSlice const body = parsedBody->slice();
         const string server = triagens::basics::VelocyPackHelper::getStringValue(body, "server", "");
 
