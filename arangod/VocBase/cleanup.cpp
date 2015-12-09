@@ -121,7 +121,7 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
         isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     
-        if (isUnloading) {
+        if (! isUnloading) {
           popped = false;
           ditches->process(popped, [] (triagens::arango::Ditch const* ditch) -> bool {
             return (ditch->type() == triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
