@@ -1363,7 +1363,8 @@ RemoteBlock::RemoteBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, en),
     _server(server),
     _ownName(ownName),
-    _queryId(queryId) {
+    _queryId(queryId),
+    _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
 
   TRI_ASSERT(! queryId.empty());
   TRI_ASSERT_EXPENSIVE((triagens::arango::ServerState::instance()->isCoordinator() && ownName.empty()) ||
@@ -1441,7 +1442,7 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  if (! static_cast<RemoteNode const*>(_exeNode)->isResponsibleForInitCursor()) {
+  if (! _isResponsibleForInitCursor) {
     // do nothing...
     return TRI_ERROR_NO_ERROR; 
   }
@@ -1485,7 +1486,7 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 int RemoteBlock::shutdown (int errorCode) {
   ENTER_BLOCK
 
-  if (! static_cast<RemoteNode const*>(_exeNode)->isResponsibleForInitCursor()) {
+  if (! _isResponsibleForInitCursor) {
     // do nothing...
     return TRI_ERROR_NO_ERROR; 
   }

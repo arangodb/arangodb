@@ -654,6 +654,12 @@ namespace triagens {
 
         ExecutionStats _deltaStats;
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not this block will forward initializeCursor or shutDown
+/// requests
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _isResponsibleForInitCursor;
     };
 
   }  // namespace triagens::aql
