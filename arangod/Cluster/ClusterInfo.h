@@ -270,8 +270,11 @@ namespace triagens {
         typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
         std::shared_ptr<ShardMap> shardIds () const {
-          std::shared_ptr<ShardMap> res
-              = std::atomic_load(&_shardMapCache);
+          std::shared_ptr<ShardMap> res;
+          {
+            std::lock_guard<std::mutex> locker(_mutex);
+            res = _shardMapCache;
+          }
           if (res.get() != nullptr) {
             return res;
           }
@@ -296,7 +299,10 @@ namespace triagens {
               }
             }
           }
-          std::atomic_store(&_shardMapCache, res);
+          {
+            std::lock_guard<std::mutex> locker(_mutex);
+            _shardMapCache = res;
+          }
           return res;
         }
 
@@ -332,6 +338,9 @@ namespace triagens {
       private:
 
         TRI_json_t*                        _json;
+
+        // Only to protect the cache:
+        mutable std::mutex                 _mutex;
 
         // Just a cache
         mutable std::shared_ptr<ShardMap>  _shardMapCache;
