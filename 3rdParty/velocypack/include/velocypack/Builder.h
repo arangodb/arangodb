@@ -716,6 +716,12 @@ struct ArrayBuilder final : public BuilderContainer, public NoHeapAllocation {
   ArrayBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }
+  ArrayBuilder(Builder* builder, std::string const& attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
+  }
+  ArrayBuilder(Builder* builder, char const* attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
+  }
   ~ArrayBuilder() {
     try {
       builder->close();
