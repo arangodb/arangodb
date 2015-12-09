@@ -425,12 +425,17 @@ private:
 
  public:
 
-  inline void addArray(bool unindexed = false) {
-    addCompoundValue(unindexed ? 0x13 : 0x06);
+  inline void openArray(bool unindexed = false) {
+    openCompoundValue(unindexed ? 0x13 : 0x06);
   }
 
-  // this is an alias for addArray()
-  inline void openArray(bool unindexed = false) {
+  inline void openObject(bool unindexed = false) {
+    openCompoundValue(unindexed ? 0x14 : 0x0b);
+  }
+
+ private:
+
+  inline void addArray(bool unindexed = false) {
     addCompoundValue(unindexed ? 0x13 : 0x06);
   }
 
@@ -438,12 +443,6 @@ private:
     addCompoundValue(unindexed ? 0x14 : 0x0b);
   }
 
-  // this is an alias for addObject()
-  inline void openObject(bool unindexed = false) {
-    addCompoundValue(unindexed ? 0x14 : 0x0b);
-  }
-
- private:
   template <typename T>
   uint8_t* addInternal(T const& sub) {
     bool haveReported = false;
@@ -513,6 +512,28 @@ private:
     _start[_pos++] = type;
     memset(_start + _pos, 0, 8);
     _pos += 8;  // Will be filled later with bytelength and nr subs
+  }
+
+  void openCompoundValue(uint8_t type) {
+    bool haveReported = false;
+    if (!_stack.empty()) {
+      ValueLength& tos = _stack.back();
+      if (_start[tos] != 0x06 && _start[tos] != 0x13) {
+        throw Exception(Exception::BuilderNeedOpenCompound);
+      }
+      reportAdd(tos);
+      haveReported = true;
+    }
+    try {
+      addCompoundValue(type);
+    } catch (...) {
+      // clean up in case of an exception
+      if (haveReported) {
+        cleanupAdd();
+      }
+      throw;
+    }
+
   }
 
   uint8_t* set(Value const& item);
