@@ -112,6 +112,27 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
     TRI_ASSERT(ditch != nullptr);
 
     if (! popped) {
+      // we'll be getting here only if an UNLOAD ditch is at the head of the list
+
+      // check if the collection is still in the "unloading" state. if not,
+      // then someone has already triggered a reload or a deletion of the collection
+      bool isUnloading = false;
+      if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+        isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    
+        if (isUnloading) {
+          popped = false;
+          ditches->process(popped, [] (triagens::arango::Ditch const* ditch) -> bool {
+            return (ditch->type() == triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
+          });
+          if (popped) {
+            // we've changed the list. try with current state in next turn
+            return;
+          }
+        }
+      }
+
       if (! TRI_IsFullyCollectedDocumentCollection(document)) {
         bool isDeleted = false;
 

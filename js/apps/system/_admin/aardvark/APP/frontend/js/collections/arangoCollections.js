@@ -31,7 +31,7 @@
           case 3:
             return 'loaded';
           case 4:
-            return 'in the process of being unloaded';
+            return 'will be unloaded';
           case 5:
             return 'deleted';
           case 6:

@@ -1,6 +1,36 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* changed collection status terminology in web interface for collections for 
+  which an unload request has been issued from `in the process of being unloaded`
+  to `will be unloaded`.
+
+* unloading a collection via the web interface will now trigger garbage collection
+  in all v8 contexts and force a WAL flush. This increases the chances of perfoming
+  the unload faster.
+
+* added the following attributes to the result of `collection.figures()` and the
+  corresponding HTTP API at `PUT /_api/collection/<name>/figures`:
+
+  - `documentReferences`: The number of references to documents in datafiles
+    that JavaScript code currently holds. This information can be used for
+    debugging compaction and unload issues.
+  - `waitingFor`: An optional string value that contains information about
+    which object type is at the head of the collection's cleanup queue. This 
+    information can be used for debugging compaction and unload issues.
+  - `compactionStatus.time`: The point in time the compaction for the collection
+    was last executed. This information can be used for debugging compaction
+    issues.
+  - `compactionStatus.message`: The action that was performed when the compaction
+    was last run for the collection. This information can be used for debugging
+    compaction issues.
+
+  Note: `waitingFor` and `compactionStatus` may be empty when called on a coordinator
+  in a cluster.
+
+* the compaction will now provide queryable status info that can be used to track
+  its progress. The compaction status is displayed in the web interface, too.
+
 * better error reporting for arangodump and arangorestore
 
 * arangodump will now fail by default when trying to dump edges that
