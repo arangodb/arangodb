@@ -34,9 +34,12 @@
 using namespace arangodb::velocypack;
 
 std::string Builder::toString() const {
+  Options options;
+  options.prettyPrint = true;
+
   std::string buffer;
   StringSink sink(&buffer);
-  Dumper::dump(slice(), &sink, options);
+  Dumper::dump(slice(), &sink, &options);
   return std::move(buffer);
 }
 
