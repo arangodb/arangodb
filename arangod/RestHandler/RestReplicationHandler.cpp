@@ -1267,28 +1267,34 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     if (found) {
       firstRegularTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
     }
-
-    char const* ptr = _request->body();
-    
-    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, ptr));
-
-    if (! TRI_IsArrayJson(json.get())) {
+    VPackOptions options;
+    options.checkAttributeUniqueness = true;
+    std::shared_ptr<VPackBuilder> parsedRequest;
+    try {
+      parsedRequest = _request->toVelocyPack(options);
+    }
+    catch (...) {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid body value. expecting array");
       return;
     }
-  
-    for (size_t i = 0; i < TRI_LengthArrayJson(json.get()); ++i) {
-      auto id = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
-      if (! TRI_IsStringJson(id)) {
+    VPackSlice const slice = parsedRequest->slice();
+    if (! slice.isArray()) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return;
+    }
+
+    for (auto const& id : VPackArrayIterator(slice)) {
+      if (id.isString()) {
         generateError(HttpResponse::BAD,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
                       "invalid body value. expecting array of ids");
         return;
       }
-    
-      transactionIds.emplace(StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1));
+      transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
   
@@ -1685,13 +1691,11 @@ void RestReplicationHandler::handleCommandClusterInventory () {
         }
         else {
           map<string, AgencyCommResultEntry>::iterator it;
-          /*
           VPackBuilder resultBuilder;
           resultBuilder.openObject();
           resultBuilder.add("collections", VPackValue(VPackValueType::Array));
           for (auto const& it : result._values) {
             // Only temporary until AgencyResult has _velocy
-            // Requires JsonHelper::toVelocyPack from Max
             std::shared_ptr<VPackBuilder> parsedSubResult = JsonHelper::toVelocyPack(it.second._json);
             VPackSlice const subResultSlice = parsedSubResult->slice();
             if (subResultSlice.isObject()) {
@@ -1710,46 +1714,6 @@ void RestReplicationHandler::handleCommandClusterInventory () {
           resultBuilder.add("state", VPackValue("unused"));
           resultBuilder.close();
           generateResult(HttpResponse::OK, resultBuilder.slice());
-          */
-
-          TRI_json_t json;
-          TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json, result._values.size());
-          for (it = result._values.begin();
-               it != result._values.end(); ++it) {
-            if (TRI_IsObjectJson(it->second._json)) {
-              TRI_json_t const* sub
-                  = TRI_LookupObjectJson(it->second._json, "isSystem");
-              if (includeSystem ||
-                  (TRI_IsBooleanJson(sub) && ! sub->_value._boolean)) {
-                TRI_json_t coll;
-                TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &coll, 2);
-                sub = TRI_LookupObjectJson( it->second._json, "indexes");
-                TRI_InsertObjectJson(TRI_CORE_MEM_ZONE,&coll,"indexes", sub);
-                TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, it->second._json,
-                                    "indexes");
-                // This makes a copy to the CORE memory zone:
-                TRI_InsertObjectJson(TRI_CORE_MEM_ZONE, &coll,
-                                     "parameters", it->second._json);
-                TRI_PushBack2ArrayJson(&json, &coll);
-              }
-            }
-          }
-
-          // Wrap the result:
-          TRI_json_t wrap;
-          TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &wrap, 3);
-          TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &wrap,"collections", &json);
-          TRI_voc_tick_t tick = TRI_CurrentTickServer();
-          char* tickString = TRI_StringUInt64(tick);
-          char const* stateStatic = "unused";
-          char* state = TRI_DuplicateString2(stateStatic, strlen(stateStatic));
-          TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &wrap, "tick",
-                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
-          TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &wrap, "state",
-                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, state, strlen(state)));
-
-          generateResult(HttpResponse::OK, &wrap);
-          TRI_DestroyJson(TRI_CORE_MEM_ZONE, &wrap);
         }
       }
     }
@@ -2589,6 +2553,85 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
   }
 }
 
+static int restoreDataParser (char const* ptr,
+                              char const* pos,
+                              std::string const& invalidMsg,
+                              bool useRevision,
+                              std::string& errorMsg,
+                              std::string& key,
+                              VPackSlice& doc,
+                              TRI_voc_rid_t& rid,
+                              TRI_replication_operation_e& type) {
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    std::string line(ptr, pos);
+    builder = VPackParser::fromJson(line);
+  }
+  catch (VPackException const&) {
+    // Could not parse the given string
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+  }
+  catch (std::exception const&) {
+    // Could not even build the string
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+  }
+  VPackSlice const slice = builder->slice();
+
+  if (! slice.isObject()) {
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+  }
+
+  type = REPLICATION_INVALID;
+
+  for (auto const& pair : VPackObjectIterator(slice)) {
+    if (! pair.key.isString()) {
+      errorMsg = invalidMsg;
+
+      return TRI_ERROR_HTTP_CORRUPTED_JSON;
+    }
+
+    std::string const attributeName = pair.key.copyString();
+
+    if (attributeName == "type") {
+      if (pair.value.isNumber()) {
+        type = static_cast<TRI_replication_operation_e>(pair.value.getNumericValue<int>());
+      }
+    }
+
+    else if (attributeName == "key") {
+      if (pair.value.isString()) {
+        key = pair.value.copyString();
+      }
+    }
+
+    else if (useRevision && attributeName == "rev") {
+      if (pair.value.isString()) {
+        rid = StringUtils::uint64(pair.value.copyString());
+      }
+    }
+
+    else if (attributeName == "data") {
+      if (pair.value.isObject()) {
+        doc = pair.value;
+      }
+    }
+  }
+
+  // key must not be 0, but doc can be 0!
+  if (key.empty()) {
+    errorMsg = invalidMsg;
+
+    return TRI_ERROR_HTTP_BAD_PARAMETER;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
@@ -2617,78 +2660,18 @@ int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transacti
 
     if (pos - ptr > 1) {
       // found something
-      std::shared_ptr<VPackBuilder> builder;
-      try {
-        std::string line(ptr, pos);
-        builder = VPackParser::fromJson(line);
-      }
-      catch (VPackException const&) {
-        // Could not parse the given string
-        errorMsg = invalidMsg;
-
-        return TRI_ERROR_HTTP_CORRUPTED_JSON;
-      }
-      catch (std::exception const&) {
-        // Could not even build the string
-        errorMsg = invalidMsg;
-
-        return TRI_ERROR_HTTP_CORRUPTED_JSON;
-      }
-      VPackSlice const slice = builder->slice();
-
-      if (! slice.isObject()) {
-        errorMsg = invalidMsg;
-
-        return TRI_ERROR_HTTP_CORRUPTED_JSON;
-      }
-
-      TRI_replication_operation_e type = REPLICATION_INVALID;
-      std::string key       = "";
-      TRI_voc_rid_t rid     = 0;
+      std::string key;
       VPackSlice doc;
+      TRI_voc_rid_t rid;
+      TRI_replication_operation_e type;
 
-      for (auto const& pair : VPackObjectIterator(slice)) {
-        if (! pair.key.isString()) {
-          errorMsg = invalidMsg;
-
-          return TRI_ERROR_HTTP_CORRUPTED_JSON;
-        }
-
-        std::string const attributeName = pair.key.copyString();
-
-        if (attributeName == "type") {
-          if (pair.value.isNumber()) {
-            type = static_cast<TRI_replication_operation_e>(pair.value.getNumericValue<int>());
-          }
-        }
-
-        else if (attributeName == "key") {
-          if (pair.value.isString()) {
-            key = pair.value.copyString();
-          }
-        }
-
-        else if (useRevision && attributeName == "rev") {
-          if (pair.value.isString()) {
-            rid = StringUtils::uint64(pair.value.copyString());
-          }
-        }
-
-        else if (attributeName == "data") {
-          if (pair.value.isObject()) {
-            doc = pair.value;
-          }
-        }
+      int res = restoreDataParser(ptr, pos, invalidMsg, useRevision,
+                                  errorMsg, key, doc, rid, type);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
 
-      // key must not be 0, but doc can be 0!
-      if (key.empty()) {
-        errorMsg = invalidMsg;
-
-        return TRI_ERROR_HTTP_BAD_PARAMETER;
-      }
-
-      int res = applyCollectionDumpMarker(trx, resolver, trxCollection, type, (const TRI_voc_key_t) key.c_str(), rid, doc, errorMsg);
+      res = applyCollectionDumpMarker(trx, resolver, trxCollection, type, (const TRI_voc_key_t) key.c_str(), rid, doc, errorMsg);
 
       if (res != TRI_ERROR_NO_ERROR && ! force) {
         return res;
@@ -2867,77 +2850,27 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
     if (pos - ptr > 1) {
       // found something
-      TRI_json_t* json = TRI_JsonString(TRI_CORE_MEM_ZONE, ptr);
+      //
+      std::string key;
+      VPackSlice doc;
+      TRI_voc_rid_t rid;
+      TRI_replication_operation_e type;
 
-      if (! JsonHelper::isObject(json)) {
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-        }
-
-        errorMsg = invalidMsg;
-
-        res = TRI_ERROR_HTTP_CORRUPTED_JSON;
-        break;
-      }
-
-      const char* key       = nullptr;
-      TRI_json_t const* doc = nullptr;
-      TRI_replication_operation_e type = REPLICATION_INVALID;
-
-      size_t const n = TRI_LengthVector(&json->_value._objects);
-
-      for (size_t i = 0; i < n; i += 2) {
-        TRI_json_t const* element = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-
-        if (! JsonHelper::isString(element)) {
-          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-          errorMsg = invalidMsg;
-
-          res = TRI_ERROR_HTTP_CORRUPTED_JSON;
-          break;
-        }
-
-        const char* attributeName = element->_value._string.data;
-        TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
-
-        if (TRI_EqualString(attributeName, "type")) {
-          if (JsonHelper::isNumber(value)) {
-            type = (TRI_replication_operation_e) (int) value->_value._number;
-          }
-        }
-
-        else if (TRI_EqualString(attributeName, "key")) {
-          if (JsonHelper::isString(value)) {
-            key = value->_value._string.data;
-          }
-        }
-
-        else if (TRI_EqualString(attributeName, "data")) {
-          if (JsonHelper::isObject(value)) {
-            doc = value;
-          }
-        }
-      }
+      res = restoreDataParser(ptr, pos, invalidMsg, false,
+                                  errorMsg, key, doc, rid, type);
       if (res != TRI_ERROR_NO_ERROR) {
+        // We might need to clean up buffers
         break;
       }
 
-      // key must not be 0, but doc can be 0!
-      if (key == nullptr) {
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-        errorMsg = invalidMsg;
-
-        res = TRI_ERROR_HTTP_BAD_PARAMETER;
-        break;
-      }
-
-      if (nullptr != doc && type != REPLICATION_MARKER_REMOVE) {
+      if (! doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        res = ci->getResponsibleShard(col->id_as_string(), doc, true,
+        // TODO Only temporary
+        std::unique_ptr<TRI_json_t> tmp(triagens::basics::VelocyPackHelper::velocyPackToJson(doc));
+        res = ci->getResponsibleShard(col->id_as_string(), tmp.get(), true,
                                       responsibleShard, usesDefaultSharding);
         if (res != TRI_ERROR_NO_ERROR) {
-          TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
           errorMsg = "error during determining responsible shard";
           res = TRI_ERROR_INTERNAL;
           break;
@@ -2945,7 +2878,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         else {
           it2 = shardTab.find(responsibleShard);
           if (it2 == shardTab.end()) {
-            TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
             errorMsg = "cannot find responsible shard";
             res = TRI_ERROR_INTERNAL;
             break;
@@ -2965,14 +2897,11 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
       else {
         // How very strange!
-        TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
         errorMsg = invalidMsg;
 
         res = TRI_ERROR_HTTP_BAD_PARAMETER;
         break;
       }
-
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
 
     ptr = pos + 1;
@@ -3025,48 +2954,57 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       if (result->status == CL_COMM_RECEIVED) {
         if (result->answer_code == triagens::rest::HttpResponse::OK ||
             result->answer_code == triagens::rest::HttpResponse::CREATED) {
-          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                            result->answer->body());
+          VPackOptions options;
+          options.checkAttributeUniqueness = true;
+          std::shared_ptr<VPackBuilder> parsedAnswer;
+          try {
+            parsedAnswer = result->answer->toVelocyPack(options);
+          }
+          catch (VPackException const& e) {
+            // Only log this error and try the next doc
+            LOG_DEBUG("failed to parse json object: '%s'", e.what());
+            continue;
+          }
 
-          if (JsonHelper::isObject(json)) {
-            TRI_json_t const* r = TRI_LookupObjectJson(json, "result");
-            if (TRI_IsBooleanJson(r)) {
-              if (r->_value._boolean) {
+          VPackSlice const answer = parsedAnswer->slice();
+          if (answer.isObject()) {
+            VPackSlice const result = answer.get("result");
+            if (result.isBoolean()) {
+              if (result.getBoolean()) {
                 nrok++;
               }
             }
             else {
-              TRI_json_t const* m = TRI_LookupObjectJson(json, "errorMessage");
-              if (TRI_IsStringJson(m)) {
-                errorMsg.append(m->_value._string.data,
-                                m->_value._string.length - 1);
+              VPackSlice const errorMessage = answer.get("errorMessage");
+              if (errorMessage.isString()) {
+                errorMsg.append(errorMessage.copyString());
                 errorMsg.push_back(':');
               }
             }
           }
-
-          if (json != nullptr) {
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          }
         }
         else if (result->answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
-          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                            result->answer->body());
+          VPackOptions options;
+          options.checkAttributeUniqueness = true;
+          std::shared_ptr<VPackBuilder> parsedAnswer;
+          try {
+            parsedAnswer = result->answer->toVelocyPack(options);
+          }
+          catch (VPackException const& e) {
+            // Only log this error and try the next doc
+            LOG_DEBUG("failed to parse json object: '%s'", e.what());
+            continue;
+          }
 
-          if (JsonHelper::isObject(json)) {
-            TRI_json_t const* m = TRI_LookupObjectJson(json, "errorMessage");
-            if (TRI_IsStringJson(m)) {
-              errorMsg.append(m->_value._string.data,
-                              m->_value._string.length - 1);
+          VPackSlice const answer = parsedAnswer->slice();
+          if (answer.isObject()) {
+            VPackSlice const errorMessage = answer.get("errorMessage");
+            if (errorMessage.isString()) {
+              errorMsg.append(errorMessage.copyString());
               errorMsg.push_back(':');
             }
           }
-
-          if (json != nullptr) {
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          }
         }
-
       }
       delete result;
     }
@@ -3088,11 +3026,10 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   }
   try {
     VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
+    result.openObject();
     result.add("result", VPackValue(true));
     result.close();
-    VPackSlice s = result.slice();
-    generateResult(s);
+    generateResult(result.slice());
   }
   catch (...) {
     generateOOMError();
