@@ -39,7 +39,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_replication_applier_configuration_t;
+class TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 
@@ -88,7 +88,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         InitialSyncer (TRI_vocbase_t*,
-                       struct TRI_replication_applier_configuration_t const*,
+                       TRI_replication_applier_configuration_t const*,
                        std::unordered_map<std::string, bool> const&,
                        std::string const&,
                        bool);

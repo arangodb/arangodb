@@ -43,7 +43,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_replication_applier_configuration_t;
+class TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
@@ -80,7 +80,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Syncer (TRI_vocbase_t*,
-                struct TRI_replication_applier_configuration_t const*);
+                TRI_replication_applier_configuration_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
