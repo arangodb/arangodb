@@ -32,7 +32,6 @@
 
 #include "ArangoShell/ArangoClient.h"
 #include "Basics/FileUtils.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
@@ -41,6 +40,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
@@ -48,6 +48,9 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -281,20 +284,21 @@ static void LocalExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
-  StringBuffer const& body = result->getBody();
   std::string details;
+  try {
+    std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
+    VPackSlice const body = parsedBody->slice();
 
-  std::unique_ptr<TRI_json_t> json(JsonHelper::fromString(body.c_str(), body.length()));
-
-  if (json != nullptr) {
-    const string& errorMessage = JsonHelper::getStringValue(json.get(), "errorMessage", "");
-    const int errorNum = JsonHelper::getNumericValue<int>(json.get(), "errorNum", 0);
+    std::string const& errorMessage = triagens::basics::VelocyPackHelper::getStringValue(body, "errorMessage", "");
+    int errorNum = triagens::basics::VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
 
     if (errorMessage != "" && errorNum > 0) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
     }
   }
-
+  catch (...) {
+    // No action, fallthrough for error
+  }
   return "got error from server: HTTP " +
          StringUtils::itoa(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" +
@@ -320,19 +324,22 @@ static string GetArangoVersion () {
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // default value
     version = "arango";
+    try {
+      std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
+      VPackSlice const body = parsedBody->slice();
 
-    // convert response body to json
-    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
-
-    if (json != nullptr) {
       // look up "server" value
-      std::string const server = JsonHelper::getStringValue(json.get(), "server", "");
+      std::string const server = triagens::basics::VelocyPackHelper::getStringValue(body, "server", "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = JsonHelper::getStringValue(json.get(), "version", "");
+        version = triagens::basics::VelocyPackHelper::getStringValue(body, "version", "");
       }
+
+    }
+    catch (...) {
+      // No Action
     }
   }
   else {
@@ -363,12 +370,13 @@ static bool GetArangoIsCluster () {
   string role = "UNDEFINED";
 
   if (response->getHttpReturnCode() == HttpResponse::OK) {
-    // convert response body to json
-    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
-
-    if (json != nullptr) {
-      // look up "server" value
-      role = JsonHelper::getStringValue(json.get(), "role", "UNDEFINED");
+    try {
+      std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
+      VPackSlice const body = parsedBody->slice();
+      role = triagens::basics::VelocyPackHelper::getStringValue(body, "role", "UNDEFINED");
+    }
+    catch (...) {
+      // No Action
     }
   }
   else {
@@ -417,17 +425,18 @@ static int StartBatch (string DBserver, string& errorMsg) {
     return TRI_ERROR_INTERNAL;
   }
 
-  // convert response body to json
-  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
-
-  if (json == nullptr) {
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  }
+  catch (...) {
     errorMsg = "got malformed JSON";
-
     return TRI_ERROR_INTERNAL;
   }
+  VPackSlice const resBody = parsedBody->slice();
 
   // look up "id" value
-  std::string const id = JsonHelper::getStringValue(json.get(), "id", "");
+  std::string const id = triagens::basics::VelocyPackHelper::getStringValue(resBody, "id", "");
 
   BatchId = StringUtils::uint64(id);
 
@@ -486,7 +495,6 @@ static void EndBatch (string DBserver) {
 static int DumpCollection (int fd,
                            const string& cid,
                            const string& name,
-                           TRI_json_t const* parameters,
                            uint64_t maxTick,
                            string& errorMsg) {
 
@@ -644,28 +652,33 @@ static int RunDump (string& errorMsg) {
   }
 
   FlushWal();
+  std::shared_ptr<VPackBuilder> parsedBody;
+  try {
+    parsedBody = response->getBodyVelocyPack();
+  }
+  catch (...) {
+    errorMsg = "got malformed JSON response from server";
 
-  StringBuffer const& data = response->getBody();
+    return TRI_ERROR_INTERNAL;
+  }
+  VPackSlice const body = parsedBody->slice();
 
-
-  std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str()));
-
-  if (! JsonHelper::isObject(json.get())) {
+  if (! body.isObject()) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_json_t const* collections = JsonHelper::getObjectElement(json.get(), "collections");
+  VPackSlice const collections = body.get("collections");
 
-  if (! JsonHelper::isArray(collections)) {
+  if(! collections.isArray()) {
     errorMsg = "got malformed JSON response from server";
 
     return TRI_ERROR_INTERNAL;
   }
 
   // read the server's max tick value
-  const string tickString = JsonHelper::getStringValue(json.get(), "tick", "");
+  const string tickString = triagens::basics::VelocyPackHelper::getStringValue(body, "tick", "");
 
   if (tickString == "") {
     errorMsg = "got malformed JSON response from server";
@@ -682,17 +695,11 @@ static int RunDump (string& errorMsg) {
   }
 
 
-  {
-    TRI_json_t* meta = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-
-    if (meta == nullptr) {
-      errorMsg = "out of memory";
-
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, meta, "database", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, BaseClient.databaseName().c_str(), BaseClient.databaseName().size()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, meta, "lastTickAtDumpStart", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString.c_str(), tickString.size()));
+  try {
+    VPackBuilder meta;
+    meta.openObject();
+    meta.add("database", VPackValue(BaseClient.databaseName()));
+    meta.add("lastTickAtDumpStart", VPackValue(tickString));
 
     // save last tick in file
     string fileName = OutputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
@@ -703,19 +710,17 @@ static int RunDump (string& errorMsg) {
     if (TRI_ExistsFile(fileName.c_str())) {
       TRI_UnlinkFile(fileName.c_str());
     }
-
     fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, meta);
       errorMsg = "cannot write to file '" + fileName + "'";
 
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
+    meta.close();
 
-    const string metaString = JsonHelper::toString(meta);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, meta);
-
+    // TODO: We might want to write VelocyPack to file!
+    const string metaString = meta.slice().toJson();
     if (! TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
       TRI_CLOSE(fd);
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -725,7 +730,11 @@ static int RunDump (string& errorMsg) {
 
     TRI_CLOSE(fd);
   }
+  catch (...) {
+    errorMsg = "out of memory";
 
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   // create a lookup table for collections
   map<string, bool> restrictList;
@@ -734,29 +743,25 @@ static int RunDump (string& errorMsg) {
   }
 
   // iterate over collections
-  size_t const n = TRI_LengthArrayJson(collections);
-
-  for (size_t i = 0; i < n; ++i) {
-    TRI_json_t const* collection = (TRI_json_t const*) TRI_AtVector(&collections->_value._objects, i);
-
-    if (! JsonHelper::isObject(collection)) {
+  for (VPackSlice const& collection : VPackArrayIterator(collections)) {
+    if (! collection.isObject()) {
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
     }
 
-    TRI_json_t const* parameters = JsonHelper::getObjectElement(collection, "parameters");
+    VPackSlice const parameters = collection.get("parameters");
 
-    if (! JsonHelper::isObject(parameters)) {
+    if (! parameters.isObject()) {
       errorMsg = "got malformed JSON response from server";
 
       return TRI_ERROR_INTERNAL;
     }
 
-    std::string const cid   = JsonHelper::getStringValue(parameters, "cid", "");
-    std::string const name  = JsonHelper::getStringValue(parameters, "name", "");
-    bool const deleted = JsonHelper::getBooleanValue(parameters, "deleted", false);
-    int type = JsonHelper::getNumericValue<int>(parameters, "type", 2);
+    std::string const cid   = triagens::basics::VelocyPackHelper::getStringValue(parameters, "cid", "");
+    std::string const name  = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+    bool const deleted = triagens::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted", false);
+    int type = triagens::basics::VelocyPackHelper::getNumericValue<int>(parameters, "type", 2);
     std::string const collectionType(type == 2 ? "document" : "edge");
 
     if (cid == "" || name == "") {
@@ -808,7 +813,8 @@ static int RunDump (string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      const string collectionInfo = JsonHelper::toString(collection);
+      // TODO We might want to write VelocyPack to file
+      const string collectionInfo = collection.toJson();
 
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
         TRI_CLOSE(fd);
@@ -842,7 +848,7 @@ static int RunDump (string& errorMsg) {
       }
 
       ExtendBatch("");
-      int res = DumpCollection(fd, cid, name, parameters, maxTick, errorMsg);
+      int res = DumpCollection(fd, cid, name, maxTick, errorMsg);
 
       TRI_CLOSE(fd);
 
