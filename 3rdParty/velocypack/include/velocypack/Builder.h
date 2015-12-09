@@ -425,12 +425,17 @@ private:
 
  public:
 
-  inline void addArray(bool unindexed = false) {
-    addCompoundValue(unindexed ? 0x13 : 0x06);
+  inline void openArray(bool unindexed = false) {
+    openCompoundValue(unindexed ? 0x13 : 0x06);
   }
 
-  // this is an alias for addArray()
-  inline void openArray(bool unindexed = false) {
+  inline void openObject(bool unindexed = false) {
+    openCompoundValue(unindexed ? 0x14 : 0x0b);
+  }
+
+ private:
+
+  inline void addArray(bool unindexed = false) {
     addCompoundValue(unindexed ? 0x13 : 0x06);
   }
 
@@ -438,12 +443,6 @@ private:
     addCompoundValue(unindexed ? 0x14 : 0x0b);
   }
 
-  // this is an alias for addObject()
-  inline void openObject(bool unindexed = false) {
-    addCompoundValue(unindexed ? 0x14 : 0x0b);
-  }
-
- private:
   template <typename T>
   uint8_t* addInternal(T const& sub) {
     bool haveReported = false;
@@ -513,6 +512,28 @@ private:
     _start[_pos++] = type;
     memset(_start + _pos, 0, 8);
     _pos += 8;  // Will be filled later with bytelength and nr subs
+  }
+
+  void openCompoundValue(uint8_t type) {
+    bool haveReported = false;
+    if (!_stack.empty()) {
+      ValueLength& tos = _stack.back();
+      if (_start[tos] != 0x06 && _start[tos] != 0x13) {
+        throw Exception(Exception::BuilderNeedOpenCompound);
+      }
+      reportAdd(tos);
+      haveReported = true;
+    }
+    try {
+      addCompoundValue(type);
+    } catch (...) {
+      // clean up in case of an exception
+      if (haveReported) {
+        cleanupAdd();
+      }
+      throw;
+    }
+
   }
 
   uint8_t* set(Value const& item);
@@ -590,6 +611,50 @@ private:
 
 struct BuilderNonDeleter {
   void operator()(Builder*) {
+  }
+};
+
+// convenience class scope guard for building objects
+struct BuilderContainer {
+  BuilderContainer (Builder* builder) : builder(builder) {}
+
+  Builder& operator*() {
+    return *builder;
+  }
+  Builder const& operator*() const {
+    return *builder;
+  }
+  Builder* operator->() {
+    return builder;
+  }
+  Builder const* operator->() const {
+    return builder;
+  }
+  Builder* builder;
+};
+
+struct ObjectBuilder final : public BuilderContainer, public NoHeapAllocation {
+  ObjectBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->openObject(allowUnindexed);
+  }
+  ObjectBuilder(Builder* builder, std::string const& attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Object, allowUnindexed)); 
+  }
+  ObjectBuilder(Builder* builder, char const* attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Object, allowUnindexed)); 
+  }
+  ~ObjectBuilder() {
+    builder->close();
+  }
+};
+
+// convenience class scope guard for building arrays
+struct ArrayBuilder final : public BuilderContainer, public NoHeapAllocation {
+  ArrayBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->openArray(allowUnindexed);
+  }
+  ~ArrayBuilder() {
+    builder->close();
   }
 };
 

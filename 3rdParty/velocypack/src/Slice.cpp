@@ -273,7 +273,7 @@ std::string Slice::toString() const {
   return std::move(buffer);
 }
 
-std::string Slice::hexType() const { return std::move(HexDump::toHex(head())); }
+std::string Slice::hexType() const { return HexDump::toHex(head()); }
 
 // look for the specified attribute inside an Object
 // returns a Slice(ValueType::None) if not found

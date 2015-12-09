@@ -30,6 +30,7 @@
 #include <cstdint>
 // for size_t:
 #include <cstring>
+#include <new>
 
 // debug mode
 #ifdef VELOCYPACK_DEBUG
@@ -181,6 +182,13 @@ static inline void storeUInt64(uint8_t* start, uint64_t value) throw() {
     value >>= 8;
   } while (start < end);
 }
+
+struct NoHeapAllocation {
+  void* operator new(std::size_t) throw(std::bad_alloc) = delete; 
+  void operator delete(void*) throw() = delete; 
+  void* operator new[](std::size_t) throw(std::bad_alloc) = delete; 
+  void operator delete[](void*) throw() = delete;  
+};
 
 }  // namespace arangodb::velocypack
 }  // namespace arangodb

@@ -66,6 +66,9 @@ namespace triagens {
             for (auto& it : _vertices) {
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
             }
+            for (auto& it : _edges) {
+              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
+            }
           }
 
           void setStartVertex (VertexId const& v) override;
