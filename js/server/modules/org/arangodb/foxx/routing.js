@@ -627,6 +627,10 @@ var routeApp = function (app, isInstallProcess) {
 
   try {
     if (controllers) {
+      Object.keys(app.moduleCache).forEach(function (filename) {
+        // Clear the module cache to force re-evaluation
+        delete app.moduleCache[filename];
+      });
       Object.keys(controllers).forEach(function (key) {
         mountController(app, routes, key, controllers[key]);
       });
