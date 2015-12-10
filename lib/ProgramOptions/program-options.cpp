@@ -199,7 +199,7 @@ static void printUnrecognizedOption (TRI_program_options_t const* options,
   for (size_t i = 0;  i < TRI_LengthVector(&options->_items);  ++i) {
     auto item = static_cast<TRI_PO_item_t const*>(TRI_AtVector(&options->_items, i));
 
-    distances.emplace(TRI_Levenshtein(option, item->_desc->_name), item->_desc->_name);
+    distances.emplace(TRI_Levenshtein(std::string(option), std::string(item->_desc->_name)), item->_desc->_name);
   }
 
   if (! distances.empty()) {
