@@ -34,13 +34,13 @@
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/init.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/StringUtils.h"
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitializeRest.h"
 #include "Rest/HttpResponse.h"
@@ -49,6 +49,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -282,22 +284,22 @@ static void LocalExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string GetHttpErrorMessage (SimpleHttpResult* result) {
-  StringBuffer const& body = result->getBody();
-  std::string details;
   LastErrorCode = TRI_ERROR_NO_ERROR;
+  std::string details;
+  try {
+    std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
+    VPackSlice const body = parsedBody->slice();
 
-  std::unique_ptr<TRI_json_t> json(JsonHelper::fromString(body.c_str(), body.length()));
-
-  if (json != nullptr) {
-    std::string const& errorMessage = JsonHelper::getStringValue(json.get(), "errorMessage", "");
-    int const errorNum = JsonHelper::getNumericValue<int>(json.get(), "errorNum", 0);
-
+    std::string const& errorMessage = triagens::basics::VelocyPackHelper::getStringValue(body, "errorMessage", "");
+    int const errorNum = triagens::basics::VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
     if (errorMessage != "" && errorNum > 0) {
       details = ": ArangoError " + StringUtils::itoa(errorNum) + ": " + errorMessage;
       LastErrorCode = errorNum;
     }
   }
-
+  catch (...) {
+    // No action
+  }
   return "got error from server: HTTP " +
          StringUtils::itoa(result->getHttpReturnCode()) +
          " (" + result->getHttpReturnMessage() + ")" +
@@ -370,21 +372,22 @@ static string GetArangoVersion () {
     // default value
     version = "arango";
 
-    // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
+    try {
+      // convert response body to VPack
+      std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
+      VPackSlice const body = parsedBody->slice();
 
-    if (json) {
       // look up "server" value
-      const string server = JsonHelper::getStringValue(json, "server", "");
+      std::string const server = triagens::basics::VelocyPackHelper::getStringValue(body, "server", "");
 
       // "server" value is a string and content is "arango"
       if (server == "arango") {
         // look up "version" value
-        version = JsonHelper::getStringValue(json, "version", "");
+        version = triagens::basics::VelocyPackHelper::getStringValue(body, "version", "");
       }
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    catch (...) {
+      // No action
     }
   }
   else {
@@ -416,14 +419,13 @@ static bool GetArangoIsCluster () {
 
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // convert response body to json
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                      response->getBody().c_str());
-
-    if (json != nullptr) {
-      // look up "server" value
-      role = JsonHelper::getStringValue(json, "role", "UNDEFINED");
-
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    try {
+      std::shared_ptr<VPackBuilder> parsedBody = response->getBodyVelocyPack();
+      VPackSlice const body = parsedBody->slice();
+      role = triagens::basics::VelocyPackHelper::getStringValue(body, "role", "UNDEFINED");
+    }
+    catch (...) {
+      // No action
     }
   }
   else {
@@ -441,14 +443,14 @@ static bool GetArangoIsCluster () {
 /// @brief send the request to re-create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreCollection (TRI_json_t const* json,
+static int SendRestoreCollection (VPackSlice const& slice,
                                   string& errorMsg) {
   std::string const url = "/_api/replication/restore-collection"
                           "?overwrite=" + string(Overwrite ? "true" : "false") +
                           "&recycleIds=" + string(RecycleIds ? "true" : "false") +
                           "&force=" + string(Force ? "true" : "false");
 
-  std::string const body = JsonHelper::toString(json);
+  std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
@@ -477,10 +479,10 @@ static int SendRestoreCollection (TRI_json_t const* json,
 /// @brief send the request to re-create indexes for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreIndexes (TRI_json_t const* json,
+static int SendRestoreIndexes (VPackSlice const& slice,
                                string& errorMsg) {
   std::string const url = "/_api/replication/restore-indexes?force=" + string(Force ? "true" : "false");
-  std::string const body = JsonHelper::toString(json);
+  std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(HttpRequest::HTTP_REQUEST_PUT,
                                                url,
@@ -547,22 +549,33 @@ static int SendRestoreData (string const& cname,
 /// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SortCollections (const void* l,
-                            const void* r) {
-  TRI_json_t const* left  = JsonHelper::getObjectElement((TRI_json_t const*) l, "parameters");
-  TRI_json_t const* right = JsonHelper::getObjectElement((TRI_json_t const*) r, "parameters");
+static bool SortCollections (VPackSlice const& l,
+                             VPackSlice const& r) {
+  VPackSlice const& left  = l.get("parameters");
+  VPackSlice const& right = r.get("parameters");
 
-  int leftType  = JsonHelper::getNumericValue<int>(left,  "type", 0);
-  int rightType = JsonHelper::getNumericValue<int>(right, "type", 0);
+  int leftType  = triagens::basics::VelocyPackHelper::getNumericValue<int>(left,  "type", 0);
+  int rightType = triagens::basics::VelocyPackHelper::getNumericValue<int>(right, "type", 0);
 
   if (leftType != rightType) {
-    return leftType - rightType;
+    return leftType < rightType;
   }
 
-  string leftName  = JsonHelper::getStringValue(left,  "name", "");
-  string rightName = JsonHelper::getStringValue(right, "name", "");
+  string leftName  = triagens::basics::VelocyPackHelper::getStringValue(left,  "name", "");
+  string rightName = triagens::basics::VelocyPackHelper::getStringValue(right, "name", "");
 
-  return strcasecmp(leftName.c_str(), rightName.c_str());
+  return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief parses a json file to VelocyPack
+//////////////////////////////////////////////////////////////////////////////////
+
+static std::shared_ptr<VPackBuilder> readVelocyPackFile (std::string path) {
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
+  // The Parser might THROW
+  return VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -575,118 +588,101 @@ static int ProcessInputDirectory (std::string& errorMsg) {
   for (size_t i = 0; i < Collections.size(); ++i) {
     restrictList.insert(pair<string, bool>(Collections[i], true));
   }
+  try {
 
-  TRI_json_t* collections = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+    std::vector<std::string> const files = FileUtils::listFiles(InputDirectory);
+    std::string const suffix = std::string(".structure.json");
+    std::vector<std::shared_ptr<VPackBuilder>> collectionBuilders;
+    std::vector<VPackSlice> collections;
 
-  if (collections == nullptr) {
-    errorMsg = "out of memory";
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
+    // Step 1 determine all collections to process
+    {
+      // loop over all files in InputDirectory, and look for all structure.json files
+      for (std::string const& file : files) {
+        size_t const nameLength = file.size();
 
-  // step1: determine all collections to process
-  {
-    const vector<string> files = FileUtils::listFiles(InputDirectory);
-    const size_t n = files.size();
-
-    const string suffix = std::string(".structure.json");
-
-    // loop over all files in InputDirectory, and look for all structure.json files
-    for (size_t i = 0; i < n; ++i) {
-      const size_t nameLength = files[i].size();
-
-      if (nameLength <= suffix.size() ||
-          files[i].substr(files[i].size() - suffix.size()) != suffix) {
-        // some other file
-        continue;
-      }
-
-      // found a structure.json file
-
-      string name = files[i].substr(0, files[i].size() - suffix.size());
-
-      if (name[0] == '_' && ! IncludeSystemCollections) {
-        continue;
-      }
-
-      const string fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + files[i];
-
-      TRI_json_t* json = TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, fqn.c_str(), 0);
-      TRI_json_t const* parameters = JsonHelper::getObjectElement(json, "parameters");
-      TRI_json_t const* indexes = JsonHelper::getObjectElement(json, "indexes");
-
-      if (! JsonHelper::isObject(json) ||
-          ! JsonHelper::isObject(parameters) ||
-          ! JsonHelper::isArray(indexes)) {
-        errorMsg = "could not read collection structure file '" + fqn + "'";
-
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        if (nameLength <= suffix.size() ||
+            file.substr(file.size() - suffix.size()) != suffix) {
+          // some other file
+          continue;
         }
 
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
+        // found a structure.json file
+        std::string name = file.substr(0, file.size() - suffix.size());
 
-        return TRI_ERROR_INTERNAL;
-      }
+        if (! IncludeSystemCollections && name[0] == '_') {
+          continue;
+        }
 
-      const string cname = JsonHelper::getStringValue(parameters, "name", "");
+        const string fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + file;
+        std::shared_ptr<VPackBuilder> fileContentBuilder = readVelocyPackFile(fqn);
+        VPackSlice const fileContent = fileContentBuilder->slice();
 
-      if (cname != name && name != (cname + "_" + triagens::rest::SslInterface::sslMD5(cname))) {
-        // file has a different name than found in structure file
-
-        if (ImportStructure) {
-          // we cannot go on if there is a mismatch
-          errorMsg = "collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')";
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
-
+        if (! fileContent.isObject()) {
+          errorMsg = "could not read collection structure file '" + fqn + "'";
           return TRI_ERROR_INTERNAL;
         }
-        else {
-          // we can patch the name in our array and go on
-          cout << "ignoring collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')" << endl;
 
-          TRI_json_t* nameAttribute = TRI_LookupObjectJson(parameters, "name");
+        VPackSlice const parameters = fileContent.get("parameters");
+        VPackSlice const indexes = fileContent.get("indexes");
 
-          if (TRI_IsStringJson(nameAttribute)) {
-            char* old = nameAttribute->_value._string.data;
-
-            // file name wins over "name" attribute value
-            nameAttribute->_value._string.data = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name.c_str());
-            nameAttribute->_value._string.length = (uint32_t) name.size() + 1; // + NUL byte
-
-            TRI_Free(TRI_UNKNOWN_MEM_ZONE, old);
-          }
+        if (! parameters.isObject() ||
+            ! indexes.isArray()) {
+          errorMsg = "could not read collection structure file '" + fqn + "'";
+          return TRI_ERROR_INTERNAL;
         }
-      }
 
-      if (! restrictList.empty() &&
-          restrictList.find(cname) == restrictList.end()) {
-        // collection name not in list
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        continue;
-      }
+        std::string const cname = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
 
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, collections, json);
+        bool overwriteName = false;
+
+        if (cname != name && name != (cname + "_" + triagens::rest::SslInterface::sslMD5(cname))) {
+          // file has a different name than found in structure file
+          if (ImportStructure) {
+            // we cannot go on if there is a mismatch
+            errorMsg = "collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')";
+            return TRI_ERROR_INTERNAL;
+          }
+          else {
+            // we can patch the name in our array and go on
+            std::cout << "ignoring collection name mismatch in collection structure file '" + fqn + "' (offending value: '" + cname + "')" << std::endl;
+
+            overwriteName = true;
+           }
+        }
+
+        if (! restrictList.empty() &&
+            restrictList.find(cname) == restrictList.end()) {
+          // collection name not in list
+          continue;
+        }
+
+        if (overwriteName) {
+          // TODO
+          // Situation:
+          // Ich habe ein Json-Object von Datei (teile des Inhalts im Zweifel unbekannt)
+          // Es gibt ein Sub-Json-Object "parameters" mit einem Attribute "name" der gesetzt ist.
+          // Ich muss nur diesen namen überschreiben, der Rest soll identisch bleiben.
+        }
+        else {
+          collectionBuilders.emplace_back(fileContentBuilder);
+          collections.emplace_back(fileContent);
+        }
+        
+      }
     }
-  }
-    
-  size_t const n = TRI_LengthArrayJson(collections);
 
-  // sort collections according to type (documents before edges)
-  qsort(collections->_value._objects._buffer, n, sizeof(TRI_json_t), &SortCollections);
+    std::sort(collections.begin(), collections.end(), SortCollections);
 
-  StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+    StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
 
-  // step2: run the actual import
-  {
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* json = static_cast<TRI_json_t const*>(TRI_AtVector(&collections->_value._objects, i));
-      TRI_json_t const* parameters = JsonHelper::getObjectElement(json, "parameters");
-      TRI_json_t const* indexes = JsonHelper::getObjectElement(json, "indexes");
-      std::string const cname = JsonHelper::getStringValue(parameters, "name", "");
-      std::string const cid   = JsonHelper::getStringValue(parameters, "cid", "");
-          
-      int type = JsonHelper::getNumericValue<int>(parameters, "type", 2);
+    // step2: run the actual import
+    for (VPackSlice const& collection : collections) {
+      VPackSlice const parameters = collection.get("parameters");
+      VPackSlice const indexes = collection.get("indexes");
+      std::string const cname = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+      std::string const cid   = triagens::basics::VelocyPackHelper::getStringValue(parameters, "cid", "");
+      int type = triagens::basics::VelocyPackHelper::getNumericValue<int>(parameters, "type", 2);
       std::string const collectionType(type == 2 ? "document" : "edge");
 
       if (ImportStructure) {
@@ -699,21 +695,16 @@ static int ProcessInputDirectory (std::string& errorMsg) {
             cout << "# Creating " << collectionType << " collection '" << cname << "'..." << endl;
           }
         }
-
-        int res = SendRestoreCollection(json, errorMsg);
+        int res = SendRestoreCollection(collection, errorMsg);
 
         if (res != TRI_ERROR_NO_ERROR) {
           if (Force) {
             cerr << errorMsg << endl;
             continue;
           }
-
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
-
           return TRI_ERROR_INTERNAL;
         }
       }
-
       Stats._totalCollections++;
 
       if (ImportData) {
@@ -734,7 +725,6 @@ static int ProcessInputDirectory (std::string& errorMsg) {
 
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
             return TRI_ERROR_INTERNAL;
           }
@@ -745,7 +735,6 @@ static int ProcessInputDirectory (std::string& errorMsg) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
               TRI_CLOSE(fd);
               errorMsg = "out of memory";
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
               return TRI_ERROR_OUT_OF_MEMORY;
             }
@@ -757,7 +746,6 @@ static int ProcessInputDirectory (std::string& errorMsg) {
               int res = TRI_errno();
               TRI_CLOSE(fd);
               errorMsg = string(TRI_errno_string(res));
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
 
               return res;
             }
@@ -814,7 +802,6 @@ static int ProcessInputDirectory (std::string& errorMsg) {
                   continue;
                 }
 
-                TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
                 return res;
               }
 
@@ -831,35 +818,31 @@ static int ProcessInputDirectory (std::string& errorMsg) {
         }
       }
 
-
       if (ImportStructure) {
         // re-create indexes
-
-        if (TRI_LengthVector(&indexes->_value._objects) > 0) {
+        if (indexes.length() > 0) {
           // we actually have indexes
           if (Progress) {
             cout << "# Creating indexes for collection '" << cname << "'..." << endl;
           }
 
-          int res = SendRestoreIndexes(json, errorMsg);
+          int res = SendRestoreIndexes(collection, errorMsg);
 
           if (res != TRI_ERROR_NO_ERROR) {
             if (Force) {
               cerr << errorMsg << endl;
               continue;
             }
-
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
-
             return TRI_ERROR_INTERNAL;
           }
         }
       }
     }
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collections);
-
+  catch (...) {
+    errorMsg = "out of memory";
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
