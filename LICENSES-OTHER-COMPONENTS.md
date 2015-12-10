@@ -18,11 +18,6 @@
 * Project Home: https://code.google.com/p/fast-hash/
 * License: [MIT License](https://code.google.com/p/fast-hash/)
 
-### xxhash
-
-* Project Home: https://code.google.com/p/xxhash/
-* License: [BSD 2-Clause License](https://code.google.com/p/xxhash/)
-
 ### Google V8 4.3.61
 
 * Project Home: https://code.google.com/p/v8/
