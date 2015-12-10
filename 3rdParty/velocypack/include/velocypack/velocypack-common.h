@@ -183,12 +183,22 @@ static inline void storeUInt64(uint8_t* start, uint64_t value) throw() {
   } while (start < end);
 }
 
+#ifdef _WIN32
+// turn off warnings about unimplemented exception specifications
+#pragma warning(push)
+#pragma warning(disable : 4290)
+#endif
+
 struct NoHeapAllocation {
   void* operator new(std::size_t) throw(std::bad_alloc) = delete; 
   void operator delete(void*) throw() = delete; 
   void* operator new[](std::size_t) throw(std::bad_alloc) = delete; 
   void operator delete[](void*) throw() = delete;  
 };
+
+#ifdef _WIN32
+#pragma warning(pop)
+#endif
 
 }  // namespace arangodb::velocypack
 }  // namespace arangodb

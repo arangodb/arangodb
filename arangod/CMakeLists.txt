@@ -30,6 +30,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 ### @brief arangod
 ################################################################################
 
+include_directories(../3rdParty/velocypack/include)
+
 if (MSVC)
   SET(ARANGO_MSVC
     RestServer/WindowsServiceUtils.cpp
@@ -49,7 +51,6 @@ if (MSVC)
     VERSION_REVISION ${BUILD_ID}
     )
 endif ()
-
 
 add_executable(
     ${BIN_ARANGOD}
