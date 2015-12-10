@@ -37,7 +37,6 @@ var arangodb = require("org/arangodb"),
   errors = arangodb.errors,
   _ = require("underscore");
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
 // -----------------------------------------------------------------------------
@@ -50,7 +49,6 @@ var arangodb = require("org/arangodb"),
 /// @brief transform a string into an array.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 var stringToArray = function (x) {
   if (typeof x === "string") {
     return [x];
@@ -62,7 +60,6 @@ var stringToArray = function (x) {
 /// @brief checks if a parameter is not defined, an empty string or an empty
 //  array
 ////////////////////////////////////////////////////////////////////////////////
-
 
 var isValidCollectionsParameter = function (x) {
   if (!x) {
@@ -139,6 +136,9 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 
 var getGraphCollection = function() {
   var gCol = db._graphs;
+  if (gCol === null || gCol === undefined) {
+    gCol = db._collection("_graphs");
+  }
   if (gCol === null || gCol === undefined) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_NO_GRAPH_COLLECTION.code;
@@ -239,7 +239,6 @@ var checkAllowsRestriction = function(list, rest, msg) {
   }
   return true;
 };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
@@ -638,7 +637,6 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
   this._path.push(vertexName);
   this._pathVertices.push(vertexName);
   return this;
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1582,13 +1580,9 @@ var _list = function() {
   return _.pluck(gdb.toArray(), "_key");
 };
 
-
 var _listObjects = function() {
   return getGraphCollection().toArray();
 };
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_definitions
@@ -1782,7 +1776,6 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var _create = function (graphName, edgeDefinitions, orphanCollections, options) {
-
   if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
   }
@@ -2425,7 +2418,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ////////////////////////////////////////////////////////////////////////////////
 
 var _graph = function(graphName) {
-
   var gdb = getGraphCollection(),
     g, collections, orphanCollections;
 
@@ -2553,7 +2545,6 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var _drop = function(graphId, dropCollections) {
-
   var gdb = getGraphCollection(),
     graphs;
 
@@ -4616,7 +4607,6 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
   }
   updateBindCollections(this);
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_connectingEdges
