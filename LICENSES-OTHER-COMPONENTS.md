@@ -17,6 +17,11 @@
 * http://software.schmorp.de/pkg/libev.html
 * [free as-is license](http://cvs.schmorp.de/libev/LICENSE?revision=1.11&view=markup)
 
+### levenshtein distance
+
+* https://github.com/bennybp/stringmatch/
+* [MIT License](https://github.com/bennybp/stringmatch/blob/master/stringmatch.h)
+
 ### mruby
 
 * only used for the shell
