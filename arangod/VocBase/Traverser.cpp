@@ -28,8 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Traverser.h"
-#include "Basics/json-utilities.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
 
 using TraverserExpression = triagens::arango::traverser::TraverserExpression;
@@ -186,6 +186,15 @@ bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::matchesCheck (TRI_json_t const* element) const {
+  DocumentAccessor accessor(element);
+  return matchesCheck(accessor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evalutes if an element matches the given expression
+////////////////////////////////////////////////////////////////////////////////
+
+bool TraverserExpression::matchesCheck (VPackSlice const& element) const {
   DocumentAccessor accessor(element);
   return matchesCheck(accessor);
 }

@@ -63,6 +63,19 @@ DocumentAccessor::DocumentAccessor (TRI_json_t const* json)
   TRI_ASSERT(_current != nullptr);
 }
 
+DocumentAccessor::DocumentAccessor (VPackSlice const& slice)
+  : _resolver(nullptr),
+    _document(nullptr),
+    _mptr(nullptr),
+    _json(),
+    _current(nullptr) {
+
+  _current = triagens::basics::VelocyPackHelper::velocyPackToJson(slice);
+  TRI_ASSERT(_current != nullptr);
+}
+
+
+
 DocumentAccessor::~DocumentAccessor () {
 }
 

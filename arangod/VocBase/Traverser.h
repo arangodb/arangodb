@@ -32,13 +32,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/Traverser.h"
-#include "Basics/JsonHelper.h"
 #include "Aql/AstNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
 #include "VocBase/DocumentAccessor.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
@@ -134,6 +134,8 @@ namespace triagens {
                              CollectionNameResolver const* resolver) const;
 
           bool matchesCheck (TRI_json_t const* element) const;
+
+          bool matchesCheck (VPackSlice const& element) const;
 
           bool matchesCheck (DocumentAccessor& accessor) const;
 

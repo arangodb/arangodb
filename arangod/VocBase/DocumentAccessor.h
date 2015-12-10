@@ -71,6 +71,7 @@ class DocumentAccessor {
                       TRI_doc_mptr_t const* mptr);
 
     explicit DocumentAccessor (TRI_json_t const* json);
+    explicit DocumentAccessor (VPackSlice const& slice);
 
     ~DocumentAccessor ();
 
