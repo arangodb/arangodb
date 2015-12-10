@@ -1306,63 +1306,77 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
+// Only temporary
 TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    TRI_CreateVelocyPackCollectionInfo(info, builder);
+    builder.close();
+    return triagens::basics::VelocyPackHelper::velocyPackToJson(builder.slice());
+  }
+  catch (...) {
+    return nullptr;
+  }
+}
+
+std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo (TRI_col_info_t const* info) {
+  // This function might throw
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  builder->openObject();
+  TRI_CreateVelocyPackCollectionInfo(info, *builder);
+  builder->close();
+  return builder;
+}
+
+void TRI_CreateVelocyPackCollectionInfo (TRI_col_info_t const* info,
+                                         VPackBuilder& builder) {
+  // This function might throw
   char* cidString;
   char* planIdString;
 
-  // create a json info object
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
-
-  if (json == nullptr) {
-    return nullptr;
-  }
+  TRI_ASSERT(! builder.isClosed());
 
   cidString = TRI_StringUInt64((uint64_t) info->_cid);
 
   if (cidString == nullptr) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-
-    return nullptr;
+    // TODO Proper error message
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
   planIdString = TRI_StringUInt64((uint64_t) info->_planId);
 
   if (planIdString == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, cidString);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
-    return nullptr;
+    // TODO Proper error message
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_version));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_type));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString, strlen(cidString)));
+  builder.add("version", VPackValue(info->_version));
+  builder.add("type", VPackValue(info->_type));
+  builder.add("cid", VPackValue(cidString));
 
   if (info->_planId > 0) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "planId",     TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, planIdString, strlen(planIdString)));
+    builder.add("planId", VPackValue(planIdString));
   }
 
   if (info->_initialCount >= 0) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "count",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_initialCount));
+    builder.add("count", VPackValue(info->_initialCount));
   }
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, info->_indexBuckets));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_maximalSize));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name, strlen(info->_name)));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
+  builder.add("indexBuckets", VPackValue(info->_indexBuckets));
+  builder.add("deleted", VPackValue(info->_deleted));
+  builder.add("doCompact", VPackValue(info->_doCompact));
+  builder.add("maximalSize", VPackValue(info->_maximalSize));
+  builder.add("name", VPackValue(info->_name));
+  builder.add("isVolatile", VPackValue(info->_isVolatile));
+  builder.add("waitForSync", VPackValue(info->_waitForSync));
 
   if (info->_keyOptions != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
+    builder.add("keyOptions", VPackValue(info->_keyOptions));
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, planIdString);
   TRI_Free(TRI_CORE_MEM_ZONE, cidString);
-
-  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

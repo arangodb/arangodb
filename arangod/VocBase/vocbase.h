@@ -49,7 +49,6 @@
 
 struct TRI_col_info_s;
 struct TRI_document_collection_t;
-struct TRI_json_t;
 class TRI_replication_applier_t;
 struct TRI_server_t;
 class TRI_vocbase_col_t;

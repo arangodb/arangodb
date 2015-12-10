@@ -336,7 +336,14 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t*,
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
+// TODO only temporary
 struct TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const*);
+
+std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo (TRI_col_info_t const*);
+
+// Expects the builder to be in an open Object state
+void TRI_CreateVelocyPackCollectionInfo (TRI_col_info_t const*,
+                                         VPackBuilder&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a parameter info block from file

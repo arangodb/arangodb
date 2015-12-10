@@ -92,16 +92,6 @@ static std::atomic<bool> ThrowCollectionNotLoaded(false);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief auxiliary struct for index iteration
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct index_json_helper_s {
-  TRI_json_t*    _list;
-  TRI_voc_tick_t _maxTick;
-}
-index_json_helper_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief states for TRI_DropCollectionVocBase()
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -607,8 +597,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                                             TRI_col_info_t* parameter,
                                             TRI_voc_cid_t& cid,
                                             bool writeMarker,
-                                            TRI_json_t*& json) {
-  TRI_ASSERT(json == nullptr);
+                                            VPackBuilder& builder) {
   char const* name = parameter->_name;
 
   WRITE_LOCKER(vocbase->_collectionsLock);
@@ -675,7 +664,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                  sizeof(collection->_path) - 1);
 
   if (writeMarker) {
-    json = TRI_CreateJsonCollectionInfo(&col->_info);
+    TRI_CreateVelocyPackCollectionInfo(&col->_info, builder);
   }
 
   return collection;
@@ -1786,30 +1775,6 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
 
   builder->close(); // Array
   return builder;
-
-    /* Not needed any more
-    // FORMER TRI_json_t* collectionInfo = TRI_ReadJsonCollectionInfo(collection);
-    std::shared_ptr<VPackBuilder> collectionInfo = TRI_ReadVelocyPackCollectionInfo(collection);
-
-    builder->add("parameters", collectionInfo->slice());
-    builder->add("indexes", VPackValue(VPackValueType::Array));
-
-
-
-        TRI_json_t* indexesInfo = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-        if (indexesInfo != nullptr) {
-          index_json_helper_t ij;
-          ij._list    = indexesInfo;
-          ij._maxTick = maxTick;
-
-          TRI_IterateJsonIndexesCollectionInfo(collection, &FilterCollectionIndex, &ij);
-          TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
-        }
-      }
-
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, json, result);
-      */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1961,15 +1926,18 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   READ_LOCKER(vocbase->_inventoryLock);
 
-  TRI_json_t* json = nullptr;
-  auto collection = CreateCollection(vocbase, parameters, cid, writeMarker, json);
+  VPackBuilder builder;
+
+  auto collection = CreateCollection(vocbase, parameters, cid, writeMarker, builder);
 
   if (! writeMarker) {
-    TRI_ASSERT(json == nullptr);
     return collection;
   }
+  VPackSlice const slice = builder.slice();
 
-  if (json == nullptr) {
+  if (slice.isNone()) {
+    // CreateCollection
+    // Did not write anything into the builder.
     // TODO: what to do here?
     return collection;
   }
@@ -1977,14 +1945,13 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::CreateCollectionMarker marker(vocbase->_id, cid, triagens::basics::JsonHelper::toString(json));
+    triagens::wal::CreateCollectionMarker marker(vocbase->_id, cid, slice.toJson());
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return collection;
   }
   catch (triagens::basics::Exception const& ex) {
@@ -1994,7 +1961,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     res = TRI_ERROR_INTERNAL;
   }
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   LOG_WARNING("could not save collection create marker in log: %s", TRI_errno_string(res));
 
   // TODO: what to do here?
