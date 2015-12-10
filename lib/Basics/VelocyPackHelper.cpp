@@ -27,6 +27,7 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/files.h"
 
 using VelocyPackHelper = triagens::basics::VelocyPackHelper;
 
@@ -89,6 +90,17 @@ std::string VelocyPackHelper::getStringValue (VPackSlice const& slice,
 
 TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
   return JsonHelper::fromString(slice.toJson());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a json file to VelocyPack
+//////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile (std::string const& path) {
+  size_t length;
+  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
+  // The Parser might THROW
+  return VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
 }
 
 // -----------------------------------------------------------------------------

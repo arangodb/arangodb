@@ -568,17 +568,6 @@ static bool SortCollections (VPackSlice const& l,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief parses a json file to VelocyPack
-//////////////////////////////////////////////////////////////////////////////////
-
-static std::shared_ptr<VPackBuilder> readVelocyPackFile (std::string path) {
-  size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
-  // The Parser might THROW
-  return VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief process all files from the input directory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -615,7 +604,7 @@ static int ProcessInputDirectory (std::string& errorMsg) {
         }
 
         const string fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + file;
-        std::shared_ptr<VPackBuilder> fileContentBuilder = readVelocyPackFile(fqn);
+        std::shared_ptr<VPackBuilder> fileContentBuilder = triagens::basics::VelocyPackHelper::velocyPackFromFile(fqn);
         VPackSlice const fileContent = fileContentBuilder->slice();
 
         if (! fileContent.isObject()) {

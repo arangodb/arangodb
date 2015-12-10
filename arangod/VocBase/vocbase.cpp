@@ -1368,17 +1368,6 @@ static bool FilenameStringComparator (std::string const& lhs, std::string const&
   return numLeft < numRight;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-///// @brief parses a json file to VelocyPack
-//////////////////////////////////////////////////////////////////////////////////
-
-static std::shared_ptr<VPackBuilder> TRI_VelocyPackFile (char const* path) {
-  size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path, &length);
-  // The Parser might THROW
-  return VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class TRI_vocbase_col_t
 // -----------------------------------------------------------------------------
@@ -1388,8 +1377,9 @@ void TRI_vocbase_col_t::toVelocyPack (VPackBuilder& builder,
                                       TRI_voc_tick_t maxTick) {
   TRI_ASSERT(! builder.isClosed());
   char* filename = TRI_Concatenate2File(_path, TRI_VOC_PARAMETER_FILE);
+  std::string path = std::string(filename, strlen(filename));
 
-  std::shared_ptr<VPackBuilder> fileInfoBuilder = TRI_VelocyPackFile(filename);
+  std::shared_ptr<VPackBuilder> fileInfoBuilder = triagens::basics::VelocyPackHelper::velocyPackFromFile(path);
   builder.add("parameters", fileInfoBuilder->slice());
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -1430,7 +1420,8 @@ void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
   for (auto const& file : files) {
     if (regexec(&re, file.c_str(), (size_t) 0, nullptr, 0) == 0) {
       char* fqn = TRI_Concatenate2File(_path, file.c_str());
-      std::shared_ptr<VPackBuilder> indexVPack = TRI_VelocyPackFile(fqn);
+      std::string path = std::string(fqn, strlen(fqn));
+      std::shared_ptr<VPackBuilder> indexVPack = triagens::basics::VelocyPackHelper::velocyPackFromFile(path);
       TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
 
       VPackSlice const indexSlice = indexVPack->slice();
