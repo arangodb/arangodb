@@ -195,7 +195,7 @@ namespace triagens {
         }
 
         char const* typeName () const override final {
-          return "document";
+          return "document-reference";
         }
       
         void setUsedByTransaction ();
