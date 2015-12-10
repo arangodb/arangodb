@@ -590,6 +590,13 @@ static void JS_ConfigureApplierReplication (const v8::FunctionCallbackInfo<v8::V
         }
       }
     }
+    
+    if (object->Has(TRI_V8_ASCII_STRING("autoResyncRetries"))) {
+      if (object->Get(TRI_V8_ASCII_STRING("autoResyncRetries"))->IsNumber()) {
+        double value = TRI_ObjectToDouble(object->Get(TRI_V8_ASCII_STRING("autoResyncRetries")));
+        config._autoResyncRetries = static_cast<uint64_t>(value);
+      }
+    }
 
     int res = TRI_ConfigureReplicationApplier(vocbase->_replicationApplier, &config);
 
