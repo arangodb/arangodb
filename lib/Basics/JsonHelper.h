@@ -35,8 +35,8 @@
 #include "Basics/json.h"
 #include "Basics/StringBuffer.h"
 
-#include "velocypack/Parser.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
 
 namespace triagens {
   namespace basics {

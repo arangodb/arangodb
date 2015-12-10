@@ -284,6 +284,19 @@ The following improvements have been made for the web admin interface:
   the bottom of the page. This can be used to track either the status of a one-time
   synchronization or the continuous replication.
 
+* the compaction status and some status internals about collections are now displayed
+  in the detail view for a collection in the web interface. These data can be used
+  for debugging compaction issues.
+
+* unloading a collection via the web interface will now trigger garbage collection
+  in all v8 contexts and force a WAL flush. This increases the chances of perfoming
+  the unload faster.
+
+* the status terminology for collections for which an unload request has been issued 
+  via the web interface was changed from `in the process of being unloaded` to 
+  `will be unloaded`. This is more accurate as the actual unload may be postponed
+  until later if there are still references pointing to data in the collection.
+
 
 !SECTION Foxx improvements
 
@@ -300,3 +313,9 @@ The startup option `--server.hide-product-header` can be used to make the server
 not send the HTTP response header `"Server: ArangoDB"` in its HTTP responses. This
 can be used to conceal the server make from HTTP clients.
 By default, the option is turned off so the header is still sent as usual.
+
+arangodump and arangorestore now have better error reporting. Additionally, arangodump 
+will now fail by default when trying to dump edges that refer to already dropped 
+collections. This can be circumvented by specifying the option `--force true` when 
+invoking arangodump.
+

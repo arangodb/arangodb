@@ -172,7 +172,7 @@
         async: true,
         cache: false,
         type: 'PUT',
-        url: "/_api/collection/" + this.get("id") + "/unload",
+        url: "/_api/collection/" + this.get("id") + "/unload?flush=true",
         success: function () {
           self.set("status", "unloaded");
           if (window.location.hash === "#collections") {
@@ -194,7 +194,7 @@
         type: "PUT",
         async: false, // sequential calls!
         url: "/_api/collection/" + this.get("id") + "/rename",
-        data: '{"name":"' + name + '"}',
+        data: JSON.stringify({ name: name }),
         contentType: "application/json",
         processData: false,
         success: function() {

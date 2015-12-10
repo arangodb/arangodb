@@ -88,7 +88,11 @@ struct StringSinkImpl final : public Sink {
   }
 
   void reserve(ValueLength len) override final {
-    buffer->reserve(checkOverflow(len));
+    ValueLength length = len + buffer->size();
+    if (length <= buffer->capacity()) {
+      return;
+    }
+    buffer->reserve(checkOverflow(length));
   }
 
   T* buffer;
