@@ -39,36 +39,40 @@
 /// @brief apply default settings
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ApplyVocBaseDefaults (TRI_vocbase_t* vocbase,
-                               TRI_vocbase_defaults_t const* defaults) {
-  vocbase->_settings.defaultMaximalSize               = defaults->defaultMaximalSize;
-  vocbase->_settings.defaultWaitForSync               = defaults->defaultWaitForSync;
-  vocbase->_settings.requireAuthentication            = defaults->requireAuthentication;
-  vocbase->_settings.requireAuthenticationUnixSockets = defaults->requireAuthenticationUnixSockets;
-  vocbase->_settings.authenticateSystemOnly           = defaults->authenticateSystemOnly;
-  vocbase->_settings.forceSyncProperties              = defaults->forceSyncProperties;
+void TRI_vocbase_defaults_t::applyToVocBase (TRI_vocbase_t* vocbase) const {
+  vocbase->_settings.defaultMaximalSize               = defaultMaximalSize;
+  vocbase->_settings.defaultWaitForSync               = defaultWaitForSync;
+  vocbase->_settings.requireAuthentication            = requireAuthentication;
+  vocbase->_settings.requireAuthenticationUnixSockets = requireAuthenticationUnixSockets;
+  vocbase->_settings.authenticateSystemOnly           = authenticateSystemOnly;
+  vocbase->_settings.forceSyncProperties              = forceSyncProperties;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert defaults into a JSON array
+/// @brief convert defaults into a VelocyPack array
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
-                                     TRI_vocbase_defaults_t const* defaults) {
-  TRI_json_t* json = TRI_CreateObjectJson(zone);
+void TRI_vocbase_defaults_t::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(! builder.isClosed());
+  
+  builder.add("waitForSync", VPackValue(defaultWaitForSync));
+  builder.add("requireAuthentication", VPackValue(requireAuthentication));
+  builder.add("requireAuthenticationUnixSockets", VPackValue(requireAuthenticationUnixSockets));
+  builder.add("authenticateSystemOnly", VPackValue(authenticateSystemOnly));
+  builder.add("forceSyncProperties", VPackValue(forceSyncProperties));
+  builder.add("defaultMaximalSize", VPackValue(defaultMaximalSize));
+}
 
-  if (json == nullptr) {
-    return nullptr;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert defaults into a VelocyPack array
+////////////////////////////////////////////////////////////////////////////////
 
-  TRI_Insert3ObjectJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, defaults->defaultWaitForSync));
-  TRI_Insert3ObjectJson(zone, json, "requireAuthentication", TRI_CreateBooleanJson(zone, defaults->requireAuthentication));
-  TRI_Insert3ObjectJson(zone, json, "requireAuthenticationUnixSockets", TRI_CreateBooleanJson(zone, defaults->requireAuthenticationUnixSockets));
-  TRI_Insert3ObjectJson(zone, json, "authenticateSystemOnly", TRI_CreateBooleanJson(zone, defaults->authenticateSystemOnly));
-  TRI_Insert3ObjectJson(zone, json, "forceSyncProperties", TRI_CreateBooleanJson(zone, defaults->forceSyncProperties));
-  TRI_Insert3ObjectJson(zone, json, "defaultMaximalSize", TRI_CreateNumberJson(zone, (double) defaults->defaultMaximalSize));
-
-  return json;
+std::shared_ptr<VPackBuilder> TRI_vocbase_defaults_t::toVelocyPack() const {
+  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  builder->openArray();
+  toVelocyPack(*builder);
+  builder->close();
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,46 +80,38 @@ TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
-                                  TRI_json_t const* json) {
-  if (! TRI_IsObjectJson(json)) {
+                                  VPackSlice const& slice) {
+  if (! slice.isObject()) {
     return;
   }
-
-  TRI_json_t* optionJson;
-  optionJson = TRI_LookupObjectJson(json, "waitForSync");
-
-  if (TRI_IsBooleanJson(optionJson)) {
-    defaults->defaultWaitForSync = optionJson->_value._boolean;
+  VPackSlice optionSlice = slice.get("waitForSync");
+  if (optionSlice.isBoolean()) {
+    defaults->defaultWaitForSync = optionSlice.getBool();
   }
 
-  optionJson = TRI_LookupObjectJson(json, "requireAuthentication");
-
-  if (TRI_IsBooleanJson(optionJson)) {
-    defaults->requireAuthentication = optionJson->_value._boolean;
+  optionSlice = slice.get("requireAuthentication");
+  if (optionSlice.isBoolean()) {
+    defaults->requireAuthentication = optionSlice.getBool();
   }
 
-  optionJson = TRI_LookupObjectJson(json, "requireAuthenticationUnixSockets");
-
-  if (TRI_IsBooleanJson(optionJson)) {
-    defaults->requireAuthenticationUnixSockets = optionJson->_value._boolean;
+  optionSlice = slice.get("requireAuthenticationUnixSockets");
+  if (optionSlice.isBoolean()) {
+    defaults->requireAuthenticationUnixSockets = optionSlice.getBool();
   }
 
-  optionJson = TRI_LookupObjectJson(json, "authenticateSystemOnly");
-
-  if (TRI_IsBooleanJson(optionJson)) {
-    defaults->authenticateSystemOnly = optionJson->_value._boolean;
+  optionSlice = slice.get("authenticateSystemOnly");
+  if (optionSlice.isBoolean()) {
+    defaults->authenticateSystemOnly = optionSlice.getBool();
   }
   
-  optionJson = TRI_LookupObjectJson(json, "forceSyncProperties");
-
-  if (TRI_IsBooleanJson(optionJson)) {
-    defaults->forceSyncProperties = optionJson->_value._boolean;
+  optionSlice = slice.get("forceSyncProperties");
+  if (optionSlice.isBoolean()) {
+    defaults->forceSyncProperties = optionSlice.getBool();
   }
 
-  optionJson = TRI_LookupObjectJson(json, "defaultMaximalSize");
-
-  if (TRI_IsNumberJson(optionJson)) {
-    defaults->defaultMaximalSize = (TRI_voc_size_t) optionJson->_value._number;
+  optionSlice = slice.get("forceSyncProperties");
+  if (optionSlice.isNumber()) {
+    defaults->forceSyncProperties = optionSlice.getNumericValue<TRI_voc_size_t>();
   }
 }
 

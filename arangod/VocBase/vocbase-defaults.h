@@ -33,7 +33,10 @@
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
-struct TRI_json_t;
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
@@ -51,33 +54,26 @@ typedef struct TRI_vocbase_defaults_s {
   bool              requireAuthenticationUnixSockets;
   bool              authenticateSystemOnly;
   bool              forceSyncProperties;
-}
-TRI_vocbase_defaults_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief apply default settings
-////////////////////////////////////////////////////////////////////////////////
+  void toVelocyPack (VPackBuilder&) const;
 
-void TRI_ApplyVocBaseDefaults (TRI_vocbase_t*,
-                               TRI_vocbase_defaults_t const*);
+  std::shared_ptr<VPackBuilder> toVelocyPack () const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert defaults into a JSON array
-////////////////////////////////////////////////////////////////////////////////
+  void applyToVocBase(TRI_vocbase_t*) const;
+}
+TRI_vocbase_defaults_t;
 
-struct TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t*,
-                                            TRI_vocbase_defaults_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enhance defaults with data from JSON
+/// @brief enhance defaults with data from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t*,
-                                  struct TRI_json_t const*);
+void TRI_FromVelocyPackVocBaseDefaults (TRI_vocbase_defaults_t*,
+                                        VPackSlice const&);
 
 #endif
 
