@@ -1690,7 +1690,6 @@ void RestReplicationHandler::handleCommandClusterInventory () {
                         TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
         }
         else {
-          map<string, AgencyCommResultEntry>::iterator it;
           VPackBuilder resultBuilder;
           resultBuilder.openObject();
           resultBuilder.add("collections", VPackValue(VPackValueType::Array));
