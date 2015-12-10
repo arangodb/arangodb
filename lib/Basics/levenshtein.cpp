@@ -1,98 +1,92 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @brief levenshtein function
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
 #include "levenshtein.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate the levenshtein distance of the two strings
-///
-/// This function implements the Damerau-Levenshtein algorithm to
-/// calculate a distance between strings.
-///
-/// Basically, it says how many letters need to be swapped, substituted,
-/// deleted from, or added to string1, at least, to get string2.
-///
-/// The idea is to build a distance matrix for the substrings of both
-/// strings.  To avoid a large space complexity, only the last three rows
-/// are kept in memory (if swaps had the same or higher cost as one deletion
-/// plus one insertion, only two rows would be needed).
-///
-/// At any stage, "i + 1" denotes the length of the current substring of
-/// string1 that the distance is calculated for.
-///
-/// row2 holds the current row, row1 the previous row (i.e. for the substring
-/// of string1 of length "i"), and row0 the row before that.
-///
-/// In other words, at the start of the big loop, row2[j + 1] contains the
-/// Damerau-Levenshtein distance between the substring of string1 of length
-/// "i" and the substring of string2 of length "j + 1".
-///
-/// All the big loop does is determine the partial minimum-cost paths.
-///
-/// It does so by calculating the costs of the path ending in characters
-/// i (in string1) and j (in string2), respectively, given that the last
-/// operation is a substitution, a swap, a deletion, or an insertion.
-///
-/// This implementation allows the costs to be weighted:
-///
-/// - w (as in "sWap")
-/// - s (as in "Substitution")
-/// - a (for insertion, AKA "Add")
-/// - d (as in "Deletion")
-///
-/// Note that this algorithm calculates a distance _iff_ d == a.
-/// 
-/// @author https://github.com/git/git/blob/master/levenshtein.c
+/// @author Benjamin Pritchard (ben@bennyp.org)
+/// copyright 2013 Benjamin Pritchard. Released under the MIT License
+/// copyright The MIT License
+/// From https://raw.githubusercontent.com/bennybp/stringmatch/master/stringmatch.cpp
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Levenshtein (char const* string1, 
-                     char const* string2,
-                     int w, 
-                     int s, 
-                     int a, 
-                     int d) {
-  int len1 = static_cast<int>(strlen(string1));
-  int len2 = static_cast<int>(strlen(string2));
-  int* row0 = new int[len2 + 1];
-  int* row1 = new int[len2 + 1];
-  int* row2 = new int[len2 + 1];
+int TRI_Levenshtein (std::string const& str1,
+                     std::string const& str2) {
+  // for all i and j, d[i,j] will hold the Levenshtein distance between
+  // the first i characters of s and the first j characters of t;
+  // note that d has (m+1)x(n+1) values
+  size_t m = str1.size();
+  size_t n = str2.size();
 
-  for (int j = 0; j <= len2; j++) {
-    row1[j] = j * a;
+  int** d = new int*[m + 1];
+  for (size_t i = 0; i <= m; i++) {
+    d[i] = new int[n + 1];
   }
 
-  int i;
-  for (i = 0; i < len1; i++) {
-    int *dummy;
+  for (size_t i = 0; i <= m; i++) {
+    d[i][0] = i; // the distance of any first string to an empty second string
+  }
 
-    row2[0] = (i + 1) * d;
-    for (int j = 0; j < len2; j++) {
-      /* substitution */
-      row2[j + 1] = row1[j] + s * (string1[i] != string2[j]);
-      /* swap */
-      if (i > 0 && j > 0 && string1[i - 1] == string2[j] &&
-          string1[i] == string2[j - 1] &&
-          row2[j + 1] > row0[j - 1] + w) {
-        row2[j + 1] = row0[j - 1] + w;
+  for (size_t j = 0; j <= n; j++) {
+    d[0][j] = j; // the distance of any second string to an empty first string
+  }
+
+  int min;
+
+  for (size_t j = 1; j <= n; j++) {
+    for (size_t i = 1; i <= m; i++) {
+      if (str1[i - 1] == str2[j - 1]) {
+        d[i][j] = d[i - 1][j - 1];   // no operation required
       }
-      /* deletion */
-      if (row2[j + 1] > row1[j + 1] + d) {
-        row2[j + 1] = row1[j + 1] + d;
-      }
-      /* insertion */
-      if (row2[j + 1] > row2[j] + a) {
-        row2[j + 1] = row2[j] + a;
+      else {
+        //find a minimum
+        min = d[i - 1][j] + /*1*/3;     // a deletion
+        if( (d[i][j - 1] + 1) < min) {   // an insertion
+          min = (d[i][j - 1] + 1);
+        }
+        if( (d[i - 1][j - 1] + 1) < min) { // a substitution
+          min = (d[i - 1][j - 1] + /*1*/2);
+        }
+
+        d[i][j] = min;
       }
     }
-
-    dummy = row0;
-    row0 = row1;
-    row1 = row2;
-    row2 = dummy;
   }
 
-  i = row1[len2];
-  delete[] row0;
-  delete[] row1;
-  delete[] row2;
+  int result = d[m][n];
 
-  return i;
+  for(size_t i = 0; i <= m; i++) {
+    delete[] d[i];
+  }
+  delete[] d;
+
+  return result;
 }
 

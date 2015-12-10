@@ -18,6 +18,11 @@
 * Project Home: https://code.google.com/p/fast-hash/
 * License: [MIT License](https://code.google.com/p/fast-hash/)
 
+### levenshtein distance
+
+* Project Home: https://github.com/bennybp/stringmatch/
+* License: [MIT License](https://github.com/bennybp/stringmatch/blob/master/stringmatch.h)
+
 ### Google V8 4.3.61
 
 * Project Home: https://code.google.com/p/v8/
