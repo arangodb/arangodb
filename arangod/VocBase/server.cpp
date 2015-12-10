@@ -1408,11 +1408,11 @@ static int InitDatabases (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int WriteCreateMarker (TRI_voc_tick_t id,
-                              TRI_json_t const* json) {
+                              VPackSlice const& slice) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::CreateDatabaseMarker marker(id, triagens::basics::JsonHelper::toString(json));
+    triagens::wal::CreateDatabaseMarker marker(id, slice.toJson());
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -2097,7 +2097,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   }
 
   TRI_vocbase_t* vocbase = nullptr;
-  TRI_json_t* json = nullptr;
+  VPackBuilder builder;
   int res;
 
   // the create lock makes sure no one else is creating a database while we're inside
@@ -2116,11 +2116,15 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
       }
     }
 
-    // name not yet in use
-    json = TRI_JsonVocBaseDefaults(TRI_UNKNOWN_MEM_ZONE, defaults);
-
-    if (json == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
+    if (writeMarker) {
+      try {
+        builder.openObject();
+        // name not yet in use
+        defaults->toVelocyPack(builder);
+      }
+      catch (...) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
     }
 
     // create the database directory
@@ -2133,8 +2137,6 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     res = CreateDatabaseDirectory(server, databaseId, name, defaults, &file);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
       return res;
     }
 
@@ -2156,8 +2158,6 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
     if (vocbase == nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
       // grab last error
       res = TRI_errno();
 
@@ -2175,10 +2175,17 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
     TRI_ASSERT(vocbase != nullptr);
     
-    char* tickString = TRI_StringUInt64(databaseId);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString, strlen(tickString)));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name, strlen(name)));
+    if (writeMarker) {
+      try {
+        char* tickString = TRI_StringUInt64(databaseId);
+        builder.add("id", VPackValue(tickString));
+        TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
+        builder.add("name", VPackValue(name));
+      }
+      catch (...) {
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+    }
 
 
     // create application directories
@@ -2232,10 +2239,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   // write marker into log
   if (writeMarker) {
-    res = WriteCreateMarker(vocbase->_id, json);
+    builder.close();
+    res = WriteCreateMarker(vocbase->_id, builder.slice());
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   *database = vocbase;
 

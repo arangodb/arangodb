@@ -1372,7 +1372,9 @@ void TRI_CreateVelocyPackCollectionInfo (TRI_col_info_t const* info,
   builder.add("waitForSync", VPackValue(info->_waitForSync));
 
   if (info->_keyOptions != nullptr) {
-    builder.add("keyOptions", VPackValue(info->_keyOptions));
+    builder.add("keyOptions", VPackValue(VPackValueType::Object));
+    triagens::basics::JsonHelper::toVelocyPack(info->_keyOptions, builder);
+    builder.close();
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, planIdString);

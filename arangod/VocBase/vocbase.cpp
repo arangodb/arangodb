@@ -598,6 +598,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                                             TRI_voc_cid_t& cid,
                                             bool writeMarker,
                                             VPackBuilder& builder) {
+  TRI_ASSERT(! builder.isClosed());
   char const* name = parameter->_name;
 
   WRITE_LOCKER(vocbase->_collectionsLock);
@@ -1927,8 +1928,10 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
   READ_LOCKER(vocbase->_inventoryLock);
 
   VPackBuilder builder;
+  builder.openObject();
 
   auto collection = CreateCollection(vocbase, parameters, cid, writeMarker, builder);
+  builder.close();
 
   if (! writeMarker) {
     return collection;
@@ -2453,7 +2456,7 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
   _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
     
   // use the defaults provided
-  TRI_ApplyVocBaseDefaults(this, defaults);
+  defaults->applyToVocBase(this);
     
   // init collections
   _collections.reserve(32);
