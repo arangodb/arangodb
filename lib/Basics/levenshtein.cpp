@@ -51,11 +51,11 @@ int TRI_Levenshtein (std::string const& str1,
   }
 
   for (size_t i = 0; i <= m; i++) {
-    d[i][0] = i; // the distance of any first string to an empty second string
+    d[i][0] = static_cast<int>(i); // the distance of any first string to an empty second string
   }
 
   for (size_t j = 0; j <= n; j++) {
-    d[0][j] = j; // the distance of any second string to an empty first string
+    d[0][j] = static_cast<int>(j); // the distance of any second string to an empty first string
   }
 
   int min;
