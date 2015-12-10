@@ -77,6 +77,7 @@ require("org/arangodb/replication").applier.properties({
   password: "mypasswd",
   autoStart: true,
   autoResync: true,
+  autoResyncRetries: 2,
   adaptivePolling: true,
   includeSystem: false,
   requireFromPresent: false,
@@ -113,6 +114,11 @@ the continuous replication is started and detects that there is no start tick va
 Note that automatic re-synchronization (*autoResync* option set to *true*) may transfer a lot of 
 data from the master to the slave and can therefore be expensive. Still it's turned on here so
 there's less need for manual intervention. 
+
+The *autoResyncRetries* option can be used to control the number of resynchronization retries that 
+will be performed in a row when automatic resynchronization is enabled and kicks in. Setting this to 
+*0* will effectively disable *autoResync*. Setting it to some other value will limit the number of retries 
+that are performed. This helps preventing endless retries in case resynchronizations always fail.
 
 Now it's time to start the replication applier on the slave using the last log tick we got
 before:

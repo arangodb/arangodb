@@ -76,6 +76,7 @@ function ReplicationSuite () {
 
     db._flushCache();
     masterFunc(state);
+    require("internal").wal.flush(true, true);
 
     db._flushCache();
     connectToSlave();
