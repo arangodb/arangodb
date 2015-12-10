@@ -260,6 +260,8 @@ The result might look like this:
   "adaptivePolling" : true,
   "includeSystem" : true,
   "requireFromPresent" : false,
+  "autoResync" : false,
+  "autoResyncRetries" : 2,
   "verbose" : false 
 }
 ```
@@ -342,6 +344,11 @@ Automatic re-synchronization may transfer a lot of data from the master to the s
 expensive. It is therefore turned off by default. When turned off, the slave will never perform an 
 automatic re-synchronization with the master.
 
+The *autoResyncRetries* option can be used to control the number of resynchronization retries that 
+will be performed in a row when automatic resynchronization is enabled and kicks in. Setting this to 
+*0* will effectively disable *autoResync*. Setting it to some other value will limit the number of retries 
+that are performed. This helps preventing endless retries in case resynchronizations always fail.
+
 The *verbose* attribute controls the verbosity of the replication logger. Setting it to `true` will
 make the replication applier write a line to the log for every operation it performs. This should
 only be used for diagnosing replication problems.
@@ -351,14 +358,16 @@ The following example will set most of the discussed properties for the current 
 ```js
 require("org/arangodb/replication").applier.properties({ 
   endpoint: "tcp://master.domain.org:8529", 
-  username:  "root", 
+  username: "root", 
   password: "secret",
   adaptivePolling: true,
   connectTimeout: 15,
   maxConnectRetries: 100,
   chunkSize: 262144,
   autoStart: true,
-  includeSystem: true
+  includeSystem: true,
+  autoResync: true,
+  autoResyncRetries: 2,
 });
 ```
 
