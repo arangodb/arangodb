@@ -137,7 +137,6 @@ add_library(
     Basics/VPackStringBufferAdapter.cpp
     Basics/WriteLocker.cpp
     Basics/WriteUnlocker.cpp
-    Basics/xxhash.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/EndpointList.cpp

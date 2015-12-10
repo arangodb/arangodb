@@ -3718,6 +3718,13 @@ void RestReplicationHandler::handleCommandDump () {
 /// the master in case the master cannot serve log data requested by the slave,
 /// or when the replication is started and no tick value can be found.
 ///
+/// @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
+/// number of resynchronization retries that will be performed in a row when
+/// automatic resynchronization is enabled and kicks in. Setting this to *0* will
+/// effectively disable *autoResync*. Setting it to some other value will limit
+/// the number of retries that are performed. This helps preventing endless retries
+/// in case resynchronizations always fail.
+///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
 /// wait for a response from the master when fetching initial collection data.
@@ -3922,6 +3929,7 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   config._initialSyncMaxWaitTime  = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
   config._idleMinWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
   config._idleMaxWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._autoResyncRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "autoResyncRetries", defaults._autoResyncRetries);
   
   VPackSlice const restriction = body.get("restrictCollections");
 
@@ -4299,6 +4307,12 @@ void RestReplicationHandler::handleCommandServerId () {
 ///   requested by the slave, or when the replication is started and no tick value
 ///   can be found.
 ///
+/// - *autoResyncRetries*: umber of resynchronization retries that will be performed 
+///   in a row when automatic resynchronization is enabled and kicks in. Setting this 
+///   to *0* will effectively disable *autoResync*. Setting it to some other value 
+///   will limit the number of retries that are performed. This helps preventing endless 
+///   retries in case resynchronizations always fail.
+///
 /// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the initial 
 ///   synchronization will wait for a response from the master when fetching initial 
 ///   collection data.
@@ -4448,6 +4462,13 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// whether or not the slave should perform a full automatic resynchronization 
 /// with the master in case the master cannot serve log data requested by the slave,
 /// or when the replication is started and no tick value can be found.
+///
+/// @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
+/// number of resynchronization retries that will be performed in a row when
+/// automatic resynchronization is enabled and kicks in. Setting this to *0* will
+/// effectively disable *autoResync*. Setting it to some other value will limit
+/// the number of retries that are performed. This helps preventing endless retries
+/// in case resynchronizations always fail.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
@@ -4622,6 +4643,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._initialSyncMaxWaitTime  = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
   config._idleMinWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
   config._idleMaxWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._autoResyncRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "autoResyncRetries", config._autoResyncRetries);
 
   VPackSlice const restriction = body.get("restrictCollections");
   if (restriction.isArray()) {

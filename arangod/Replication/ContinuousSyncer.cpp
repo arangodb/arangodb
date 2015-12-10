@@ -119,7 +119,10 @@ int ContinuousSyncer::run () {
     return TRI_ERROR_INTERNAL;
   }
 
+  uint64_t shortTermFailsInRow = 0;
+
 retry:
+  double const start = TRI_microtime();
   string errorMsg;
 
   int res = TRI_ERROR_NO_ERROR;
@@ -226,10 +229,32 @@ retry:
       if (! _configuration._autoResync) {
         return res;
       }
+
+      if (TRI_microtime() - start < 120.0) {
+        // the applier only ran for less than 2 minutes. probably auto-restarting it won't help much
+        shortTermFailsInRow++;
+      }
+      else {
+        shortTermFailsInRow = 0;
+      }
+
+      // check if we've made too many retries
+      if (shortTermFailsInRow > _configuration._autoResyncRetries) {
+        if (_configuration._autoResyncRetries > 0) {
+          // message only makes sense if there's at least one retry
+          LOG_WARNING("aborting automatic resynchronization for database '%s' after %d retries", 
+                      _vocbase->_name,
+                      (int) _configuration._autoResyncRetries);
+        }
+
+        // always abort if we get here
+        return res;
+      }
       
       // do an automatic full resync
-      LOG_WARNING("restarting initial synchronization for database '%s' because autoResync option is set", 
-                  _vocbase->_name);
+      LOG_WARNING("restarting initial synchronization for database '%s' because autoResync option is set. retry #%d", 
+                  _vocbase->_name,
+                  (int) shortTermFailsInRow);
     
       // start initial synchronization
       errorMsg = "";
@@ -245,7 +270,7 @@ retry:
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
-          LOG_INFO("automatic resynchronization for database '%s' finished. restarting continous replication applier from tick %llu",
+          LOG_INFO("automatic resynchronization for database '%s' finished. restarting continuous replication applier from tick %llu",
                    _vocbase->_name,
                    (unsigned long long) lastLogTick);
           _initialTick = lastLogTick;
@@ -1161,7 +1186,9 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
                      "&from=" + StringUtils::itoa(fromTick) +
                      "&to=" + StringUtils::itoa(toTick);
  
-  string const progress = "fetching initial master state with from tick " + StringUtils::itoa(fromTick) + ", toTick " + StringUtils::itoa(toTick);
+  string const progress = "fetching initial master state with from tick " + StringUtils::itoa(fromTick) + ", to tick " + StringUtils::itoa(toTick);
+
+  setProgress(progress);
 
   LOG_TRACE("fetching initial master state with from tick %llu, to tick %llu, url %s",
             (unsigned long long) fromTick,
@@ -1169,8 +1196,6 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
             url.c_str());
 
   // send request
-  setProgress(progress);
-
   std::unique_ptr<SimpleHttpResult> response(_client->request(HttpRequest::HTTP_REQUEST_GET,
                                                               url,
                                                               nullptr,
@@ -1222,7 +1247,11 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  startTick = StringUtils::uint64(header);
+  TRI_voc_tick_t readTick = StringUtils::uint64(header);
+  startTick = readTick;
+  if (startTick == 0) {
+    startTick = toTick;
+  }
 
   StringBuffer& data = response->getBody();
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.begin()));
@@ -1245,6 +1274,15 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
     }
 
     _ongoingTransactions.emplace(StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1), nullptr);
+  }
+  
+  { 
+    string const progress = "fetched initial master state for from tick " + StringUtils::itoa(fromTick) + 
+                            ", to tick " + StringUtils::itoa(toTick) +
+                            ", got start tick: " + StringUtils::itoa(readTick) + ", open transactions: " + 
+                            std::to_string(_ongoingTransactions.size());
+
+    setProgress(progress);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1276,7 +1314,8 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
             url.c_str());
 
   // send request
-  string const progress = "fetching master log from tick " + StringUtils::itoa(fetchTick);
+  string const progress = "fetching master log from tick " + StringUtils::itoa(fetchTick) + 
+                          ", open transactions: " + std::to_string(_ongoingTransactions.size());
   setProgress(progress);
 
   std::string body;

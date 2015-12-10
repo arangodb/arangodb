@@ -39,6 +39,8 @@
 /// @brief bye bye message
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TRI_UNICODE_LRM "\xE2\x80\x8E"
+#define TRI_UNICODE_RLM "\xE2\x80\x8F"
 #define TRI_BYE_MESSAGE_CH "Uf wiederluege!"
 #define TRI_BYE_MESSAGE_CZ "Na shledanou!"
 #define TRI_BYE_MESSAGE_DE "Auf Wiedersehen!"
@@ -47,8 +49,8 @@
 #define TRI_BYE_MESSAGE_ES "¡Hasta luego!"
 #define TRI_BYE_MESSAGE_FR "Au revoir!"
 #define TRI_BYE_MESSAGE_GR "Εις το επανιδείν!"
-#define TRI_BYE_MESSAGE_IT "Arrivederci!"
 #define TRI_BYE_MESSAGE_IL "להתראות!"
+#define TRI_BYE_MESSAGE_IT "Arrivederci!"
 #define TRI_BYE_MESSAGE_JP "さようなら"
 #define TRI_BYE_MESSAGE_NL "Tot ziens!"
 #define TRI_BYE_MESSAGE_RU "До свидания!"
@@ -63,8 +65,8 @@
   TRI_BYE_MESSAGE_EO " " \
   TRI_BYE_MESSAGE_ES " " \
   TRI_BYE_MESSAGE_FR "\n" \
+  TRI_UNICODE_RLM TRI_BYE_MESSAGE_IL TRI_UNICODE_LRM \
   TRI_BYE_MESSAGE_IT " " \
-  TRI_BYE_MESSAGE_IL " " \
   TRI_BYE_MESSAGE_NL " " \
   TRI_BYE_MESSAGE_SV " " \
   TRI_BYE_MESSAGE_GR " " \

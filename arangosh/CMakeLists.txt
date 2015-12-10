@@ -21,6 +21,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
 ### @brief arangob
 ################################################################################
 
+include_directories(../3rdParty/velocypack/include)
+
 if (MSVC)
   generate_product_version(
     ProductVersionFiles_arangob
