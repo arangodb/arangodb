@@ -285,6 +285,9 @@ v2.7.3 (XXXX-XX-XX)
   and drop and (re-)create collection markers were located in the same WAL file
 
 
+* fixed an issue where overwriting the system sessions collection would break
+  the web interface when authentication is enabled
+
 v2.7.2 (2015-12-01)
 -------------------
 
