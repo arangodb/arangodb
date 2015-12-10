@@ -732,7 +732,8 @@ bool HeartbeatThread::fetchUsers (TRI_vocbase_t* vocbase) {
     }
     else {
       // users found in collection, insert them into cache
-      TRI_PopulateAuthInfo(vocbase, json);
+      std::shared_ptr<VPackBuilder> transformed = triagens::basics::JsonHelper::toVelocyPack(json);
+      TRI_PopulateAuthInfo(vocbase, transformed->slice());
     }
     
     result = true;

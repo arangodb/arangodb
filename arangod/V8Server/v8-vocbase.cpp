@@ -1010,7 +1010,8 @@ static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(json != nullptr);
 
-    result = TRI_PopulateAuthInfo(vocbase, json);
+    std::shared_ptr<VPackBuilder> transformed = triagens::basics::JsonHelper::toVelocyPack(json);
+    result = TRI_PopulateAuthInfo(vocbase, transformed->slice());
   }
   else {
     result = false;
