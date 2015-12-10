@@ -65,6 +65,8 @@ struct Exception : std::exception {
     BuilderUnexpectedValue = 35,
     BuilderNeedSubvalue = 36,
     BuilderExternalsDisallowed = 37,
+    BuilderKeyAlreadyWritten = 38,
+    BuilderKeyMustBeString = 39,
 
     UnknownError = 999
   };
@@ -133,6 +135,10 @@ struct Exception : std::exception {
         return "Unexpected value";
       case BuilderExternalsDisallowed:
         return "Externals are not allowed in this configuration";
+      case BuilderKeyAlreadyWritten:
+        return "The key of the next key/value pair is already written";
+      case BuilderKeyMustBeString:
+        return "The key of the next key/value pair must be a string";
 
       case UnknownError:
       default:

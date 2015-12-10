@@ -101,18 +101,20 @@ function createRequire(module) {
   // Enable support to add extra extension types
   require.extensions = Module._extensions;
 
-  require.cache = Module._cache;
+  require.cache = module.cache;
 
   return require;
 }
 
-function Module(id, parent) {
+function Module(id, parent, cache) {
   this.id = id;
   this.exports = {};
   this.parent = parent;
   if (parent && parent.children) {
     parent.children.push(this);
   }
+
+  this.cache = cache || (parent ? parent.cache : Module._cache);
 
   this.context = {
     print: internal.print,
@@ -126,6 +128,7 @@ function Module(id, parent) {
   };
 
   if (parent) {
+    this.root = parent.root;
     this.preprocess = parent.preprocess;
     Object.keys(parent.context).forEach(function (key) {
       if (!hasOwnProperty(this.context, key)) {
@@ -292,7 +295,7 @@ Module._findPath = function(request, paths) {
 };
 
 // 'from' is the __dirname of the module.
-Module._nodeModulePaths = function(from) {
+Module._nodeModulePaths = function(from, root) {
   // guarantee that 'from' is absolute.
   from = path.resolve(from);
 
@@ -302,11 +305,13 @@ Module._nodeModulePaths = function(from) {
   var splitRe = (internal.platform === 'win32' || internal.platform === 'win64') ? /[\/\\]/ : /\//;
   var paths = [];
   var parts = from.split(splitRe);
+  var inRoot = root && from.indexOf(root) === 0;
 
   for (var tip = parts.length - 1; tip >= 0; tip--) {
     // don't search in .../node_modules/node_modules
     if (parts[tip] === 'node_modules') continue;
     var dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
+    if (inRoot && dir.indexOf(root) !== 0) break;
     paths.push(dir);
   }
 
@@ -386,6 +391,13 @@ Module._resolveDbModule = function (request) {
 };
 
 
+function isGlobalModule(filename) {
+  return modulePaths.some(function (modulePath) {
+    return filename.indexOf(modulePath) === 0;
+  });
+}
+
+
 // Check the cache for the requested file.
 // 1. If a module already exists in the cache: return its exports object.
 // 2. If the module is native: call `NativeModule.require()` with the
@@ -394,6 +406,7 @@ Module._resolveDbModule = function (request) {
 //    Then have it load  the file contents before returning its exports
 //    object.
 Module._load = function(request, parent, isMain) {
+
   var filename = request;
   var dbModule = false;
   var match = request.match(/^\/?db:(\/(\/_modules)?)?(\/.+)/);
@@ -420,7 +433,11 @@ Module._load = function(request, parent, isMain) {
     filename = dbModule.path;
   }
 
-  var cachedModule = Module._cache[filename];
+  var cache;
+  if (parent && (dbModule || !isGlobalModule(filename))) cache = parent.cache;
+  else cache = Module._cache;
+
+  var cachedModule = cache[filename];
   if (cachedModule) {
     return cachedModule.exports;
   }
@@ -435,8 +452,8 @@ Module._load = function(request, parent, isMain) {
     module.id = '.';
   }
 
-  Module._cache[filename] = module;
-  LOADING.push(filename);
+  cache[filename] = module;
+  LOADING.push({cache, filename});
 
   var hadException = true;
 
@@ -449,7 +466,7 @@ Module._load = function(request, parent, isMain) {
     hadException = false;
   } finally {
     if (hadException) {
-      delete Module._cache[filename];
+      delete cache[filename];
     }
     var i = LOADING.indexOf(filename);
     if (i !== -1) {
@@ -462,8 +479,8 @@ Module._load = function(request, parent, isMain) {
 
 Module._cleanupCancelation = function () {
   while (LOADING.length) {
-    var filename = LOADING.pop();
-    delete Module._cache[filename];
+    let loading = LOADING.pop();
+    delete loading.cache[loading.filename];
   }
 };
 
@@ -491,7 +508,7 @@ Module._resolveFilename = function(request, parent) {
 Module.prototype.load = function(filename) {
   assert(!this.loaded);
   this.filename = filename;
-  this.paths = Module._nodeModulePaths(path.dirname(filename));
+  this.paths = Module._nodeModulePaths(path.dirname(filename), this.root);
 
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
@@ -526,7 +543,7 @@ Module.prototype._compile = function(content, filename) {
   // remove shebang
   content = content.replace(/^\#\!.*/, '');
   if (this.preprocess) {
-    content = this.preprocess(content);
+    content = this.preprocess(content, filename);
   }
 
   // test for parse errors first and fail early if a parse error detected

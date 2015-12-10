@@ -67,6 +67,8 @@ class Builder {
                                     // open objects/arrays
   std::vector<std::vector<ValueLength>> _index;  // Indices for starts
                                                  // of subindex
+  bool _keyWritten;  // indicates that in the current object the key
+                     // has been written but the value not yet
 
   // Here are the mechanics of how this building process works:
   // The whole VPack being built starts at where _start points to
@@ -131,7 +133,7 @@ class Builder {
   // Constructor and destructor:
   explicit Builder(std::shared_ptr<Buffer<uint8_t>>& buffer,
                    Options const* options = &Options::Defaults)
-      : _buffer(buffer), _pos(0), options(options) {
+      : _buffer(buffer), _pos(0), _keyWritten(false), options(options) {
     if (_buffer.get() == nullptr) {
       throw Exception(Exception::InternalError, "Buffer cannot be a nullptr");
     }
@@ -144,7 +146,8 @@ class Builder {
   }
 
   explicit Builder(Options const* options = &Options::Defaults)
-      : _buffer(new Buffer<uint8_t>()), _pos(0), options(options) {
+      : _buffer(new Buffer<uint8_t>()), _pos(0), _keyWritten(false),
+        options(options) {
     _start = _buffer->data();
     _size = _buffer->size();
 
@@ -164,6 +167,7 @@ class Builder {
         _pos(that._pos),
         _stack(that._stack),
         _index(that._index),
+        _keyWritten(that._keyWritten),
         options(that.options) {
     if (options == nullptr) {
       throw Exception(Exception::InternalError, "Options cannot be a nullptr");
@@ -180,6 +184,7 @@ class Builder {
     _pos = that._pos;
     _stack = that._stack;
     _index = that._index;
+    _keyWritten = that._keyWritten;
     options = that.options;
     return *this;
   }
@@ -197,10 +202,12 @@ class Builder {
     _stack.swap(that._stack);
     _index.clear();
     _index.swap(that._index);
+    _keyWritten = that._keyWritten;
     options = that.options;
     that._start = that._buffer->data();
     that._size = 0;
     that._pos = 0;
+    that._keyWritten = false;
   }
 
   Builder& operator=(Builder&& that) {
@@ -216,10 +223,12 @@ class Builder {
     _stack.swap(that._stack);
     _index.clear();
     _index.swap(that._index);
+    _keyWritten = that._keyWritten;
     options = that.options;
     that._start = that._buffer->data();
     that._size = 0;
     that._pos = 0;
+    that._keyWritten = false;
     return *this;
   }
 
@@ -238,6 +247,8 @@ class Builder {
 
   std::string toString() const;
 
+  std::string toJson() const;
+
   static Builder clone(Slice const& slice,
                        Options const* options = &Options::Defaults) {
     if (options == nullptr) {
@@ -246,7 +257,7 @@ class Builder {
 
     Builder b(options);
     b.add(slice);
-    return std::move(b);
+    return b;   // Use return value optimization
   }
 
   // Clear and start from scratch:
@@ -275,6 +286,22 @@ class Builder {
   }
 
   bool isClosed() const throw() { return _stack.empty(); }
+
+  bool isOpenArray() const throw() {
+    if (_stack.empty()) {
+      return false;
+    }
+    ValueLength const tos = _stack.back();
+    return _start[tos] == 0x06 || _start[tos] == 0x13;
+  }
+
+  bool isOpenObject() const throw() {
+    if (_stack.empty()) {
+      return false;
+    }
+    ValueLength const tos = _stack.back();
+    return _start[tos] == 0x0b || _start[tos] == 0x14;
+  }
 
   // Add a subvalue into an object from a Value:
   uint8_t* add(std::string const& attrName, Value const& sub);
@@ -435,6 +462,25 @@ private:
 
  private:
 
+  inline void checkKeyIsString(bool isString) {
+    if (! _stack.empty()) {
+      ValueLength const tos = _stack.back();
+      if (_start[tos] == 0x0b || _start[tos] == 0x14) {
+        if (! _keyWritten) {
+          if (isString) {
+            _keyWritten = true;
+          }
+          else {
+            throw Exception(Exception::BuilderKeyMustBeString);
+          }
+        }
+        else {
+          _keyWritten = false;
+        }
+      }
+    }
+  }
+
   inline void addArray(bool unindexed = false) {
     addCompoundValue(unindexed ? 0x13 : 0x06);
   }
@@ -447,12 +493,10 @@ private:
   uint8_t* addInternal(T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
-      ValueLength& tos = _stack.back();
-      if (_start[tos] != 0x06 && _start[tos] != 0x13) {
-        throw Exception(Exception::BuilderNeedOpenArray);
+      if (! _keyWritten) {
+        reportAdd();
+        haveReported = true;
       }
-      reportAdd(tos);
-      haveReported = true;
     }
     try {
       return set(sub);
@@ -473,7 +517,10 @@ private:
       if (_start[tos] != 0x0b && _start[tos] != 0x14) {
         throw Exception(Exception::BuilderNeedOpenObject);
       }
-      reportAdd(tos);
+      if (_keyWritten) {
+        throw Exception(Exception::BuilderKeyAlreadyWritten);
+      }
+      reportAdd();
       haveReported = true;
     }
 
@@ -484,13 +531,19 @@ private:
             options->attributeTranslator->translate(attrName);
 
         if (translated != nullptr) {
-          set(Slice(translated, options));
+          Slice item(translated);
+          ValueLength const l = item.byteSize();
+          reserveSpace(l);
+          memcpy(_start + _pos, translated, checkOverflow(l));
+          _pos += l;
+          _keyWritten = true;
           return set(sub);
         }
         // otherwise fall through to regular behavior
       }
 
       set(Value(attrName, ValueType::String));
+      _keyWritten = true;
       return set(sub);
     } catch (...) {
       // clean up in case of an exception
@@ -518,11 +571,16 @@ private:
     bool haveReported = false;
     if (!_stack.empty()) {
       ValueLength& tos = _stack.back();
-      if (_start[tos] != 0x06 && _start[tos] != 0x13) {
-        throw Exception(Exception::BuilderNeedOpenCompound);
+      if (! _keyWritten) {
+        if (_start[tos] != 0x06 && _start[tos] != 0x13) {
+          throw Exception(Exception::BuilderNeedOpenArray);
+        }
+        reportAdd();
+        haveReported = true;
       }
-      reportAdd(tos);
-      haveReported = true;
+      else {
+        _keyWritten = false;
+      }
     }
     try {
       addCompoundValue(type);
@@ -547,9 +605,9 @@ private:
     _index[depth].pop_back();
   }
 
-  void reportAdd(ValueLength base) {
+  void reportAdd() {
     size_t depth = _stack.size() - 1;
-    _index[depth].push_back(_pos - base);
+    _index[depth].push_back(_pos - _stack[depth]);
   }
 
   void appendLength(ValueLength v, uint64_t n) {
@@ -644,7 +702,12 @@ struct ObjectBuilder final : public BuilderContainer, public NoHeapAllocation {
     builder->add(attributeName, Value(ValueType::Object, allowUnindexed)); 
   }
   ~ObjectBuilder() {
-    builder->close();
+    try {
+      builder->close();
+    }
+    catch (...) {
+      // destructors must not throw
+    }
   }
 };
 
@@ -653,8 +716,19 @@ struct ArrayBuilder final : public BuilderContainer, public NoHeapAllocation {
   ArrayBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }
+  ArrayBuilder(Builder* builder, std::string const& attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
+  }
+  ArrayBuilder(Builder* builder, char const* attributeName, bool allowUnindexed = false) : BuilderContainer(builder) {
+    builder->add(attributeName, Value(ValueType::Array, allowUnindexed));
+  }
   ~ArrayBuilder() {
-    builder->close();
+    try {
+      builder->close();
+    }
+    catch (...) {
+      // destructors must not throw
+    }
   }
 };
 

@@ -2063,11 +2063,24 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// * *uncollectedLogfileEntries*: The number of markers in the write-ahead
 ///   log for this collection that have not been transferred to journals or
 ///   datafiles.
+/// * *documentReferences*: The number of references to documents in datafiles
+///   that JavaScript code currently holds. This information can be used for
+///   debugging compaction and unload issues.
+/// * *waitingFor*: An optional string value that contains information about
+///   which object type is at the head of the collection's cleanup queue. This 
+///   information can be used for debugging compaction and unload issues.
+/// * *compactionStatus.time*: The point in time the compaction for the collection
+///   was last executed. This information can be used for debugging compaction
+///   issues.
+/// * *compactionStatus.message*: The action that was performed when the compaction
+///   was last run for the collection. This information can be used for debugging
+///   compaction issues.
 ///
 /// **Note**: collection data that are stored in the write-ahead log only are
 /// not reported in the results. When the write-ahead log is collected, documents
 /// might be added to journals and datafiles of the collection, which may modify 
-/// the figures of the collection.
+/// the figures of the collection. Also note that `waitingFor` and `compactionStatus` 
+/// may be empty when called on a coordinator in a cluster.
 ///
 /// Additionally, the filesizes of collection and index parameter JSON files are
 /// not reported. These files should normally have a size of a few bytes
@@ -2178,6 +2191,24 @@ static void JS_FiguresVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& arg
 
   result->Set(TRI_V8_ASCII_STRING("lastTick"),   V8TickId(isolate, info->_tickMax));
   result->Set(TRI_V8_ASCII_STRING("uncollectedLogfileEntries"), v8::Number::New(isolate, (double) info->_uncollectedLogfileEntries));
+  result->Set(TRI_V8_ASCII_STRING("documentReferences"), v8::Number::New(isolate, (double) info->_numberDocumentDitches));
+
+  char const* wfd = "-";
+  if (info->_waitingForDitch != nullptr) {
+    wfd = info->_waitingForDitch;
+  }
+  result->Set(TRI_V8_ASCII_STRING("waitingFor"), TRI_V8_ASCII_STRING(wfd));
+
+  v8::Handle<v8::Object> compaction = v8::Object::New(isolate);
+  if (info->_lastCompactionStatus != nullptr) {
+    compaction->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_ASCII_STRING(info->_lastCompactionStatus));
+    compaction->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_ASCII_STRING(&info->_lastCompactionStamp[0]));
+  }
+  else {
+    compaction->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_ASCII_STRING("-"));
+    compaction->Set(TRI_V8_ASCII_STRING("time"), TRI_V8_ASCII_STRING("-"));
+  }
+  result->Set(TRI_V8_ASCII_STRING("compactionStatus"), compaction);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, info);
 

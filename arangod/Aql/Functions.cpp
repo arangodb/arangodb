@@ -3088,7 +3088,7 @@ static Json getDocumentByIdentifier (triagens::arango::AqlTransaction* trx,
     if (ex.code() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
       return Json(Json::Null);
     }
-    throw ex;
+    throw;
   }
 
   TRI_doc_mptr_copy_t mptr;
@@ -3168,7 +3168,7 @@ AqlValue Functions::Document (triagens::aql::Query* query,
   catch (triagens::basics::Exception const& ex) {
     // don't throw if collection is not found
     if (ex.code() != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-      throw ex;
+      throw;
     }
     notFound = true;
   }

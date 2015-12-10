@@ -7341,6 +7341,12 @@ var CryptoJS=CryptoJS||function(s,p){var m={},l=m.lib={},n=function(){},r=l.Base
       d,e,j,9,a[29]),e=m(e,f,c,d,u,14,a[30]),d=m(d,e,f,c,A,20,a[31]),c=l(c,d,e,f,s,4,a[32]),f=l(f,c,d,e,v,11,a[33]),e=l(e,f,c,d,z,16,a[34]),d=l(d,e,f,c,C,23,a[35]),c=l(c,d,e,f,w,4,a[36]),f=l(f,c,d,e,r,11,a[37]),e=l(e,f,c,d,u,16,a[38]),d=l(d,e,f,c,y,23,a[39]),c=l(c,d,e,f,B,4,a[40]),f=l(f,c,d,e,h,11,a[41]),e=l(e,f,c,d,q,16,a[42]),d=l(d,e,f,c,t,23,a[43]),c=l(c,d,e,f,x,4,a[44]),f=l(f,c,d,e,A,11,a[45]),e=l(e,f,c,d,D,16,a[46]),d=l(d,e,f,c,j,23,a[47]),c=n(c,d,e,f,h,6,a[48]),f=n(f,c,d,e,u,10,a[49]),e=n(e,f,c,d,
       C,15,a[50]),d=n(d,e,f,c,s,21,a[51]),c=n(c,d,e,f,A,6,a[52]),f=n(f,c,d,e,q,10,a[53]),e=n(e,f,c,d,y,15,a[54]),d=n(d,e,f,c,w,21,a[55]),c=n(c,d,e,f,v,6,a[56]),f=n(f,c,d,e,D,10,a[57]),e=n(e,f,c,d,t,15,a[58]),d=n(d,e,f,c,B,21,a[59]),c=n(c,d,e,f,r,6,a[60]),f=n(f,c,d,e,z,10,a[61]),e=n(e,f,c,d,j,15,a[62]),d=n(d,e,f,c,x,21,a[63]);b[0]=b[0]+c|0;b[1]=b[1]+d|0;b[2]=b[2]+e|0;b[3]=b[3]+f|0},_doFinalize:function(){var a=this._data,k=a.words,b=8*this._nDataBytes,h=8*a.sigBytes;k[h>>>5]|=128<<24-h%32;var l=s.floor(b/
     4294967296);k[(h+64>>>9<<4)+15]=(l<<8|l>>>24)&16711935|(l<<24|l>>>8)&4278255360;k[(h+64>>>9<<4)+14]=(b<<8|b>>>24)&16711935|(b<<24|b>>>8)&4278255360;a.sigBytes=4*(k.length+1);this._process();a=this._hash;k=a.words;for(b=0;4>b;b++)h=k[b],k[b]=(h<<8|h>>>24)&16711935|(h<<24|h>>>8)&4278255360;return a},clone:function(){var a=t.clone.call(this);a._hash=this._hash.clone();return a}});r.MD5=t._createHelper(q);r.HmacMD5=t._createHmacHelper(q)})(Math);
+/*
+ 2015 Jason Mulligan
+ @version 3.1.2
+ */
+"use strict";!function(a){var b=/b$/,c={bits:["B","kb","Mb","Gb","Tb","Pb","Eb","Zb","Yb"],bytes:["B","kB","MB","GB","TB","PB","EB","ZB","YB"]},d=function(a){var d=void 0===arguments[1]?{}:arguments[1],e=[],f=!1,g=0,h=void 0,i=void 0,j=void 0,k=void 0,l=void 0,m=void 0,n=void 0,o=void 0,p=void 0,q=void 0,r=void 0;if(isNaN(a))throw new Error("Invalid arguments");return j=d.bits===!0,p=d.unix===!0,i=void 0!==d.base?d.base:2,o=void 0!==d.round?d.round:p?1:2,q=void 0!==d.spacer?d.spacer:p?"":" ",r=void 0!==d.suffixes?d.suffixes:{},n=void 0!==d.output?d.output:"string",h=void 0!==d.exponent?d.exponent:-1,m=Number(a),l=0>m,k=i>2?1e3:1024,l&&(m=-m),0===m?(e[0]=0,e[1]=p?"":"B"):((-1===h||isNaN(h))&&(h=Math.floor(Math.log(m)/Math.log(k))),h>8&&(g=1e3*g*(h-8),h=8),g=2===i?m/Math.pow(2,10*h):m/Math.pow(1e3,h),j&&(g=8*g,g>k&&(g/=k,h++)),e[0]=Number(g.toFixed(h>0?o:0)),e[1]=c[j?"bits":"bytes"][h],!f&&p&&(j&&b.test(e[1])&&(e[1]=e[1].toLowerCase()),e[1]=e[1].charAt(0),"B"===e[1]?(e[0]=Math.floor(e[0]),e[1]=""):j||"k"!==e[1]||(e[1]="K"))),l&&(e[0]=-e[0]),e[1]=r[e[1]]||e[1],"array"===n?e:"exponent"===n?h:"object"===n?{value:e[0],suffix:e[1]}:e.join(q)};"undefined"!=typeof exports?module.exports=d:"function"==typeof define?define(function(){return d}):a.filesize=d}("undefined"!=typeof global?global:window);
+//# sourceMappingURL=filesize.min.js.map
 /* ***** BEGIN LICENSE BLOCK *****
  * Distributed under the BSD license:
  *
@@ -25800,13 +25806,13 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|outbound|inbound|any|graph"
+        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|outbound|inbound|any|all"
     );
 
     var builtinFunctions = (
         "(to_bool|to_number|to_string|to_list|is_null|is_bool|is_number|is_string|is_list|is_document|" +
         "concat|concat_separator|char_length|lower|upper|substring|left|right|trim|reverse|contains|" +
-        "like|floor|ceil|round|abs|rand|sqrt|length|min|max|average|sum|median|variance_population|" +
+        "like|floor|ceil|round|abs|rand|sqrt|pow|length|min|max|average|sum|median|variance_population|" +
         "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
         "near|within|within_rectangle|is_in_polygon|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|stddev_population|" +
         "slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value|remove_values|" + 

@@ -320,6 +320,10 @@ typedef struct TRI_doc_collection_info_s {
 
   TRI_voc_tick_t  _tickMax;
   uint64_t        _uncollectedLogfileEntries;
+  uint64_t        _numberDocumentDitches;
+  char const*     _waitingForDitch;
+  char const*     _lastCompactionStatus;
+  char            _lastCompactionStamp[21];
 }
 TRI_doc_collection_info_t;
 
@@ -342,8 +346,13 @@ struct TRI_document_collection_t : public TRI_collection_t {
 private:
   VocShaper*                           _shaper;
 
+  triagens::basics::Mutex              _compactionStatusLock;
+  size_t                               _nextCompactionStartIndex;
+  char const*                          _lastCompactionStatus;
+  char                                 _lastCompactionStamp[21];
+
   // whether or not secondary indexes are filled
-  bool                         _useSecondaryIndexes;
+  bool                                 _useSecondaryIndexes;
 
 public:
   // We do some assertions with barriers and transactions in maintainer mode:
@@ -358,6 +367,11 @@ public:
   inline TRI_tid_t getCurrentWriterThread () const {
     return _currentWriterThread.load();
   }
+
+  void setNextCompactionStartIndex (size_t);
+  size_t getNextCompactionStartIndex ();
+  void setCompactionStatus (char const*);
+  void getCompactionStatus (char const*&, char*, size_t);
 
   inline bool useSecondaryIndexes () const {
     return _useSecondaryIndexes;

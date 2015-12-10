@@ -72,6 +72,8 @@ using namespace triagens::arango;
 TRI_document_collection_t::TRI_document_collection_t () 
   : _lock(),
     _shaper(nullptr),
+    _nextCompactionStartIndex(0),
+    _lastCompactionStatus(nullptr),
     _useSecondaryIndexes(true),
     _capConstraint(nullptr),
     _ditches(this),
@@ -82,6 +84,8 @@ TRI_document_collection_t::TRI_document_collection_t ()
     _cleanupIndexes(0) {
 
   _tickMax = 0;
+
+  setCompactionStatus("compaction not yet started");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,6 +94,38 @@ TRI_document_collection_t::TRI_document_collection_t ()
 
 TRI_document_collection_t::~TRI_document_collection_t () {
   delete _keyGenerator;
+}
+
+void TRI_document_collection_t::setNextCompactionStartIndex (size_t index) {
+  MUTEX_LOCKER(_compactionStatusLock);
+  _nextCompactionStartIndex = index;
+}
+
+size_t TRI_document_collection_t::getNextCompactionStartIndex () {
+  MUTEX_LOCKER(_compactionStatusLock);
+  return _nextCompactionStartIndex;
+}
+
+void TRI_document_collection_t::setCompactionStatus (char const* reason) {
+  TRI_ASSERT(reason != nullptr);
+  struct tm tb;
+  time_t tt = time(nullptr);
+  TRI_gmtime(tt, &tb);
+
+  MUTEX_LOCKER(_compactionStatusLock);
+  _lastCompactionStatus = reason;
+
+  strftime(&_lastCompactionStamp[0], sizeof(_lastCompactionStamp), "%Y-%m-%dT%H:%M:%SZ", &tb);
+}
+
+void TRI_document_collection_t::getCompactionStatus (char const*& reason, char* dst, size_t maxSize) {
+  memset(dst, 0, maxSize);
+  if (maxSize > sizeof(_lastCompactionStamp)) {
+    maxSize = sizeof(_lastCompactionStamp);
+  }
+  MUTEX_LOCKER(_compactionStatusLock);
+  reason = _lastCompactionStatus;
+  memcpy(dst, &_lastCompactionStamp[0], maxSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,9 +467,14 @@ TRI_doc_collection_info_t* TRI_document_collection_t::figures () {
   info->_uncollectedLogfileEntries = _uncollectedLogfileEntries;
   info->_tickMax = _tickMax;
 
+  info->_numberDocumentDitches = _ditches.numDocumentDitches(); 
+  info->_waitingForDitch       = _ditches.head();
+
+  // fills in compaction status
+  getCompactionStatus(info->_lastCompactionStatus, &info->_lastCompactionStamp[0], sizeof(info->_lastCompactionStamp));
+
   return info;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add an index to the collection
@@ -2094,8 +2135,8 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
   TRI_ASSERT(document != nullptr);
 
   document->setShaper(shaper);
-  document->_numberDocuments    = 0;
-  document->_lastCompaction     = 0.0;
+  document->_numberDocuments          = 0;
+  document->_lastCompaction           = 0.0;
 
   int res = TRI_InitAssociativePointer(&document->_datafileInfo,
                                        TRI_UNKNOWN_MEM_ZONE,

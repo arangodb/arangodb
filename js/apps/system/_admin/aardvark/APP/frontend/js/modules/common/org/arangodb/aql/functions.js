@@ -266,6 +266,10 @@ var unregisterFunctionsGroup = function (group) {
 /// The registered function is stored in the selected database's system 
 /// collection *_aqlfunctions*.
 ///
+/// The function returns *true* when it updates/replaces an existing AQL 
+/// function of the same name, and *false* otherwise. It will throw an exception
+/// when it detects syntactially invalid function code.
+///
 /// @EXAMPLES
 ///
 /// ```js
