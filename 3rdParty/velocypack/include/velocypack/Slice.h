@@ -393,16 +393,16 @@ class Slice {
         // signed integral type
         if (isDouble()) {
           auto v = getDouble();
-          if (v < static_cast<double>(std::numeric_limits<T>::min()) ||
-              v > static_cast<double>(std::numeric_limits<T>::max())) {
+          if (v < static_cast<double>((std::numeric_limits<T>::min)()) ||
+              v > static_cast<double>((std::numeric_limits<T>::max)())) {
             throw Exception(Exception::NumberOutOfRange);
           }
           return static_cast<T>(v);
         }
 
         int64_t v = getInt();
-        if (v < static_cast<int64_t>(std::numeric_limits<T>::min()) ||
-            v > static_cast<int64_t>(std::numeric_limits<T>::max())) {
+        if (v < static_cast<int64_t>((std::numeric_limits<T>::min)()) ||
+            v > static_cast<int64_t>((std::numeric_limits<T>::max)())) {
           throw Exception(Exception::NumberOutOfRange);
         }
         return static_cast<T>(v);
@@ -411,14 +411,14 @@ class Slice {
         if (isDouble()) {
           auto v = getDouble();
           if (v < 0.0 || v > static_cast<double>(UINT64_MAX) ||
-              v > static_cast<double>(std::numeric_limits<T>::max())) {
+              v > static_cast<double>((std::numeric_limits<T>::max)())) {
             throw Exception(Exception::NumberOutOfRange);
           }
           return static_cast<T>(v);
         }
 
         uint64_t v = getUInt();
-        if (v > static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+        if (v > static_cast<uint64_t>((std::numeric_limits<T>::max)())) {
           throw Exception(Exception::NumberOutOfRange);
         }
         return static_cast<T>(v);
