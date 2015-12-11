@@ -1519,7 +1519,7 @@ class triagens::aql::RedundantCalculationsReplacer final : public WalkerWorker<E
 
         case EN::AGGREGATE: {
           auto node = static_cast<AggregateNode*>(en);
-          for (auto variable : node->_aggregateVariables) {
+          for (auto& variable : node->_aggregateVariables) {
             variable.second = Variable::replace(variable.second, _replacements);
           }
           break;
@@ -1527,7 +1527,7 @@ class triagens::aql::RedundantCalculationsReplacer final : public WalkerWorker<E
 
         case EN::SORT: {
           auto node = static_cast<SortNode*>(en);
-          for (auto variable : node->_elements) {
+          for (auto& variable : node->_elements) {
             variable.first = Variable::replace(variable.first, _replacements);
           }
           break;

@@ -27,18 +27,18 @@
 
 #include "Basics/JsonHelper.h"
 #include "Aql/Ast.h"
-#include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
 
-bool checkPathVariableAccessFeasible (CalculationNode const* cn,
-                                      TraversalNode* tn,
-                                      Variable const* var,
-                                      bool &conditionIsImpossible,
-                                      Ast* ast) {
+static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
+                                             TraversalNode* tn,
+                                             Variable const* var,
+                                             bool& conditionIsImpossible,
+                                             Ast* ast) {
   auto node = cn->expression()->node();
 
   if (node->containsNodeType(NODE_TYPE_OPERATOR_BINARY_OR) ||
@@ -93,9 +93,10 @@ bool checkPathVariableAccessFeasible (CalculationNode const* cn,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-bool extractSimplePathAccesses (AstNode const* node,
-                                TraversalNode* tn,
-                                Ast* ast) {
+
+static bool extractSimplePathAccesses (AstNode const* node,
+                                       TraversalNode* tn,
+                                        Ast* ast) {
 
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
@@ -103,7 +104,7 @@ bool extractSimplePathAccesses (AstNode const* node,
 
   node->findVariableAccess(currentPath, paths, tn->pathOutVariable());
 
-  for (auto onePath : paths) {
+  for (auto const& onePath : paths) {
     size_t len = onePath.size();
     bool isEdgeAccess = false;
     size_t attrAccessTo = 0;
@@ -119,8 +120,8 @@ bool extractSimplePathAccesses (AstNode const* node,
 
     AstNode const* compareNode = nullptr;
     AstNode const* accessNodeBranch = nullptr;
-    for (auto oneNode : onePath) {
 
+    for (auto const& oneNode : onePath) {
       if (compareNode != nullptr && accessNodeBranch == nullptr) {
         accessNodeBranch = oneNode;
       }
@@ -134,12 +135,12 @@ bool extractSimplePathAccesses (AstNode const* node,
           //  || As long as we need to twist the access, this is impossible:
           // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_IN ) ||
           // (oneNode->type == NODE_TYPE_OPERATOR_BINARY_NIN))
-          ){
+          ) {
         compareNode = oneNode;
       }
     }
 
-    if (compareNode != NULL) {
+    if (compareNode != nullptr) {
       AstNode const * pathAccessNode;
       AstNode const * filterByNode;
       bool flipOperator = false;
@@ -163,12 +164,12 @@ bool extractSimplePathAccesses (AstNode const* node,
         currentPath.clear();
         clonePath.clear();
         filterByNode->findVariableAccess(currentPath, clonePath, tn->pathOutVariable());
-        if (clonePath.size() > 0) {
+        if (! clonePath.empty()) {
           // Path variable access on the RHS? can't do that.
           continue;
         }
 
-        AstNode *newNode = pathAccessNode->clone(ast);
+        AstNode* newNode = pathAccessNode->clone(ast);
 
         // since we just copied one path, we should only find one. 
         currentPath.clear();
@@ -186,9 +187,16 @@ bool extractSimplePathAccesses (AstNode const* node,
         TRI_ASSERT(firstRefNode->type == NODE_TYPE_ATTRIBUTE_ACCESS);
 
         // replace the path variable access by a variable access to edge/vertex (then current to the iteration)
-        auto varRefNode = new AstNode(NODE_TYPE_REFERENCE);
-        ast->query()->addNode(varRefNode);
-        varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable(): tn->vertexOutVariable());
+        auto varRefNode = new AstNode(NODE_TYPE_REFERENCE); 
+        try {
+          ast->query()->addNode(varRefNode);
+        }
+        catch (...) {
+          // prevent leak
+          delete varRefNode;
+          throw;
+        }
+        varRefNode->setData(isEdgeAccess ? tn->edgeOutVariable() : tn->vertexOutVariable());
         firstRefNode->changeMember(0, varRefNode);
 
         auto expressionOperator = compareNode->type;
@@ -298,9 +306,9 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
             varsUsedByCondition.clear();
             Ast::getReferencedVariables(cn->expression()->node(), varsUsedByCondition); 
             bool unknownVariableFound = false;
-            for (auto conditionVar: varsUsedByCondition) {
+            for (auto const& conditionVar: varsUsedByCondition) {
               bool found = false;
-              for (auto traversalKnownVar : varsValidInTraversal ) {
+              for (auto const& traversalKnownVar : varsValidInTraversal ) {
                 if (conditionVar->id == traversalKnownVar->id) {
                   found = true;
                   break;
@@ -315,13 +323,12 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
               continue;
             }
 
-            for (auto conditionVar: varsUsedByCondition) {
+            for (auto const& conditionVar: varsUsedByCondition) {
               // check whether conditionVar is one of those we emit
               int variableType = node->checkIsOutVariable(conditionVar->id);
               if (variableType >= 0) {
                 if ((variableType == 2) &&
-                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible, _plan->getAst()))
-                  {
+                    checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible, _plan->getAst())) {
                     condition->andCombine(it.second->expression()->node()->clone(_plan->getAst()));
                     foundCondition = true;
                     node->setCalculationNodeId(cn->id());
