@@ -29,14 +29,15 @@ function generateSessionId() {
 
 function createSession(sessionData, userData) {
   const sid = generateSessionId();
-  let session = new Session({
+  const session = new Session({
     _key: sid,
     uid: (userData && userData._id) || null,
     sessionData: sessionData || {},
     userData: userData || {},
     lastAccess: Date.now()
   });
-  getCollection().save(session.attributes);
+  const meta = getCollection().save(session.attributes);
+  session.set(meta);
   return session;
 }
 
