@@ -14,21 +14,21 @@ const User = Foxx.Model.extend({
     userData: joi.object().required()
   }
 });
-const users = new Foxx.Repository(
-  db._collection('_users'),
-  {model: User}
-);
+
+function getCollection() {
+  return db._collection('_users');
+}
 
 function resolve(username) {
-  const user = users.firstExample({user: username});
-  if (user === null || !user.get('_key')) {
+  const user = getCollection().firstExample({user: username});
+  if (!user) {
     return null;
   }
-  return user;
+  return new User(user);
 }
 
 function listUsers() {
-  return users.collection.all().toArray().map(function (user) {
+  return getCollection().all().toArray().map(function (user) {
     return user.user;
   }).filter(Boolean);
 }
@@ -40,21 +40,20 @@ function createUser(username, userData, authData) {
   if (!authData) {
     authData = {};
   }
-  if (
-    applicationContext.mount.indexOf('/_system/') === 0
-      && !authData.hasOwnProperty('active')
-  ) {
+  if (!authData.active) {
     authData.active = true;
   }
 
   if (!username) {
     throw new Error('Must provide username!');
   }
+
+  const collection = getCollection();
   let user;
   db._executeTransaction({
     collections: {
-      read: [users.collection.name()],
-      write: [users.collection.name()]
+      read: [collection.name()],
+      write: [collection.name()]
     },
     action: function () {
       if (resolve(username)) {
@@ -65,7 +64,8 @@ function createUser(username, userData, authData) {
         userData: userData,
         authData: authData
       });
-      users.save(user);
+      const meta = collection.save(user.attributes);
+      user.set(meta);
     }
   });
   refreshUserCache();
@@ -75,7 +75,7 @@ function createUser(username, userData, authData) {
 function getUser(uid) {
   let user;
   try {
-    user = users.byId(uid);
+    user = getCollection().document(uid);
   } catch (err) {
     if (
       err instanceof arangodb.ArangoError
@@ -85,12 +85,12 @@ function getUser(uid) {
     }
     throw err;
   }
-  return user;
+  return new User(user);
 }
 
 function deleteUser(uid) {
   try {
-    users.removeById(uid);
+    getCollection().remove(uid);
   } catch (err) {
     if (
       err instanceof arangodb.ArangoError
@@ -107,7 +107,8 @@ function deleteUser(uid) {
 _.extend(User.prototype, {
   save: function () {
     const user = this;
-    users.replace(user);
+    const meta = getCollection().replace(user.attributes, user.attributes);
+    user.set(meta);
     refreshUserCache();
     return user;
   },
