@@ -193,7 +193,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void getVariablesUsedHere (std::unordered_set<Variable const*>& result) const override final {
-          for (auto condVar : _conditionVariables) {
+          for (auto const& condVar : _conditionVariables) {
             result.emplace(condVar);
           }
           if (usesInVariable()) {

@@ -392,7 +392,7 @@ void TraversalNode::setCondition(triagens::aql::Condition* condition){
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 
-  for (auto oneVar : varsUsedByCondition) {
+  for (auto const& oneVar : varsUsedByCondition) {
     if ((_vertexOutVariable != nullptr && oneVar->id !=  _vertexOutVariable->id) &&
         (_edgeOutVariable   != nullptr && oneVar->id !=  _edgeOutVariable->id) &&
         (_pathOutVariable   != nullptr && oneVar->id !=  _pathOutVariable->id) &&
