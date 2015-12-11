@@ -346,7 +346,7 @@ function nestedArrayInArraySuite () {
       assertEqual(0, result.warnings.length);
       
       c2.ensureIndex({ type: "hash", fields: [ "values[*]" ] });
-      var result = AQL_EXECUTE(query, { "@c1" : cn1, "@c2" : cn2 });
+      result = AQL_EXECUTE(query, { "@c1" : cn1, "@c2" : cn2 });
       assertEqual(expected.sort(), result.json.sort());
       assertEqual(0, result.warnings.length);
       assertTrue(indexUsed(query, { "@c1": cn1, "@c2" : cn2 }));
