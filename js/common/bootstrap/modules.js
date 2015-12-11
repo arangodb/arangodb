@@ -454,7 +454,7 @@ Module._load = function(request, parent, isMain) {
 
   cache[filename] = module;
   var loading = {cache, filename};
-  LOADING.push(x);
+  LOADING.push(loading);
 
   var hadException = true;
 
