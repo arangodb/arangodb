@@ -26,7 +26,7 @@ describe ArangoDB do
       doc = ArangoDB.log_post("#{prefix}-post-binary-data", "/_api/document?collection=_routing", :body => body)
       doc.code.should eq(202)
       
-      ArangoDB.post("/_admin/routing/reload", :body => "")
+      ArangoDB.log_post("#{prefix}-post-binary-data", "/_admin/routing/reload", :body => "")
     end
 
     after do
