@@ -211,10 +211,6 @@ int IndexBlock::initialize () {
       else {
         // Index is responsible for the right side, check if left side has to be evaluated
         if (! lhs->isConstant()) {
-          if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-            // IN: now make IN result unique
-            lhs = makeUnique(lhs);
-          }
           instantiateExpression(i, j, 0, lhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

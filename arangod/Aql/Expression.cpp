@@ -493,6 +493,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               std::vector<Variable const*> const& vars,
                                               std::vector<RegisterId> const& regs,
                                               bool doCopy) {
+
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
       return executeSimpleExpressionAttributeAccess(node, trx, argv, startPos, vars, regs);
@@ -659,7 +660,6 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess (AstNode const* node
   result.destroy();
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
