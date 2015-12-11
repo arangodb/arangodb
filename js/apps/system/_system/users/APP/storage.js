@@ -1,4 +1,3 @@
-/*global applicationContext */
 'use strict';
 const _ = require('underscore');
 const joi = require('joi');
@@ -132,4 +131,3 @@ exports.create = createUser;
 exports.get = getUser;
 exports.delete = deleteUser;
 exports.errors = errors;
-exports.repository = users;
