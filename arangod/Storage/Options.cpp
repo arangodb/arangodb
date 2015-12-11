@@ -73,7 +73,7 @@ struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
 };
 
 struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
-  CustomTypeHandlerImpl (triagens::arango::CollectionNameResolver const* resolver) 
+  explicit CustomTypeHandlerImpl (triagens::arango::CollectionNameResolver const* resolver) 
     : resolver(resolver) { 
   }
 

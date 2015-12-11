@@ -74,6 +74,9 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+        
+        Syncer (Syncer const&) = delete;
+        Syncer& operator= (Syncer const&) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor

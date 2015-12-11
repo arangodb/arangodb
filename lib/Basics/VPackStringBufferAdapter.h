@@ -35,7 +35,7 @@ namespace triagens {
     class VPackStringBufferAdapter final : public VPackSink {
 
       public: 
-        VPackStringBufferAdapter (TRI_string_buffer_t* buffer) 
+        explicit VPackStringBufferAdapter (TRI_string_buffer_t* buffer) 
           : _buffer(buffer) {
         }
 

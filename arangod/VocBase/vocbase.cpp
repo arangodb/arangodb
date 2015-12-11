@@ -537,7 +537,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("duplicate entry for collection name '%s'", name);
     LOG_ERROR("collection id %llu has same name as already added collection %llu",
               (unsigned long long) cid,
-              (unsigned long long) ((TRI_vocbase_col_t*) found)->_cid);
+              (unsigned long long) static_cast<TRI_vocbase_col_t const*>(found)->_cid);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);

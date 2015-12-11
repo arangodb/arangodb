@@ -74,6 +74,7 @@ class TRI_replication_applier_configuration_t {
     uint64_t      _idleMinWaitTime;          // 500 * 1000
     uint64_t      _idleMaxWaitTime;          // 5 * 500 * 1000
     uint64_t      _initialSyncMaxWaitTime;
+    uint64_t      _autoResyncRetries;
     uint32_t      _sslProtocol;
     bool          _autoStart;
     bool          _adaptivePolling;

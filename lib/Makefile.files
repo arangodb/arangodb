@@ -77,7 +77,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/VPackStringBufferAdapter.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
-	lib/Basics/xxhash.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/EndpointList.cpp \

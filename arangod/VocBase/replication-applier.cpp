@@ -289,6 +289,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
   }
   
+  value = TRI_LookupObjectJson(json.get(), "autoResyncRetries");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_autoResyncRetries = (uint64_t) value->_value._number;
+  }
+  
   // read the endpoint
   value = TRI_LookupObjectJson(json.get(), "endpoint");
 
@@ -571,6 +577,7 @@ void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword
   builder.add("autoStart", VPackValue(_autoStart));
   builder.add("adaptivePolling", VPackValue(_adaptivePolling));
   builder.add("autoResync", VPackValue(_autoResync));
+  builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
   builder.add("includeSystem", VPackValue(_includeSystem));
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
@@ -586,7 +593,6 @@ void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword
   builder.add("initialSyncMaxWaitTime", VPackValue(static_cast<double>(_initialSyncMaxWaitTime) / (1000 * 1000)));
   builder.add("idleMinWaitTime", VPackValue(static_cast<double>(_idleMinWaitTime) / (1000 * 1000)));
   builder.add("idleMaxWaitTime", VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000 * 1000)));
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -898,6 +904,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_initialSyncMaxWaitTime  = 300 * 1000 * 1000;
   config->_idleMinWaitTime         = 500 * 1000;
   config->_idleMaxWaitTime         = 5 * 500 * 1000;
+  config->_autoResyncRetries       = 2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -952,6 +959,7 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
   dst->_initialSyncMaxWaitTime  = src->_initialSyncMaxWaitTime;
   dst->_idleMinWaitTime         = src->_idleMinWaitTime;
   dst->_idleMaxWaitTime         = src->_idleMaxWaitTime;
+  dst->_autoResyncRetries       = src->_autoResyncRetries;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
