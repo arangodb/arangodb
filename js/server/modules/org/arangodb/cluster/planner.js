@@ -63,7 +63,8 @@ var PlannerLocalDefaults = {
   "valgrindopts"            : [],
   "valgrindXmlFileBase"     : "",
   "valgrindTestname"        : "",
-  "valgrindHosts"           : ""
+  "valgrindHosts"           : "",
+  "extremeVerbosity"        : true
 };
 
 // Some helpers using underscore:
@@ -402,6 +403,8 @@ function checkDispatcherIps (config) {
 ///   - *valgrindTestname*: name of test to add to the logfiles
 ///   - *valgrindHosts*: which host classes should run in valgrind? 
 ///        Coordinator / DBServer
+///   - *extremeVerbosity* : if set to true, then there will be more test 
+///     run output, especially for cluster tests.
 ///
 /// All these values have default values. Here is the current set of
 /// default values:
@@ -439,10 +442,12 @@ function Planner (userConfig) {
   if (typeof userConfig !== "object") {
     throw new Error("userConfig must be an object");
   }
+    require("internal").print("PLANNER USERCONFIG: ", userConfig);
   this.config = copy(userConfig);
   checkDispatcherIps(this.config);
 
   fillConfigWithDefaults(this.config, PlannerLocalDefaults);
+    require("internal").print("PLANNER USERCONFIG NOW: ", this.config);
   this.commands = [];
   this.makePlan();
 }
@@ -676,7 +681,8 @@ Planner.prototype.makePlan = function() {
              "valgrindopts"        : config.valgrindopts,
              "valgrindXmlFileBase" : config.valgrindXmlFileBase,
              "valgrindTestname"    : config.valgrindXmlFileBase,
-             "valgrindHosts"       : config.valgrindHosts
+             "valgrindHosts"       : config.valgrindHosts,
+             "extremeVerbosity"    : config.extremeVerbosity
            };
     for (j = 0; j < i; j++) {
       ep = dispatchers[agents[j].dispatcher].endpoint;
@@ -688,9 +694,13 @@ Planner.prototype.makePlan = function() {
                     "endpoints": agents.map(function(a) {
                         return exchangePort(dispatchers[a.dispatcher].endpoint,
                                             a.extPort);}) };
-  tmp.push( { "action": "sendConfiguration",
-              "agency": agencyPos,
-              "data": agencyData } );
+  tmp.push({ 
+    "action": "sendConfiguration",
+    "agency": agencyPos,
+    "data": agencyData,
+    "extremeVerbosity": config.extremeVerbosity
+  });
+
   for (i = 0; i < dispList.length; i++) {
     tmp.push( { "action"                 : "startServers",
                 "dispatcher"             : dispList[i],
@@ -708,7 +718,8 @@ Planner.prototype.makePlan = function() {
                 "valgrindopts"           : config.valgrindopts,
                 "valgrindXmlFileBase"    : config.valgrindXmlFileBase,
                 "valgrindTestname"       : config.valgrindTestname,
-                "valgrindHosts"          : config.valgrindHosts
+                "valgrindHosts"          : config.valgrindHosts,
+                "extremeVerbosity"       : config.extremeVerbosity
               } );
   }
 
@@ -734,9 +745,12 @@ Planner.prototype.makePlan = function() {
     dd.push(endpointToURL(e));
   }
 
-  tmp.push( { "action": "bootstrapServers",
-              "dbServers": dd,
-              "coordinators": cc });
+  tmp.push({ 
+    "action": "bootstrapServers",
+    "dbServers": dd,
+    "coordinators": cc, 
+    "extremeVerbosity": config.extremeVerbosity
+  });
 
   this.myname = "me";
 };
