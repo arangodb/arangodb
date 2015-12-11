@@ -72,17 +72,17 @@ triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
                                       bool verbose) const {
   triagens::basics::Json json(z, triagens::basics::Json::Object);
 
-  if (_vertexColls.size() > 0) {
-    triagens::basics::Json vcn(z, triagens::basics::Json::Array);
-    for (auto cn : _vertexColls) {
+  if (! _vertexColls.empty()) {
+    triagens::basics::Json vcn(z, triagens::basics::Json::Array, _vertexColls.size());
+    for (auto const& cn : _vertexColls) {
       vcn.add(triagens::basics::Json(cn));
     }
     json("vertexCollectionNames", vcn);
   }
 
-  if (_edgeColls.size() > 0) {
-    triagens::basics::Json ecn(z, triagens::basics::Json::Array);
-    for (auto cn : _edgeColls) {
+  if (! _edgeColls.empty()) {
+    triagens::basics::Json ecn(z, triagens::basics::Json::Array, _edgeColls.size());
+    for (auto const& cn : _edgeColls) {
       ecn.add(triagens::basics::Json(cn));
     }
     json("edgeCollectionNames", ecn);

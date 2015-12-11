@@ -154,7 +154,7 @@ AqlValue AqlValue::clone () const {
         }
       }
       catch (...) {
-        for (auto x : *c) {
+        for (auto& x : *c) {
           delete x;
         }
         delete c;

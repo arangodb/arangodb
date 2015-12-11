@@ -37,7 +37,6 @@ var executeExternal = require("internal").executeExternal;
 var killExternal = require("internal").killExternal;
 var statusExternal = require("internal").statusExternal;
 var base64Encode = require("internal").base64Encode;
-var yaml = require("js-yaml");
 
 var fs = require("fs");
 var wait = require("internal").wait;
@@ -212,6 +211,7 @@ function sendToAgency (agencyURL, path, obj) {
 }
 
 launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
+  var yaml = require("js-yaml");
   console.info("Starting agent...");
 
   var dataPath = fs.makeAbsolute(cmd.dataPath);
@@ -291,6 +291,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 };
 
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
+  var yaml = require("js-yaml");
   if (isRelaunch) {
     // nothing to do here
     console.info("Waiting 1 second for agency to come alive...");
