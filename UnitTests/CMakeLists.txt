@@ -32,6 +32,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/tests/")
 ### @brief basics_suite
 ################################################################################
 
+include_directories(../3rdParty/velocypack/include)
+
 if (Boost_UNIT_TEST_FRAMEWORK_FOUND)
 
 add_executable(
