@@ -748,6 +748,20 @@ endif ()
 
 add_definitions("-DTRI_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
+################################################################################
+### @brief VELOCYPACK
+################################################################################
+
+set(VELOCYPACK_VERSION "unknown" CACHE string "VELOCYPACK version")
+
+if (NOT MSVC)
+  set(VELOCYPACK_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include CACHE path "VELOCYPACK include path")
+endif ()
+
+if (VELOCYPACK_INCLUDE)
+  include_directories(${VELOCYPACK_INCLUDE})
+endif ()
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                      SUB-PROJECTS
 ## -----------------------------------------------------------------------------
