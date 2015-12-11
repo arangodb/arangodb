@@ -53,7 +53,6 @@
       var queries = [];
 
       this.each(function(query) {
-        console.log(query.attributes);
         queries.push({
           value: query.attributes.value,
           parameter: query.attributes.parameter,
