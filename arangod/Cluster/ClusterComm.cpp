@@ -246,6 +246,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
 
   ClusterCommResult* res = new ClusterCommResult();
   *res = *static_cast<ClusterCommResult*>(op);
+  res->doNotDeleteOnDestruction();
 
   {
     CONDITION_LOCKER(locker, somethingToSend);
