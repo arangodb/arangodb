@@ -167,7 +167,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
     /*
-    for (auto p : _plans.list) {
+    for (auto const& p : _plans.list) {
       p->show();
       std::cout << std::endl;
     }
@@ -275,7 +275,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   // Only for debugging:
   std::cout << "Optimisation ends with " << _plans.size() << " plans."
             << std::endl;
-  for (auto p : _plans.list) {
+  for (auto const& p : _plans.list) {
     p->show();
     std::cout << "costing: " << p->getCost() << std::endl;
     std::cout << std::endl;

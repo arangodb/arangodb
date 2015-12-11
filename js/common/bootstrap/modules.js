@@ -453,7 +453,8 @@ Module._load = function(request, parent, isMain) {
   }
 
   cache[filename] = module;
-  LOADING.push({cache, filename});
+  var x = { cache, filename };
+  LOADING.push(x);
 
   var hadException = true;
 
@@ -468,7 +469,8 @@ Module._load = function(request, parent, isMain) {
     if (hadException) {
       delete cache[filename];
     }
-    var i = LOADING.indexOf(filename);
+    
+    var i = LOADING.indexOf(x);
     if (i !== -1) {
       LOADING.splice(i, 1);
     }
@@ -513,6 +515,7 @@ Module.prototype.load = function(filename) {
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
   Module._extensions[extension](this, filename);
+
   this.loaded = true;
 };
 

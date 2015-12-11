@@ -116,9 +116,8 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
 
       // check if the collection is still in the "unloading" state. if not,
       // then someone has already triggered a reload or a deletion of the collection
-      bool isUnloading = false;
       if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
-        isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
+        bool isUnloading = (collection->_status == TRI_VOC_COL_STATUS_UNLOADING);
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
     
         if (! isUnloading) {
