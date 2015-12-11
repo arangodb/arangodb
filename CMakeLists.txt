@@ -44,7 +44,7 @@ set(ARANGODB_DISPLAY_NAME       "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT     "http://www.arangodb.org")
 set(ARANGODB_CONTACT            "hackers@arangodb.org")
 
-set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-purpose database")
+set(ARANGODB_FRIENDLY_STRING    "ArangoDB - the multi-model database")
 set(ARANGOB_FRIENDLY_STRING     "ArangoBench - stresstester")
 set(ARANGO_DUMP_FRIENDLY_STRING "arangodump - export whole databases from ArangoDB to JSON")
 set(ARANGO_IMP_FRIENDLY_STRING  "arangoimp - import CSV files into ArangoDB")
