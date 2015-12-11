@@ -453,7 +453,7 @@ Module._load = function(request, parent, isMain) {
   }
 
   cache[filename] = module;
-  var x = { cache, filename };
+  var loading = {cache, filename};
   LOADING.push(x);
 
   var hadException = true;
@@ -470,7 +470,7 @@ Module._load = function(request, parent, isMain) {
       delete cache[filename];
     }
     
-    var i = LOADING.indexOf(x);
+    var i = LOADING.indexOf(loading);
     if (i !== -1) {
       LOADING.splice(i, 1);
     }
