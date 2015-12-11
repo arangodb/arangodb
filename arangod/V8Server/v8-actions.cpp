@@ -148,14 +148,14 @@ class v8_action_t : public TRI_action_t {
       char const* c = request->header("x-arango-v8-context", found);
 
       if (found && c != nullptr) {
-	forceContext = StringUtils::int32(c);
+        forceContext = StringUtils::int32(c);
       }
 
       // get a V8 context
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
         vocbase,
         allowUseDatabaseInRestActions,
-	forceContext
+        forceContext
       );
 
       // note: the context might be 0 in case of shut-down
@@ -797,7 +797,7 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
   if (errorCode != TRI_ERROR_NO_ERROR) {
     result.isValid  = false;
     result.canceled = false;
-        
+
     HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
     if (errorMessage.empty()) {
       errorMessage = TRI_errno_string(errorCode);

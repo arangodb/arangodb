@@ -48,7 +48,7 @@ namespace triagens {
           : _plan(plan),
             _variableDefinitions(),
             _planAltered(planAltered) {
-        };
+        }
 
         ~TraversalConditionFinder () {
         }
@@ -62,7 +62,7 @@ namespace triagens {
         ExecutionPlan*                                          _plan;
         std::unordered_map<VariableId, CalculationNode const*>  _variableDefinitions;
         std::unordered_map<VariableId, ExecutionNode const*>    _filters;
-        bool *                                                  _planAltered;
+        bool*                                                   _planAltered;
     
     };
   }

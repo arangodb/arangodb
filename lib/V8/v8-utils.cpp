@@ -2291,7 +2291,7 @@ static void JS_Output (const v8::FunctionCallbackInfo<v8::Value>& args) {
     size_t len = utf8.length();
 
     while (0 < len) {
-      ssize_t n = TRI_WRITE(1, ptr, (TRI_write_t) len);
+      ssize_t n = TRI_WRITE(STDOUT_FILENO, ptr, (TRI_write_t) len);
 
       if (n < 0) {
         break;

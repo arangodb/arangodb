@@ -442,7 +442,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
                   .filter(":selected")
                   .text();
               adapter.useNodeCollection(nodeCollection);
-              console.log(nodeCollection);
             },
             "Select"
           );

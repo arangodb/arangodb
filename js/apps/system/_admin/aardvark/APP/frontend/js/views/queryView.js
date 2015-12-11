@@ -1081,7 +1081,6 @@
 
         var queryData = this.readQueryData();
         if (queryData) {
-console.log(2);
           $.ajax({
             type: "POST",
             url: "/_api/cursor",

@@ -629,7 +629,7 @@ size_t IndexBlock::skipSome (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexBlock::cleanupNonConstExpressions () {
-  for (auto it : _nonConstExpressions) {
+  for (auto& it : _nonConstExpressions) {
     delete it;
   }
   _nonConstExpressions.clear();
