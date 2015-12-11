@@ -59,7 +59,9 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       auto eColName = graph->getMember(i)->getStringValue();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+        std::string msg("collection type invalid; Expecting Collection type 'Edge Collection'. Collection name: ");
+        msg += eColName;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, msg);
       }
       _graphJson.add(triagens::basics::Json(eColName));
       _edgeColls.push_back(eColName);

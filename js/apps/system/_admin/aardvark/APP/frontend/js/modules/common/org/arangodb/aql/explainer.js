@@ -66,6 +66,9 @@ function annotation (v) {
 
 function value (v) {
   'use strict';
+  if (typeof v === 'string' && v.length > 1024) {
+    return colors.COLOR_GREEN + v.substr(0, 1024) + "..." + colors.COLOR_RESET;
+  }
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
   

@@ -7,6 +7,10 @@ const db = arangodb.db;
 const Foxx = require('org/arangodb/foxx');
 const errors = require('./errors');
 
+function getCollection() {
+  return db._collection('_sessions');
+}
+
 const Session = Foxx.Model.extend({
   schema: {
     _key: joi.string().required(),
@@ -19,31 +23,27 @@ const Session = Foxx.Model.extend({
   }
 });
 
-const sessions = new Foxx.Repository(
-  db._collection('_sessions'),
-  {model: Session}
-);
-
 function generateSessionId() {
   return internal.genRandomAlphaNumbers(20);
 }
 
 function createSession(sessionData, userData) {
   const sid = generateSessionId();
-  let session = new Session({
+  const session = new Session({
     _key: sid,
     uid: (userData && userData._id) || null,
     sessionData: sessionData || {},
     userData: userData || {},
     lastAccess: Date.now()
   });
-  sessions.save(session);
+  const meta = getCollection().save(session.attributes);
+  session.set(meta);
   return session;
 }
 
 function deleteSession(sid) {
   try {
-    sessions.removeById(sid);
+    getCollection().remove(sid);
   } catch (e) {
     if (
       e instanceof arangodb.ArangoError
@@ -58,15 +58,16 @@ function deleteSession(sid) {
 }
 
 Session.fromClient = function (sid) {
+  const collection = getCollection();
   let session;
   db._executeTransaction({
     collections: {
-      read: [sessions.collection.name()],
-      write: [sessions.collection.name()]
+      read: [collection.name()],
+      write: [collection.name()]
     },
     action() {
       try {
-        session = sessions.byId(sid);
+        session = new Session(collection.document(sid));
 
         const internalAccessTime = internal.accessSid(sid);
         if (internalAccessTime) {
@@ -76,10 +77,11 @@ Session.fromClient = function (sid) {
 
         const now = Date.now();
         session.set('lastAccess', now);
-        sessions.collection.update(
+        const meta = collection.update(
           session.get('_key'),
           {lastAccess: now}
         );
+        session.set(meta);
       } catch (e) {
         if (
           e instanceof arangodb.ArangoError
@@ -132,7 +134,8 @@ _.extend(Session.prototype, {
     this.set('lastAccess', now);
     this.set('lastUpdate', now);
     internal.accessSid(key);
-    sessions.replace(this);
+    const meta = getCollection().replace(this.attributes, this.attributes);
+    this.set(meta);
     return this;
   },
   delete() {

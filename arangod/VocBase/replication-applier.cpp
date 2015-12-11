@@ -227,6 +227,11 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
                        json,
                        "idleMaxWaitTime",
                        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMaxWaitTime / (1000 * 1000)));
+  
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
+                       json,
+                       "autoResyncRetries",
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_autoResyncRetries));
 
   return json;
 }
@@ -428,6 +433,12 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
 
   if (TRI_IsNumberJson(value)) {
     config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+  }
+  
+  value = TRI_LookupObjectJson(json.get(), "autoResyncRetries");
+
+  if (TRI_IsNumberJson(value)) {
+    config->_autoResyncRetries = (uint64_t) value->_value._number;
   }
   
   // read the endpoint
@@ -988,6 +999,7 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
   config->_initialSyncMaxWaitTime  = 300 * 1000 * 1000;
   config->_idleMinWaitTime         = 500 * 1000;
   config->_idleMaxWaitTime         = 5 * 500 * 1000;
+  config->_autoResyncRetries       = 2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1068,6 +1080,7 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
   dst->_initialSyncMaxWaitTime  = src->_initialSyncMaxWaitTime;
   dst->_idleMinWaitTime         = src->_idleMinWaitTime;
   dst->_idleMaxWaitTime         = src->_idleMaxWaitTime;
+  dst->_autoResyncRetries       = src->_autoResyncRetries;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
