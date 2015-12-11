@@ -986,7 +986,9 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 
   string const& dbname = _request->databaseName();
 
-  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  std::shared_ptr<std::map<std::string, std::string>> headers
+      (new std::map<std::string, std::string>
+           (triagens::arango::getForwardableRequestHeaders(_request)));
   map<string, string> values = _request->values();
   string params;
   map<string, string>::iterator i;
@@ -1008,17 +1010,15 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   ClusterComm* cc = ClusterComm::instance();
 
   // Send a synchronous request to that shard using ClusterComm:
-  ClusterCommResult* res;
-  res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
-                        _request->requestType(),
-                        "/_db/" + StringUtils::urlEncode(dbname) +
-                        _request->requestPath() + params,
-                        string(_request->body(),_request->bodySize()),
-                        headers, 300.0);
+  auto res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+      _request->requestType(),
+      "/_db/" + StringUtils::urlEncode(dbname) +
+      _request->requestPath() + params,
+      string(_request->body(),_request->bodySize()),
+      *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
-    delete res;
     generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
                   "timeout within cluster");
     return;
@@ -1027,7 +1027,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
     // This could be a broken connection or an Http error:
     if (res->result == nullptr || !res->result->isComplete()) {
       // there is no result
-      delete res;
       generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
                     "lost connection within cluster");
       return;
@@ -1047,7 +1046,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
-  delete res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2964,7 +2962,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     ClusterComm* cc = ClusterComm::instance();
 
     // Send a synchronous request to that shard using ClusterComm:
-    ClusterCommResult* result;
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
     char const* value;
@@ -2977,8 +2974,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
     }
 
+    auto headers = std::make_shared<std::map<std::string, std::string>>();
     for (auto const& p : *shardIdsMap) {
-      auto headers = new std::map<std::string, std::string>;
       auto it = shardTab.find(p.first);
       if (it == shardTab.end()) {
         errorMsg = "cannot find shard";
@@ -2988,13 +2985,12 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         j = it->second;
         std::shared_ptr<std::string const> body
             (new string(bufs[j]->c_str(), bufs[j]->length()));
-        result = cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
-                               triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                               "/_db/" + StringUtils::urlEncode(dbName) +
-                               "/_api/replication/restore-data?collection=" +
-                               p.first + forceopt, body,
-                               headers, nullptr, 300.0);
-        delete result;
+        cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
+                      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                      "/_db/" + StringUtils::urlEncode(dbName) +
+                      "/_api/replication/restore-data?collection=" +
+                      p.first + forceopt, body,
+                      headers, nullptr, 300.0);
       }
     }
 
@@ -3002,12 +2998,12 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     unsigned int count;
     unsigned int nrok = 0;
     for (count = (int) shardIdsMap->size(); count > 0; count--) {
-      result = cc->wait( "", coordTransactionID, 0, "", 0.0);
-      if (result->status == CL_COMM_RECEIVED) {
-        if (result->answer_code == triagens::rest::HttpResponse::OK ||
-            result->answer_code == triagens::rest::HttpResponse::CREATED) {
+      auto result = cc->wait( "", coordTransactionID, 0, "", 0.0);
+      if (result.status == CL_COMM_RECEIVED) {
+        if (result.answer_code == triagens::rest::HttpResponse::OK ||
+            result.answer_code == triagens::rest::HttpResponse::CREATED) {
           TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                            result->answer->body());
+                                            result.answer->body());
 
           if (JsonHelper::isObject(json)) {
             TRI_json_t const* r = TRI_LookupObjectJson(json, "result");
@@ -3030,9 +3026,9 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           }
         }
-        else if (result->answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
+        else if (result.answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
           TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                            result->answer->body());
+                                            result.answer->body());
 
           if (JsonHelper::isObject(json)) {
             TRI_json_t const* m = TRI_LookupObjectJson(json, "errorMessage");
@@ -3049,7 +3045,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         }
 
       }
-      delete result;
     }
 
     if (nrok != shardIdsMap->size()) {

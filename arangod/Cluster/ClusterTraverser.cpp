@@ -190,7 +190,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
       expVertices = found->second;
     }
 
-    std::map<std::string, std::string> headers;
+    auto headers = std::make_shared<std::map<std::string, std::string>>();
     _traverser->_readDocuments += verticesToFetch.size();
     res = getFilteredDocumentsOnCoordinator(_traverser->_dbname,
                                             expVertices,
@@ -240,7 +240,7 @@ void ClusterTraverser::setStartVertex (triagens::arango::traverser::VertexId con
   auto it = _vertices.find(id);
   if (it == _vertices.end()) {
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
-    std::map<std::string, std::string> headers;
+    auto headers = std::make_shared<std::map<std::string, std::string>>();
     std::map<std::string, std::string> resultHeaders;
     std::vector<std::string> splitId = triagens::basics::StringUtils::split(id, '/'); 
     TRI_ASSERT(splitId.size() == 2);

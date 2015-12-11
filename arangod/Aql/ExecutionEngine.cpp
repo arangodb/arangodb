@@ -565,7 +565,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
                           "/_api/aql/instantiate");
 
-    auto headers = new std::map<std::string, std::string>;
+    auto headers(std::make_shared<std::map<std::string, std::string>>());
     (*headers)["X-Arango-Nolock"] = shardId;   // Prevent locking
     auto res = cc->asyncRequest("", 
                                 coordTransactionID,
@@ -576,10 +576,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                 headers,
                                 nullptr,
                                 30.0);
-
-    if (res != nullptr) {
-      delete res;
-    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,21 +596,21 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     for (count = (int) shardIds->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
-      if (res->status == triagens::arango::CL_COMM_RECEIVED) {
-        if (res->answer_code == triagens::rest::HttpResponse::OK ||
-            res->answer_code == triagens::rest::HttpResponse::CREATED ||
-            res->answer_code == triagens::rest::HttpResponse::ACCEPTED) {
+      if (res.status == triagens::arango::CL_COMM_RECEIVED) {
+        if (res.answer_code == triagens::rest::HttpResponse::OK ||
+            res.answer_code == triagens::rest::HttpResponse::CREATED ||
+            res.answer_code == triagens::rest::HttpResponse::ACCEPTED) {
           // query instantiated without problems
           nrok++;
 
           // pick up query id from response
-          triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res->answer->body()));
+          triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res.answer->body()));
           std::string queryId = triagens::basics::JsonHelper::getStringValue(response.json(), "queryId", "");
 
-          // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode << " SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
+          // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res.answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode << " SHARDID:"  << res.shardID << ", QUERYID: " << queryId << "\n";
           std::string theID
             = triagens::basics::StringUtils::itoa(info.idOfRemoteNode)
-            + ":" + res->shardID;
+            + ":" + res.shardID;
           if (info.part == triagens::aql::PART_MAIN) {
             queryIds.emplace(theID, queryId + "*");
           }
@@ -624,19 +620,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
         else {
           error += "DB SERVER ANSWERED WITH ERROR: ";
-          error += res->answer->body();
+          error += res.answer->body();
           error += "\n";
         }
       }
       else {
         error += std::string("Communication with shard '") + 
-          std::string(res->shardID) + 
+          std::string(res.shardID) + 
           std::string("' on cluster node '") +
-          std::string(res->serverID) +
+          std::string(res.serverID) +
           std::string("' failed : ") +
-          res->errorMessage;
+          res.errorMessage;
       }
-      delete res;
     }
 
     // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
@@ -1015,12 +1010,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
             if (res->errorMessage.length() > 0) {
               message += std::string(" : ") + res->errorMessage;
             }
-            delete res;
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                 message);
           }
-          delete res;
         }
         Transaction::_makeNolockHeaders = engine->_lockedShards;
       }
@@ -1062,7 +1055,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
                 res->errorMessage;
               LOG_WARNING("%s", msg.c_str());
             }
-            delete res;
           }
           else {
             // Remove query from registry:

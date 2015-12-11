@@ -51,7 +51,7 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
 
   if (ServerState::instance()->isCoordinator()) {
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
-    std::map<std::string, std::string> headers;
+    auto headers = std::make_shared<std::map<std::string, std::string>>();
     std::map<std::string, std::string> resultHeaders;
     std::string resultBody;
 

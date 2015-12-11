@@ -166,62 +166,63 @@ OperationID ClusterComm::getOperationID () {
 /// followed by a serverID.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult* ClusterComm::asyncRequest (
+ClusterCommResult const ClusterComm::asyncRequest (
                 ClientTransactionID const           clientTransactionID,
                 CoordTransactionID const            coordTransactionID,
-                string const&                       destination,
+                std::string const&                  destination,
                 triagens::rest::HttpRequest::HttpRequestType  reqtype,
-                string const                        path,
-                shared_ptr<string const>            body,
-                map<string, string>*                headerFields,
-                ClusterCommCallback*                callback,
+                std::string const                   path,
+                std::shared_ptr<std::string const>  body,
+                std::shared_ptr<std::map<string, string>>
+                                                    headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout                  timeout) {
 
-  ClusterCommOperation* op = new ClusterCommOperation();
-  op->clientTransactionID  = clientTransactionID;
-  op->coordTransactionID   = coordTransactionID;
+  std::unique_ptr<ClusterCommOperation> op(new ClusterCommOperation());
+  op->result.clientTransactionID  = clientTransactionID;
+  op->result.coordTransactionID   = coordTransactionID;
   do {
-    op->operationID        = getOperationID();
+    op->result.operationID        = getOperationID();
   } 
-  while (op->operationID == 0);   // just to make sure
+  while (op->result.operationID == 0);   // just to make sure
 
   if (destination.substr(0, 6) == "shard:") {
-    op->shardID = destination.substr(6);
+    op->result.shardID = destination.substr(6);
     {
       std::shared_ptr<std::vector<ServerID>> resp
-          = ClusterInfo::instance()->getResponsibleServer(op->shardID);
+          = ClusterInfo::instance()->getResponsibleServer(op->result.shardID);
       if (! resp->empty()) {
-        op->serverID = (*resp)[0];
+        op->result.serverID = (*resp)[0];
       }
       else {
-        op->serverID = "";
+        op->result.serverID = "";
       }
     }
-    LOG_DEBUG("Responsible server: %s", op->serverID.c_str());
+    LOG_DEBUG("Responsible server: %s", op->result.serverID.c_str());
     if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
       // LOCKING-DEBUG
       // std::cout << "Found Nolock header\n";
-      auto it = triagens::arango::Transaction::_makeNolockHeaders->find(op->shardID);
+      auto it = triagens::arango::Transaction::_makeNolockHeaders->find(op->result.shardID);
       if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
         // LOCKING-DEBUG
         // std::cout << "Found our shard\n";
-        (*headerFields)["X-Arango-Nolock"] = op->shardID;
+        (*headerFields)["X-Arango-Nolock"] = op->result.shardID;
       }
     }
   }
   else if (destination.substr(0, 7) == "server:") {
-    op->shardID = "";
-    op->serverID = destination.substr(7);
+    op->result.shardID = "";
+    op->result.serverID = destination.substr(7);
   }
   else {
-    op->shardID = "";
-    op->serverID = "";
+    op->result.shardID = "";
+    op->result.serverID = "";
   }
 
   // Add the header fields for asynchronous mode:
   (*headerFields)["X-Arango-Async"] = "store";
   (*headerFields)["X-Arango-Coordinator"] = ServerState::instance()->getId() +
-                              ":" + basics::StringUtils::itoa(op->operationID) +
+                              ":" + basics::StringUtils::itoa(op->result.operationID) +
                               ":" + clientTransactionID + ":" +
                               basics::StringUtils::itoa(coordTransactionID);
   (*headerFields)["Authorization"] = ServerState::instance()->getAuthentication();
@@ -237,7 +238,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
 #endif
 #endif
 
-  op->status               = CL_COMM_SUBMITTED;
+  op->result.status               = CL_COMM_SUBMITTED;
   op->reqtype              = reqtype;
   op->path                 = path;
   op->body                 = body;
@@ -253,18 +254,18 @@ ClusterCommResult* ClusterComm::asyncRequest (
   // }
   // std::cout << std::endl;
 
-  ClusterCommResult* res = new ClusterCommResult();
-  *res = *static_cast<ClusterCommResult*>(op);
+  ClusterCommResult const res(op->result);
 
   {
     CONDITION_LOCKER(locker, somethingToSend);
-    toSend.push_back(op);
-    TRI_ASSERT(nullptr != op);
+    toSend.push_back(op.get());
+    TRI_ASSERT(nullptr != op.get());
     list<ClusterCommOperation*>::iterator i = toSend.end();
-    toSendByOpID[op->operationID] = --i;
+    toSendByOpID[op->result.operationID] = --i;
   }
   LOG_DEBUG("In asyncRequest, put into queue %llu",
-            (unsigned long long) op->operationID);
+            (unsigned long long) op->result.operationID);
+  op.release();
   somethingToSend.signal();
 
   return res;
@@ -290,7 +291,7 @@ ClusterCommResult* ClusterComm::asyncRequest (
 /// possible to specify a DB server ID directly here.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult* ClusterComm::syncRequest (
+std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest (
         ClientTransactionID const&         clientTransactionID,
         CoordTransactionID const           coordTransactionID,
         string const&                      destination,
@@ -302,7 +303,7 @@ ClusterCommResult* ClusterComm::syncRequest (
 
   map<string, string> headersCopy(headerFields);
 
-  ClusterCommResult* res = new ClusterCommResult();
+  std::unique_ptr<ClusterCommResult> res(new ClusterCommResult());
   res->clientTransactionID  = clientTransactionID;
   res->coordTransactionID   = coordTransactionID;
   do {
@@ -405,8 +406,8 @@ ClusterCommResult* ClusterComm::syncRequest (
 #endif
 #endif
 #endif
-      res->result = client->request(reqtype, path, body.c_str(), body.size(),
-                                    headersCopy);
+      res->result.reset(client->request(reqtype, path, body.c_str(), body.size(),
+                                        headersCopy));
 
       if (res->result == nullptr || ! res->result->isComplete()) {
         res->errorMessage = client->getErrorMessage();
@@ -446,11 +447,11 @@ bool ClusterComm::match (
             ClusterCommOperation* op) {
 
   return ( (clientTransactionID == "" ||
-            clientTransactionID == op->clientTransactionID) &&
+            clientTransactionID == op->result.clientTransactionID) &&
            (0 == coordTransactionID ||
-            coordTransactionID == op->coordTransactionID) &&
+            coordTransactionID == op->result.coordTransactionID) &&
            (shardID == "" ||
-            shardID == op->shardID) );
+            shardID == op->result.shardID) );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -467,10 +468,9 @@ bool ClusterComm::match (
 /// from deleting `result` and `answer`.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
+ClusterCommResult const ClusterComm::enquire (OperationID const operationID) {
   IndexIterator i;
   ClusterCommOperation* op = nullptr;
-  ClusterCommResult* res;
 
   // First look into the send queue:
   {
@@ -478,11 +478,8 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 
     i = toSendByOpID.find(operationID);
     if (i != toSendByOpID.end()) {
-      res = new ClusterCommResult();
       op = *(i->second);
-      *res = *static_cast<ClusterCommResult*>(op);
-      res->doNotDeleteOnDestruction();
-      return res;
+      return op->result;
     }
   }
 
@@ -498,17 +495,14 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
-      res = new ClusterCommResult();
       op = *(i->second);
-      *res = *static_cast<ClusterCommResult*>(op);
-      res->doNotDeleteOnDestruction();
-      return res;
+      return op->result;
     }
   }
 
-  res = new ClusterCommResult();
-  res->operationID = operationID;
-  res->status = CL_COMM_DROPPED;
+  ClusterCommResult res;
+  res.operationID = operationID;
+  res.status = CL_COMM_DROPPED;
   return res;
 }
 
@@ -527,7 +521,7 @@ ClusterCommResult const* ClusterComm::enquire (OperationID const operationID) {
 /// result.
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult* ClusterComm::wait (
+ClusterCommResult const ClusterComm::wait (
                 ClientTransactionID const& clientTransactionID,
                 CoordTransactionID const   coordTransactionID,
                 OperationID const          operationID,
@@ -536,8 +530,7 @@ ClusterCommResult* ClusterComm::wait (
 
   IndexIterator i;
   QueueIterator q;
-  ClusterCommOperation* op = nullptr;
-  ClusterCommResult* res = nullptr;
+  std::unique_ptr<ClusterCommOperation> op;
   double endtime;
   double timeleft;
 
@@ -566,9 +559,9 @@ ClusterCommResult* ClusterComm::wait (
         i = toSendByOpID.find(operationID);
         if (i == toSendByOpID.end()) {
           // Nothing known about this operation, return with failure:
-          res = new ClusterCommResult();
-          res->operationID = operationID;
-          res->status = CL_COMM_DROPPED;
+          ClusterCommResult res;
+          res.operationID = operationID;
+          res.status = CL_COMM_DROPPED;
           // tell Dispatcher that we are back in business
           if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
             triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
@@ -579,18 +572,18 @@ ClusterCommResult* ClusterComm::wait (
       else {
         // It is in the receive queue, now look at the status:
         q = i->second;
-        op = *q;
-        if (op->status >= CL_COMM_TIMEOUT) {
+        op.reset(*q);
+        if (op->result.status >= CL_COMM_TIMEOUT) {
           // It is done, let's remove it from the queue and return it:
           receivedByOpID.erase(i);
           received.erase(q);
-          res = static_cast<ClusterCommResult*>(op);
           // tell Dispatcher that we are back in business
           if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
             triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
           }
-          return res;
+          return op->result;
         }
+        op.release();
         // It is in the receive queue but still waiting, now wait actually
       }
       // Here it could either be in the receive or the send queue, let's wait
@@ -611,32 +604,31 @@ ClusterCommResult* ClusterComm::wait (
     while (true) {   // will be left by return or break on timeout
       bool found = false;
       for (q = received.begin(); q != received.end(); q++) {
-        op = *q;
-        if (match(clientTransactionID, coordTransactionID, shardID, op)) {
+        op.reset(*q);
+        if (match(clientTransactionID, coordTransactionID, shardID, op.get())) {
           found = true;
-          if (op->status >= CL_COMM_TIMEOUT) {
+          if (op->result.status >= CL_COMM_TIMEOUT) {
             // It is done, let's remove it from the queue and return it:
-            i = receivedByOpID.find(op->operationID);  // cannot fail!
+            i = receivedByOpID.find(op->result.operationID);  // cannot fail!
             TRI_ASSERT(i != receivedByOpID.end());
             TRI_ASSERT(i->second == q);
             receivedByOpID.erase(i);
             received.erase(q);
-            res = static_cast<ClusterCommResult*>(op);
             // tell Dispatcher that we are back in business
             if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
               triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
             }
-            return res;
+            return op->result;
           }
         }
+        op.release();
       }
       // If we found nothing, we have to look through the send queue:
       if (! found) {
         CONDITION_LOCKER(sendLocker, somethingToSend);
 
         for (q = toSend.begin(); q != toSend.end(); q++) {
-          op = *q;
-          if (match(clientTransactionID, coordTransactionID, shardID, op)) {
+          if (match(clientTransactionID, coordTransactionID, shardID, *q)) {
             found = true;
             break;
           }
@@ -644,12 +636,12 @@ ClusterCommResult* ClusterComm::wait (
       }
       if (! found) {
         // Nothing known about this operation, return with failure:
-        res = new ClusterCommResult();
-        res->clientTransactionID = clientTransactionID;
-        res->coordTransactionID = coordTransactionID;
-        res->operationID = operationID;
-        res->shardID = shardID;
-        res->status = CL_COMM_DROPPED;
+        ClusterCommResult res;
+        res.clientTransactionID = clientTransactionID;
+        res.coordTransactionID = coordTransactionID;
+        res.operationID = operationID;
+        res.shardID = shardID;
+        res.status = CL_COMM_DROPPED;
         // tell Dispatcher that we are back in business
         if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
           triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
@@ -666,12 +658,12 @@ ClusterCommResult* ClusterComm::wait (
     // This place is only reached on timeout
   }
   // Now we have to react on timeout:
-  res = new ClusterCommResult();
-  res->clientTransactionID = clientTransactionID;
-  res->coordTransactionID = coordTransactionID;
-  res->operationID = operationID;
-  res->shardID = shardID;
-  res->status = CL_COMM_TIMEOUT;
+  ClusterCommResult res;
+  res.clientTransactionID = clientTransactionID;
+  res.coordTransactionID = coordTransactionID;
+  res.operationID = operationID;
+  res.shardID = shardID;
+  res.status = CL_COMM_TIMEOUT;
   // tell Dispatcher that we are back in business
   if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
     triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
@@ -710,16 +702,16 @@ void ClusterComm::drop (
 
     for (q = toSend.begin(); q != toSend.end(); ) {
       op = *q;
-      if ((0 != operationID && operationID == op->operationID) ||
+      if ((0 != operationID && operationID == op->result.operationID) ||
           match(clientTransactionID, coordTransactionID, shardID, op)) {
-        if (op->status == CL_COMM_SENDING) {
-          op->dropped = true;
+        if (op->result.status == CL_COMM_SENDING) {
+          op->result.dropped = true;
           q++;
         }
         else {
           nextq = q;
           nextq++;
-          i = toSendByOpID.find(op->operationID);   // cannot fail
+          i = toSendByOpID.find(op->result.operationID);   // cannot fail
           TRI_ASSERT(i != toSendByOpID.end());
           TRI_ASSERT(q == i->second);
           toSendByOpID.erase(i);
@@ -738,11 +730,11 @@ void ClusterComm::drop (
 
     for (q = received.begin(); q != received.end(); ) {
       op = *q;
-      if ((0 != operationID && operationID == op->operationID) ||
+      if ((0 != operationID && operationID == op->result.operationID) ||
           match(clientTransactionID, coordTransactionID, shardID, op)) {
         nextq = q;
         nextq++;
-        i = receivedByOpID.find(op->operationID);   // cannot fail
+        i = receivedByOpID.find(op->result.operationID);   // cannot fail
         TRI_ASSERT(i != receivedByOpID.end());
         TRI_ASSERT(q == i->second);
         receivedByOpID.erase(i);
@@ -874,13 +866,13 @@ string ClusterComm::processAnswer (string& coordinatorHeader,
     i = receivedByOpID.find(operationID);
     if (i != receivedByOpID.end()) {
       ClusterCommOperation* op = *(i->second);
-      op->answer = answer;
-      op->answer_code = rest::HttpResponse::responseCode(
+      op->result.answer.reset(answer);
+      op->result.answer_code = rest::HttpResponse::responseCode(
           answer->header("x-arango-response-code"));
-      op->status = CL_COMM_RECEIVED;
+      op->result.status = CL_COMM_RECEIVED;
       // Do we have to do a callback?
-      if (nullptr != op->callback) {
-        if ((*op->callback)(static_cast<ClusterCommResult*>(op))) {
+      if (nullptr != op->callback.get()) {
+        if ((*op->callback.get())(&op->result)) {
           // This is fully processed, so let's remove it from the queue:
           QueueIterator q = i->second;
           receivedByOpID.erase(i);
@@ -898,12 +890,12 @@ string ClusterComm::processAnswer (string& coordinatorHeader,
       i = toSendByOpID.find(operationID);
       if (i != toSendByOpID.end()) {
         ClusterCommOperation* op = *(i->second);
-        op->answer = answer;
-        op->answer_code = rest::HttpResponse::responseCode(
+        op->result.answer.reset(answer);
+        op->result.answer_code = rest::HttpResponse::responseCode(
             answer->header("x-arango-response-code"));
-        op->status = CL_COMM_RECEIVED;
+        op->result.status = CL_COMM_RECEIVED;
         if (nullptr != op->callback) {
-          if ((*op->callback)(static_cast<ClusterCommResult*>(op))) {
+          if ((*op->callback)(&op->result)) {
             // This is fully processed, so let's remove it from the queue:
             QueueIterator q = i->second;
             toSendByOpID.erase(i);
@@ -940,17 +932,17 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
 
   QueueIterator q = i->second;
   ClusterCommOperation* op = *q;
-  TRI_ASSERT(op->operationID == operationID);
+  TRI_ASSERT(op->result.operationID == operationID);
   toSendByOpID.erase(i);
   toSend.erase(q);
-  if (op->dropped) {
+  if (op->result.dropped) {
     return false;
   }
-  if (op->status == CL_COMM_SENDING) {
+  if (op->result.status == CL_COMM_SENDING) {
     // Note that in the meantime the status could have changed to
     // CL_COMM_ERROR, CL_COMM_TIMEOUT or indeed to CL_COMM_RECEIVED in
     // these cases, we do not want to overwrite this result
-    op->status = CL_COMM_SENT;
+    op->result.status = CL_COMM_SENT;
   }
   received.push_back(op);
   q = received.end();
@@ -1048,8 +1040,8 @@ void ClusterCommThread::run () {
         else {
           LOG_DEBUG("Noticed something to send");
           op = cc->toSend.front();
-          TRI_ASSERT(op->status == CL_COMM_SUBMITTED);
-          op->status = CL_COMM_SENDING;
+          TRI_ASSERT(op->result.status == CL_COMM_SUBMITTED);
+          op->result.status = CL_COMM_SENDING;
         }
       }
 
@@ -1060,26 +1052,26 @@ void ClusterCommThread::run () {
       // Have we already reached the timeout?
       double currentTime = TRI_microtime();
       if (op->endTime <= currentTime) {
-        op->status = CL_COMM_TIMEOUT;
+        op->result.status = CL_COMM_TIMEOUT;
       }
       else {
-        if (op->serverID == "") {
-          op->status = CL_COMM_ERROR;
+        if (op->result.serverID == "") {
+          op->result.status = CL_COMM_ERROR;
         }
         else {
           // We need a connection to this server:
           string endpoint
-              = ClusterInfo::instance()->getServerEndpoint(op->serverID);
+              = ClusterInfo::instance()->getServerEndpoint(op->result.serverID);
           if (endpoint == "") {
-            op->status = CL_COMM_ERROR;
+            op->result.status = CL_COMM_ERROR;
 
             if (cc->logConnectionErrors()) {
               LOG_ERROR("cannot find endpoint for server '%s'",
-                        op->serverID.c_str());
+                        op->result.serverID.c_str());
             }
             else {
               LOG_INFO("cannot find endpoint for server '%s'",
-                       op->serverID.c_str());
+                       op->result.serverID.c_str());
             }
           }
           else {
@@ -1088,24 +1080,24 @@ void ClusterCommThread::run () {
             httpclient::ConnectionManager::SingleServerConnection* connection
                 = cm->leaseConnection(endpoint);
             if (nullptr == connection) {
-              op->status = CL_COMM_ERROR;
+              op->result.status = CL_COMM_ERROR;
               if (cc->logConnectionErrors()) {
-                LOG_ERROR("cannot create connection to server '%s'", op->serverID.c_str());
+                LOG_ERROR("cannot create connection to server '%s'", op->result.serverID.c_str());
               }
               else {
-                LOG_INFO("cannot create connection to server '%s'", op->serverID.c_str());
+                LOG_INFO("cannot create connection to server '%s'", op->result.serverID.c_str());
               }
             }
             else {
               if (nullptr != op->body.get()) {
                 LOG_DEBUG("sending %s request to DB server '%s': %s",
                    triagens::rest::HttpRequest::translateMethod(op->reqtype)
-                     .c_str(), op->serverID.c_str(), op->body->c_str());
+                     .c_str(), op->result.serverID.c_str(), op->body->c_str());
               }
               else {
                 LOG_DEBUG("sending %s request to DB server '%s'",
                    triagens::rest::HttpRequest::translateMethod(op->reqtype)
-                      .c_str(), op->serverID.c_str());
+                      .c_str(), op->result.serverID.c_str());
               }
 
               std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
@@ -1119,29 +1111,30 @@ void ClusterCommThread::run () {
               // We add this result to the operation struct without acquiring
               // a lock, since we know that only we do such a thing:
               if (nullptr != op->body.get()) {
-                op->result = client->request(op->reqtype, op->path,
+                op->result.result.reset(client->request(op->reqtype, op->path,
                              op->body->c_str(), op->body->size(),
-                             *(op->headerFields));
+                             *(op->headerFields)));
               }
               else {
-                op->result = client->request(op->reqtype, op->path,
-                             nullptr, 0, *(op->headerFields));
+                op->result.result.reset(client->request(op->reqtype, op->path,
+                             nullptr, 0, *(op->headerFields)));
               }
 
-              if (op->result == nullptr || ! op->result->isComplete()) {
+              if (op->result.result.get() == nullptr || 
+                  ! op->result.result->isComplete()) {
                 if (client->getErrorMessage() == "Request timeout reached") {
-                  op->status = CL_COMM_TIMEOUT;
+                  op->result.status = CL_COMM_TIMEOUT;
                 }
                 else {
-                  op->status = CL_COMM_ERROR;
+                  op->result.status = CL_COMM_ERROR;
                 }
                 cm->brokenConnection(connection);
                 client->invalidateConnection();
               }
               else {
                 cm->returnConnection(connection);
-                if (op->result->wasHttpError()) {
-                  op->status = CL_COMM_ERROR;
+                if (op->result.result->wasHttpError()) {
+                  op->result.status = CL_COMM_ERROR;
                 }
               }
             }
@@ -1149,7 +1142,7 @@ void ClusterCommThread::run () {
         }
       }
 
-      if (! cc->moveFromSendToReceived(op->operationID)) {
+      if (! cc->moveFromSendToReceived(op->result.operationID)) {
         // It was dropped in the meantime, so forget about it:
         delete op;
       }
@@ -1165,9 +1158,9 @@ void ClusterCommThread::run () {
       ClusterComm::QueueIterator q;
       for (q = cc->received.begin(); q != cc->received.end(); ++q) {
         op = *q;
-        if (op->status == CL_COMM_SENT) {
+        if (op->result.status == CL_COMM_SENT) {
           if (op->endTime < currentTime) {
-            op->status = CL_COMM_TIMEOUT;
+            op->result.status = CL_COMM_TIMEOUT;
           }
         }
       }

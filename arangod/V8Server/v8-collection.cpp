@@ -335,7 +335,7 @@ static void DocumentVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers;
+  auto headers = std::make_shared<std::map<std::string, std::string>>();
   map<string, string> resultHeaders;
   string resultBody;
 
@@ -712,7 +712,7 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers;
+  auto headers = std::make_shared<std::map<std::string, std::string>>();
   map<string, string> resultHeaders;
   string resultBody;
 
@@ -1303,7 +1303,7 @@ static void RemoveVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
   string resultBody;
-  map<string, string> headers;
+  auto headers = std::make_shared<std::map<std::string, std::string>>();
 
   error = triagens::arango::deleteDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, headers,
