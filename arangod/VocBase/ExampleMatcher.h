@@ -106,7 +106,7 @@ namespace triagens {
 
         ~ExampleMatcher () {
           cleanup();
-        };
+        }
 
         bool matches (TRI_voc_cid_t cid, 
                       TRI_doc_mptr_t const* mptr) const;

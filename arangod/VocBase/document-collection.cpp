@@ -5045,7 +5045,7 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (triagens::ar
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           TRI_transaction_collection_t* trxCollection,
-                          ExampleMatcher& matcher) {
+                          ExampleMatcher const& matcher) {
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
