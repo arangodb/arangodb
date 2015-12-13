@@ -343,6 +343,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `move-filters-up`: will appear if a *FilterNode* was moved up in a plan. The
   intention of this rule is to move filters up in the processing pipeline as far
   as possible (ideally out of inner loops) so they filter results as early as possible.
+* `sort-in-values`: will appear when the values used as right-hand side of an `IN`
+  operator will be pre-sorted using an extra function call. Pre-sorting the comparison
+  array allows using a binary search in-list lookup with a logarithmic complexity instead 
+  of the default linear complexity in-list lookup.
 * `remove-unnecessary-filters`: will appear if a *FilterNode* was removed or replaced.
   *FilterNode*s whose filter condition will always evaluate to *true* will be
   removed from the plan, whereas *FilterNode* that will never let any results pass

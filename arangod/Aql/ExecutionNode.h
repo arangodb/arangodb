@@ -1,8 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Infrastructure for ExecutionPlans
 ///
-/// @file arangod/Aql/ExecutionNode.h
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany
@@ -29,12 +27,12 @@
 #define ARANGODB_AQL_EXECUTION_NODE_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Expression.h"
 #include "Aql/types.h"
+#include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
-#include "lib/Basics/json-utilities.h"
+#include "Basics/json-utilities.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -281,6 +279,15 @@ namespace triagens {
         };
 
         typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make a new node the (only) parent of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        void setParent (ExecutionNode* p) {
+          _parents.clear();
+          _parents.emplace_back(p);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a dependency, returns true if the pointer was found and 
@@ -703,7 +710,15 @@ namespace triagens {
 /// @brief whether or not the node is in an inner loop
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isInInnerLoop () const;
+        bool isInInnerLoop () const {
+          return getLoop() != nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the surrounding loop
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode const* getLoop () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions

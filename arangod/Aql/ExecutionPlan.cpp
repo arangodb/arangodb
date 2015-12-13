@@ -1791,7 +1791,8 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
     oldNode->removeDependency(x);
   }
   
-  auto oldNodeParents = oldNode->getParents();  // Intentional copy
+  // Intentional copy
+  auto oldNodeParents = oldNode->getParents();  
 
   for (auto* oldNodeParent : oldNodeParents) {
     if (! oldNodeParent->replaceDependency(oldNode, newNode)){

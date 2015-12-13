@@ -96,7 +96,7 @@ static bool checkPathVariableAccessFeasible (CalculationNode const* cn,
 
 static bool extractSimplePathAccesses (AstNode const* node,
                                        TraversalNode* tn,
-                                        Ast* ast) {
+                                       Ast* ast) {
 
   std::vector<AstNode const*> currentPath;
   std::vector<std::vector<AstNode const*>> paths;
@@ -141,8 +141,8 @@ static bool extractSimplePathAccesses (AstNode const* node,
     }
 
     if (compareNode != nullptr) {
-      AstNode const * pathAccessNode;
-      AstNode const * filterByNode;
+      AstNode const* pathAccessNode;
+      AstNode* filterByNode;
       bool flipOperator = false;
 
       if (compareNode->getMember(0) == accessNodeBranch) {
@@ -160,7 +160,6 @@ static bool extractSimplePathAccesses (AstNode const* node,
       }
 
       if (accessNodeBranch->isSimple() && filterByNode->isDeterministic()) {
-
         currentPath.clear();
         clonePath.clear();
         filterByNode->findVariableAccess(currentPath, clonePath, tn->pathOutVariable());

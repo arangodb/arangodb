@@ -247,7 +247,7 @@ namespace triagens {
 /// @brief return the condition root
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline AstNode const* root () const {
+        inline AstNode* root () const {
           return _root;
         }
 
@@ -323,8 +323,8 @@ namespace triagens {
 /// @brief removes condition parts from another
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode const* removeIndexCondition (Variable const*,
-                                             AstNode const*);
+        AstNode* removeIndexCondition (Variable const*,
+                                       AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove (now) invalid variables from the condition

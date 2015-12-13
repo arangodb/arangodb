@@ -85,8 +85,9 @@ void ExampleMatcher::fillExampleDefinition (v8::Isolate* isolate,
 
       if (pid == 0) {
         // Internal attributes do have pid == 0.
-        if (strncmp("_", *keyStr, 1) == 0) {
-          string const key(*keyStr, (size_t) keyStr.length());
+        char const* p = *keyStr;
+        if (*p == '_') {
+          string const key(p, keyStr.length());
           string keyVal = TRI_ObjectToString(val);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
             def._internal.insert(make_pair(internalAttr::key, DocumentId(0, keyVal)));
@@ -143,16 +144,15 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
                                             CollectionNameResolver const* resolver,
                                             ExampleDefinition& def) {
 
-  if ( TRI_IsStringJson(example) ) {
+  if (TRI_IsStringJson(example)) {
     // Example is an _id value
     char const* _key = strchr(example->_value._string.data, '/');
     if (_key != nullptr) {
       _key += 1;
       def._internal.insert(make_pair(internalAttr::key, DocumentId(0, _key)));
       return;
-    } else {
-      THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
-    }
+    } 
+    THROW_ARANGO_EXCEPTION(TRI_RESULT_ELEMENT_NOT_FOUND);
   }
   TRI_vector_t objects = example->_value._objects;
 
@@ -171,8 +171,8 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
 
       if (pid == 0) {
         // Internal attributes do have pid == 0.
-        if (strncmp("_", keyStr, 1) == 0) {
-          string const key(keyStr);
+        if (*keyStr == '_') {
+          string const key(keyStr, keyObj->_value._string.length - 1);
           auto jsonValue = static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
           if (! TRI_IsStringJson(jsonValue)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
@@ -221,7 +221,7 @@ void ExampleMatcher::fillExampleDefinition (TRI_json_t const* example,
       }
     }
   } 
-  catch (bad_alloc&) {
+  catch (std::bad_alloc const&) {
     ExampleMatcher::cleanup();
     throw;
   }
