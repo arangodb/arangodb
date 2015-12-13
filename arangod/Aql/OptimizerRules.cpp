@@ -121,10 +121,42 @@ int triagens::aql::sortInValuesRule (Optimizer* opt,
       // calculation. sorting the IN values will not provide a benefit here
       continue;
     }
+    
+    AstNode const* originalNode = static_cast<CalculationNode*>(setter)->expression()->node();
+    TRI_ASSERT(originalNode != nullptr);
+
+    AstNode const* testNode = originalNode;
+
+    if (originalNode->type == NODE_TYPE_FCALL &&
+        static_cast<Function const*>(originalNode->getData())->externalName == "NOOPT") {
+      // bypass NOOPT(...) 
+      TRI_ASSERT(originalNode->numMembers() == 1);
+      auto args = originalNode->getMember(0);
+ 
+      if (args->numMembers() > 0) {
+        testNode = args->getMember(0);
+      }
+    }
+
+    if (testNode->type == NODE_TYPE_VALUE ||
+        testNode->type == NODE_TYPE_OBJECT) {
+      // not really usable...
+      continue;
+    }
+
+    if (testNode->type == NODE_TYPE_ARRAY &&
+        testNode->numMembers() < 8) {
+      continue;
+    }
+
+    if (testNode->isSorted()) {
+      // already sorted
+      continue;
+    }
 
     auto ast = plan->getAst();
     auto args = ast->createNodeArray();
-    args->addMember(static_cast<CalculationNode*>(setter)->expression()->node());
+    args->addMember(originalNode);
     auto sorted = ast->createNodeFunctionCall("SORTED_UNIQUE", args); 
 
     auto outVar = ast->variables()->createTemporaryVariable();
@@ -3831,7 +3863,7 @@ int triagens::aql::mergeFilterIntoTraversal (Optimizer* opt,
 
   std::vector<ExecutionNode*>&& tNodes = plan->findNodesOfType(EN::TRAVERSAL, true);
 
-  if (tNodes.size() == 0) {
+  if (tNodes.empty()) {
     opt->addPlan(plan, rule, false);
 
     return TRI_ERROR_NO_ERROR;
