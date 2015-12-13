@@ -68,7 +68,7 @@ namespace triagens {
             key(key) {
         }
 
-        bool operator== (const VertexId& other) const {
+        bool operator== (VertexId const& other) const {
           if (cid == other.cid) {
             return strcmp(key, other.key) == 0;
           }
@@ -139,7 +139,6 @@ namespace triagens {
 
           bool recursiveCheck (triagens::aql::AstNode const*,
                                DocumentAccessor&) const;
-
 
           // Required when creating this expression without AST
           std::vector<std::unique_ptr<triagens::aql::AstNode const>>  _nodeRegister;
@@ -226,25 +225,20 @@ namespace triagens {
 
           bool usesPrune;
 
-
           TraverserOptions () : 
             direction(TRI_EDGE_OUT),
             minDepth(1),
             maxDepth(1),
-            usesPrune(false)
-          { };
+            usesPrune(false) {
+          }
 
-          void setPruningFunction (
-               std::function<bool (const TraversalPath* path)> callback
-          ) {
+          void setPruningFunction (std::function<bool(TraversalPath const* path)> const& callback) {
             pruningFunction = callback;
             usesPrune = true;
           }
 
-          bool shouldPrunePath (
-               const TraversalPath* path
-          ) {
-            if (!usesPrune) {
+          bool shouldPrunePath (TraversalPath const* path) {
+            if (! usesPrune) {
               return false;
             }
             return pruningFunction(path);
@@ -357,7 +351,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           bool hasMore () {
-            return !_done; 
+            return ! _done; 
           }
 
         protected:
@@ -430,7 +424,7 @@ namespace std {
   template<>
     struct less<triagens::arango::traverser::VertexId> {
       public:
-        bool operator() (const triagens::arango::traverser::VertexId& lhs, const triagens::arango::traverser::VertexId& rhs) {
+        bool operator() (triagens::arango::traverser::VertexId const& lhs, triagens::arango::traverser::VertexId const& rhs) {
           if (lhs.cid != rhs.cid) {
             return lhs.cid < rhs.cid;
           }

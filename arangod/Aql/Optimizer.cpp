@@ -1,8 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief infrastructure for query optimizer
 ///
-/// @file arangod/Aql/Optimizer.cpp
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany
@@ -416,8 +414,12 @@ void Optimizer::setupRules () {
                splitFiltersRule_pass1, 
                true);
 #endif
+
+  registerRule("sort-in-values",
+               sortInValuesRule,
+               sortInValuesRule_pass1,
+               true);
        
-   
   // determine the "right" type of AggregateNode and 
   // add a sort node for each COLLECT (may be removed later) 
   // this rule cannot be turned off (otherwise, the query result might be wrong!)

@@ -1789,7 +1789,7 @@ AqlValue Functions::SortedUnique (triagens::aql::Query* query,
 
   if (! value.isArray()) {
     // not an array
-    RegisterWarning(query, "SORTED_UNIQUE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    // this is an internal function - do NOT issue a warning here
     return AqlValue(new Json(Json::Null));
   }
   
@@ -4246,25 +4246,36 @@ AqlValue Functions::Range (triagens::aql::Query* query,
   double from = ValueToNumber(leftJson.json(), unused);
   double to = ValueToNumber(rightJson.json(), unused);
 
-  double step = 0;
+  double step = 0.0;
   if (n == 3) {
     auto const stepJson = ExtractFunctionParameter(trx, parameters, 2, false);
     step = ValueToNumber(stepJson.json(), unused);
   }
-  if ( step == 0 ||
-      (from < to && step < 0) ||
-      (from > to && step > 0)) {
+  else { 
+    // no step specified
+    if (from <= to) {
+      step = 1.0;
+    }
+    else {
+      step = -1.0;
+    }
+  }
+
+  if ( step == 0.0 ||
+      (from < to && step < 0.0) ||
+      (from > to && step > 0.0)) {
     RegisterWarning(query, "RANGE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(new Json(Json::Null));
   }
+
   Json result(Json::Array);
-  if (from < to) {
-    for (; from <= to; from += step) {
+  if (step < 0.0 && to <= from) {
+    for (; from >= to; from += step) {
       result.add(Json(from));
     }
   }
   else {
-    for (; from >= to; from += step) {
+    for (; from <= to; from += step) {
       result.add(Json(from));
     }
   }

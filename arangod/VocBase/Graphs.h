@@ -29,16 +29,14 @@
 
 #ifndef ARANGODB_GRAPHS_LOOKUP_H
 #define ARANGODB_GRAPHS_LOOKUP_H 1
-#include "vocbase.h"
 
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace aql {
     class Graph;
-
   }
   namespace arango {
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                Factory for graphs
@@ -51,7 +49,7 @@ namespace triagens {
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-    triagens::aql::Graph * lookupGraphByName (TRI_vocbase_t*, std::string);
+    triagens::aql::Graph* lookupGraphByName (TRI_vocbase_t*, std::string const&);
 
   } // namespace arango
 } // namespace triagens

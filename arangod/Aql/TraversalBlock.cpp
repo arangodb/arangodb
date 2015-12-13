@@ -62,7 +62,6 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
 
   triagens::arango::traverser::TraverserOptions opts;
   ep->fillTraversalOptions(opts);
-  auto edgeColls = ep->edgeColls();
   auto ast = ep->_plan->getAst();
 
   for (auto& map : *_expressions) {
@@ -93,15 +92,16 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   _resolver = new CollectionNameResolver(_trx->vocbase());
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new triagens::arango::traverser::ClusterTraverser(
-      edgeColls,
+      ep->edgeColls(),
       opts,
       std::string(_trx->vocbase()->_name, strlen(_trx->vocbase()->_name)),
       _resolver,
       _expressions
     ));
-  } else {
+  } 
+  else {
     std::vector<TRI_document_collection_t*> edgeCollections;
-    for (auto const& coll : edgeColls) {
+    for (auto const& coll : ep->edgeColls()) {
       TRI_voc_cid_t cid = _resolver->getCollectionId(coll);
       edgeCollections.push_back(_trx->documentCollection(cid));
     }

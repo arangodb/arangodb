@@ -468,7 +468,7 @@ function processQuery (query, explain) {
         if (node.hasOwnProperty("subNodes")) {
           if (node.subNodes.length > 20) {
             // print only the first 20 values from the array
-            return "[ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + " ... ]";
+            return "[ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + ", ... ]";
           }
           return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";
         }
@@ -513,8 +513,14 @@ function processQuery (query, explain) {
       case "modulus":
         return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);
       case "compare not in":
+        if (node.sorted) {
+          return buildExpression(node.subNodes[0]) + " not in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
+        }
         return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);
       case "compare in":
+        if (node.sorted) {
+          return buildExpression(node.subNodes[0]) + " in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
+        }
         return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);
       case "compare ==":
         return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);

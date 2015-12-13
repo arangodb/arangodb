@@ -1,7 +1,5 @@
 /// @brief Infrastructure for ExecutionPlans
 ///
-/// @file arangod/Aql/ExecutionNode.cpp
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany
@@ -30,10 +28,10 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SortNode.h"
+#include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 
@@ -531,14 +529,14 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the node is in an inner loop
+/// @brief get the surrounding loop
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExecutionNode::isInInnerLoop () const {
+ExecutionNode const* ExecutionNode::getLoop () const {
   auto node = this;
   while (node != nullptr) {
     if (! node->hasDependency()) {
-      return false;
+      return nullptr;
     }
 
     node = node->getFirstDependency();
@@ -550,15 +548,11 @@ bool ExecutionNode::isInInnerLoop () const {
         type == INDEX ||
         type == TRAVERSAL ||
         type == ENUMERATE_LIST) {
-      // we are contained in an outer loop
-      return true;
-
-      // future potential optimization: check if the outer loop has 0 or 1 
-      // iterations. in this case it is still possible to remove the sort
+      return node;
     }
   }
 
-  return false;
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------

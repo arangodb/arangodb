@@ -146,7 +146,7 @@ int IndexBlock::initialize () {
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode const* a) -> void {
+  auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
     std::unique_ptr<Expression> e(new Expression(ast, a));
 
