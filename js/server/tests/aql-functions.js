@@ -2037,6 +2037,118 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx1 : function () {
+      var expected = [ [ 1 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(1, 1))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx2 : function () {
+      var expected = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(1, 10))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx3 : function () {
+      var expected = [ [ -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(-1, 10))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx4 : function () {
+      var expected = [ [ 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, -1 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(10, -1))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx5 : function () {
+      var expected = [ [ 0 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(0, 0))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx6 : function () {
+      var expected = [ [ 10 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(10, 10, 5))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx7 : function () {
+      var expected = [ [ 10, 15, 20, 25, 30 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(10, 30, 5))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx8 : function () {
+      var expected = [ [ 30, 25, 20, 15, 10 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(30, 10, -5))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRangeCxx9 : function () {
+      var expected = [ [ 3.4, 4.6, 5.8, 7.0, 8.2 ] ];
+      var actual = getQueryResults("RETURN NOOPT(RANGE(3.4, 8.9, 1.2))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test range function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1, 2, 3, 4))"); 
+      assertEqual([ [ 0, 1, 2 ] ], getQueryResults("RETURN NOOPT(RANGE(null, 2))"));
+      assertEqual([ [ 0 ] ], getQueryResults("RETURN NOOPT(RANGE(null, null))"));
+      assertEqual([ [ 0, 1, 2 ] ], getQueryResults("RETURN NOOPT(RANGE(false, 2))"));
+      assertEqual([ [ 1, 2 ] ], getQueryResults("RETURN NOOPT(RANGE(true, 2))"));
+      assertEqual([ [ 1 ] ], getQueryResults("RETURN NOOPT(RANGE(1, true))"));
+      assertEqual([ [ 1, 0 ] ], getQueryResults("RETURN NOOPT(RANGE(1, [ ]))"));
+      assertEqual([ [ 1, 0 ] ], getQueryResults("RETURN NOOPT(RANGE(1, { }))"));
+      
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(1, 1, 0))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(-1, -1, 0))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(1, -1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(RANGE(-1, 1, -1))");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test minus function
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -3101,6 +3213,56 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ false ], getQueryResults("RETURN HAS({ }, 1)")); 
       assertEqual([ false ], getQueryResults("RETURN HAS({ }, [ ])")); 
       assertEqual([ false ], getQueryResults("RETURN HAS({ }, { })")); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHasCxx1 : function () {
+      var expected = [ true, true, true, false, true ]; 
+      var actual = getQueryResults("FOR u IN [ { \"the fox\" : true }, { \"the fox\" : false }, { \"the fox\" : null }, { \"the FOX\" : true }, { \"the FOX\" : true, \"the fox\" : false } ] return NOOPT(HAS(u, \"the fox\"))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHasCxx2 : function () {
+      var expected = [ false, false, false ];
+      var actual = getQueryResults("FOR u IN [ { \"the foxx\" : { \"the fox\" : false } }, { \" the fox\" : false }, null ] return NOOPT(HAS(u, \"the fox\"))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testHasCxx3 : function () {
+      var expected = [ [ "test2", [ "other" ] ] ];
+      var actual = getQueryResults("LET doc = { \"_id\": \"test/76689250173\", \"_rev\": \"76689250173\", \"_key\": \"76689250173\", \"test1\": \"something\", \"test2\": { \"DATA\": [ \"other\" ] } } FOR attr IN ATTRIBUTES(doc) LET prop = doc[attr] FILTER NOOPT(HAS(prop, 'DATA')) RETURN [ attr, prop.DATA ]"); 
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test has function
+////////////////////////////////////////////////////////////////////////////////
+
+    testHasCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(HAS())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(HAS({ }))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(HAS({ }, \"fox\", true))"); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS(false, \"fox\"))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS(3, \"fox\"))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS(\"yes\", \"fox\"))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS([ ], \"fox\"))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, null))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, false))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, true))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, 1))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, [ ]))")); 
+      assertEqual([ false ], getQueryResults("RETURN NOOPT(HAS({ }, { }))")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

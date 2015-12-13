@@ -3,7 +3,7 @@
 For installation instructions, please refer to the 
 [Installation Manual](../Installing/README.md).
 
-As you know from the introduction ArangoDB is a multi-purpose open-source
+As you know from the introduction ArangoDB is a multi-model open-source
 Database. You can see the Key features below or look directly at the programs in
 the ArangoDB package. 
 
