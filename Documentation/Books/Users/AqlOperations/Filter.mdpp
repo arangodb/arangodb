@@ -1,0 +1,37 @@
+!CHAPTER FILTER
+
+The *FILTER* statement can be used to restrict the results to elements that
+match an arbitrary logical condition. The general syntax is:
+
+```
+FILTER condition
+```
+
+*condition* must be a condition that evaluates to either *false* or *true*. If
+the condition result is false, the current element is skipped, so it will not be
+processed further and not be part of the result. If the condition is true, the
+current element is not skipped and can be further processed.
+
+```
+FOR u IN users
+  FILTER u.active == true && u.age < 39
+  RETURN u
+```
+
+In the above example, all array elements from *users* will be included that have
+an attribute *active* with value *true* and that have an attribute *age* with a
+value less than *39* (including *null* ones). All other elements from *users* 
+will be skipped and not be included the result produced by *RETURN*.
+
+It is allowed to specify multiple *FILTER* statements in a query, and even in
+the same block. If multiple *FILTER* statements are used, their results will be
+combined with a logical and, meaning all filter conditions must be true to
+include an element.
+
+```
+FOR u IN users
+  FILTER u.active == true
+  FILTER u.age < 39
+  RETURN u
+```
+
