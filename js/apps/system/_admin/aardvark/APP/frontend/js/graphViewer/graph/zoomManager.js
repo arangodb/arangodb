@@ -214,6 +214,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
 
     },
     mouseMoveHandle = function() {
+      /*
       var focus = d3.mouse(this);
       focus[0] -= currentTranslation[0];
       focus[0] /= currentZoom;
@@ -221,7 +222,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       focus[1] /= currentZoom;
       fisheye.focus(focus);
       nodeShaper.updateNodes();
-      edgeShaper.updateEdges();
+      edgeShaper.updateEdges();*/
     };
 
 
