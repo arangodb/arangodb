@@ -851,6 +851,9 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   TRI_json_t* json = nullptr;
   int res = EnhanceIndexJson(args, json, create);
+  
+  // this object is responsible for the JSON from now on
+  std::unique_ptr<TRI_json_t> jsonDeleter(json);
 
   if (res == TRI_ERROR_NO_ERROR &&
       ServerState::instance()->isCoordinator()) {
@@ -872,7 +875,7 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
         TRI_json_t const* flds = TRI_LookupObjectJson(json, "fields");
 
         if (TRI_IsArrayJson(flds) && c->numberOfShards() > 1) {
-          vector<string> const& shardKeys = c->shardKeys();
+          std::vector<std::string> const& shardKeys = c->shardKeys();
           size_t const n = TRI_LengthArrayJson(flds);
 
           if (shardKeys.size() != n) {
@@ -900,9 +903,6 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -915,8 +915,6 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
   else {
     EnsureIndexLocal(args, collection, json, create);
   }
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

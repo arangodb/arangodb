@@ -185,8 +185,8 @@
 ///   Will be raised when an invalid collection type is used in a request.
 /// - 1219: @LIT{validator failed}
 ///   Will be raised when the validation of an attribute of a structure failed.
-/// - 1220: @LIT{parser failed}
-///   Will be raised when the parsing of an attribute of a structure failed.
+/// - 1220: @LIT{parsing definition failed}
+///   Will be raised when parsing an attribute name definition failed.
 /// - 1221: @LIT{illegal document key}
 ///   Will be raised when a document key is corrupt.
 /// - 1222: @LIT{unexpected document key}
@@ -1480,9 +1480,9 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1220: ERROR_ARANGO_PARSER_FAILED
 ///
-/// parser failed
+/// parsing definition failed
 ///
-/// Will be raised when the parsing of an attribute of a structure failed.
+/// Will be raised when parsing an attribute name definition failed.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_PARSER_FAILED                                    (1220)

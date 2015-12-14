@@ -910,7 +910,7 @@ int SkiplistIndex::insert (TRI_doc_mptr_t const* doc,
 ////////////////////////////////////////////////////////////////////////////////
          
 int SkiplistIndex::remove (TRI_doc_mptr_t const* doc, 
-                            bool) {
+                           bool) {
 
   std::vector<TRI_index_element_t*> elements;
 
