@@ -914,14 +914,14 @@ int getDocumentOnCoordinator (
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
   for (auto const& p : *shards) {
-    std::unique_ptr<std::map<std::string, std::string>> headers
-        (new std::map<std::string, std::string>());
+    std::unique_ptr<std::map<std::string, std::string>> headersCopy
+        (new std::map<std::string, std::string>(*headers));
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
          reqType,
          "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/"+
          StringUtils::urlEncode(p.first) + "/" + StringUtils::urlEncode(key) +
          revstr, 
-         std::shared_ptr<std::string const>(), headers, nullptr, 60.0);
+         std::shared_ptr<std::string const>(), headersCopy, nullptr, 60.0);
   }
   // Now listen to the results:
   int count;
