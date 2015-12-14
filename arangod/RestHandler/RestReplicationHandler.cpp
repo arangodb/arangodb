@@ -507,7 +507,7 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 /// Returns the state of the replication logger.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStateActive}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///
 ///     var url = "/_api/replication/logger-state";
 ///
@@ -1191,7 +1191,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// No log events available
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowEmpty}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     var lastTick = re.logger.state().state.lastLogTick;
 ///
 ///     var url = "/_api/replication/logger-follow?from=" + lastTick;
@@ -1205,7 +1205,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// A few log events
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowSome}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     db._drop("products");
 ///
 ///     var lastTick = re.logger.state().state.lastLogTick;
@@ -1229,7 +1229,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// More events than would fit into the response
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerFollowBufferLimit}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     db._drop("products");
 ///
 ///     var lastTick = re.logger.state().state.lastLogTick;
@@ -4609,7 +4609,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierSetConfig}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     re.applier.shutdown();
 ///
 ///     var url = "/_api/replication/applier-config";
@@ -4777,7 +4777,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStart}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     re.applier.shutdown();
 ///     re.applier.properties({
 ///       endpoint: "tcp://127.0.0.1:8529",
@@ -4849,7 +4849,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStop}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     re.applier.shutdown();
 ///     re.applier.properties({
 ///       endpoint: "tcp://127.0.0.1:8529",
@@ -4976,7 +4976,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 /// Fetching the state of an inactive applier:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateNotRunning}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     re.applier.shutdown();
 ///
 ///     var url = "/_api/replication/applier-state";
@@ -4989,7 +4989,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 /// Fetching the state of an active applier:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateRunning}
-///     var re = require("org/arangodb/replication");
+///     var re = require("@arangodb/replication");
 ///     re.applier.shutdown();
 ///     re.applier.start();
 ///

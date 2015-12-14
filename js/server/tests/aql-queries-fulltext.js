@@ -28,10 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var jsunity = require("jsunity");
-var errors = require("org/arangodb").errors;
-var helper = require("org/arangodb/aql-helper");
+var errors = require("@arangodb").errors;
+var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 

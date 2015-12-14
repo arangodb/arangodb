@@ -1,4 +1,4 @@
-arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/general-graph"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/general-graph"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> edgeDefinitions = graph_module._edgeDefinitions();
 arangosh&gt; graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._relation(<span class="hljs-string">"friend_of"</span>, <span class="hljs-string">"Customer"</span>, <span class="hljs-string">"Customer"</span>));
 arangosh&gt; graph_module._extendEdgeDefinitions(

@@ -34,11 +34,11 @@ const jsunity = require("jsunity");
 
 const internal = require("internal");
 const db = internal.db;
-const errors = require("org/arangodb").errors;
-const gm = require("org/arangodb/general-graph");
+const errors = require("@arangodb").errors;
+const gm = require("@arangodb/general-graph");
 const vn = "UnitTestVertexCollection";
 const en = "UnitTestEdgeCollection";
-const isCluster = require("org/arangodb/cluster").isCluster();
+const isCluster = require("@arangodb/cluster").isCluster();
 var _ = require("underscore");
 var vertex = {};
 var edge = {};

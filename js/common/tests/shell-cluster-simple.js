@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var _ = require("underscore");

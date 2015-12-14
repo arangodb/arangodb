@@ -1684,7 +1684,7 @@ static bool RunUnitTests (v8::Isolate* isolate, v8::Handle<v8::Context> context)
   context->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"), v8::True(isolate));
 
   // run tests
-  auto input = TRI_V8_ASCII_STRING("require(\"org/arangodb/testrunner\").runCommandLineTests();");
+  auto input = TRI_V8_ASCII_STRING("require(\"@arangodb/testrunner\").runCommandLineTests();");
   auto name  = TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME);
   TRI_ExecuteJavaScriptString(isolate, context, input, name, true);
 

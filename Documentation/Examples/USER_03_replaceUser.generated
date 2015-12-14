@@ -1,4 +1,4 @@
-arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/users"</span>).replace(<span class="hljs-string">"my-user"</span>, <span class="hljs-string">"my-changed-password"</span>);
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/users"</span>).replace(<span class="hljs-string">"my-user"</span>, <span class="hljs-string">"my-changed-password"</span>);
 { 
   <span class="hljs-string">"user"</span> : <span class="hljs-string">"my-user"</span>, 
   <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 

@@ -3100,7 +3100,7 @@ Object.defineProperty(Object.prototype, 'propertyKeys', {
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
 
-module.define("org/arangodb", function(exports, module) {
+module.define("@arangodb", function(exports, module) {
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3131,7 +3131,7 @@ module.define("org/arangodb", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var common = require("org/arangodb-common");
+var common = require("@arangodb-common");
 
 Object.keys(common).forEach(function (key) {
   exports[key] = common[key];
@@ -3158,7 +3158,7 @@ exports.isClient = true;
 ////////////////////////////////////////////////////////////////////////////////
 
 // cannot yet not use arangodb
-exports.ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+exports.ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoConnection"
@@ -3171,21 +3171,21 @@ exports.ArangoConnection = internal.ArangoConnection;
 ////////////////////////////////////////////////////////////////////////////////
 
 // cannot yet not use arangodb
-exports.ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase;
+exports.ArangoDatabase = require("@arangodb/arango-database").ArangoDatabase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoStatement"
 ////////////////////////////////////////////////////////////////////////////////
 
 // cannot yet not use arangodb
-exports.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+exports.ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoQueryCursor"
 ////////////////////////////////////////////////////////////////////////////////
 
 // cannot yet not use arangodb
-exports.ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
+exports.ArangoQueryCursor = require("@arangodb/arango-query-cursor").ArangoQueryCursor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the global "db" and "arango" object
@@ -3227,7 +3227,7 @@ exports.plainServerVersion = function() {
 // -----------------------------------------------------------------------------
 });
 
-module.define("org/arangodb/aql/queries", function(exports, module) {
+module.define("@arangodb/aql/queries", function(exports, module) {
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3258,10 +3258,10 @@ module.define("org/arangodb/aql/queries", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var arangosh = require("org/arangodb/arangosh");
+var arangosh = require("@arangodb/arangosh");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 module "org/arangodb/aql/queries"
+// --SECTION--                                 module "@arangodb/aql/queries"
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3353,7 +3353,7 @@ exports.kill = function (id) {
 
 });
 
-module.define("org/arangodb/arango-collection", function(exports, module) {
+module.define("@arangodb/arango-collection", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3385,7 +3385,7 @@ module.define("org/arangodb/arango-collection", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var arangosh = require("org/arangodb/arangosh");
+var arangosh = require("@arangodb/arangosh");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -3461,9 +3461,9 @@ function ArangoCollection (database, data) {
 exports.ArangoCollection = ArangoCollection;
 
 // must be called after exporting ArangoCollection
-require("org/arangodb/arango-collection-common");
+require("@arangodb/arango-collection-common");
 
-var ArangoError = require("org/arangodb").ArangoError;
+var ArangoError = require("@arangodb").ArangoError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -4782,7 +4782,7 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
 // End:
 });
 
-module.define("org/arangodb/arango-database", function(exports, module) {
+module.define("@arangodb/arango-database", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4814,7 +4814,7 @@ module.define("org/arangodb/arango-database", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var arangosh = require("org/arangodb/arangosh");
+var arangosh = require("@arangodb/arangosh");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    ArangoDatabase
@@ -4844,9 +4844,9 @@ function ArangoDatabase (connection) {
 exports.ArangoDatabase = ArangoDatabase;
 
 // load after exporting ArangoDatabase
-ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
-var ArangoError = require("org/arangodb").ArangoError;
-var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
+var ArangoError = require("@arangodb").ArangoError;
+var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -5624,7 +5624,7 @@ ArangoDatabase.prototype._explain = function (query, bindVars, options) {
     query = { query: query, bindVars: bindVars, options: options };
   }
 
-  require("org/arangodb/aql/explainer").explain(query);
+  require("@arangodb/aql/explainer").explain(query);
 };
 
 // -----------------------------------------------------------------------------
@@ -5814,7 +5814,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 // End:
 });
 
-module.define("org/arangodb/arango-query-cursor", function(exports, module) {
+module.define("@arangodb/arango-query-cursor", function(exports, module) {
 /*jshint strict: false */
 /*global more:true */
 
@@ -5847,7 +5847,7 @@ module.define("org/arangodb/arango-query-cursor", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var arangosh = require("org/arangodb/arangosh");
+var arangosh = require("@arangodb/arangosh");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ArangoQueryCursor
@@ -6104,7 +6104,7 @@ ArangoQueryCursor.prototype._baseurl = function () {
 // End:
 });
 
-module.define("org/arangodb/arango-statement", function(exports, module) {
+module.define("@arangodb/arango-statement", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6136,10 +6136,10 @@ module.define("org/arangodb/arango-statement", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var arangosh = require("org/arangodb/arangosh");
+var arangosh = require("@arangodb/arangosh");
 
-var ArangoStatement = require("org/arangodb/arango-statement-common").ArangoStatement;
-var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
+var ArangoStatement = require("@arangodb/arango-statement-common").ArangoStatement;
+var ArangoQueryCursor = require("@arangodb/arango-query-cursor").ArangoQueryCursor;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement
@@ -6311,7 +6311,7 @@ exports.ArangoStatement = ArangoStatement;
 // End:
 });
 
-module.define("org/arangodb/arangosh", function(exports, module) {
+module.define("@arangodb/arangosh", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6396,7 +6396,7 @@ exports.createHelpHeadline = function (text) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // must came after the export of createHelpHeadline
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var ArangoError = arangodb.ArangoError;
 
 exports.checkRequestResult = function (requestResult) {
@@ -6492,7 +6492,7 @@ exports.helpExtended = exports.createHelpHeadline("More help") +
 // End:
 });
 
-module.define("org/arangodb/graph-blueprint", function(exports, module) {
+module.define("@arangodb/graph-blueprint", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6522,15 +6522,15 @@ module.define("org/arangodb/graph-blueprint", function(exports, module) {
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb"),
-  is = require("org/arangodb/is"),
-  common = require("org/arangodb/graph-common"),
+var arangodb = require("@arangodb"),
+  is = require("@arangodb/is"),
+  common = require("@arangodb/graph-common"),
   Edge = common.Edge,
   Graph = common.Graph,
   Vertex = common.Vertex,
   GraphArray = common.GraphArray,
   Iterator = common.Iterator,
-  GraphAPI = require ("org/arangodb/api/graph").GraphAPI;
+  GraphAPI = require ("@arangodb/api/graph").GraphAPI;
 
 
 // -----------------------------------------------------------------------------
@@ -6848,7 +6848,7 @@ exports.Graph = Graph;
 exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 
-require("org/arangodb/graph/algorithms-common");
+require("@arangodb/graph/algorithms-common");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -6860,7 +6860,7 @@ require("org/arangodb/graph/algorithms-common");
 // End:
 });
 
-module.define("org/arangodb/replication", function(exports, module) {
+module.define("@arangodb/replication", function(exports, module) {
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6891,10 +6891,10 @@ module.define("org/arangodb/replication", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var arangosh = require("org/arangodb/arangosh");
+var arangosh = require("@arangodb/arangosh");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 module "org/arangodb/replication"
+// --SECTION--                                 module "@arangodb/replication"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -7129,7 +7129,7 @@ exports.serverId        = serverId;
 
 });
 
-module.define("org/arangodb/simple-query", function(exports, module) {
+module.define("@arangodb/simple-query", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7159,11 +7159,11 @@ module.define("org/arangodb/simple-query", function(exports, module) {
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangosh = require("org/arangodb/arangosh");
+var arangosh = require("@arangodb/arangosh");
 
-var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor;
+var ArangoQueryCursor = require("@arangodb/arango-query-cursor").ArangoQueryCursor;
 
-var sq = require("org/arangodb/simple-query-common");
+var sq = require("@arangodb/simple-query-common");
 
 var GeneralArrayCursor = sq.GeneralArrayCursor;
 var SimpleQueryAll = sq.SimpleQueryAll;
@@ -7651,7 +7651,7 @@ exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 // End:
 });
 
-module.define("org/arangodb/tutorial", function(exports, module) {
+module.define("@arangodb/tutorial", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7682,7 +7682,7 @@ module.define("org/arangodb/tutorial", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                    module "org/arangodb/tutorial"
+// --SECTION--                                    module "@arangodb/tutorial"
 // -----------------------------------------------------------------------------
 
 var index = 0;
@@ -7859,7 +7859,7 @@ exports._PRINT = function (context) {
 // End:
 });
 
-module.define("org/arangodb-common", function(exports, module) {
+module.define("@arangodb-common", function(exports, module) {
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7893,7 +7893,7 @@ var internal = require("internal");
 
 var fs = require("fs");
 
-var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
+var mimetypes = require("@arangodb/mimetypes").mimeTypes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 module "arangodb"
@@ -8364,7 +8364,7 @@ exports.checkAvailableVersions = function (version) {
   var console = require("console");
   var log;
 
-  if (require("org/arangodb").isServer) {
+  if (require("@arangodb").isServer) {
     log = console.info;
   }
   else {
@@ -8415,10 +8415,10 @@ exports.checkAvailableVersions = function (version) {
 // End:
 });
 
-module.define("org/arangodb/aql/explainer", function(exports, module) {
+module.define("@arangodb/aql/explainer", function(exports, module) {
 /*jshint strict: false, maxlen: 300 */
 
-var db = require("org/arangodb").db,
+var db = require("@arangodb").db,
   internal = require("internal"),
   systemColors = internal.COLORS, 
   print = internal.print,
@@ -8771,7 +8771,7 @@ function processQuery (query, explain) {
     maxIdLen = String("Id").length,
     maxEstimateLen = String("Est.").length,
     plan = explain.plan,
-    cluster = require("org/arangodb/cluster");
+    cluster = require("@arangodb/cluster");
   
   var recursiveWalk = function (n, level) {
     n.forEach(function(node) {
@@ -9344,7 +9344,7 @@ exports.explain = explain;
 
 });
 
-module.define("org/arangodb/aql/functions", function(exports, module) {
+module.define("@arangodb/aql/functions", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9375,13 +9375,13 @@ module.define("org/arangodb/aql/functions", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 
 var db = arangodb.db;
 var ArangoError = arangodb.ArangoError;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                               module "org/arangodb/aql/functions"
+// --SECTION--                               module "@arangodb/aql/functions"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -9511,7 +9511,7 @@ var stringifyFunction = function (code, name) {
 /// @EXAMPLES
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
+///   require("@arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -9556,9 +9556,9 @@ var unregisterFunction = function (name) {
 /// @EXAMPLES
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
+///   require("@arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
 ///
-///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
+///   require("@arangodb/aql/functions").unregisterGroup("myfunctions");
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -9619,7 +9619,7 @@ var unregisterFunctionsGroup = function (group) {
 /// @EXAMPLES
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
+///   require("@arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
 ///   function (celsius) {
 ///     return celsius * 1.8 + 32;
 ///   });
@@ -9715,19 +9715,19 @@ var registerFunction = function (name, code, isDeterministic) {
 /// To list all available user functions:
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").toArray();
+///   require("@arangodb/aql/functions").toArray();
 /// ```
 ///
 /// To list all available user functions in the *myfunctions* namespace:
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").toArray("myfunctions");
+///   require("@arangodb/aql/functions").toArray("myfunctions");
 /// ```
 ///
 /// To list all available user functions in the *myfunctions::temperature* namespace:
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").toArray("myfunctions::temperature");
+///   require("@arangodb/aql/functions").toArray("myfunctions::temperature");
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -9764,7 +9764,7 @@ exports.toArray         = toArrayFunctions;
 
 });
 
-module.define("org/arangodb/arango-collection-common", function(exports, module) {
+module.define("@arangodb/arango-collection-common", function(exports, module) {
 /*jshint strict: false, unused: false, maxlen: 200 */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -9794,15 +9794,15 @@ module.define("org/arangodb/arango-collection-common", function(exports, module)
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 
 var ArangoError = arangodb.ArangoError;
 var sprintf = arangodb.sprintf;
 var db = arangodb.db;
 
-var simple = require("org/arangodb/simple-query");
+var simple = require("@arangodb/simple-query");
 
 var SimpleQueryAll = simple.SimpleQueryAll;
 var SimpleQueryByExample = simple.SimpleQueryByExample;
@@ -10823,7 +10823,7 @@ ArangoCollection.prototype.updateByExample = function (example, newValue, keepNu
 // End:
 });
 
-module.define("org/arangodb/arango-statement-common", function(exports, module) {
+module.define("@arangodb/arango-statement-common", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -11090,7 +11090,7 @@ exports.ArangoStatement = ArangoStatement;
 // End:
 });
 
-module.define("org/arangodb/general-graph", function(exports, module) {
+module.define("@arangodb/general-graph", function(exports, module) {
 /*jshint strict: false */
 /*global ArangoClusterComm */
 
@@ -11122,7 +11122,7 @@ module.define("org/arangodb/general-graph", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var arangodb = require("org/arangodb"),
+var arangodb = require("@arangodb"),
   internal = require("internal"),
   ArangoCollection = arangodb.ArangoCollection,
   ArangoError = arangodb.ArangoError,
@@ -11132,7 +11132,7 @@ var arangodb = require("org/arangodb"),
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                             module "org/arangodb/general-graph"
+// --SECTION--                             module "@arangodb/general-graph"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -11335,7 +11335,7 @@ var checkAllowsRestriction = function(list, rest, msg) {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                             module "org/arangodb/general-graph"
+// --SECTION--                             module "@arangodb/general-graph"
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
@@ -11535,7 +11535,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 /// To request unfiltered edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges().toArray();
@@ -11545,7 +11545,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 /// To request filtered edges by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges({type: "married"}).toArray();
@@ -11555,7 +11555,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 /// To request filtered edges by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
@@ -11590,7 +11590,7 @@ AQLGenerator.prototype.edges = function(example) {
 /// To request unfiltered outbound edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges().toArray();
@@ -11600,7 +11600,7 @@ AQLGenerator.prototype.edges = function(example) {
 /// To request filtered outbound edges by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges({type: "married"}).toArray();
@@ -11610,7 +11610,7 @@ AQLGenerator.prototype.edges = function(example) {
 /// To request filtered outbound edges by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
@@ -11646,7 +11646,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 /// To request unfiltered inbound edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges().toArray();
@@ -11656,7 +11656,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 /// To request filtered inbound edges by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges({type: "married"}).toArray();
@@ -11666,7 +11666,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 /// To request filtered inbound edges by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
@@ -11755,7 +11755,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 /// To request unfiltered vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices().toArray();
@@ -11765,7 +11765,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 /// To request filtered vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices({name: "Alice"}).toArray();
@@ -11775,7 +11775,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 /// To request filtered vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
@@ -11816,7 +11816,7 @@ AQLGenerator.prototype.vertices = function(example) {
 /// To request unfiltered source vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices().toArray();
@@ -11826,7 +11826,7 @@ AQLGenerator.prototype.vertices = function(example) {
 /// To request filtered source vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices({name: "Alice"}).toArray();
@@ -11836,7 +11836,7 @@ AQLGenerator.prototype.vertices = function(example) {
 /// To request filtered source vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
@@ -11876,7 +11876,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 /// To request unfiltered target vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().toArray();
@@ -11886,7 +11886,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 /// To request filtered target vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices({name: "Bob"}).toArray();
@@ -11896,7 +11896,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 /// To request filtered target vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices([{name: "Bob"}, {name: "Diana"}]).toArray();
@@ -11948,7 +11948,7 @@ AQLGenerator.prototype.getLastVar = function() {
 /// Request the iteratively explored path using vertices and edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathSimple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.outEdges().toVertices().path().toArray();
@@ -11958,7 +11958,7 @@ AQLGenerator.prototype.getLastVar = function() {
 /// When requesting neighbors the path to these neighbors is expanded:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathNeighbors}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors().path().toArray();
@@ -12020,7 +12020,7 @@ AQLGenerator.prototype.pathEdges = function() {
 /// To request unfiltered neighbors:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors().toArray();
@@ -12030,7 +12030,7 @@ AQLGenerator.prototype.pathEdges = function() {
 /// To request filtered neighbors by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors({name: "Bob"}).toArray();
@@ -12040,7 +12040,7 @@ AQLGenerator.prototype.pathEdges = function() {
 /// To request filtered neighbors by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
@@ -12130,7 +12130,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Request all directly connected vertices unrestricted:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnrestricted}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().toArray();
@@ -12140,7 +12140,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Apply a restriction to the directly connected vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().restrict("female").toArray();
@@ -12150,7 +12150,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// Restriction of a query is only valid for collections known to the graph:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestrictedUnknown}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().restrict(["female", "male", "products"]).toArray(); // xpError(ERROR_BAD_PARAMETER);
@@ -12210,7 +12210,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// Request vertices unfiltered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredVertices}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().toArray();
@@ -12220,7 +12220,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// Request vertices filtered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredVertices}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().filter({name: "Alice"}).toArray();
@@ -12230,7 +12230,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// Request edges unfiltered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredEdges}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().outEdges().toArray();
@@ -12240,7 +12240,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// Request edges filtered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredEdges}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().outEdges().filter({type: "married"}).toArray();
@@ -12310,7 +12310,7 @@ AQLGenerator.prototype.execute = function() {
 /// To collect the entire result of a query toArray can be used:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.toArray();
@@ -12343,7 +12343,7 @@ AQLGenerator.prototype.toArray = function() {
 /// To count the number of matched elements:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLCount}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.count();
@@ -12376,7 +12376,7 @@ AQLGenerator.prototype.count = function() {
 /// Start query execution with hasNext:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNext}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.hasNext();
@@ -12386,7 +12386,7 @@ AQLGenerator.prototype.count = function() {
 /// Iterate over the result as long as it has more elements:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNextIteration}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 /// | while (query.hasNext()) {
@@ -12423,7 +12423,7 @@ AQLGenerator.prototype.hasNext = function() {
 /// Request some elements with next:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNext}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.next();
@@ -12436,7 +12436,7 @@ AQLGenerator.prototype.hasNext = function() {
 /// The cursor is recreated if the query is changed:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNextRecreate}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.next();
@@ -12485,14 +12485,14 @@ AQLGenerator.prototype.next = function() {
 /// To define simple relation with only one vertex collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition1}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._undirectedRelation("friend", "user");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To define a relation between several vertex collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition2}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._undirectedRelation("marriage", ["female", "male"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -12564,7 +12564,7 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -12600,12 +12600,12 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinition}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._relation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSingle}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._relation("has_bought", "Customer", "Product");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -12664,7 +12664,7 @@ var _relation = function (
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._list();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -12700,7 +12700,7 @@ var _listObjects = function() {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   directed_relation = graph_module._relation("lives_in", "user", "city");
 ///   undirected_relation = graph_module._relation("knows", "user", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
@@ -12742,7 +12742,7 @@ var _edgeDefinitions = function () {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   directed_relation = graph_module._relation("lives_in", "user", "city");
 ///   undirected_relation = graph_module._relation("knows", "user", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation);
@@ -12783,7 +12783,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// * Create a graph
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo1}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   var graph = graph_module._create("myGraph");
 ///   graph;
 /// ~ graph_module._drop("myGraph", true);
@@ -12792,7 +12792,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// * Add some vertex collections
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo2}
-/// ~ var graph_module = require("org/arangodb/general-graph");
+/// ~ var graph_module = require("@arangodb/general-graph");
 /// ~ var graph = graph_module._create("myGraph");
 ///   graph._addVertexCollection("shop");
 ///   graph._addVertexCollection("customer");
@@ -12804,7 +12804,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// * Define relations on the
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
-/// ~ var graph_module = require("org/arangodb/general-graph");
+/// ~ var graph_module = require("@arangodb/general-graph");
 /// ~ var graph = graph_module._create("myGraph");
 ///   var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
 ///   graph._extendEdgeDefinitions(rel);
@@ -12845,7 +12845,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// Create an empty graph, edge definitions can be added at runtime:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph = graph_module._create("myGraph");
 /// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -12855,7 +12855,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphSingle}
 /// ~ db._drop("edges");
 /// ~ db._drop("vertices");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   var edgeDefinitions = [ { collection: "edges", "from": [ "vertices" ], "to" : [ "vertices" ] } ];
 ///   graph = graph_module._create("myGraph", edgeDefinitions);
 /// ~ graph_module._drop("myGraph", true);
@@ -12864,7 +12864,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// Create a graph with edge definitions and orphan collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 /// | graph = graph_module._create("myGraph",
 ///   [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])], ["sessions"]);
 /// ~ graph_module._drop("myGraph", true);
@@ -13217,7 +13217,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({name: "Floyd", _key: "floyd"});
 /// ~ examples.dropGraph("social");
@@ -13246,7 +13246,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionReplace}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({neym: "Jon", _key: "john"});
 ///   graph.male.replace("male/john", {name: "John"});
@@ -13276,7 +13276,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionUpdate}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.female.save({name: "Lynda", _key: "linda"});
 ///   graph.female.update("female/linda", {name: "Linda", _key: "linda"});
@@ -13306,7 +13306,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionRemove}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({name: "Kermit", _key: "kermit"});
 ///   db._exists("male/kermit")
@@ -13341,7 +13341,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
 /// ~ examples.dropGraph("social");
@@ -13351,7 +13351,7 @@ var updateBindCollections = function(graph) {
 /// the edge will not be stored.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   | graph.relation.save(
 ///   |  "relation/aliceAndBob",
@@ -13382,7 +13382,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionReplace}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {typo: "nose", _key: "aliceAndDiana"});
 ///   graph.relation.replace("relation/aliceAndDiana", {type: "knows"});
@@ -13412,7 +13412,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionUpdate}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {type: "knows", _key: "aliceAndDiana"});
 ///   graph.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
@@ -13441,7 +13441,7 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionRemove}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {_key: "aliceAndDiana"});
 ///   db._exists("relation/aliceAndDiana")
@@ -13469,7 +13469,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   // we can call the "fast" version of some edge functions if we are
   // running server-side and are not a coordinator
   var useBuiltIn = (typeof ArangoClusterComm === "object");
-  if (useBuiltIn && require("org/arangodb/cluster").isCoordinator()) {
+  if (useBuiltIn && require("@arangodb/cluster").isCoordinator()) {
     useBuiltIn = false;
   }
 
@@ -13506,9 +13506,9 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 /// Get a graph:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphLoadGraph}
-/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph = graph_module._graph("social");
 /// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -13618,9 +13618,9 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// Drop a graph and keep collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphKeep}
-/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._drop("social");
 ///   db._collection("female");
 ///   db._collection("male");
@@ -13632,9 +13632,9 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphDropCollections}
-/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._drop("social", true);
 ///   db._collection("female");
 ///   db._collection("male");
@@ -13831,7 +13831,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 /// The description of this function can be found below.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._edges().toArray();
 /// ~ examples.dropGraph("social");
@@ -13840,7 +13840,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 /// To request filtered edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesFiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._edges({type: "married"}).toArray();
 /// ~ examples.dropGraph("social");
@@ -13881,7 +13881,7 @@ Graph.prototype._edges = function(edgeExample) {
 /// To request unfiltered vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._vertices().toArray();
 /// ~ examples.dropGraph("social");
@@ -13890,7 +13890,7 @@ Graph.prototype._edges = function(edgeExample) {
 /// To request filtered vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesFiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
 /// ~ examples.dropGraph("social");
@@ -13920,7 +13920,7 @@ Graph.prototype._vertices = function(example) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._fromVertex("relation/aliceAndBob")
 /// ~ examples.dropGraph("social");
@@ -13963,7 +13963,7 @@ Graph.prototype._fromVertex = function(edgeId) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._toVertex("relation/aliceAndBob")
 /// ~ examples.dropGraph("social");
@@ -14052,7 +14052,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// A route planner example, all neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._neighbors({isCapital : true});
 /// ~ examples.dropGraph("routeplanner");
@@ -14061,7 +14061,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// A route planner example, all outbound neighbors of Hamburg.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
 /// ~ examples.dropGraph("routeplanner");
@@ -14103,7 +14103,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors1}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._commonNeighbors({isCapital : true}, {isCapital : true});
 /// ~ examples.dropGraph("routeplanner");
@@ -14113,7 +14113,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._commonNeighbors(
 /// |   'germanCity/Hamburg',
@@ -14162,7 +14162,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   var example = { isCapital: true };
 ///   var options = { includeData: true };
@@ -14174,7 +14174,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   var options = { direction: 'outbound', maxDepth: 2, includeData: true };
 ///   graph._countCommonNeighbors('germanCity/Hamburg', {}, options, options);
@@ -14255,7 +14255,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 /// A route planner example, all locations with the same properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {});
 /// ~ examples.dropGraph("routeplanner");
@@ -14264,7 +14264,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 /// A route planner example, all cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {}, {ignoreProperties: 'population'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14309,7 +14309,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// A route planner example, all locations with the same properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties1}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._countCommonProperties({}, {});
 /// ~ examples.dropGraph("routeplanner");
@@ -14318,7 +14318,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// A route planner example, all German cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// | graph._countCommonProperties({}, {}, {vertex1CollectionRestriction : 'germanCity',
 ///   vertex2CollectionRestriction : 'germanCity' ,ignoreProperties: 'population'});
@@ -14384,7 +14384,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 /// Return all paths of the graph "social":
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths();
 /// ~ examples.dropGraph("social");
@@ -14394,7 +14394,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 /// length of 1 and a minimal length of 2:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
 /// ~ examples.dropGraph("social");
@@ -14481,7 +14481,7 @@ Graph.prototype._paths = function(options) {
 /// A route planner example, shortest path from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ///   startVertexCollectionRestriction : 'germanCity'});
@@ -14491,7 +14491,7 @@ Graph.prototype._paths = function(options) {
 /// A route planner example, shortest path from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
 ///   {weight : 'distance'});
@@ -14536,7 +14536,7 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 /// A route planner example, shortest distance from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ///   startVertexCollectionRestriction : 'germanCity'});
@@ -14546,7 +14546,7 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 /// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
 ///   {weight : 'distance'});
@@ -14620,7 +14620,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 /// A route planner example, the absolute eccentricity of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 /// |   + "'routeplanner', {})"
@@ -14632,7 +14632,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteEccentricity({}, {weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14642,7 +14642,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'germanCity',
 ///   direction : 'outbound', weight : 'distance'});
@@ -14690,7 +14690,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 /// A route planner example, the eccentricity of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleEccentricity2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._eccentricity();
 /// ~ examples.dropGraph("routeplanner");
@@ -14699,7 +14699,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 /// A route planner example, the weighted eccentricity.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleEccentricity3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._eccentricity({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14771,7 +14771,7 @@ Graph.prototype._eccentricity = function(options) {
 /// A route planner example, the absolute closeness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteCloseness({});
 /// ~ examples.dropGraph("routeplanner");
@@ -14781,7 +14781,7 @@ Graph.prototype._eccentricity = function(options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteCloseness({}, {weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14791,7 +14791,7 @@ Graph.prototype._eccentricity = function(options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._absoluteCloseness({}, {startVertexCollectionRestriction : 'germanCity',
 ///   direction : 'outbound', weight : 'distance'});
@@ -14839,7 +14839,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// A route planner example, the normalized closeness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness1}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness();
 /// ~ examples.dropGraph("routeplanner");
@@ -14849,7 +14849,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness2}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14859,7 +14859,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness3}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14916,7 +14916,7 @@ Graph.prototype._closeness = function(options) {
 /// A route planner example, the absolute betweenness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({});
 /// ~ examples.dropGraph("routeplanner");
@@ -14926,7 +14926,7 @@ Graph.prototype._closeness = function(options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14936,7 +14936,7 @@ Graph.prototype._closeness = function(options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -14980,7 +14980,7 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
 /// A route planner example, the betweenness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness();
 /// ~ examples.dropGraph("routeplanner");
@@ -14990,7 +14990,7 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -15000,7 +15000,7 @@ Graph.prototype._absoluteBetweenness = function(example, options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -15058,7 +15058,7 @@ Graph.prototype._betweenness = function(options) {
 /// A route planner example, the radius of the graph.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius();
 /// ~ examples.dropGraph("routeplanner");
@@ -15068,7 +15068,7 @@ Graph.prototype._betweenness = function(options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -15078,7 +15078,7 @@ Graph.prototype._betweenness = function(options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -15138,7 +15138,7 @@ Graph.prototype._radius = function(options) {
 /// A route planner example, the diameter of the graph.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter();
 /// ~ examples.dropGraph("routeplanner");
@@ -15148,7 +15148,7 @@ Graph.prototype._radius = function(options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -15158,7 +15158,7 @@ Graph.prototype._radius = function(options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -15204,7 +15204,7 @@ Graph.prototype._diameter = function(options) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
@@ -15385,7 +15385,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var original = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var modified = graph_module._relation("myEC1", ["myVC2"], ["myVC3"]);
@@ -15465,7 +15465,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// Remove an edge definition but keep the edge collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
@@ -15479,7 +15479,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// Remove an edge definition and drop the edge collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinitionWithDrop}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
@@ -15565,7 +15565,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection)
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
@@ -15626,7 +15626,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
@@ -15665,7 +15665,7 @@ Graph.prototype._orphanCollections = function() {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
@@ -15741,7 +15741,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 /// A route planner example, all connecting edges between capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleConnectingEdges1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._getConnectingEdges({isCapital : true}, {isCapital : true});
 /// ~ examples.dropGraph("routeplanner");
@@ -15850,7 +15850,7 @@ exports._listObjects = _listObjects;
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create_graph_example1
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example1}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   var edgeDefinitions = graph_module._edgeDefinitions();
 ///   graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._relation("friend_of", "Customer", "Customer"));
 /// | graph_module._extendEdgeDefinitions(
@@ -15873,7 +15873,7 @@ exports._listObjects = _listObjects;
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create_graph_example2
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example2}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 /// |  var edgeDefinitions = graph_module._edgeDefinitions(
 /// |  graph_module._relation("friend_of", ["Customer"], ["Customer"]), graph_module._relation(
 ///    "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
@@ -15892,7 +15892,7 @@ exports._listObjects = _listObjects;
 ////////////////////////////////////////////////////////////////////////////////
 });
 
-module.define("org/arangodb/graph-common", function(exports, module) {
+module.define("@arangodb/graph-common", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -15922,7 +15922,7 @@ module.define("org/arangodb/graph-common", function(exports, module) {
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var is = require("org/arangodb/is"),
+var is = require("@arangodb/is"),
   Edge,
   Graph,
   Vertex,
@@ -15930,7 +15930,7 @@ var is = require("org/arangodb/is"),
   Iterator;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                             module "org/arangodb/graph-blueprint"
+// --SECTION--                             module "@arangodb/graph-blueprint"
 // -----------------------------------------------------------------------------
 
 Iterator = function (wrapper, cursor, stringRepresentation) {
@@ -16197,7 +16197,7 @@ Edge.prototype.getOutVertex = function () {
 /// @EXAMPLE_ARANGOSH_OUTPUT{edgeGetPeerVertex}
 /// ~ db._drop("v");
 /// ~ db._drop("e");
-///   Graph = require("org/arangodb/graph-blueprint").Graph;
+///   Graph = require("@arangodb/graph-blueprint").Graph;
 ///   g = new Graph("example", "v", "e");
 ///   v1 = g.addVertex("1");
 ///   v2 = g.addVertex("2");
@@ -16677,7 +16677,7 @@ exports.Iterator = Iterator;
 // End:
 });
 
-module.define("org/arangodb/graph", function(exports, module) {
+module.define("@arangodb/graph", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -16708,7 +16708,7 @@ module.define("org/arangodb/graph", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var gp = require("org/arangodb/graph-blueprint");
+var gp = require("@arangodb/graph-blueprint");
 
 // The warning will be activated soon.
 /*
@@ -16732,7 +16732,7 @@ Object.keys(gp).forEach(function (m) {
 // End:
 });
 
-module.define("org/arangodb/graph/traversal", function(exports, module) {
+module.define("@arangodb/graph/traversal", function(exports, module) {
 /*jshint strict: false, unused: false */
 /*global ArangoClusterComm, AQL_QUERY_IS_KILLED */
 
@@ -16764,10 +16764,10 @@ module.define("org/arangodb/graph/traversal", function(exports, module) {
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var graph = require("org/arangodb/graph-blueprint");
-var generalGraph = require("org/arangodb/general-graph");
-var arangodb = require("org/arangodb");
-var BinaryHeap = require("org/arangodb/heap").BinaryHeap;
+var graph = require("@arangodb/graph-blueprint");
+var generalGraph = require("@arangodb/general-graph");
+var arangodb = require("@arangodb");
+var BinaryHeap = require("@arangodb/heap").BinaryHeap;
 var ArangoError = arangodb.ArangoError;
 var ShapedJson = require("internal").ShapedJson; // this may be undefined/null on the client
 
@@ -16880,7 +16880,7 @@ function collectionDatasourceFactory (edgeCollection) {
   // we can call the "fast" version of some edge functions if we are
   // running server-side and are not a coordinator
   var useBuiltIn = (typeof ArangoClusterComm === "object");
-  if (useBuiltIn && require("org/arangodb/cluster").isCoordinator()) {
+  if (useBuiltIn && require("@arangodb/cluster").isCoordinator()) {
     useBuiltIn = false;
   }
 
@@ -18642,7 +18642,7 @@ exports.Traverser                       = ArangoTraverser;
 // End:
 });
 
-module.define("org/arangodb/is", function(exports, module) {
+module.define("@arangodb/is", function(exports, module) {
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -18718,7 +18718,7 @@ exports.truthy = truthy;
 exports.falsy = falsy;
 });
 
-module.define("org/arangodb/mimetypes", function(exports, module) {
+module.define("@arangodb/mimetypes", function(exports, module) {
 /*jslint indent: 2,
          nomen: true,
          maxlen: 100,
@@ -18812,7 +18812,7 @@ exports.extensions = {
 
 });
 
-module.define("org/arangodb/simple-query-common", function(exports, module) {
+module.define("@arangodb/simple-query-common", function(exports, module) {
 /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -18842,7 +18842,7 @@ module.define("org/arangodb/simple-query-common", function(exports, module) {
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 
 var ArangoError = arangodb.ArangoError;
 
@@ -21931,8 +21931,8 @@ global.stop_pager = function stop_pager () {
 
 global.help = function help () {
   var internal = require("internal");
-  var arangodb = require("org/arangodb");
-  var arangosh = require("org/arangodb/arangosh");
+  var arangodb = require("@arangodb");
+  var arangosh = require("@arangodb/arangosh");
 
   internal.print(arangosh.HELP);
   arangodb.ArangoDatabase.prototype._help();
@@ -21966,31 +21966,31 @@ global.console = global.console || require("console");
 /// @brief global 'db'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.db = require("org/arangodb").db;
+global.db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'arango'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.arango = require("org/arangodb").arango;
+global.arango = require("@arangodb").arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'fm'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.fm = require("org/arangodb/foxx/manager");
+global.fm = require("@arangodb/foxx/manager");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'ArangoStatement'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+global.ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell tutorial
 ////////////////////////////////////////////////////////////////////////////////
 
-global.tutorial = require("org/arangodb/tutorial");
+global.tutorial = require("@arangodb/tutorial");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        initialize
@@ -22011,7 +22011,7 @@ var initHelp = function() {
   }
 
   if (internal.quiet !== true) {
-    require("org/arangodb").checkAvailableVersions();
+    require("@arangodb").checkAvailableVersions();
 
     if (internal.arango && internal.arango.isConnected && internal.arango.isConnected()) {
       internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");

@@ -28,10 +28,10 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var console = require("console");
-var actions = require("org/arangodb/actions");
-var arangodb = require("org/arangodb");
+var actions = require("@arangodb/actions");
+var arangodb = require("@arangodb");
 var db = arangodb.db;
 
 var DEFAULT_KEY = "default";
@@ -61,7 +61,7 @@ Configuration example document:
       "decSeparator": ".",
       "thouSeparator": ","
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "formatFloat"
     },
     "de": {
@@ -70,7 +70,7 @@ Configuration example document:
       "decSeparator": ",",
       "thouSeparator": "."
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "formatFloat"
     }
    },
@@ -81,7 +81,7 @@ Configuration example document:
       "decSeparator": ".",
       "thouSeparator": ","
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "parseFloat"
     },
     "de": {
@@ -90,12 +90,12 @@ Configuration example document:
       "decSeparator": ",",
       "thouSeparator": "."
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "parseFloat"
     }
    },
    "validators":                    <- List of input validators
-      [ { "module": "org/arangodb/formatter", "do": "validateNotNull" } ]
+      [ { "module": "@arangodb/formatter", "do": "validateNotNull" } ]
   },
   "string": {                       <- Name of the attribute
    "type": "string",                <- Type of the attribute
@@ -114,7 +114,7 @@ Configuration example document:
       "decSeparator": ".",
       "thouSeparator": ","
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "formatFloat"
     }
    },
@@ -127,7 +127,7 @@ Configuration example document:
    "type": "number",
    "formatter": {
     "default": {
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "formatDatetime",
      "args": {
       "lang": "en",
@@ -136,7 +136,7 @@ Configuration example document:
      }
     },
     "de": {
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "formatDatetime",
      "args": {
       "lang": "de",
@@ -147,7 +147,7 @@ Configuration example document:
    },
    "parser": {
     "default": {
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "parseDatetime",
      "args": {
       "lang": "en",
@@ -156,7 +156,7 @@ Configuration example document:
      }
     },
     "de": {
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "parseDatetime",
      "args": {
       "lang": "de",
@@ -183,7 +183,7 @@ Configuration example document:
       "decSeparator": ".",
       "thouSeparator": ","
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "formatFloat"
     },
     "de": {
@@ -192,7 +192,7 @@ Configuration example document:
       "decSeparator": ",",
       "thouSeparator": "."
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "formatFloat"
     }
    },
@@ -203,7 +203,7 @@ Configuration example document:
       "decSeparator": ".",
       "thouSeparator": ","
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "parseFloat"
     },
     "de": {
@@ -212,7 +212,7 @@ Configuration example document:
       "decSeparator": ",",
       "thouSeparator": "."
      },
-     "module": "org/arangodb/formatter",
+     "module": "@arangodb/formatter",
      "do": "parseFloat"
     }
    }

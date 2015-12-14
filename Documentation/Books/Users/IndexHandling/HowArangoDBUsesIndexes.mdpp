@@ -47,7 +47,7 @@ compact explanation of the query, there is an explainer tool:
 
 ```js
 var query = "FOR doc IN collection FILTER doc.value > 42 RETURN doc";
-require("org/arangodb/aql/explainer").explain(query);
+require("@arangodb/aql/explainer").explain(query);
 ```
 
 If any of the explain methods shows that a query is not using indexes, the following steps may help:

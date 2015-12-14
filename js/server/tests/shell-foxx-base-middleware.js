@@ -36,7 +36,7 @@ function BaseMiddlewareSpec () {
 
   return {
     setUp: function () {
-      baseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware().functionRepresentation;
+      baseMiddleware = require("@arangodb/foxx/base_middleware").BaseMiddleware().functionRepresentation;
       request = {};
       response = {};
       options = {};

@@ -31,7 +31,7 @@
 var internal = require("internal");
 var console = require("console");
 
-var actions = require("org/arangodb/actions");
+var actions = require("@arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

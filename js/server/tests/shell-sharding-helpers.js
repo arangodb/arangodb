@@ -28,7 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var cluster = require("org/arangodb/cluster");
+var cluster = require("@arangodb/cluster");
 var jsunity = require("jsunity");
 
 var compareStringIds = function (l, r) {

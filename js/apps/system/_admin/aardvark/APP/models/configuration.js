@@ -29,7 +29,7 @@
 (function() {
   "use strict";
 
-  var Foxx = require("org/arangodb/foxx"),
+  var Foxx = require("@arangodb/foxx"),
     joi = require("joi"),
     Configuration;
 

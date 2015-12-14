@@ -36,7 +36,7 @@
 // -----------------------------------------------------------------------------
 
 (function() {
-  return require("org/arangodb/database-version").databaseVersion().result;
+  return require("@arangodb/database-version").databaseVersion().result;
 }());
 
 // -----------------------------------------------------------------------------

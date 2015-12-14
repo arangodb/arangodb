@@ -29,11 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var errors = arangodb.errors;
 var db = arangodb.db;
 
-var replication = require("org/arangodb/replication");
+var replication = require("@arangodb/replication");
 var console = require("console");
 var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();

@@ -31,11 +31,11 @@
   "use strict";
 
   // Initialize a new FoxxController called controller under the urlPrefix: "cluster".
-  var FoxxController = require("org/arangodb/foxx").Controller,
+  var FoxxController = require("@arangodb/foxx").Controller,
     UnauthorizedError = require("http-errors").Unauthorized,
     internal = require("internal"),
     controller = new FoxxController(applicationContext),
-    cluster = require("org/arangodb/cluster"),
+    cluster = require("@arangodb/cluster"),
     load = require("internal").download,
     db = require("internal").db,
     _ = require("underscore");
@@ -316,7 +316,7 @@
   }
   if (cluster.isCluster()) {
     // only make these functions available in cluster mode!
-    var Communication = require("org/arangodb/cluster/agency-communication"),
+    var Communication = require("@arangodb/cluster/agency-communication"),
     comm = new Communication.Communication(),
     beats = comm.sync.Heartbeats(),
     diff = comm.diff.current,

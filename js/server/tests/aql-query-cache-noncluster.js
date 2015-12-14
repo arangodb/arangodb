@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +101,7 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRenameCollection1 : function () {
-      if (require("org/arangodb/cluster").isCluster()) {
+      if (require("@arangodb/cluster").isCluster()) {
         // renaming collections not supported in cluster
         return;
       }
@@ -147,7 +147,7 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRenameCollection2 : function () {
-      if (require("org/arangodb/cluster").isCluster()) {
+      if (require("@arangodb/cluster").isCluster()) {
         // renaming collections not supported in cluster
         return;
       }

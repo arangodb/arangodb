@@ -30,11 +30,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
-var aqlfunctions = require("org/arangodb/aql/functions");
+var aqlfunctions = require("@arangodb/aql/functions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          AQL user functions tests

@@ -30,10 +30,10 @@
 
 var jsunity = require("jsunity");
 
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       throw-collection-not-loaded
@@ -118,7 +118,7 @@ function ThrowCollectionNotLoadedSuite () {
 
     testLoadParallel : function () {
       internal.throwOnCollectionNotLoaded(false);
-      var tasks = require("org/arangodb/tasks");
+      var tasks = require("@arangodb/tasks");
 
       var c = db._create(cn);
       for (var i = 0; i < 10000; ++i) {
@@ -179,7 +179,7 @@ function ThrowCollectionNotLoadedSuite () {
 
     testLoadParallelWithFlag : function () {
       internal.throwOnCollectionNotLoaded(true);
-      var tasks = require("org/arangodb/tasks");
+      var tasks = require("@arangodb/tasks");
 
       var c = db._create(cn);
       for (var i = 0; i < 10000; ++i) {

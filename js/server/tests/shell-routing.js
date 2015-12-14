@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 'use strict';
-var actions = require("org/arangodb/actions");
+var actions = require("@arangodb/actions");
 var jsunity = require("jsunity");
 
 var flattenRoutingTree = actions.flattenRoutingTree;

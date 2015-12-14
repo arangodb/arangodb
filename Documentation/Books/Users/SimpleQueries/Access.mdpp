@@ -19,29 +19,29 @@ query is executed using its *execute* method. If no *batchSize* value
 is specified, the server will pick a reasonable default value.
 
 !SUBSECTION Has Next
-<!-- js/common/modules/org/arangodb/simple-query-common.js -->
+<!-- js/common/modules/@arangodb/simple-query-common.js -->
 @startDocuBlock cursorHasNext
 
 !SUBSECTION Next
-<!-- js/common/modules/org/arangodb/simple-query-common.js -->
+<!-- js/common/modules/@arangodb/simple-query-common.js -->
 @startDocuBlock cursorNext
 
 !SUBSECTION Set Batch size
-<!-- js/common/modules/org/arangodb/simple-query-common.js -->
+<!-- js/common/modules/@arangodb/simple-query-common.js -->
 @startDocuBlock cursorSetBatchSize
 
 !SUBSECTION Get Batch size
-<!-- js/common/modules/org/arangodb/simple-query-common.js -->
+<!-- js/common/modules/@arangodb/simple-query-common.js -->
 @startDocuBlock cursorGetBatchSize
 
 !SUBSECTION Execute Query
-<!-- js/common/modules/org/arangodb/simple-query-common.js -->
+<!-- js/common/modules/@arangodb/simple-query-common.js -->
 @startDocuBlock queryExecute
 
 !SUBSECTION Dispose
-<!-- js/common/modules/org/arangodb/simple-query-common.js -->
+<!-- js/common/modules/@arangodb/simple-query-common.js -->
 @startDocuBlock cursorDispose
 
 !SUBSECTION Count
-<!-- js/common/modules/org/arangodb/simple-query-common.js -->
+<!-- js/common/modules/@arangodb/simple-query-common.js -->
 @startDocuBlock cursorCount

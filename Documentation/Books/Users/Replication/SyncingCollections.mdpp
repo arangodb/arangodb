@@ -24,7 +24,7 @@ To transfer this collection to the **slave**, issue the following commands there
 
 ```js
 db._useDatabase("_system");
-require("org/arangodb/replication").syncCollection("test", {
+require("@arangodb/replication").syncCollection("test", {
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",
   password: "mypasswd"
@@ -55,7 +55,7 @@ the status of the sync job on the slave can be queried using the *getSyncResult*
 
 ```js
 db._useDatabase("_system");
-var replication = require("org/arangodb/replication");
+var replication = require("@arangodb/replication");
 var id = replication.syncCollection("test", {
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",

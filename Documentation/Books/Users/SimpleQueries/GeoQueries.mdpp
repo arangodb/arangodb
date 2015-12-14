@@ -36,13 +36,13 @@ this case you must give a hint using the *geo* operator which of indexes
 should be used in a query.
 
 !SUBSECTION Near 
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionNear
 
 !SUBSECTION Within
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionWithin
 
 !SUBSECTION Geo
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionGeo

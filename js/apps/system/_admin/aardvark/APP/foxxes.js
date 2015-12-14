@@ -30,15 +30,15 @@
 (function() {
 
   var internal = require("internal");
-  var db = require("org/arangodb").db;
+  var db = require("@arangodb").db;
   var NotFound = require("http-errors").NotFound;
-  var FoxxController = require("org/arangodb/foxx").Controller;
+  var FoxxController = require("@arangodb/foxx").Controller;
   var UnauthorizedError = require("http-errors").Unauthorized;
   var controller = new FoxxController(applicationContext);
-  var ArangoError = require("org/arangodb").ArangoError;
-  var FoxxManager = require("org/arangodb/foxx/manager");
-  var fmUtils = require("org/arangodb/foxx/manager-utils");
-  var actions = require("org/arangodb/actions");
+  var ArangoError = require("@arangodb").ArangoError;
+  var FoxxManager = require("@arangodb/foxx/manager");
+  var fmUtils = require("@arangodb/foxx/manager-utils");
+  var actions = require("@arangodb/actions");
   var joi = require("joi");
   var marked = require("marked");
   var highlightAuto = require("highlight.js").highlightAuto;

@@ -21,14 +21,14 @@ describe ArangoDB do
         '"number": { ' +
         '  "type": "number", ' +
         '  "formatter": { ' +
-        '    "default": { "args": { "decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "org/arangodb/formatter", "do": "formatFloat" }, ' +
-        '    "de": { "args": { "decPlaces": 4, "decSeparator": ",", "thouSeparator": "." }, "module": "org/arangodb/formatter", "do": "formatFloat" } ' +
+        '    "default": { "args": { "decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "@arangodb/formatter", "do": "formatFloat" }, ' +
+        '    "de": { "args": { "decPlaces": 4, "decSeparator": ",", "thouSeparator": "." }, "module": "@arangodb/formatter", "do": "formatFloat" } ' +
         '  }, ' +
         ' "parser": { ' +
-        '    "default": { "args": {"decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "org/arangodb/formatter", "do": "parseFloat" }, ' +
-        '    "de": { "args": {"decPlaces": 4,"decSeparator": ",","thouSeparator": "." },"module": "org/arangodb/formatter","do": "parseFloat" } ' +
+        '    "default": { "args": {"decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "@arangodb/formatter", "do": "parseFloat" }, ' +
+        '    "de": { "args": {"decPlaces": 4,"decSeparator": ",","thouSeparator": "." },"module": "@arangodb/formatter","do": "parseFloat" } ' +
         '  }, ' +
-        '  "validators": [ { "module": "org/arangodb/formatter", "do": "validateNotNull" } ]' +
+        '  "validators": [ { "module": "@arangodb/formatter", "do": "validateNotNull" } ]' +
         '  }, ' +
         '"aString": { ' +
         '  "type": "string" ' +
@@ -49,14 +49,14 @@ describe ArangoDB do
         '  "number_list_type": { ' +
         '    "type": "number", ' +
         '    "formatter": { ' +
-        '      "default": { "args": { "decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "org/arangodb/formatter", "do": "formatFloat" }, ' +
-        '      "de": { "args": { "decPlaces": 4, "decSeparator": ",", "thouSeparator": "." }, "module": "org/arangodb/formatter", "do": "formatFloat" } ' +
+        '      "default": { "args": { "decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "@arangodb/formatter", "do": "formatFloat" }, ' +
+        '      "de": { "args": { "decPlaces": 4, "decSeparator": ",", "thouSeparator": "." }, "module": "@arangodb/formatter", "do": "formatFloat" } ' +
         '     }, ' +
         '   "parser": { ' +
-        '      "default": { "args": {"decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "org/arangodb/formatter", "do": "parseFloat" }, ' +
-        '      "de": { "args": {"decPlaces": 4,"decSeparator": ",","thouSeparator": "." },"module": "org/arangodb/formatter","do": "parseFloat" } ' +
+        '      "default": { "args": {"decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "@arangodb/formatter", "do": "parseFloat" }, ' +
+        '      "de": { "args": {"decPlaces": 4,"decSeparator": ",","thouSeparator": "." },"module": "@arangodb/formatter","do": "parseFloat" } ' +
         '    }, ' +
-        '    "validators": [ { "module": "org/arangodb/formatter", "do": "validateNotNull" } ]' +
+        '    "validators": [ { "module": "@arangodb/formatter", "do": "validateNotNull" } ]' +
         '  } ' +
         '}' +
         '}'
@@ -70,7 +70,7 @@ describe ArangoDB do
       structure = '{ "_key" :"UnitTestsCollectionDocuments", "attributes": { ' +
         '"myObject": { ' +
         '  "type": "object_type", ' +
-        '  "validators": [ { "module": "org/arangodb/formatter", "do": "validateNotNull" } ]' +
+        '  "validators": [ { "module": "@arangodb/formatter", "do": "validateNotNull" } ]' +
         '}},' +
         '"objectTypes": { ' +
         ' "object_type": { ' +
@@ -78,14 +78,14 @@ describe ArangoDB do
         '    "aNumber": { ' +
         '      "type": "number", ' +
         '      "formatter": { ' +
-        '        "default": { "args": { "decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "org/arangodb/formatter", "do": "formatFloat" }, ' +
-        '        "de": { "args": { "decPlaces": 4, "decSeparator": ",", "thouSeparator": "." }, "module": "org/arangodb/formatter", "do": "formatFloat" } ' +
+        '        "default": { "args": { "decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "@arangodb/formatter", "do": "formatFloat" }, ' +
+        '        "de": { "args": { "decPlaces": 4, "decSeparator": ",", "thouSeparator": "." }, "module": "@arangodb/formatter", "do": "formatFloat" } ' +
         '       }, ' +
         '     "parser": { ' +
-        '        "default": { "args": {"decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "org/arangodb/formatter", "do": "parseFloat" }, ' +
-        '        "de": { "args": {"decPlaces": 4,"decSeparator": ",","thouSeparator": "." },"module": "org/arangodb/formatter","do": "parseFloat" } ' +
+        '        "default": { "args": {"decPlaces": 4, "decSeparator": ".", "thouSeparator": "," }, "module": "@arangodb/formatter", "do": "parseFloat" }, ' +
+        '        "de": { "args": {"decPlaces": 4,"decSeparator": ",","thouSeparator": "." },"module": "@arangodb/formatter","do": "parseFloat" } ' +
         '      }, ' +
-        '      "validators": [ { "module": "org/arangodb/formatter", "do": "validateNotNull" } ]' +
+        '      "validators": [ { "module": "@arangodb/formatter", "do": "validateNotNull" } ]' +
         '    }, ' +
         '    "aString": { ' +
         '      "type": "string"' +
