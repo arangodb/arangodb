@@ -97,9 +97,12 @@ function ahuacatlQueryEdgesTestSuite () {
 
     testEdgesAny : function () {
       var queries = [
+        "FOR e IN EDGES('UnitTestsAhuacatlEdge', @start, 'any') SORT e.what RETURN e.what",
         "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'any') SORT e.what RETURN e.what",
         "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'any')) SORT e.what RETURN e.what",
-        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'any'))) SORT e.what RETURN e.what"
+        "FOR e IN NOOPT(EDGES('UnitTestsAhuacatlEdge', @start, 'any')) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'any'))) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES('UnitTestsAhuacatlEdge', @start, 'any'))) SORT e.what RETURN e.what"
       ];
      
       queries.forEach(function (q) {
@@ -130,8 +133,11 @@ function ahuacatlQueryEdgesTestSuite () {
     testEdgesIn : function () {
       var queries = [
         "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'inbound') SORT e.what RETURN e.what",
+        "FOR e IN EDGES('UnitTestsAhuacatlEdge', @start, 'inbound') SORT e.what RETURN e.what",
         "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'inbound')) SORT e.what RETURN e.what",
-        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'inbound'))) SORT e.what RETURN e.what"
+        "FOR e IN NOOPT(EDGES('UnitTestsAhuacatlEdge', @start, 'inbound')) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'inbound'))) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES('UnitTestsAhuacatlEdge', @start, 'inbound'))) SORT e.what RETURN e.what"
       ];
      
       queries.forEach(function (q) {
@@ -162,8 +168,11 @@ function ahuacatlQueryEdgesTestSuite () {
     testEdgesOut : function () {
       var queries = [
         "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'outbound') SORT e.what RETURN e.what",
+        "FOR e IN EDGES('UnitTestsAhuacatlEdge', @start, 'outbound') SORT e.what RETURN e.what",
         "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound')) SORT e.what RETURN e.what",
-        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound'))) SORT e.what RETURN e.what"
+        "FOR e IN NOOPT(EDGES('UnitTestsAhuacatlEdge', @start, 'outbound')) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound'))) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES('UnitTestsAhuacatlEdge', @start, 'outbound'))) SORT e.what RETURN e.what"
       ];
      
       queries.forEach(function (q) {
