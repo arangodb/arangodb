@@ -531,7 +531,6 @@ ClusterCommResult const ClusterComm::wait (
 
   IndexIterator i;
   QueueIterator q;
-  std::unique_ptr<ClusterCommOperation> op;
   double endtime;
   double timeleft;
 
@@ -573,8 +572,8 @@ ClusterCommResult const ClusterComm::wait (
       else {
         // It is in the receive queue, now look at the status:
         q = i->second;
-        op.reset(*q);
-        if (op->result.status >= CL_COMM_TIMEOUT) {
+        if ((*q)->result.status >= CL_COMM_TIMEOUT) {
+          std::unique_ptr<ClusterCommOperation> op(*q);
           // It is done, let's remove it from the queue and return it:
           receivedByOpID.erase(i);
           received.erase(q);
@@ -584,7 +583,6 @@ ClusterCommResult const ClusterComm::wait (
           }
           return op->result;
         }
-        op.release();
         // It is in the receive queue but still waiting, now wait actually
       }
       // Here it could either be in the receive or the send queue, let's wait
@@ -605,10 +603,10 @@ ClusterCommResult const ClusterComm::wait (
     while (true) {   // will be left by return or break on timeout
       bool found = false;
       for (q = received.begin(); q != received.end(); q++) {
-        op.reset(*q);
-        if (match(clientTransactionID, coordTransactionID, shardID, op.get())) {
+        if (match(clientTransactionID, coordTransactionID, shardID, *q)) {
           found = true;
-          if (op->result.status >= CL_COMM_TIMEOUT) {
+          if ((*q)->result.status >= CL_COMM_TIMEOUT) {
+            std::unique_ptr<ClusterCommOperation> op(*q);
             // It is done, let's remove it from the queue and return it:
             i = receivedByOpID.find(op->result.operationID);  // cannot fail!
             TRI_ASSERT(i != receivedByOpID.end());
@@ -622,7 +620,6 @@ ClusterCommResult const ClusterComm::wait (
             return op->result;
           }
         }
-        op.release();
       }
       // If we found nothing, we have to look through the send queue:
       if (! found) {
@@ -695,14 +692,13 @@ void ClusterComm::drop (
   QueueIterator q;
   QueueIterator nextq;
   IndexIterator i;
-  ClusterCommOperation* op;
 
   // First look through the send queue:
   {
     CONDITION_LOCKER(sendLocker, somethingToSend);
 
     for (q = toSend.begin(); q != toSend.end(); ) {
-      op = *q;
+      ClusterCommOperation* op = *q;
       if ((0 != operationID && operationID == op->result.operationID) ||
           match(clientTransactionID, coordTransactionID, shardID, op)) {
         if (op->result.status == CL_COMM_SENDING) {
@@ -730,7 +726,7 @@ void ClusterComm::drop (
     CONDITION_LOCKER(locker, somethingReceived);
 
     for (q = received.begin(); q != received.end(); ) {
-      op = *q;
+      ClusterCommOperation* op = *q;
       if ((0 != operationID && operationID == op->result.operationID) ||
           match(clientTransactionID, coordTransactionID, shardID, op)) {
         nextq = q;
