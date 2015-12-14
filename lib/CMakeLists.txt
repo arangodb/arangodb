@@ -113,8 +113,6 @@ add_library(
     Basics/ProgramOptionsDescription.cpp
     Basics/random.cpp
     Basics/RandomGenerator.cpp
-    Basics/ReadLocker.cpp
-    Basics/ReadUnlocker.cpp
     Basics/ReadWriteLock.cpp
     Basics/socket-utils.cpp
     Basics/SpinLock.cpp
@@ -135,8 +133,6 @@ add_library(
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp
     Basics/VPackStringBufferAdapter.cpp
-    Basics/WriteLocker.cpp
-    Basics/WriteUnlocker.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/EndpointList.cpp

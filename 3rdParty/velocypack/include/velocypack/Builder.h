@@ -35,6 +35,7 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/AttributeTranslator.h"
+#include "velocypack/Basics.h"
 #include "velocypack/Buffer.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
@@ -148,6 +149,18 @@ class Builder {
   explicit Builder(Options const* options = &Options::Defaults)
       : _buffer(new Buffer<uint8_t>()), _pos(0), _keyWritten(false),
         options(options) {
+    _start = _buffer->data();
+    _size = _buffer->size();
+
+    if (options == nullptr) {
+      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+    }
+  }
+
+  explicit Builder(Buffer<uint8_t>& buffer,
+                   Options const* options = &Options::Defaults)
+      : _pos(0), _keyWritten(false), options(options) {
+    _buffer.reset(&buffer, BufferNonDeleter<uint8_t>());
     _start = _buffer->data();
     _size = _buffer->size();
 
@@ -672,7 +685,6 @@ struct BuilderNonDeleter {
   }
 };
 
-// convenience class scope guard for building objects
 struct BuilderContainer {
   BuilderContainer (Builder* builder) : builder(builder) {}
 
@@ -691,7 +703,8 @@ struct BuilderContainer {
   Builder* builder;
 };
 
-struct ObjectBuilder final : public BuilderContainer, public NoHeapAllocation {
+// convenience class scope guard for building objects
+struct ObjectBuilder final : public BuilderContainer, private NonHeapAllocatable, NonCopyable {
   ObjectBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
     builder->openObject(allowUnindexed);
   }
@@ -712,7 +725,7 @@ struct ObjectBuilder final : public BuilderContainer, public NoHeapAllocation {
 };
 
 // convenience class scope guard for building arrays
-struct ArrayBuilder final : public BuilderContainer, public NoHeapAllocation {
+struct ArrayBuilder final : public BuilderContainer, private NonHeapAllocatable, NonCopyable {
   ArrayBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }

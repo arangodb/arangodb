@@ -32,7 +32,6 @@
 #define ARANGODB_BASICS_WRITE_UNLOCKER_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/ReadWriteLock.h"
 
 // -----------------------------------------------------------------------------
@@ -50,7 +49,7 @@
 #define WRITE_UNLOCKER_VAR_B(a) WRITE_UNLOCKER_VAR_A(a)
 
 #define WRITE_UNLOCKER(b) \
-  triagens::basics::WriteUnlocker WRITE_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+  triagens::basics::WriteUnlocker<std::remove_reference<decltype(b)>::type> WRITE_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class WriteUnlocker
@@ -66,6 +65,7 @@ namespace triagens {
 /// the write lock when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
+    template<typename T>
     class WriteUnlocker {
         WriteUnlocker (WriteUnlocker const&);
         WriteUnlocker& operator= (WriteUnlocker const&);
@@ -82,8 +82,9 @@ namespace triagens {
 /// The constructor unlocks the lock, the destructors aquires a write-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        WriteUnlocker (ReadWriteLock* readWriteLock);
+        explicit WriteUnlocker (T* readWriteLock) 
+          : WriteUnlocker(readWriteLock, nullptr, 0) {
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks the lock
@@ -91,13 +92,18 @@ namespace triagens {
 /// The constructor unlocks the lock, the destructors aquires a write-lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-        WriteUnlocker (ReadWriteLock* readWriteLock, char const* file, int line);
+        WriteUnlocker (T* readWriteLock, char const* file, int line);
+          : _readWriteLock(readWriteLock), _file(file), _line(line) {
+          _readWriteLock->unlock();
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires the write-lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~WriteUnlocker ();
+        ~WriteUnlocker () {
+          _readWriteLock->writeLock();
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -109,7 +115,7 @@ namespace triagens {
 /// @brief the read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReadWriteLock* _readWriteLock;
+        T* _readWriteLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file

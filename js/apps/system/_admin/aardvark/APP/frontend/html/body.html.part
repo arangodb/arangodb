@@ -33,3 +33,9 @@
     <div class="resizecontainer" id="footerBar">
     </div>
   </footer>
+
+  <div class="arangoFrame" style="">
+    <div class="Outer">
+      <div class="Inner"></div>
+    </div>
+  </div>

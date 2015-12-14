@@ -51,8 +51,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/ProgramOptionsDescription.cpp \
 	lib/Basics/random.cpp \
 	lib/Basics/RandomGenerator.cpp \
-	lib/Basics/ReadLocker.cpp \
-	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
 	lib/Basics/socket-utils.cpp \
 	lib/Basics/SpinLock.cpp \
@@ -75,8 +73,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/voc-errors.cpp \
 	lib/Basics/voc-mimetypes.cpp \
 	lib/Basics/VPackStringBufferAdapter.cpp \
-	lib/Basics/WriteLocker.cpp \
-	lib/Basics/WriteUnlocker.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/EndpointList.cpp \

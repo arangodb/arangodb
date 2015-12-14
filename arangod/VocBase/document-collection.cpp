@@ -981,7 +981,7 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
   // cleaning indexes is expensive, so only do it if the flag is set for the
   // collection
   if (document->_cleanupIndexes > 0) {
-    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+    WRITE_LOCKER(document->_lock);
 
     for (auto& idx : document->allIndexes()) {
       if (idx->type() == triagens::arango::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
@@ -992,8 +992,6 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
         }
       }
     }
-
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
   }
 
   return res;
@@ -3706,11 +3704,9 @@ void TRI_UpdateRevisionDocumentCollection (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document) {
-  TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  READ_LOCKER(document->_lock);
 
   int64_t uncollected = document->_uncollectedLogfileEntries.load();
-
-  TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return (uncollected == 0);
 }
@@ -3813,12 +3809,10 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
   {
     READ_LOCKER(document->_vocbase->_inventoryLock);
 
-    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+    WRITE_LOCKER(document->_lock);
   
     triagens::aql::QueryCache::instance()->invalidate(vocbase, document->_info._name);
     found = document->removeIndex(iid);
-  
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
   }
 
 
@@ -3927,7 +3921,6 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
 
   else {
     for (auto const& name : attributes) {
-
       std::vector<triagens::basics::AttributeName> attrNameList;
       TRI_ParseAttributeString(name, attrNameList);
       TRI_ASSERT(! attrNameList.empty());
@@ -4106,7 +4099,7 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (triagens::ar
                                                                     bool* created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  WRITE_LOCKER(document->_lock);
 
   auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size, iid, created);
 
@@ -4121,8 +4114,6 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (triagens::ar
       }
     }
   }
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return idx;
 }
@@ -4439,7 +4430,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (triagens::arango
                                                                 bool* created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  WRITE_LOCKER(document->_lock);
 
   auto idx = CreateGeoIndexDocumentCollection(trx, document, location, std::string(), std::string(), geoJson, iid, created);
 
@@ -4453,8 +4444,6 @@ triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (triagens::arango
       }
     }
   }
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return idx;
 }
@@ -4471,7 +4460,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (triagens::arango
                                                                 bool* created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  WRITE_LOCKER(document->_lock);
 
   auto idx = CreateGeoIndexDocumentCollection(trx, document, std::string(), latitude, longitude, false, iid, created);
 
@@ -4485,8 +4474,6 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (triagens::arango
       }
     }
   }
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return idx;
 }
@@ -4641,8 +4628,8 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (triagens::arango
                                                                 bool* created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
+  WRITE_LOCKER(document->_lock);
+    
   auto idx = CreateHashIndexDocumentCollection(trx, document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
@@ -4655,8 +4642,6 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (triagens::arango
       }
     }
   }
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return idx;
 }
@@ -4808,7 +4793,7 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (triagens::ar
                                                                     bool* created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+  WRITE_LOCKER(document->_lock);
 
   auto idx = CreateSkiplistIndexDocumentCollection(trx, document, attributes, iid, sparse, unique, created);
 
@@ -4822,8 +4807,6 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (triagens::ar
       }
     }
   }
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return idx;
 }
@@ -5007,8 +4990,8 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (triagens::ar
                                                                     bool* created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
-  TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
+  WRITE_LOCKER(document->_lock);
+    
   auto idx = CreateFulltextIndexDocumentCollection(trx, document, attribute, minWordLength, iid, created);
 
   if (idx != nullptr) {
@@ -5021,8 +5004,6 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (triagens::ar
       }
     }
   }
-
-  TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return idx;
 }

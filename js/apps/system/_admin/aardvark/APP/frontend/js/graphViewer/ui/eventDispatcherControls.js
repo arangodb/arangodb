@@ -1,7 +1,7 @@
 /*global $, _, d3*/
 /*global document, window, prompt*/
 /*global modalDialogHelper, uiComponentsHelper */
-/*global EventDispatcher*/
+/*global EventDispatcher, arangoHelper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -251,6 +251,18 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
 
     createEditsCBs = function() {
       var nodeCallback = function(n) {
+        /*var deleteCallback = function() {
+          console.log("callback");
+          dispatcher.events.DELETENODE(function() {
+            $("#control_event_node_delete_modal").modal('hide');
+            nodeShaper.reshapeNodes();
+            edgeShaper.reshapeEdges();
+            start();
+          })(n);
+        };*/
+
+        arangoHelper.openDocEditor(n._id, 'document');
+          /*
           modalDialogHelper.createModalEditDialog(
             "Edit Node " + n._id,
             "control_event_node_edit_",
@@ -261,9 +273,11 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
               })();
             }
           );
+          */
         },
         edgeCallback = function(e) {
-          modalDialogHelper.createModalEditDialog(
+          arangoHelper.openDocEditor(e._id, 'edge');
+          /*modalDialogHelper.createModalEditDialog(
             "Edit Edge " + e._id,
             "control_event_edge_edit_",
             e._data,
@@ -272,7 +286,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
                 $("#control_event_edge_edit_modal").modal('hide');
               })();
             }
-          );
+          );*/
         };
       callbacks.nodes.edit = nodeCallback;
       callbacks.edges.edit = edgeCallback;
@@ -408,12 +422,12 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   *
   *******************************************/
 
-  nodeShaper.addMenuEntry("View", callbacks.nodes.view);
+  //nodeShaper.addMenuEntry("View", callbacks.nodes.view);
   nodeShaper.addMenuEntry("Edit", callbacks.nodes.edit);
   nodeShaper.addMenuEntry("Spot", callbacks.nodes.spot);
   nodeShaper.addMenuEntry("Trash", callbacks.nodes.del);
 
-  edgeShaper.addMenuEntry("View", callbacks.edges.view);
+  //edgeShaper.addMenuEntry("View", callbacks.edges.view);
   edgeShaper.addMenuEntry("Edit", callbacks.edges.edit);
   edgeShaper.addMenuEntry("Trash", callbacks.edges.del);
 
@@ -521,7 +535,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   this.addAll = function () {
     self.addControlExpand();
     self.addControlDrag();
-    self.addControlView();
+    //self.addControlView();
     self.addControlEdit();
     self.addControlConnect();
     self.addControlNewNode();

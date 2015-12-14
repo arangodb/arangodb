@@ -38,6 +38,9 @@ using VPackValueLength = arangodb::velocypack::ValueLength;
 // conditional typedefs, only used when the respective headers are already
 // included
 
+// note:
+// classes from Basics.h are for internal use only and are not exposed here
+
 #ifdef VELOCYPACK_ITERATOR_H
 #ifndef VELOCYPACK_ALIAS_ITERATOR
 #define VELOCYPACK_ALIAS_ITERATOR
@@ -59,6 +62,7 @@ using VPackArrayBuilder = arangodb::velocypack::ArrayBuilder;
 #ifndef VELOCYPACK_ALIAS_BUFFER
 #define VELOCYPACK_ALIAS_BUFFER
 using VPackCharBuffer = arangodb::velocypack::CharBuffer;
+template<typename T> using VPackBuffer = arangodb::velocypack::Buffer<T>;
 #endif
 #endif
 
