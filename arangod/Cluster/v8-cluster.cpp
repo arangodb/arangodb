@@ -814,7 +814,7 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
     TRI_V8_THROW_EXCEPTION_USAGE("getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  shared_ptr<CollectionInfo> ci
+  std::shared_ptr<CollectionInfo> ci
       = ClusterInfo::instance()->getCollection(TRI_ObjectToString(args[0]),
                                                TRI_ObjectToString(args[1]));
 
@@ -877,7 +877,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackIn
 
   ShardID shardID = TRI_ObjectToString(args[2]);
 
-  shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+  std::shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
                                            TRI_ObjectToString(args[0]),
                                            TRI_ObjectToString(args[1]));
 
@@ -888,7 +888,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackIn
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
 
-  shared_ptr<CollectionInfoCurrent> cic
+  std::shared_ptr<CollectionInfoCurrent> cic
           = ClusterInfo::instance()->getCollectionCurrent(
                                      TRI_ObjectToString(args[0]), cid);
 
@@ -1578,8 +1578,7 @@ static void PrepareClusterCommRequest (
                         std::string& destination,
                         std::string& path,
                         std::string& body,
-                        std::shared_ptr<std::map<std::string, std::string>> 
-                                     headerFields,
+                        std::map<std::string, std::string>& headerFields,
                         ClientTransactionID& clientTransactionID,
                         CoordTransactionID& coordTransactionID,
                         double& timeout) {
@@ -1633,7 +1632,7 @@ static void PrepareClusterCommRequest (
       string propstring = TRI_ObjectToString(prop);
       string valstring = TRI_ObjectToString(val);
       if (propstring != "") {
-        headerFields->insert(pair<string,string>(propstring, valstring));
+        headerFields.insert(std::make_pair(propstring, valstring));
       }
     }
   }
@@ -1819,13 +1818,14 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string destination;
   string path;
   auto body = make_shared<std::string>();
-  auto headerFields = std::make_shared<std::map<std::string, std::string>>();
+  std::unique_ptr<std::map<std::string, std::string>> headerFields
+      (new std::map<std::string, std::string>());
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
-                            headerFields, clientTransactionID,
+                            *headerFields, clientTransactionID,
                             coordTransactionID, timeout);
 
   ClusterCommResult const res 
@@ -1878,13 +1878,15 @@ static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string destination;
   string path;
   string body;
-  auto headerFields(make_shared<std::map<std::string, std::string>>());
+  std::unique_ptr<std::map<std::string, std::string>> headerFields
+      (new std::map<std::string, std::string>());
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(args, reqType, destination, path, body, headerFields,
-                            clientTransactionID, coordTransactionID, timeout);
+  PrepareClusterCommRequest(args, reqType, destination, path, body,
+                            *headerFields, clientTransactionID,
+                            coordTransactionID, timeout);
 
   std::unique_ptr<ClusterCommResult> res = cc->syncRequest(clientTransactionID,
                          coordTransactionID, destination,

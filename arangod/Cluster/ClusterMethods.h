@@ -140,7 +140,7 @@ namespace triagens {
                  TRI_voc_rid_t const rev,
                  TRI_doc_update_policy_e policy,
                  bool waitForSync,
-                 std::shared_ptr<std::map<std::string, std::string>> headers,
+                 std::unique_ptr<std::map<std::string, std::string>>& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::map<std::string, std::string>& resultHeaders,
                  std::string& resultBody);
@@ -154,7 +154,7 @@ namespace triagens {
                  std::string const& collname,
                  std::string const& key,
                  TRI_voc_rid_t const rev,
-                 std::shared_ptr<std::map<std::string, std::string>> headers,
+                 std::unique_ptr<std::map<std::string, std::string>>& headers,
                  bool generateDocument,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::map<std::string, std::string>& resultHeaders,
@@ -170,7 +170,7 @@ namespace triagens {
     int getFilteredDocumentsOnCoordinator (
                  std::string const& dbname,
                  std::vector<traverser::TraverserExpression*> const& expressions, 
-                 std::shared_ptr<std::map<std::string, std::string>> headers,
+                 std::unique_ptr<std::map<std::string, std::string>>& headers,
                  std::unordered_set<std::string>& documentIds,
                  std::unordered_map<std::string, TRI_json_t*>& result);
 
@@ -229,7 +229,7 @@ namespace triagens {
                  bool keepNull,   // only counts for isPatch == true
                  bool mergeObjects,   // only counts for isPatch == true
                  TRI_json_t* json,
-                 std::shared_ptr<std::map<std::string, std::string>> headers,
+                 std::unique_ptr<std::map<std::string, std::string>>& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::map<std::string, std::string>& resultHeaders,
                  std::string& resultBody);

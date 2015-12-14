@@ -167,7 +167,7 @@ namespace triagens {
       rest::HttpRequest::HttpRequestType reqtype;
       std::string path;
       std::shared_ptr<std::string const> body;
-      std::shared_ptr<std::map<std::string, std::string>> headerFields;
+      std::unique_ptr<std::map<std::string, std::string>> headerFields;
       std::shared_ptr<ClusterCommCallback> callback;
       ClusterCommTimeout endTime;
     };
@@ -273,7 +273,7 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
                 rest::HttpRequest::HttpRequestType   reqtype,
                 std::string const                    path,
                 std::shared_ptr<std::string const>   body,
-                std::shared_ptr<std::map<std::string, std::string>>
+                std::unique_ptr<std::map<std::string, std::string>>&
                                                      headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout                   timeout);

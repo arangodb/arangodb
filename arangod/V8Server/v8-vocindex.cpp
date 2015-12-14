@@ -859,7 +859,8 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
     std::string const dbname(collection->_dbName);
     // TODO: someone might rename the collection while we're reading its name...
     std::string const collname(collection->_name);
-    shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
+    shared_ptr<CollectionInfo> c 
+        = ClusterInfo::instance()->getCollection(dbname, collname);
 
     if (c->empty()) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -1037,8 +1038,8 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     TRI_voc_cid_t otherCid 
       = resolver.getCollectionIdCluster(distributeShardsLike);
     std::string otherCidString = triagens::basics::StringUtils::itoa(otherCid);
-    shared_ptr<CollectionInfo> collInfo = ci->getCollection(databaseName,
-                               otherCidString);
+    std::shared_ptr<CollectionInfo> collInfo = ci->getCollection(databaseName,
+                                                       otherCidString);
     auto shards = collInfo->shardIds();
     auto shardList = ci->getShardList(otherCidString);
     for (auto const& s : *shardList) {
@@ -1135,7 +1136,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   }
   ci->loadPlannedCollections();
 
-  shared_ptr<CollectionInfo> const& c = ci->getCollection(databaseName, cid);
+  std::shared_ptr<CollectionInfo> c = ci->getCollection(databaseName, cid);
   TRI_vocbase_col_t* newcoll = CoordinatorCollection(vocbase, *c);
   TRI_V8_RETURN(WrapCollection(isolate, newcoll));
 }

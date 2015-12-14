@@ -2912,7 +2912,7 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    shared_ptr<CollectionInfo> const& ci
+    shared_ptr<CollectionInfo> const ci
         = ClusterInfo::instance()->getCollection(vocbase->_name, std::string(key));
 
     if ((*ci).empty()) {
@@ -3195,11 +3195,12 @@ static void ListDatabasesCoordinator (const v8::FunctionCallbackInfo<v8::Value>&
       if (! DBServers.empty()) {
         ServerID sid = DBServers[0];
         ClusterComm* cc = ClusterComm::instance();
-        auto headers = std::make_shared<std::map<std::string, std::string>>();
-        (*headers)["Authentication"] = TRI_ObjectToString(args[2]);
+
+        std::map<std::string, std::string> headers;
+        headers["Authentication"] = TRI_ObjectToString(args[2]);
         auto res = cc->syncRequest("", 0, "server:" + sid,
                       triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                      "/_api/database/user", string(""), *headers, 0.0);
+                      "/_api/database/user", string(""), headers, 0.0);
 
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8

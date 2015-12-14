@@ -556,7 +556,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     optimizerOptions.set("rules", optimizerOptionsRules);
     options.set("optimizer", optimizerOptions);
     result.set("options", options);
-    std::shared_ptr<std::string const> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
+    auto body = std::make_shared<std::string const>
+        (triagens::basics::JsonHelper::toString(result.json()));
     
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
@@ -565,7 +566,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
                           "/_api/aql/instantiate");
 
-    auto headers(std::make_shared<std::map<std::string, std::string>>());
+    std::unique_ptr<std::map<std::string, std::string>> headers
+        (new std::map<std::string, std::string>());
     (*headers)["X-Arango-Nolock"] = shardId;   // Prevent locking
     auto res = cc->asyncRequest("", 
                                 coordTransactionID,

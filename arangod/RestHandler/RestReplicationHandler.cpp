@@ -986,23 +986,21 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 
   string const& dbname = _request->databaseName();
 
-  std::shared_ptr<std::map<std::string, std::string>> headers
-      (new std::map<std::string, std::string>
-           (triagens::arango::getForwardableRequestHeaders(_request)));
+  auto headers = std::make_shared<std::map<std::string, std::string>>
+      (triagens::arango::getForwardableRequestHeaders(_request));
   map<string, string> values = _request->values();
   string params;
-  map<string, string>::iterator i;
-  for (i = values.begin(); i != values.end(); ++i) {
-    if (i->first != "DBserver") {
+  for (auto const& i : values) {
+    if (i.first != "DBserver") {
       if (params.empty()) {
         params.push_back('?');
       }
       else {
         params.push_back('&');
       }
-      params.append(StringUtils::urlEncode(i->first));
+      params.append(StringUtils::urlEncode(i.first));
       params.push_back('=');
-      params.append(StringUtils::urlEncode(i->second));
+      params.append(StringUtils::urlEncode(i.second));
     }
   }
 
@@ -2170,7 +2168,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
   if (! col->empty()) {
@@ -2427,7 +2425,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     errorMsg = "could not find collection '" + name + "'";
@@ -2804,7 +2802,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -2974,7 +2972,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
     }
 
-    auto headers = std::make_shared<std::map<std::string, std::string>>();
     for (auto const& p : *shardIdsMap) {
       auto it = shardTab.find(p.first);
       if (it == shardTab.end()) {
@@ -2982,9 +2979,11 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         res = TRI_ERROR_INTERNAL;
       }
       else {
+        std::unique_ptr<std::map<std::string, std::string>> headers
+            (new std::map<std::string, std::string>());
         j = it->second;
-        std::shared_ptr<std::string const> body
-            (new string(bufs[j]->c_str(), bufs[j]->length()));
+        auto body = make_shared<std::string const>
+            (bufs[j]->c_str(), bufs[j]->length());
         cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                       triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                       "/_db/" + StringUtils::urlEncode(dbName) +

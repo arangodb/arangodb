@@ -757,14 +757,12 @@ void ClusterInfo::loadPlannedCollections () {
       // steal the json
       (*it).second._json = nullptr;
 
-      shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
-      std::vector<std::string>* shardKeys = new std::vector<std::string>;
-      *shardKeys = collectionData->shardKeys();
-      newShardKeys.insert(
-             make_pair(collection, shared_ptr<std::vector<std::string> > (shardKeys)));
+      auto collectionData = make_shared<CollectionInfo>(json);
+      auto shardKeys = std::make_shared<std::vector<std::string>>
+          (collectionData->shardKeys());
+      newShardKeys.insert(make_pair(collection, shardKeys));
       auto shardIDs = collectionData->shardIds();
-      std::shared_ptr<std::vector<std::string>> shards
-          (new std::vector<std::string>);
+      auto shards = std::make_shared<std::vector<std::string>>();
       for (auto const& p : *shardIDs) {
         shards->push_back(p.first);
       }
@@ -810,7 +808,7 @@ void ClusterInfo::loadPlannedCollections () {
 /// If it is not found in the cache, the cache is reloaded once
 ////////////////////////////////////////////////////////////////////////////////
 
-shared_ptr<CollectionInfo> ClusterInfo::getCollection
+std::shared_ptr<CollectionInfo> ClusterInfo::getCollection
                                           (DatabaseID const& databaseID,
                                            CollectionID const& collectionID) {
   int tries = 0;
@@ -843,7 +841,7 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
     loadPlannedCollections();
   }
 
-  return shared_ptr<CollectionInfo>(new CollectionInfo());
+  return std::make_shared<CollectionInfo>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -882,8 +880,7 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
 
 TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
                                                      CollectionID const& collectionID) {
-  shared_ptr<CollectionInfo> ci = getCollection(databaseID, collectionID);
-
+  auto ci = getCollection(databaseID, collectionID);
   return getCollectionProperties(*ci);
 }
 
@@ -891,9 +888,9 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseI
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<shared_ptr<CollectionInfo> > ClusterInfo::getCollections
+std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections
                          (DatabaseID const& databaseID) {
-  std::vector<shared_ptr<CollectionInfo> > result;
+  std::vector<std::shared_ptr<CollectionInfo>> result;
 
   // always reload
   loadPlannedCollections();
@@ -997,8 +994,8 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       // check whether we already have a CollectionInfoCurrent:
       DatabaseCollectionsCurrent::iterator it3 = it2->second.find(collection);
       if (it3 == it2->second.end()) {
-        shared_ptr<CollectionInfoCurrent> collectionDataCurrent
-                    (new CollectionInfoCurrent(shardID, json));
+        auto collectionDataCurrent = std::make_shared<CollectionInfoCurrent>
+            (shardID, json);
         it2->second.insert(make_pair(collection, collectionDataCurrent));
         it3 = it2->second.find(collection);
       }
@@ -1014,8 +1011,8 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       // ask about the current collection info.
 
       // Now take note of this shard and its responsible server:
-      std::shared_ptr<std::vector<ServerID>> servers
-          (new std::vector<ServerID>(it3->second->servers(shardID)));
+      auto servers = std::make_shared<std::vector<ServerID>>
+          (it3->second->servers(shardID));
       newShardIds.insert(make_pair(shardID, servers));
     }
 
@@ -1043,7 +1040,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
+std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
            (DatabaseID const& databaseID,
             CollectionID const& collectionID) {
   int tries = 0;
@@ -1077,7 +1074,7 @@ shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
     loadCurrentCollections(true);
   }
 
-  return shared_ptr<CollectionInfoCurrent>(new CollectionInfoCurrent());
+  return std::make_shared<CollectionInfoCurrent>();
 }
 
 
@@ -1670,7 +1667,8 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
     {
 
-      shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+      std::shared_ptr<CollectionInfo> c
+          = getCollection(databaseName, collectionID);
 
       // Note that nobody is removing this collection in the plan, since
       // we hold the write lock in the agency, therefore it does not matter
@@ -1908,7 +1906,8 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     TRI_json_t const* indexes = nullptr;
 
     {
-      shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+      std::shared_ptr<CollectionInfo> c
+          = getCollection(databaseName, collectionID);
 
       READ_LOCKER(_plannedCollectionsProt.lock);
 
@@ -2405,9 +2404,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer (
     loadCurrentCollections(true);
   }
 
-  std::shared_ptr<std::vector<ServerID>> res
-      (new std::vector<ServerID>());
-  return res;
+  return std::make_shared<std::vector<ServerID>>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2434,7 +2431,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList (
       }
     }
     if (++tries >= 2) {
-      return std::shared_ptr<std::vector<ShardID>>();
+      return std::make_shared<std::vector<ShardID>>();
     }
     loadPlannedCollections();
   }
@@ -2471,9 +2468,9 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   }
 
   int tries = 0;
-  shared_ptr<std::vector<std::string> > shardKeysPtr;
+  std::shared_ptr<std::vector<std::string>> shardKeysPtr;
   char const** shardKeys = nullptr;
-  shared_ptr<std::vector<ShardID> > shards;
+  std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
 
   while (true) {

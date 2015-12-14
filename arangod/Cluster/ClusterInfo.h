@@ -551,12 +551,12 @@ namespace triagens {
       private:
 
         typedef std::unordered_map<CollectionID,
-                                   std::shared_ptr<CollectionInfo> >
+                                   std::shared_ptr<CollectionInfo>>
                 DatabaseCollections;
         typedef std::unordered_map<DatabaseID, DatabaseCollections>
                 AllCollections;
         typedef std::unordered_map<CollectionID,
-                                   std::shared_ptr<CollectionInfoCurrent> >
+                                   std::shared_ptr<CollectionInfoCurrent>>
                 DatabaseCollectionsCurrent;
         typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
                 AllCollectionsCurrent;
@@ -681,7 +681,7 @@ namespace triagens {
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<std::shared_ptr<CollectionInfo>> getCollections
+        std::vector<std::shared_ptr<CollectionInfo>> const getCollections
                                                            (DatabaseID const&);
 
 ////////////////////////////////////////////////////////////////////////////////

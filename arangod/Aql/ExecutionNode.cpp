@@ -742,7 +742,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 
 void ExecutionNode::planRegisters (ExecutionNode* super) {
   // The super is only for the case of subqueries.
-  shared_ptr<RegisterPlan> v;
+  std::shared_ptr<RegisterPlan> v;
 
   if (super == nullptr) {
     v.reset(new RegisterPlan());

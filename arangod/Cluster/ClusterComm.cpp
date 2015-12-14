@@ -149,21 +149,22 @@ OperationID ClusterComm::getOperationID () {
 /// this call is just a record that the initial HTTP request has been
 /// queued (`status` is CL_COMM_SUBMITTED). Use @ref enquire below to get
 /// information about the progress. The actual answer is then delivered
-/// either in the callback or via poll. The caller has to call delete on
-/// the resulting ClusterCommResult*. The library takes ownerships of
-/// the pointers `headerFields` and `callback` and releases
-/// the memory when the operation has been finished. We use a shared_ptr
-/// for the body string such that it is possible to use the same body
-/// in multiple requests.
+/// either in the callback or via poll. The ClusterCommResult is returned
+/// by value.
+/// The library takes ownerships of the pointer `headerFields` by moving
+/// the unique_ptr to its own storage, this is necessary since this
+/// method has to add its own headers. The library retains shared
+/// ownership of `callback`. We use a shared_ptr for the body string
+/// such that it is possible to use the same body in multiple requests.
 ///
-/// Arguments: `clientTransactionID` is a string coming from the client
-/// and describing the transaction the client is doing, `coordTransactionID`
-/// is a number describing the transaction the coordinator is doing,
-/// `destination` is a string that either starts with "shard:" followed
-/// by a shardID identifying the shard this request is sent to,
-/// actually, this is internally translated into a server ID. It is also
-/// possible to specify a DB server ID directly here in the form of "server:"
-/// followed by a serverID.
+/// Arguments: `clientTransactionID` is a string coming from the
+/// client and describing the transaction the client is doing,
+/// `coordTransactionID` is a number describing the transaction the
+/// coordinator is doing, `destination` is a string that either starts
+/// with "shard:" followed by a shardID identifying the shard this
+/// request is sent to, actually, this is internally translated into a
+/// server ID. It is also possible to specify a DB server ID directly
+/// here in the form of "server:" followed by a serverID.
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterCommResult const ClusterComm::asyncRequest (
@@ -173,7 +174,7 @@ ClusterCommResult const ClusterComm::asyncRequest (
                 triagens::rest::HttpRequest::HttpRequestType  reqtype,
                 std::string const                   path,
                 std::shared_ptr<std::string const>  body,
-                std::shared_ptr<std::map<string, string>>
+                std::unique_ptr<std::map<string, string>>&
                                                     headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout                  timeout) {
@@ -242,14 +243,14 @@ ClusterCommResult const ClusterComm::asyncRequest (
   op->reqtype              = reqtype;
   op->path                 = path;
   op->body                 = body;
-  op->headerFields         = headerFields;
+  op->headerFields         = std::move(headerFields);
   op->callback             = callback;
   op->endTime              = timeout == 0.0 ? TRI_microtime() + 24 * 60 * 60.0
                                             : TRI_microtime() + timeout;
 
   // LOCKING-DEBUG
   // std::cout << "asyncRequest: sending " << triagens::rest::HttpRequest::translateMethod(reqtype) << " request to DB server '" << op->serverID << ":" << path << "\n" << *(body.get()) << "\n";
-  // for (auto& h : *headerFields) {
+  // for (auto& h : *(op->headerFields)) {
   //   std::cout << h.first << ":" << h.second << std::endl;
   // }
   // std::cout << std::endl;
