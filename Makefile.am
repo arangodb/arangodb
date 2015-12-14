@@ -118,10 +118,10 @@ AM_CPPFLAGS = \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
-	@OPENSSL_CPPFLAGS@ \
 	@ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ \
-	@V8_CPPFLAGS@ 
+	@V8_CPPFLAGS@ \
+	@OPENSSL_CPPFLAGS@
 
 ################################################################################
 ### @brief linker flags

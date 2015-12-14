@@ -508,8 +508,7 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/application-exit.cpp \
 	lib/Basics/Nonce.cpp lib/Basics/prime-numbers.cpp \
 	lib/Basics/process-utils.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/random.cpp \
-	lib/Basics/RandomGenerator.cpp lib/Basics/ReadLocker.cpp \
-	lib/Basics/ReadUnlocker.cpp lib/Basics/ReadWriteLock.cpp \
+	lib/Basics/RandomGenerator.cpp lib/Basics/ReadWriteLock.cpp \
 	lib/Basics/socket-utils.cpp lib/Basics/SpinLock.cpp \
 	lib/Basics/SpinLocker.cpp lib/Basics/ssl-helper.cpp \
 	lib/Basics/string-buffer.cpp lib/Basics/StringUtils.cpp \
@@ -520,7 +519,6 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/application-exit.cpp \
 	lib/Basics/tri-strings.cpp lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp lib/Basics/vector.cpp \
 	lib/Basics/voc-errors.cpp lib/Basics/voc-mimetypes.cpp \
-	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
 	lib/Basics/xxhash.cpp lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
@@ -595,8 +593,6 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-ProgramOptionsDescription.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-random.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-RandomGenerator.$(OBJEXT) \
-	lib/Basics/lib_libarango_a-ReadLocker.$(OBJEXT) \
-	lib/Basics/lib_libarango_a-ReadUnlocker.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-ReadWriteLock.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-socket-utils.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-SpinLock.$(OBJEXT) \
@@ -617,8 +613,6 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-vector.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-voc-errors.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-voc-mimetypes.$(OBJEXT) \
-	lib/Basics/lib_libarango_a-WriteLocker.$(OBJEXT) \
-	lib/Basics/lib_libarango_a-WriteUnlocker.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-xxhash.$(OBJEXT) \
 	lib/JsonParser/lib_libarango_a-json-parser.$(OBJEXT) \
 	lib/ProgramOptions/lib_libarango_a-program-options.$(OBJEXT) \
@@ -1250,10 +1244,10 @@ AM_CPPFLAGS = \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \
-	@OPENSSL_CPPFLAGS@ \
 	@ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ \
-	@V8_CPPFLAGS@ 
+	@V8_CPPFLAGS@ \
+	@OPENSSL_CPPFLAGS@
 
 
 ################################################################################
@@ -1352,8 +1346,7 @@ lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Basics/Nonce.cpp lib/Basics/prime-numbers.cpp \
 	lib/Basics/process-utils.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/random.cpp \
-	lib/Basics/RandomGenerator.cpp lib/Basics/ReadLocker.cpp \
-	lib/Basics/ReadUnlocker.cpp lib/Basics/ReadWriteLock.cpp \
+	lib/Basics/RandomGenerator.cpp lib/Basics/ReadWriteLock.cpp \
 	lib/Basics/socket-utils.cpp lib/Basics/SpinLock.cpp \
 	lib/Basics/SpinLocker.cpp lib/Basics/ssl-helper.cpp \
 	lib/Basics/string-buffer.cpp lib/Basics/StringUtils.cpp \
@@ -1364,7 +1357,6 @@ lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Basics/tri-strings.cpp lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp lib/Basics/vector.cpp \
 	lib/Basics/voc-errors.cpp lib/Basics/voc-mimetypes.cpp \
-	lib/Basics/WriteLocker.cpp lib/Basics/WriteUnlocker.cpp \
 	lib/Basics/xxhash.cpp lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/EndpointList.cpp lib/Rest/Endpoint.cpp \
@@ -2014,6 +2006,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-replace-or-with-in.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-sort-rand.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-sort-in-values.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-range.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-stats-noncluster.js \
@@ -3147,12 +3140,6 @@ lib/Basics/lib_libarango_a-random.$(OBJEXT):  \
 lib/Basics/lib_libarango_a-RandomGenerator.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
-lib/Basics/lib_libarango_a-ReadLocker.$(OBJEXT):  \
-	lib/Basics/$(am__dirstamp) \
-	lib/Basics/$(DEPDIR)/$(am__dirstamp)
-lib/Basics/lib_libarango_a-ReadUnlocker.$(OBJEXT):  \
-	lib/Basics/$(am__dirstamp) \
-	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-ReadWriteLock.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -3211,12 +3198,6 @@ lib/Basics/lib_libarango_a-voc-errors.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-voc-mimetypes.$(OBJEXT):  \
-	lib/Basics/$(am__dirstamp) \
-	lib/Basics/$(DEPDIR)/$(am__dirstamp)
-lib/Basics/lib_libarango_a-WriteLocker.$(OBJEXT):  \
-	lib/Basics/$(am__dirstamp) \
-	lib/Basics/$(DEPDIR)/$(am__dirstamp)
-lib/Basics/lib_libarango_a-WriteUnlocker.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-xxhash.$(OBJEXT):  \
@@ -4126,8 +4107,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ProgramOptions.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ProgramOptionsDescription.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-RandomGenerator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ReadWriteLock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLock.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-SpinLocker.Po@am__quote@
@@ -4135,8 +4114,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-Thread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-ThreadPool.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-Utf8Helper.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-application-exit.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-associative.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-conversions.Po@am__quote@
@@ -7853,34 +7830,6 @@ lib/Basics/lib_libarango_a-RandomGenerator.obj: lib/Basics/RandomGenerator.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-RandomGenerator.obj `if test -f 'lib/Basics/RandomGenerator.cpp'; then $(CYGPATH_W) 'lib/Basics/RandomGenerator.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/RandomGenerator.cpp'; fi`
 
-lib/Basics/lib_libarango_a-ReadLocker.o: lib/Basics/ReadLocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-ReadLocker.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Tpo -c -o lib/Basics/lib_libarango_a-ReadLocker.o `test -f 'lib/Basics/ReadLocker.cpp' || echo '$(srcdir)/'`lib/Basics/ReadLocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/ReadLocker.cpp' object='lib/Basics/lib_libarango_a-ReadLocker.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-ReadLocker.o `test -f 'lib/Basics/ReadLocker.cpp' || echo '$(srcdir)/'`lib/Basics/ReadLocker.cpp
-
-lib/Basics/lib_libarango_a-ReadLocker.obj: lib/Basics/ReadLocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-ReadLocker.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Tpo -c -o lib/Basics/lib_libarango_a-ReadLocker.obj `if test -f 'lib/Basics/ReadLocker.cpp'; then $(CYGPATH_W) 'lib/Basics/ReadLocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/ReadLocker.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-ReadLocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/ReadLocker.cpp' object='lib/Basics/lib_libarango_a-ReadLocker.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-ReadLocker.obj `if test -f 'lib/Basics/ReadLocker.cpp'; then $(CYGPATH_W) 'lib/Basics/ReadLocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/ReadLocker.cpp'; fi`
-
-lib/Basics/lib_libarango_a-ReadUnlocker.o: lib/Basics/ReadUnlocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-ReadUnlocker.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Tpo -c -o lib/Basics/lib_libarango_a-ReadUnlocker.o `test -f 'lib/Basics/ReadUnlocker.cpp' || echo '$(srcdir)/'`lib/Basics/ReadUnlocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/ReadUnlocker.cpp' object='lib/Basics/lib_libarango_a-ReadUnlocker.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-ReadUnlocker.o `test -f 'lib/Basics/ReadUnlocker.cpp' || echo '$(srcdir)/'`lib/Basics/ReadUnlocker.cpp
-
-lib/Basics/lib_libarango_a-ReadUnlocker.obj: lib/Basics/ReadUnlocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-ReadUnlocker.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Tpo -c -o lib/Basics/lib_libarango_a-ReadUnlocker.obj `if test -f 'lib/Basics/ReadUnlocker.cpp'; then $(CYGPATH_W) 'lib/Basics/ReadUnlocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/ReadUnlocker.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-ReadUnlocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/ReadUnlocker.cpp' object='lib/Basics/lib_libarango_a-ReadUnlocker.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-ReadUnlocker.obj `if test -f 'lib/Basics/ReadUnlocker.cpp'; then $(CYGPATH_W) 'lib/Basics/ReadUnlocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/ReadUnlocker.cpp'; fi`
-
 lib/Basics/lib_libarango_a-ReadWriteLock.o: lib/Basics/ReadWriteLock.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-ReadWriteLock.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-ReadWriteLock.Tpo -c -o lib/Basics/lib_libarango_a-ReadWriteLock.o `test -f 'lib/Basics/ReadWriteLock.cpp' || echo '$(srcdir)/'`lib/Basics/ReadWriteLock.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-ReadWriteLock.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-ReadWriteLock.Po
@@ -8160,34 +8109,6 @@ lib/Basics/lib_libarango_a-voc-mimetypes.obj: lib/Basics/voc-mimetypes.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/voc-mimetypes.cpp' object='lib/Basics/lib_libarango_a-voc-mimetypes.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-voc-mimetypes.obj `if test -f 'lib/Basics/voc-mimetypes.cpp'; then $(CYGPATH_W) 'lib/Basics/voc-mimetypes.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/voc-mimetypes.cpp'; fi`
-
-lib/Basics/lib_libarango_a-WriteLocker.o: lib/Basics/WriteLocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-WriteLocker.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Tpo -c -o lib/Basics/lib_libarango_a-WriteLocker.o `test -f 'lib/Basics/WriteLocker.cpp' || echo '$(srcdir)/'`lib/Basics/WriteLocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/WriteLocker.cpp' object='lib/Basics/lib_libarango_a-WriteLocker.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-WriteLocker.o `test -f 'lib/Basics/WriteLocker.cpp' || echo '$(srcdir)/'`lib/Basics/WriteLocker.cpp
-
-lib/Basics/lib_libarango_a-WriteLocker.obj: lib/Basics/WriteLocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-WriteLocker.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Tpo -c -o lib/Basics/lib_libarango_a-WriteLocker.obj `if test -f 'lib/Basics/WriteLocker.cpp'; then $(CYGPATH_W) 'lib/Basics/WriteLocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/WriteLocker.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-WriteLocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/WriteLocker.cpp' object='lib/Basics/lib_libarango_a-WriteLocker.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-WriteLocker.obj `if test -f 'lib/Basics/WriteLocker.cpp'; then $(CYGPATH_W) 'lib/Basics/WriteLocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/WriteLocker.cpp'; fi`
-
-lib/Basics/lib_libarango_a-WriteUnlocker.o: lib/Basics/WriteUnlocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-WriteUnlocker.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Tpo -c -o lib/Basics/lib_libarango_a-WriteUnlocker.o `test -f 'lib/Basics/WriteUnlocker.cpp' || echo '$(srcdir)/'`lib/Basics/WriteUnlocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/WriteUnlocker.cpp' object='lib/Basics/lib_libarango_a-WriteUnlocker.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-WriteUnlocker.o `test -f 'lib/Basics/WriteUnlocker.cpp' || echo '$(srcdir)/'`lib/Basics/WriteUnlocker.cpp
-
-lib/Basics/lib_libarango_a-WriteUnlocker.obj: lib/Basics/WriteUnlocker.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-WriteUnlocker.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Tpo -c -o lib/Basics/lib_libarango_a-WriteUnlocker.obj `if test -f 'lib/Basics/WriteUnlocker.cpp'; then $(CYGPATH_W) 'lib/Basics/WriteUnlocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/WriteUnlocker.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-WriteUnlocker.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/WriteUnlocker.cpp' object='lib/Basics/lib_libarango_a-WriteUnlocker.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-WriteUnlocker.obj `if test -f 'lib/Basics/WriteUnlocker.cpp'; then $(CYGPATH_W) 'lib/Basics/WriteUnlocker.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/WriteUnlocker.cpp'; fi`
 
 lib/Basics/lib_libarango_a-xxhash.o: lib/Basics/xxhash.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-xxhash.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-xxhash.Tpo -c -o lib/Basics/lib_libarango_a-xxhash.o `test -f 'lib/Basics/xxhash.cpp' || echo '$(srcdir)/'`lib/Basics/xxhash.cpp
