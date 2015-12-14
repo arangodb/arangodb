@@ -181,6 +181,12 @@ class Buffer {
 
 typedef Buffer<char> CharBuffer;
 
+template<typename T>
+struct BufferNonDeleter {
+  void operator()(Buffer<T>*) {
+  }
+};
+
 }  // namespace arangodb::velocypack
 }  // namespace arangodb
 
