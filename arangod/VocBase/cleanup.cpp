@@ -122,11 +122,13 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
     
         if (! isUnloading) {
           popped = false;
-          ditches->process(popped, [] (triagens::arango::Ditch const* ditch) -> bool {
+          auto unloader = ditches->process(popped, [] (triagens::arango::Ditch const* ditch) -> bool {
             return (ditch->type() == triagens::arango::Ditch::TRI_DITCH_COLLECTION_UNLOAD);
           });
           if (popped) {
             // we've changed the list. try with current state in next turn
+            TRI_ASSERT(unloader != nullptr);
+            delete unloader;
             return;
           }
         }
