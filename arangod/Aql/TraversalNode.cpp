@@ -59,7 +59,6 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _pathOutVariable(nullptr),
     _graphObj(nullptr),
     _condition(nullptr) {
-
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
@@ -174,7 +173,8 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _minDepth(minDepth),
     _maxDepth(maxDepth),
     _direction(direction),
-    _condition(nullptr) {
+    _CalculationNodeId(0),
+   _condition(nullptr) {
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
   }
@@ -198,10 +198,10 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       _direction = TRI_EDGE_ANY;
       break;
     case 1:
-      _direction = TRI_EDGE_OUT;
+      _direction = TRI_EDGE_IN;
       break;
     case 2:
-      _direction = TRI_EDGE_IN;
+      _direction = TRI_EDGE_OUT;
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Invalid direction value");
@@ -213,17 +213,54 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _inVariable = varFromJson(plan->getAst(), base, "inVariable");
   }
   else {
-    triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", _vertexId);  
+    _vertexId = triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", "");  
+    if (_vertexId.size() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "start vertex mustn't be empty.");
+    }
   }
 
-  TRI_json_t const* condition = JsonHelper::checkAndGetObjectValue(base.json(), "condition");
+  if (base.has("condition")) {
+    TRI_json_t const* condition = JsonHelper::checkAndGetObjectValue(base.json(), "condition");
 
-  if (condition != nullptr) {
-    triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition, triagens::basics::Json::NOFREE);
-    _condition = Condition::fromJson(plan, conditionJson);
+    if (condition != nullptr) {
+      triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition, triagens::basics::Json::NOFREE);
+      _condition = Condition::fromJson(plan, conditionJson);
+    }
+  }
+
+  std::string graphName;
+  if (base.has("graph") && (base.get("graph").isString())) {
+    graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
+    if (base.has("graphDefinition")) {
+      _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
+
+      auto eColls = _graphObj->edgeCollections();
+      for (const auto& n: eColls) {
+        _edgeColls.push_back(n);
+      }
+    }
+    else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "missing graphDefinition.");
+    }
   }
   else {
-    _condition = nullptr;
+    
+    _graphJson = base.get("graph").copy(); 
+    if (!_graphJson.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array.");
+    }
+    size_t edgeCollectionCount = _graphJson.size();
+    // List of edge collection names
+    for (size_t i = 0; i < edgeCollectionCount; ++i) {
+      auto at = _graphJson.at(i);
+      if (!at.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array of strings.");
+      }
+      _edgeColls.push_back(at.json()->_value._string.data);
+    }
+    if (_edgeColls.size() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be a non empty array of strings.");
+    }
   }
 
   // Out variables
