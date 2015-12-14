@@ -92,7 +92,7 @@ book-check-dangling-anchors:
 	    if test -z "$$FN"; then \
 	        FN=$$SFN; \
 	    else \
-	        SFNP=`echo $$SFN | sed 's;/[a-zA-Z]*.html;;'`; \
+	        SFNP=`echo $$SFN | sed 's;/[a-zA-Z0-9]*.html;;'`; \
 	        FN="$${SFNP}/$${FN}"; \
 	    fi; \
 	    if test -n "$$ANCHOR"; then \

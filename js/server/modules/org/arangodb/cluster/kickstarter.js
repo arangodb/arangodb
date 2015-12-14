@@ -1024,7 +1024,6 @@ function Kickstarter (clusterPlan, myname) {
   else {
     this.myname = myname;
   }
-    require("internal").print("KOCKSTARTER PLAN: ", clusterPlan);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

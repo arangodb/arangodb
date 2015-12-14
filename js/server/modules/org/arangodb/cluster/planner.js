@@ -442,12 +442,10 @@ function Planner (userConfig) {
   if (typeof userConfig !== "object") {
     throw new Error("userConfig must be an object");
   }
-    require("internal").print("PLANNER USERCONFIG: ", userConfig);
   this.config = copy(userConfig);
   checkDispatcherIps(this.config);
 
   fillConfigWithDefaults(this.config, PlannerLocalDefaults);
-    require("internal").print("PLANNER USERCONFIG NOW: ", this.config);
   this.commands = [];
   this.makePlan();
 }

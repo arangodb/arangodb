@@ -380,7 +380,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                          "extremeVerbosity"       : options.extremeVerbosity
                         });
 
-    require("internal").print("OPTIONS",options);
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     var rc = instanceInfo.kickstarter.launch();
     if (rc.error) {
