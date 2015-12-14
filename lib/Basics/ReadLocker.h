@@ -34,6 +34,10 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
+#ifdef TRI_SHOW_LOCK_TIME
+#include "Basics/logging.h"
+#endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
@@ -51,18 +55,18 @@
 #ifdef TRI_SHOW_LOCK_TIME
 
 #define READ_LOCKER(b) \
-  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> READ_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 #define READ_LOCKER_EVENTUAL(b, t) \
-  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
+  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> READ_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
 
 #else
 
 #define READ_LOCKER(b) \
-  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b)
+  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> READ_LOCKER_VAR_B(__LINE__)(&b)
 
 #define READ_LOCKER_EVENTUAL(b, t) \
-  triagens::basics::ReadLocker READ_LOCKER_VAR_B(__LINE__)(&b, t)
+  triagens::basics::ReadLocker<std::remove_reference<decltype(b)>::type> READ_LOCKER_VAR_B(__LINE__)(&b, t)
 
 #endif
 
@@ -80,6 +84,7 @@ namespace triagens {
 /// the lock when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
+    template<typename T>
     class ReadLocker {
         ReadLocker (ReadLocker const&);
         ReadLocker& operator= (ReadLocker const&);
@@ -98,12 +103,21 @@ namespace triagens {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-        ReadLocker (ReadWriteLock* readWriteLock, char const* file, int line);
+        ReadLocker (T* readWriteLock, char const* file, int line)
+          : _readWriteLock(readWriteLock), _file(file), _line(line) {
+  
+          double t = TRI_microtime();
+          _readWriteLock->readLock();
+          _time = TRI_microtime() - t;
+        }
 
-#else
+#else 
 
-        explicit
-        ReadLocker (ReadWriteLock*);
+        explicit ReadLocker (T* readWriteLock)
+          : _readWriteLock(readWriteLock) {
+          
+          _readWriteLock->readLock();
+        }
 
 #endif
 
@@ -114,11 +128,37 @@ namespace triagens {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-        ReadLocker (ReadWriteLock* readWriteLock, uint64_t sleepDelay, char const* file, int line);
+        ReadLocker (T* readWriteLock, 
+                    uint64_t sleepTime,
+                    char const* file,
+                    int line) 
+          : _readWriteLock(readWriteLock), _file(file), _line(line) {
+          
+          double t = TRI_microtime();
+          while (! _readWriteLock->tryReadLock()) {
+#ifdef _WIN32
+            usleep((unsigned long) sleepTime);
+#else
+            usleep((useconds_t) sleepTime);
+#endif
+          }
+          _time = TRI_microtime() - t;
+        }
 
 #else
 
-        ReadLocker (ReadWriteLock*, uint64_t);
+        ReadLocker (T* readWriteLock, 
+                    uint64_t sleepTime) 
+          : _readWriteLock(readWriteLock) {
+          
+          while (! _readWriteLock->tryReadLock()) {
+#ifdef _WIN32
+            usleep((unsigned long) sleepTime);
+#else
+            usleep((useconds_t) sleepTime);
+#endif
+          }
+        }
 
 #endif
 
@@ -126,7 +166,15 @@ namespace triagens {
 /// @brief releases the read-lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ReadLocker ();
+        ~ReadLocker () {
+          _readWriteLock->unlock();
+
+#ifdef TRI_SHOW_LOCK_TIME
+          if (_time > TRI_SHOW_LOCK_THRESHOLD) {
+            LOG_WARNING("ReadLocker %s:%d took %f s", _file, _line, _time);
+          }
+#endif  
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -138,7 +186,7 @@ namespace triagens {
 /// @brief the read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReadWriteLock* _readWriteLock;
+        T* _readWriteLock;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
