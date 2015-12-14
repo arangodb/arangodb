@@ -146,7 +146,7 @@ var optionsDefaults = {
   "extraargs": [],
   "coreDirectory": "/var/tmp",
   "writeXmlReport": true,
-  "extremeVerbosity": true
+  "extremeVerbosity": false
 };
 
 var allTests = [

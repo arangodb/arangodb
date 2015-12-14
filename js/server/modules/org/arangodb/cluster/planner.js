@@ -64,7 +64,7 @@ var PlannerLocalDefaults = {
   "valgrindXmlFileBase"     : "",
   "valgrindTestname"        : "",
   "valgrindHosts"           : "",
-  "extremeVerbosity"        : true
+  "extremeVerbosity"        : false
 };
 
 // Some helpers using underscore:
