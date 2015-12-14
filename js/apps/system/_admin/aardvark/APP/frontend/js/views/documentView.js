@@ -19,6 +19,8 @@
     colid: 0,
     docid: 0,
 
+    customView: false,
+
     template: templateEngine.createTemplate("documentView.ejs"),
 
     events: {
@@ -106,9 +108,14 @@
         }
       }
       if (result === true) {
-        var navigateTo =  "collection/" + encodeURIComponent(this.colid) + '/documents/1';
-        window.modalView.hide();
-        window.App.navigate(navigateTo, {trigger: true});
+        if (this.customView) {
+          this.customDeleteFunction();
+        }
+        else {
+          var navigateTo = "collection/" + encodeURIComponent(this.colid) + '/documents/1';
+          window.modalView.hide();
+          window.App.navigate(navigateTo, {trigger: true});
+        }
       }
     },
 
