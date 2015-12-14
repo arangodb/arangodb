@@ -35,6 +35,7 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/AttributeTranslator.h"
+#include "velocypack/Basics.h"
 #include "velocypack/Buffer.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
@@ -672,7 +673,6 @@ struct BuilderNonDeleter {
   }
 };
 
-// convenience class scope guard for building objects
 struct BuilderContainer {
   BuilderContainer (Builder* builder) : builder(builder) {}
 
@@ -691,7 +691,8 @@ struct BuilderContainer {
   Builder* builder;
 };
 
-struct ObjectBuilder final : public BuilderContainer, public NoHeapAllocation {
+// convenience class scope guard for building objects
+struct ObjectBuilder final : public BuilderContainer, private NonHeapAllocatable, NonCopyable {
   ObjectBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
     builder->openObject(allowUnindexed);
   }
@@ -712,7 +713,7 @@ struct ObjectBuilder final : public BuilderContainer, public NoHeapAllocation {
 };
 
 // convenience class scope guard for building arrays
-struct ArrayBuilder final : public BuilderContainer, public NoHeapAllocation {
+struct ArrayBuilder final : public BuilderContainer, private NonHeapAllocatable, NonCopyable {
   ArrayBuilder(Builder* builder, bool allowUnindexed = false) : BuilderContainer(builder) {
     builder->openArray(allowUnindexed);
   }
