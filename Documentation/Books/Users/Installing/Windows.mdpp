@@ -29,7 +29,7 @@ a command line as administrator (search for *cmd* and right click *run as
 administrator*).
 
        cmd&gt; arangod --install-service
-       INFO: adding service 'ArangoDB - the multi-purpose database' (internal 'ArangoDB')
+       INFO: adding service 'ArangoDB - the multi-model database' (internal 'ArangoDB')
        INFO: added service with command line '"C:\Program Files (x86)\ArangoDB 1.4.4\bin\arangod.exe" --start-service'
 
        Open the service manager and start ArangoDB. In order to enable logging

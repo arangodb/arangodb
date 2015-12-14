@@ -295,6 +295,11 @@ pack-deb-cmake:
 		$(MOREOPTS) \
 		..
 
+	${MAKE} .libev-build-64
+	${MAKE} .zlib-build-64
+	${MAKE} .v8-build-64
+
+	${MAKE} ${BUILT_SOURCES}
 	${MAKE} ${BUILT_SOURCES}
 
 	rm -f ./.file-list-js

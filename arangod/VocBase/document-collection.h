@@ -1077,7 +1077,7 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (TRI_document
 
 std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
                           struct TRI_transaction_collection_s*,
-                          triagens::arango::ExampleMatcher& matcher
+                          triagens::arango::ExampleMatcher const& matcher
                         );
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief infrastructure for query optimizer
 ///
-/// @file arangod/Aql/Optimizer.h
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2014 triagens GmbH, Cologne, Germany
@@ -90,7 +88,7 @@ namespace triagens {
 
         // split and-combined filters into multiple smaller filters
         splitFiltersRule_pass1                        = 110,
-
+        
         // move calculations up the dependency chain (to pull them out of
         // inner loops etc.)
         moveCalculationsUpRule_pass1                  = 120,
@@ -98,6 +96,9 @@ namespace triagens {
         // move filters up the dependency chain (to make result sets as small
         // as possible as early as possible)
         moveFiltersUpRule_pass1                       = 130,
+
+        // sort IN values
+        sortInValuesRule_pass1                        = 135,
   
         // remove calculations that are repeatedly used in a query
         removeRedundantCalculationsRule_pass1         = 140,

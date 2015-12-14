@@ -71,7 +71,7 @@ static std::string ServiceName = "ArangoDB";
 /// @brief Windows service name for the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string FriendlyServiceName = "ArangoDB - the multi-purpose database";
+static std::string FriendlyServiceName = "ArangoDB - the multi-model database";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief service status handler
@@ -120,7 +120,7 @@ static void InstallServiceCommand (std::string command) {
     exit(EXIT_FAILURE);
   }
 
-  SERVICE_DESCRIPTION description = { "multi-purpose NoSQL database (version " TRI_VERSION ")" };
+  SERVICE_DESCRIPTION description = { "multi-model NoSQL database (version " TRI_VERSION ")" };
   ChangeServiceConfig2(schService, SERVICE_CONFIG_DESCRIPTION, &description);
 
   std::cout << "INFO: added service with command line '" << command << "'" << std::endl;

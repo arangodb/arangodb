@@ -146,7 +146,7 @@ int IndexBlock::initialize () {
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode const* a) -> void {
+  auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
     std::unique_ptr<Expression> e(new Expression(ast, a));
 
@@ -211,10 +211,6 @@ int IndexBlock::initialize () {
       else {
         // Index is responsible for the right side, check if left side has to be evaluated
         if (! lhs->isConstant()) {
-          if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-            // IN: now make IN result unique
-            lhs = makeUnique(lhs);
-          }
           instantiateExpression(i, j, 0, lhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

@@ -31,7 +31,6 @@
 #include "Aql/AggregationOptions.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ConditionFinder.h"
-#include "Aql/TraversalConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
@@ -40,6 +39,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Aql/TraversalConditionFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/json-utilities.h"
@@ -51,6 +51,151 @@ using EN   = triagens::aql::ExecutionNode;
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a SORT operation for IN right-hand side operands
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::sortInValuesRule (Optimizer* opt, 
+                                     ExecutionPlan* plan,
+                                     Optimizer::Rule const* rule) {
+  bool modified = false;
+  std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(EN::FILTER, true)));
+
+  for (auto const& n : nodes) {
+    // filter nodes always have one input variable
+    auto varsUsedHere = n->getVariablesUsedHere();
+    TRI_ASSERT(varsUsedHere.size() == 1);
+
+    // now check who introduced our variable
+    auto variable = varsUsedHere[0];
+    auto setter = plan->getVarSetBy(variable->id);
+
+    if (setter == nullptr || 
+        setter->getType() != EN::CALCULATION) {
+      // filter variable was not introduced by a calculation. 
+      continue;
+    }
+
+    // filter variable was introduced a CalculationNode. now check the expression
+    auto s = static_cast<CalculationNode*>(setter);
+    auto filterExpression = s->expression();
+    auto inNode = filterExpression->nodeForModification();
+    
+    TRI_ASSERT(inNode != nullptr);
+
+    // check the filter condition
+    if ((inNode->type != NODE_TYPE_OPERATOR_BINARY_IN && inNode->type != NODE_TYPE_OPERATOR_BINARY_NIN) ||
+        inNode->canThrow() || 
+        ! inNode->isDeterministic()) {
+      // we better not tamper with this filter
+      continue;
+    }
+
+    auto rhs = inNode->getMember(1);
+
+    if (rhs->type != NODE_TYPE_REFERENCE) {
+      continue;
+    }
+ 
+    auto loop = n->getLoop();
+
+    if (loop == nullptr) {
+      // FILTER is not used inside a loop. so it will be used at most once
+      // not need to sort the IN values then
+      continue;
+    }
+
+    variable = static_cast<Variable const*>(rhs->getData());
+    setter = plan->getVarSetBy(variable->id);
+
+    if (setter == nullptr || 
+        setter->getType() != EN::CALCULATION) {
+      // variable itself was not introduced by a calculation. 
+      continue;
+    }
+
+    if (loop == setter->getLoop()) {
+      // the FILTER and its value calculation are contained in the same loop
+      // this means the FILTER will be executed as many times as its value
+      // calculation. sorting the IN values will not provide a benefit here
+      continue;
+    }
+    
+    AstNode const* originalNode = static_cast<CalculationNode*>(setter)->expression()->node();
+    TRI_ASSERT(originalNode != nullptr);
+
+    AstNode const* testNode = originalNode;
+
+    if (originalNode->type == NODE_TYPE_FCALL &&
+        static_cast<Function const*>(originalNode->getData())->externalName == "NOOPT") {
+      // bypass NOOPT(...) 
+      TRI_ASSERT(originalNode->numMembers() == 1);
+      auto args = originalNode->getMember(0);
+ 
+      if (args->numMembers() > 0) {
+        testNode = args->getMember(0);
+      }
+    }
+
+    if (testNode->type == NODE_TYPE_VALUE ||
+        testNode->type == NODE_TYPE_OBJECT) {
+      // not really usable...
+      continue;
+    }
+
+    if (testNode->type == NODE_TYPE_ARRAY &&
+        testNode->numMembers() < 8) {
+      continue;
+    }
+
+    if (testNode->isSorted()) {
+      // already sorted
+      continue;
+    }
+
+    auto ast = plan->getAst();
+    auto args = ast->createNodeArray();
+    args->addMember(originalNode);
+    auto sorted = ast->createNodeFunctionCall("SORTED_UNIQUE", args); 
+
+    auto outVar = ast->variables()->createTemporaryVariable();
+    ExecutionNode* calculationNode = nullptr;
+    auto expression = new Expression(ast, sorted);
+    try {
+      calculationNode = new CalculationNode(plan, plan->nextId(), expression, outVar);
+    }
+    catch (...) {
+      delete expression;
+      throw;
+    }
+    plan->registerNode(calculationNode);
+
+    // make the new node a parent of the original calculation node
+    calculationNode->addDependency(setter);
+    auto const& oldParents = setter->getParents();
+    TRI_ASSERT(! oldParents.empty());
+    calculationNode->addParent(oldParents[0]);
+    oldParents[0]->removeDependencies();
+    oldParents[0]->addDependency(calculationNode);
+    setter->setParent(calculationNode);
+
+    // finally adjust the variable inside the IN calculation
+    inNode->changeMember(1, ast->createNodeReference(outVar));
+    // set sortedness bit for the IN operator 
+    inNode->setBoolValue(true);
+
+    modified = true;
+  }
+
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove redundant sorts
@@ -1330,7 +1475,7 @@ int triagens::aql::splitFiltersRule (Optimizer* opt,
       continue;
     }
 
-    std::vector<AstNode const*> stack{ expression->node() };
+    std::vector<AstNode*> stack{ expression->nodeForModification() };
 
     while (! stack.empty()) {
       auto current = stack.back();
@@ -2057,7 +2202,7 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
   std::vector<ExecutionNode*> nodes(std::move(plan->findNodesOfType(EN::FILTER, true))); 
-  
+ 
   for (auto const& node : nodes) {
     auto fn = static_cast<FilterNode const*>(node);
     // find the node with the filter expression
@@ -3718,7 +3863,7 @@ int triagens::aql::mergeFilterIntoTraversal (Optimizer* opt,
 
   std::vector<ExecutionNode*>&& tNodes = plan->findNodesOfType(EN::TRAVERSAL, true);
 
-  if (tNodes.size() == 0) {
+  if (tNodes.empty()) {
     opt->addPlan(plan, rule, false);
 
     return TRI_ERROR_NO_ERROR;

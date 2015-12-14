@@ -125,13 +125,15 @@ function getAuthorization (dispatcher) {
   return getAuthorizationHeader(dispatcher.username, dispatcher.passwd);
 }
 
-function waitForServerUp (endpoint, timeout) {
+function waitForServerUp (cmd, endpoint, timeout) {
   var url = endpointToURL(endpoint) + "/_api/version";
   var time = 0;
   while (true) {
     var r = download(url, "", {});
     if (r.code === 200 || r.code === 401) {
-      console.info("Could talk to "+endpoint+" .");
+      if (cmd.extremeVerbosity) {
+        console.info("Could talk to "+endpoint+" .");
+      }
       return true;
     }
     if (time >= timeout) {
@@ -143,17 +145,19 @@ function waitForServerUp (endpoint, timeout) {
   }
 }
 
-function waitForServerDown (endpoint, timeout) {
+function waitForServerDown (cmd, endpoint, timeout) {
   var url = endpointToURL(endpoint) + "/_api/version";
   var time = 0;
   while (true) {
     var r = download(url, "", {});
     if (r.code === 500 || r.code === 401) {
-      console.info("Server at "+endpoint+" does not answer any more.");
+      if (cmd.extremeVerbosity) {
+        console.info("Server at " + endpoint + " does not answer any more.");
+      }
       return true;
     }
     if (time >= timeout) {
-      console.info("After timeout, server at "+endpoint+
+      console.info("After timeout, server at " + endpoint +
                    "is still there, giving up.");
       return false;
     }
@@ -162,16 +166,18 @@ function waitForServerDown (endpoint, timeout) {
   }
 }
 
-function sendToAgency (agencyURL, path, obj) {
+function sendToAgency (cmd, agencyURL, path, obj) {
   var res;
   var body;
 
-  console.info("Sending %s to agency...", path);
+  if (cmd.extremeVerbosity) {
+    console.info("Sending %s to agency...", path);
+  }
   if (typeof obj === "string") {
     var count = 0;
     while (count++ <= 2) {
-      body = "value="+encodeURIComponent(obj);
-      res = download(agencyURL+path,body,
+      body = "value=" + encodeURIComponent(obj);
+      res = download(agencyURL + path,body,
           {"method":"PUT", "followRedirects": true,
            "headers": { "Content-Type": "application/x-www-form-urlencoded"}});
       if (res.code === 201 || res.code === 200) {
@@ -188,7 +194,7 @@ function sendToAgency (agencyURL, path, obj) {
   var i;
   if (keys.length !== 0) {
     for (i = 0; i < keys.length; i++) {
-      res = sendToAgency (agencyURL, path+"/"+encode(keys[i]), obj[keys[i]]);
+      res = sendToAgency(cmd, agencyURL, path + "/" + encode(keys[i]), obj[keys[i]]);
       if (res !== true) {
         return res;
       }
@@ -291,18 +297,18 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
 };
 
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
-  var yaml = require("js-yaml");
   if (isRelaunch) {
     // nothing to do here
     console.info("Waiting 1 second for agency to come alive...");
     wait(1);
     return {"error":false, "isSendConfiguration": true};
   }
-  var url = endpointToURL(cmd.agency.endpoints[0])+"/v2/keys";
-  var res = sendToAgency(url, "", cmd.data);
+  var url = endpointToURL(cmd.agency.endpoints[0]) + "/v2/keys";
+  var res = sendToAgency(cmd, url, "", cmd.data);
   if (res === true) {
     return {"error":false, "isSendConfiguration": true};
   }
+  var yaml = require("js-yaml");
   return {"error":true, "isSendConfiguration": true, "suberror": res, errorMessage : yaml.safeDump(res)};
 };
 
@@ -316,17 +322,19 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     logPath = fs.normalize(fs.join(ArangoServerState.logPath(), cmd.logPath));
   }
 
-  var url = endpointToURL(cmd.agency.endpoints[0])+"/v2/keys/"+
-            cmd.agency.agencyPrefix+"/";
-  console.info("Downloading %sLaunchers/%s", url, encode(cmd.name));
-  var res = download(url+"Launchers/"+encode(cmd.name),"",{method:"GET",
-                                                       followRedirects:true});
+  var url = endpointToURL(cmd.agency.endpoints[0]) + "/v2/keys/"+
+            cmd.agency.agencyPrefix + "/";
+  if (cmd.extremeVerbosity) {
+    console.info("Downloading %sLaunchers/%s", url, encode(cmd.name));
+  }
+  var res = download(url + "Launchers/" + encode(cmd.name), "", { method: "GET",
+                                                       followRedirects: true });
   if (res.code !== 200) {
     return {"error": true, "isStartServers": true, "suberror": res};
   }
   var body = JSON.parse( res.body );
   var info = JSON.parse(body.node.value);
-  var id,ep,args,pids,port,endpoints,endpointNames,roles;
+  var id, ep, args, pids, port, endpoints, endpointNames, roles;
 
   console.info("Starting servers...");
   var i;
@@ -343,8 +351,10 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   endpointNames = [];
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
-    console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
-    res = download(url+"Target/MapIDToEndpoint/"+id);
+    if (cmd.extremeVerbosity) {
+      console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
+    }
+    res = download(url + "Target/MapIDToEndpoint/" + id);
     if (res.code !== 200) {
       return {"error": true, "pids": pids,
               "isStartServers": true, "suberror": res};
@@ -370,13 +380,13 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
             "--server.endpoint"]);
     if (cmd.onlyLocalhost) {
-      args.push(exchangeProtocol("tcp://127.0.0.1:"+port,useSSL));
+      args.push(exchangeProtocol("tcp://127.0.0.1:" + port, useSSL));
     }
     else {
-      args.push(exchangeProtocol("tcp://0.0.0.0:"+port,useSSL));
+      args.push(exchangeProtocol("tcp://0.0.0.0:" + port, useSSL));
     }
     args.push("--log.file");
-    var logfile = fs.join(logPath,"log-"+cmd.agency.agencyPrefix+"-"+id);
+    var logfile = fs.join(logPath, "log-" + cmd.agency.agencyPrefix + "-" + id);
     args.push(logfile);
     if (!isRelaunch) {
       if (!fs.exists(logPath)) {
@@ -386,7 +396,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
         fs.remove(logfile);
       }
     }
-    var datadir = fs.join(dataPath,"data-"+cmd.agency.agencyPrefix+"-"+id);
+    var datadir = fs.join(dataPath, "data-" + cmd.agency.agencyPrefix + "-" + id);
     if (!isRelaunch) {
       if (!fs.exists(dataPath)) {
         fs.makeDirectoryRecursive(dataPath);
@@ -407,8 +417,8 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
         (cmd.valgrindHosts !== undefined) &&
         (cmd.valgrindHosts.indexOf(roles[i]) > -1)) {
       var valgrindopts = cmd.valgrindopts.concat(
-        ["--xml-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.xml',
-         "--log-file="+cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.valgrind.log']);
+        ["--xml-file=" + cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.xml',
+         "--log-file=" + cmd.valgrindXmlFileBase + '_' + cmd.valgrindTestname + '_' + id  + '.%p.valgrind.log']);
       var newargs = valgrindopts.concat([arangodPath]).concat(args);
       var cmdline = cmd.valgrind;
       pids.push(executeExternal(cmdline, newargs));
@@ -428,7 +438,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     if (cmd.valgrind !== '') {
       timeout *= 10000;
     }
-    if (! waitForServerUp(endpoints[i], timeout)) {
+    if (! waitForServerUp(cmd, endpoints[i], timeout)) {
       error = true;
     }
   }
@@ -561,7 +571,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     }
   }
   for (i = 0;i < run.endpoints.length;i++) {
-    waitForServerDown(run.endpoints[i], 30);
+    waitForServerDown(cmd, run.endpoints[i], 30);
     // we cannot do much with the result...
   }
 
@@ -656,7 +666,9 @@ cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
 };
 
 isHealthyActions.startAgent = function (dispatchers, cmd, run) {
-  console.info("Checking health of agent %s", JSON.stringify(run.pid));
+  if (cmd.extremeVerbosity) {
+    console.info("Checking health of agent %s", JSON.stringify(run.pid));
+  }
   var r = statusExternal(run.pid);
   r.isStartAgent = true;
   r.error = false;
@@ -667,19 +679,20 @@ isHealthyActions.startServers = function (dispatchers, cmd, run) {
   var i;
   var r = [];
   for (i = 0;i < run.pids.length;i++) {
-    console.info("Checking health of %s %s %s %s",
-                 run.roles[i],
-                 run.endpointNames[i],
-                 run.endpoints[i],
-                 JSON.stringify(run.pids[i]));
-
+    if (cmd.extremeVerbosity) {
+      console.info("Checking health of %s %s %s %s",
+                   run.roles[i],
+                   run.endpointNames[i],
+                   run.endpoints[i],
+                   JSON.stringify(run.pids[i]));
+    }
     r.push(statusExternal(run.pids[i]));
   }
   var s = [];
   var x;
   var error = false;
   for (i = 0;i < run.endpoints.length;i++) {
-    x = waitForServerUp(run.endpoints[i], 0);
+    x = waitForServerUp(cmd, run.endpoints[i], 0);
     s.push(x);
     if (x === false) {
       error = true;
@@ -713,9 +726,11 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
   var url = endpointToURL(cmd.agency.endpoints[0])+"/v2/keys/"+
             cmd.agency.agencyPrefix+"/";
-  console.info("Downloading %sLaunchers/%s", url, encode(cmd.name));
-  var res = download(url+"Launchers/"+encode(cmd.name),"",{method:"GET",
-                                                   followRedirects:true});
+  if (cmd.extremeVerbosity) {
+    console.info("Downloading %sLaunchers/%s", url, encode(cmd.name));
+  }
+  var res = download(url+"Launchers/" + encode(cmd.name), "", { method: "GET",
+                                                   followRedirects: true });
   if (res.code !== 200) {
     return {"error": true, "isStartServers": true, "suberror": res};
   }
@@ -740,8 +755,10 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
   var logfile, datadir;
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
-    console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
-    res = download(url+"Target/MapIDToEndpoint/"+id);
+    if (cmd.extremeVerbosity) {
+      console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
+    }
+    res = download(url + "Target/MapIDToEndpoint/" + id);
     if (res.code !== 200) {
       return {"error": true, "pids": pids,
               "isStartServers": true, "suberror": res};
@@ -818,8 +835,10 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
   endpointNames = [];
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
-    console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
-    res = download(url+"Target/MapIDToEndpoint/"+id);
+    if (cmd.extremeVerbosity) {
+      console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
+    }
+    res = download(url + "Target/MapIDToEndpoint/" + id);
     if (res.code !== 200) {
       return {"error": true, "pids": pids,
               "isStartServers": true, "suberror": res};
@@ -887,7 +906,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
 
   error = false;
   for (i = 0;i < endpoints.length;i++) {
-    if (! waitForServerUp(endpoints[i], 30)) {
+    if (! waitForServerUp(cmd, endpoints[i], 30)) {
       error = true;
     }
   }
@@ -1005,6 +1024,7 @@ function Kickstarter (clusterPlan, myname) {
   else {
     this.myname = myname;
   }
+    require("internal").print("KOCKSTARTER PLAN: ", clusterPlan);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

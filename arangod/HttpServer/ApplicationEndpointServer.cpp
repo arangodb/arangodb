@@ -478,9 +478,10 @@ bool ApplicationEndpointServer::createSslContext () {
 
   // set options
   SSL_CTX_set_options(_sslContext, (long) _sslOptions);
+
   LOG_INFO("using SSL options: %ld", (long) _sslOptions);
 
-  if (_sslCipherList.size() > 0) {
+  if (! _sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
       LOG_ERROR("SSL error: %s", lastSSLError().c_str());
       LOG_FATAL_AND_EXIT("cannot set SSL cipher list '%s'", _sslCipherList.c_str());

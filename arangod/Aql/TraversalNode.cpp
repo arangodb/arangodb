@@ -175,26 +175,11 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _minDepth(minDepth),
     _maxDepth(maxDepth),
     _direction(direction),
-    _condition(nullptr)
-{
+    _condition(nullptr) {
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
   }
 }
-
-int TraversalNode::checkIsOutVariable(size_t variableId) {
-  if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
-    return 0;
-  }
-  if (_edgeOutVariable != nullptr && _edgeOutVariable->id == variableId) {
-    return 1;
-  }
-  if (_pathOutVariable != nullptr && _pathOutVariable->id == variableId) {
-    return 2;
-  }
-  return -1;
-}
-
 
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                               triagens::basics::Json const& base)
@@ -255,6 +240,19 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   }
 }
 
+int TraversalNode::checkIsOutVariable (size_t variableId) const {
+  if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
+    return 0;
+  }
+  if (_edgeOutVariable != nullptr && _edgeOutVariable->id == variableId) {
+    return 1;
+  }
+  if (_pathOutVariable != nullptr && _pathOutVariable->id == variableId) {
+    return 2;
+  }
+  return -1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for TraversalNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,13 +299,13 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
     json("pathOutVariable", pathOutVariable()->toJson());
   }
 
-  if (_expressions.size() > 0) {
+  if (! _expressions.empty()) {
     triagens::basics::Json expressionObject = triagens::basics::Json(triagens::basics::Json::Object,
                                                                      _expressions.size());
-    for (auto const & map : _expressions) {
+    for (auto const& map : _expressions) {
       triagens::basics::Json expressionArray = triagens::basics::Json(triagens::basics::Json::Array,
                                                                       map.second.size());
-      for (auto const & x : map.second) {
+      for (auto const& x : map.second) {
         triagens::basics::Json exp(zone, triagens::basics::Json::Object);
         auto tmp = dynamic_cast<SimpleTraverserExpression*>(x);
         if (tmp != nullptr) {
@@ -395,23 +393,23 @@ void TraversalNode::setCondition(triagens::aql::Condition* condition){
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 
   for (auto const& oneVar : varsUsedByCondition) {
-    if ((_vertexOutVariable != nullptr && oneVar->id !=  _vertexOutVariable->id) &&
-        (_edgeOutVariable   != nullptr && oneVar->id !=  _edgeOutVariable->id) &&
-        (_pathOutVariable   != nullptr && oneVar->id !=  _pathOutVariable->id) &&
-        (_inVariable        != nullptr && oneVar->id !=  _inVariable->id)) {
+    if ((_vertexOutVariable != nullptr && oneVar->id != _vertexOutVariable->id) &&
+        (_edgeOutVariable   != nullptr && oneVar->id != _edgeOutVariable->id) &&
+        (_pathOutVariable   != nullptr && oneVar->id != _pathOutVariable->id) &&
+        (_inVariable        != nullptr && oneVar->id != _inVariable->id)) {
 
-      _conditionVariables.push_back(oneVar);
+      _conditionVariables.emplace_back(oneVar);
     }
   }
 
   _condition = condition;
 }
 
-void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
-                                          size_t indexAccess,
-                                          AstNodeType comparisonType,
-                                          AstNode const* varAccess,
-                                          AstNode const* compareTo) {
+void TraversalNode::storeSimpleExpression (bool isEdgeAccess,
+                                           size_t indexAccess,
+                                           AstNodeType comparisonType,
+                                           AstNode const* varAccess,
+                                           AstNode* compareTo) {
   auto it = _expressions.find(indexAccess);
 
   if (it == _expressions.end()) {

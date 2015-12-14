@@ -55,19 +55,19 @@ var optionsDocumentation = [
   '   - `force`: if set to true the tests are continued even if one fails',
   '   - `skipBoost`: if set to true the boost unittests are skipped',
   '   - `skipGeo`: if set to true the geo index tests are skipped',
-  '   - `skipGraph`: if set to true the Graph tests are skipped',
+  '   - `skipGraph`: if set to true the graph tests are skipped',
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipArangoB`: if set to true benchmark tests are skipped',
   '   - `skipArangoBNonConnKeepAlive`: if set to true benchmark tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
-  '   - `skipMemoryIntense`: tests using lots of resources will be skippet.',
+  '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
   '   - `skipAuth : testing authentication will be skipped.',
-  '   - `skipSsl`: ommit the ssl_server rspec tests.',
+  '   - `skipSsl`: omit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
-  '   - `skipConfig`: ommit the noisy configuration tests',
-  '   - `skipFoxxQueues`: ommit the test for the foxx queues',
-  '   - `skipNightly`: ommit the nightly tests',
+  '   - `skipConfig`: omit the noisy configuration tests',
+  '   - `skipFoxxQueues`: omit the test for the foxx queues',
+  '   - `skipNightly`: omit the nightly tests',
   '   - `onlyNightly`: execute only the nightly tests',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
@@ -90,6 +90,8 @@ var optionsDocumentation = [
   '   - `valgrindargs`: list of commandline parameters to add to valgrind',
   '',
   '   - `extraargs`: list of extra commandline arguments to add to arangod',
+  '   - `extremeVerbosity`: if set to true, then there will be more test run',
+  '     output, especially for cluster tests.',
   '   - `portOffset`: move our base port by n ports up',
   ''
 ];
@@ -118,51 +120,51 @@ var toArgv = require("internal").toArgv;
 
 var serverCrashed = false;
 
-var optionsDefaults = { "cluster": false,
-                        "valgrind": false,
-                        "force": true,
-                        "skipBoost": false,
-                        "skipGeo": false,
-                        "skipTimeCritical": false,
-                        "skipNightly": true,
-                        "onlyNightly": false,
-                        "skipMemoryIntense": false,
-                        "skipAql": false,
-                        "skipArangoB": false,
-                        "skipArangoBNonConnKeepAlive": false,
-                        "skipRanges": false,
-                        "skipLogAnalysis": false,
-                        "username": "root",
-                        "password": "",
-                        "test": undefined,
-                        "cleanup": true,
-                        "jsonReply": false,
-                        "portOffset": 0,
-                        "valgrindargs": [],
-                        "valgrindXmlFileBase" : "",
-                        "extraargs": [],
-                        "coreDirectory": "/var/tmp",
-                        "writeXmlReport": true
-
+var optionsDefaults = { 
+  "cluster": false,
+  "valgrind": false,
+  "force": true,
+  "skipBoost": false,
+  "skipGeo": false,
+  "skipTimeCritical": false,
+  "skipNightly": true,
+  "onlyNightly": false,
+  "skipMemoryIntense": false,
+  "skipAql": false,
+  "skipArangoB": false,
+  "skipArangoBNonConnKeepAlive": false,
+  "skipRanges": false,
+  "skipLogAnalysis": false,
+  "username": "root",
+  "password": "",
+  "test": undefined,
+  "cleanup": true,
+  "jsonReply": false,
+  "portOffset": 0,
+  "valgrindargs": [],
+  "valgrindXmlFileBase" : "",
+  "extraargs": [],
+  "coreDirectory": "/var/tmp",
+  "writeXmlReport": true,
+  "extremeVerbosity": false
 };
-var allTests =
-  [
-    "config",
-    "boost",
-    "shell_server",
-    "shell_server_aql",
-    "http_server",
-    "ssl_server",
-    "shell_client",
-    "dump",
-    "arangob",
-    "arangosh",
-    "importing",
-    "upgrade",
-    "authentication",
-    "authentication_parameters"
-  ];
 
+var allTests = [
+  "config",
+  "boost",
+  "shell_server",
+  "shell_server_aql",
+  "http_server",
+  "ssl_server",
+  "shell_client",
+  "dump",
+  "arangob",
+  "arangosh",
+  "importing",
+  "upgrade",
+  "authentication",
+  "authentication_parameters"
+];
 
 function printUsage () {
   print();
@@ -186,7 +188,7 @@ function printUsage () {
       else {
         checkAll = '   ';
       }
-      print('    ' + checkAll + ' '+i+' ' + oneFunctionDocumentation);
+      print('    ' + checkAll + ' '+ i + ' ' + oneFunctionDocumentation);
     }
   }
   for (i in optionsDocumentation) {
@@ -355,7 +357,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                   "arangodExtraArgs": toArgv(extraargs),
                   "username": "root",
                   "password": ""};
-    print("Temporary cluster data and logs are in",tmpDataDir);
+    print("Temporary cluster data and logs are in", tmpDataDir);
 
     var runInValgrind = "";
     var valgrindXmlFileBase = "";
@@ -374,8 +376,11 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                          "valgrindopts"           : toArgv(valgrindopts, true),
                          "valgrindXmlFileBase"    : valgrindXmlFileBase + '_cluster',
                          "valgrindTestname"       : testname,
-                         "valgrindHosts"          : valgrindHosts
+                         "valgrindHosts"          : valgrindHosts,
+                         "extremeVerbosity"       : options.extremeVerbosity
                         });
+
+    require("internal").print("OPTIONS",options);
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     var rc = instanceInfo.kickstarter.launch();
     if (rc.error) {
@@ -1083,7 +1088,9 @@ function performTests(options, testList, testname, remote) {
       }
     }
     else {
-      print("Skipped " + te + " because of " + filtered.filter);
+      if (options.extremeVerbosity) {
+        print("Skipped " + te + " because of " + filtered.filter);
+      }
     }
   }
   if (remote) {
@@ -1307,7 +1314,9 @@ testFuncs.shell_client = function(options) {
       continueTesting = checkInstanceAlive(instanceInfo, options);
     }
     else {
-      print("Skipped " + te + " because of " + filtered.filter);
+      if (options.extremeVerbosity) {
+        print("Skipped " + te + " because of " + filtered.filter);
+      }
     }
   }
   print("Shutting down...");
@@ -1460,7 +1469,9 @@ function rubyTests (options, ssl) {
 
       }
       else {
-        print("Skipped " + te + " because of " + filtered.filter);
+        if (options.extremeVerbosity) {
+          print("Skipped " + te + " because of " + filtered.filter);
+        }
       }
     }
   }
@@ -1624,7 +1635,9 @@ var impTodo = [
 
 testFuncs.importing = function (options) {
   if (options.cluster) {
-    print("Skipped because of cluster.");
+    if (options.extremeVerbosity) {
+      print("Skipped because of cluster.");
+    }
     return {"importing": 
             {
               "status" : true,
