@@ -595,16 +595,21 @@ static void RequestEdges (triagens::basics::Json const& vertexJson,
                           triagens::arango::ExampleMatcher const* matcher,
                           bool includeVertices,
                           triagens::basics::Json& result) {
-  if (! vertexJson.isString()) {
+  std::string vertexId;
+  if (vertexJson.isString()) {
+    vertexId = triagens::basics::JsonHelper::getStringValue(vertexJson.json(), "");
+  }
+  else if (vertexJson.isObject()) {
+    vertexId = triagens::basics::JsonHelper::getStringValue(vertexJson.json(), "_id", "");
+  }
+  else {
     // Nothing to do.
     // Return (error for illegal input is thrown outside
     return;
   }
-  // TODO Check vertexJson is string
-  std::string vertexId = triagens::basics::JsonHelper::getStringValue(vertexJson.json(), "");
   std::vector<std::string> parts = triagens::basics::StringUtils::split(vertexId, "/");
   if (parts.size() != 2) {
-    return;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD, vertexId);
   }
 
   TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
@@ -3349,7 +3354,7 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
   }
 
   Json vertexJson = ExtractFunctionParameter(trx, parameters, 1, false);
-  if ( ! vertexJson.isArray() && ! vertexJson.isString()) {
+  if ( ! vertexJson.isArray() && ! vertexJson.isString() && ! vertexJson.isObject()) {
     // Invalid Start vertex
     // Early Abort before parsing other parameters
     return AqlValue(new Json(Json::Null));
@@ -3451,16 +3456,21 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
   if (vertexJson.isArray()) {
     size_t length = vertexJson.size();
     for (size_t i = 0; i < length; ++i) {
-      RequestEdges(vertexJson.at(i),
-                   trx,
-                   resolver,
-                   shaper,
-                   cid,
-                   collection->_collection->_collection,
-                   direction,
-                   matcher.get(),
-                   includeVertices,
-                   result);
+      try {
+        RequestEdges(vertexJson.at(i),
+                     trx,
+                     resolver,
+                     shaper,
+                     cid,
+                     collection->_collection->_collection,
+                     direction,
+                     matcher.get(),
+                     includeVertices,
+                     result);
+      }
+      catch (...) {
+        // Errors in Array are simply ignored
+      }
     }
   }
   else {
