@@ -926,10 +926,11 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   TRI_ASSERT(i != toSendByOpID.end());
 
   QueueIterator q = i->second;
-  ClusterCommOperation* op = *q;
+  ClusterCommOperation op = *q;
   TRI_ASSERT(op->result.operationID == operationID);
   toSendByOpID.erase(i);
   toSend.erase(q);
+  std::unique_ptr<ClusterCommOperation> opPtr(op);
   if (op->result.dropped) {
     return false;
   }
@@ -940,6 +941,7 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
     op->result.status = CL_COMM_SENT;
   }
   received.push_back(op);
+  opPtr.release();
   q = received.end();
   q--;
   receivedByOpID[operationID] = q;
@@ -1136,10 +1138,8 @@ void ClusterCommThread::run () {
         }
       }
 
-      if (! cc->moveFromSendToReceived(op->result.operationID)) {
-        // It was dropped in the meantime, so forget about it:
-        delete op;
-      }
+      cc->moveFromSendToReceived(op->result.operationID);
+      // Potentially it was dropped in the meantime, then we forget about it.
     }
 
     // Now the send queue is empty (at least was empty, when we looked
