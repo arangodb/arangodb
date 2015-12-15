@@ -370,7 +370,28 @@ function ahuacatlQueryEdgesTestSuite () {
         actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3", examples: ["UnitTestsAhuacatlEdge/v1v3", {what: "v3->v6" } ] });
         assertEqual(actual, [ "v3->v6" ]);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesStartVertexArray : function () {
+      var queries = [
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound'))) SORT e.what RETURN e.what",
+        "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'outbound') SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound')) SORT e.what RETURN e.what"
+      ];
+     
+      queries.forEach(function (q) {
+        var actual;
+        actual = getQueryResults(q, {start: [ "UnitTestsAhuacatlVertex/v1", "UnitTestsAhuacatlVertex/v2" ]});
+
+        assertEqual(actual, [ "v1->v2", "v1->v3", "v2->v3" ]);
+      });
     }
+
+
 
   };
 }
