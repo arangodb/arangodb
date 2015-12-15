@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE (test_invalidAttributeAfterExpand) {
     TRI_ParseAttributeString(input, result);
     BOOST_FAIL("Expected the function to throw");
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_PARSER_FAILED);
+    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE (test_nonClosingBracket) {
     TRI_ParseAttributeString(input, result);
     BOOST_FAIL("Expected the function to throw");
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_PARSER_FAILED);
+    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -202,7 +202,39 @@ BOOST_AUTO_TEST_CASE (test_nonClosingBracket2) {
     TRI_ParseAttributeString(input, result);
     BOOST_FAIL("Expected the function to throw");
   } catch (Exception& e) {
-    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_PARSER_FAILED);
+    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_nonAsterisk
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_nonAsterisk) {
+  std::string input = "foo[0]";
+  std::vector<AttributeName> result;
+
+  try {
+    TRI_ParseAttributeString(input, result);
+    BOOST_FAIL("Expected the function to throw");
+  } catch (Exception& e) {
+    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_nonAsterisk
+////////////////////////////////////////////////////////////////////////////////
+
+BOOST_AUTO_TEST_CASE (test_nonAsterisk2) {
+  std::string input = "foo[0].value";
+  std::vector<AttributeName> result;
+
+  try {
+    TRI_ParseAttributeString(input, result);
+    BOOST_FAIL("Expected the function to throw");
+  } catch (Exception& e) {
+    BOOST_CHECK_EQUAL(e.code(), TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 

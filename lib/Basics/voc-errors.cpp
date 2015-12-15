@@ -85,7 +85,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
   REG_ERROR(ERROR_ARANGO_VALIDATION_FAILED, "validator failed");
-  REG_ERROR(ERROR_ARANGO_PARSER_FAILED, "parsing definition failed");
+  REG_ERROR(ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED, "parsing attribute name definition failed");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_BAD, "illegal document key");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED, "unexpected document key");
   REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "server database directory not writable");
