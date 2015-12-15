@@ -35,7 +35,7 @@
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
-const R = require('ramda');
+const _ = require('underscore');
 const fs = require('fs');
 const joi = require('joi');
 const util = require('util');
@@ -60,7 +60,6 @@ const download = require('internal').download;
 const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
 const actions = require('@arangodb/actions');
 const plainServerVersion = require('@arangodb').plainServerVersion;
-const _ = require('underscore');
 
 const throwDownloadError = arangodb.throwDownloadError;
 const throwFileNotFound = arangodb.throwFileNotFound;
@@ -1573,8 +1572,8 @@ exports.install = install;
 exports.readme = readme;
 exports.runTests = runTests;
 exports.runScript = runScript;
-exports.setup = R.partial(runScript, 'setup');
-exports.teardown = R.partial(runScript, 'teardown');
+exports.setup = _.partial(runScript, 'setup');
+exports.teardown = _.partial(runScript, 'teardown');
 exports.uninstall = uninstall;
 exports.replace = replace;
 exports.upgrade = upgrade;

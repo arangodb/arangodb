@@ -207,12 +207,6 @@
 * GITHUB: https://github.com/hapijs/qs
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
 
-#### Ramda
-
-* Project Home: http://ramdajs.com
-* GITHUB: https://github.com/ramda/ramda
-* License: [MIT License](https://github.com/ramda/ramda/blob/master/LICENSE.txt)
-
 #### Sinon.JS
 
 * Project Home: http://sinonjs.org

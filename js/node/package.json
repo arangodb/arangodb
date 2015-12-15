@@ -17,7 +17,6 @@
     "minimatch": "3.0.0",
     "mocha": "2.2.5",
     "qs": "5.2.0",
-    "ramda": "0.15.1",
     "semver": "5.1.0",
     "sinon": "1.17.2",
     "underscore": "1.8.3"
