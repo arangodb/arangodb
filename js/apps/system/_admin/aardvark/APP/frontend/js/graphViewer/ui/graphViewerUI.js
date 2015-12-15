@@ -1,7 +1,7 @@
 /*global document, $, _ */
 /*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
 /*global LayouterControls, GharialAdapterControls*/
-/*global GraphViewer, d3, window*/
+/*global GraphViewer, d3, window, arangoHelper, Storage, localStorage*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -634,6 +634,50 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
 
 
   svg = createSVG();
+
+  if (Storage !== "undefined") {
+    this.graphSettings = {};
+
+    this.loadLocalStorage = function() {
+      var graphName = adapterConfig.graphName;
+      if (localStorage.getItem('graphSettings') === null || localStorage.getItem('graphSettings')  === 'null') {
+        var obj = {};
+        obj[graphName] = {
+          viewer: viewerConfig,
+          adapter: adapterConfig
+        };
+        localStorage.setItem('graphSettings', JSON.stringify(obj));
+      }
+      else {
+        try {
+          var settings = JSON.parse(localStorage.getItem('graphSettings'));
+          this.graphSettings = settings;
+
+          if (settings[graphName].viewer !== undefined) {
+            viewerConfig = settings[graphName].viewer;  
+          }
+          if (settings[graphName].adapter !== undefined) {
+            adapterConfig = settings[graphName].adapter;
+          }
+        }
+        catch (e) {
+          console.log("Could not load graph settings, resetting graph settings.");
+          this.graphSettings[graphName] = {
+            viewer: viewerConfig,
+            adapter: adapterConfig
+          };
+          localStorage.setItem('graphSettings', JSON.stringify(this.graphSettings));
+        }
+      }
+
+    };
+    this.loadLocalStorage();
+    
+    this.writeLocalStorage = function() {
+
+    };
+  }
+
   graphViewer = new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
 
   createToolbox();
@@ -670,4 +714,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     svg.attr("width", reducedW)
       .style("width", reducedW + "px");
   };
+
+  //add events for writing/reading local storage (input fields)
+
+
+  
 }

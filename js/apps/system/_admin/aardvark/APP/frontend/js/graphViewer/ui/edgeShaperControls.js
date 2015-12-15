@@ -1,5 +1,5 @@
 /*global $, _, d3*/
-/*global document*/
+/*global document, Storage, localStorage, window*/
 /*global EdgeShaper, modalDialogHelper, uiComponentsHelper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -103,16 +103,39 @@ function EdgeShaperControls(list, shaper) {
               labels.push(val);
             }
           });
-          shaper.changeTo({
+
+          var obj = {
             label: labels
-          });
+          };
+          self.applyLocalStorage(obj);
+          shaper.changeTo(obj);
         }
       );
     });
   };
 
+  this.applyLocalStorage = function(obj) {
+    if (Storage !== "undefined") {
+      try {
+        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
+        var graphName = (window.location.hash).split("/")[1];
 
+        _.each(obj, function(value, key) {
+          if (key !== undefined) {
+            if (!toStore[graphName].viewer.hasOwnProperty('edgeShaper')) {
+              toStore[graphName].viewer.edgeShaper = {};
+            } 
+            toStore[graphName].viewer.edgeShaper[key] = value;
+          }
+        });
 
+        localStorage.setItem('graphSettings', JSON.stringify(toStore));
+      }
+      catch (e) {
+        console.log(e);
+      }
+    }
+  };
 
   this.addControlOpticSingleColour = function() {
     var prefix = "control_edge_singlecolour",
