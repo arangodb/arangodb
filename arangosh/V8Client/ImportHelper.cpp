@@ -198,7 +198,7 @@ namespace triagens {
       else {
         // read filesize
         totalLength = TRI_SizeFile(fileName.c_str());
-        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
+        fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
         if (fd < 0) {
           _errorMessage = TRI_LAST_ERROR_STR;
@@ -304,7 +304,7 @@ namespace triagens {
       else {
         // read filesize
         totalLength = TRI_SizeFile(fileName.c_str());
-        fd = TRI_OPEN(fileName.c_str(), O_RDONLY);
+        fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
         if (fd < 0) {
           _errorMessage = TRI_LAST_ERROR_STR;

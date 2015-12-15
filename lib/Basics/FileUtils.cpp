@@ -88,7 +88,7 @@ namespace triagens {
       }
 
       string slurp (string const& filename) {
-        int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
+        int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
         if (fd == -1) {
           throwFileReadError(fd, filename);
@@ -121,7 +121,7 @@ namespace triagens {
 
 
       void slurp (string const& filename, StringBuffer& result) {
-        int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
+        int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
         if (fd == -1) {
           throwFileReadError(fd, filename);
@@ -154,7 +154,7 @@ namespace triagens {
 
 
       void spit (string const& filename, const char* ptr, size_t len) {
-        int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
+        int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
           throwFileWriteError(fd, filename);
@@ -175,7 +175,7 @@ namespace triagens {
       }
 
       void spit (string const& filename, string const& content) {
-        int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
+        int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
           throwFileWriteError(fd, filename);
@@ -201,7 +201,7 @@ namespace triagens {
 
 
       void spit (string const& filename, StringBuffer const& content) {
-        int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
+        int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
           throwFileWriteError(fd, filename);

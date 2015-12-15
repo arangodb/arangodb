@@ -45,6 +45,9 @@ function nativeLogger(level, levelNum, mount) {
     logLevel = 'info'; // require('console').trace also uses INFO level
   }
   if (NATIVE_LOG_LEVELS.indexOf(logLevel) !== -1) {
+    if (logLevel === 'warn') {
+      logLevel = 'warning'; // require('console').warn uses WARNING level
+    }
     return function (message) {
       arangoConsole._log(logLevel, `${mount} ${message}`);
     };

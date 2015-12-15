@@ -1354,15 +1354,13 @@ log_appender_file_t::log_appender_file_t (char const* contentFilter,
 
   // logging to file
   else {
-    int fd = TRI_CREATE(filename, O_APPEND | O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP);
+    int fd = TRI_CREATE(filename, O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP);
 
     if (fd < 0) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
     }
 
     _fd.store(fd);
-
-    TRI_SetCloseOnExitFile(_fd);
 
     _filename = filename;
   }
@@ -1442,14 +1440,12 @@ void log_appender_file_t::reopenLog () {
   TRI_RenameFile(_filename.c_str(), backup.c_str());
 
   // open new log file
-  int fd = TRI_CREATE(_filename.c_str(), O_APPEND | O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP);
+  int fd = TRI_CREATE(_filename.c_str(), O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd < 0) {
     TRI_RenameFile(backup.c_str(), _filename.c_str());
     return;
   }
-
-  TRI_SetCloseOnExitFile(fd);
 
   int old = std::atomic_exchange(&_fd, fd);
 

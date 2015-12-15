@@ -1793,7 +1793,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
           TRI_UnlinkFile(outfile);
         }
 
-        fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+        fdout = TRI_CREATE(outfile, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
         if (fdout < 0) {
           TRI_Free(TRI_CORE_MEM_ZONE, fqn);

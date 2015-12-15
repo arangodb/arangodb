@@ -300,11 +300,47 @@ function namedGraphSuite () {
       assertEqual(result.length, 2);
       assertEqual(result[0], vertex.F);
       assertEqual(result[1], vertex.D);
+
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function(plan) {
         var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
         assertEqual(jsonResult, result, query);
       });
+    },
+
+    testUniqueEdgesOnPath : function () {
+      var query = "FOR x IN 6 OUTBOUND @startId GRAPH @graph RETURN x._id";
+      var bindVars = {
+        graph: gn,
+        startId: vertex.A
+      };
+      // No result A->B->C->F->E->B (->C) is already used!
+      result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 0);
+
+      query = "FOR x IN 2 ANY @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+      result = db._query(query, bindVars).toArray();
+
+      // result: A->B->C
+      // result: A->B<-E
+      // Invalid result: A->B<-A
+      assertEqual(result.length, 2);
+      assertEqual(result[0], vertex.C);
+      assertEqual(result[1], vertex.E);
+
+      query = `FOR x IN 1 ANY @startId GRAPH @graph
+               FOR y IN 1 ANY x GRAPH @graph
+               SORT y._id ASC RETURN y._id`;
+      result = db._query(query, bindVars).toArray();
+
+      // result: A->B<-A
+      // result: A->B->C
+      // result: A->B<-E
+      // The second traversal resets the path
+      assertEqual(result.length, 3);
+      assertEqual(result[0], vertex.A);
+      assertEqual(result[1], vertex.C);
+      assertEqual(result[2], vertex.E);
     }
   };
 }

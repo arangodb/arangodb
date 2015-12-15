@@ -147,7 +147,7 @@ int Logfile::judge (std::string const& filename) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }
 
-  int fd = TRI_OPEN(filename.c_str(), O_RDWR);
+  int fd = TRI_OPEN(filename.c_str(), O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
