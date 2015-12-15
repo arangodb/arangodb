@@ -68,6 +68,7 @@ module.exports = function(hljs) {
           }
         ]
       }
-    ]
+    ],
+    illegal: /#/
   };
 };

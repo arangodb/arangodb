@@ -19,7 +19,8 @@ module.exports = function (config) {
         logLevel: config.LOG_INFO,
         autoWatch: true,
         // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-        browsers: ['Firefox', 'ChromeCanary', 'Opera', 'Safari', 'PhantomJS'],
+        //browsers: ['Firefox', 'ChromeCanary', 'Opera', 'Safari'],
+        browsers: ['PhantomJS2'],
         singleRun: false
     });
 };

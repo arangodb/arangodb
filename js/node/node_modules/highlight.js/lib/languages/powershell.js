@@ -3,10 +3,6 @@ module.exports = function(hljs) {
     begin: '`[\\s\\S]',
     relevance: 0
   };
-  var dollarEscape = {
-    begin: '\\$\\$[\\s\\S]',
-    relevance: 0
-  };
   var VAR = {
     className: 'variable',
     variants: [

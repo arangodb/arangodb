@@ -1,3 +1,9 @@
+1.0.3 / 2015-10-27
+------------------
+
+* Fix parse `=` in args: `--examplepath="C:\myfolder\env=x64"`. #84, @CatWithApple.
+
+
 1.0.2 / 2015-03-22
 ------------------
 

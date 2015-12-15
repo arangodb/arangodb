@@ -11,6 +11,7 @@
  *
  * Copyright (c) 2010-2013 Christian Johansen
  */
+/*eslint-disable strict, no-inner-declarations, no-unused-vars*/
 if (typeof window !== "undefined") {
     function setTimeout() {}
     function clearTimeout() {}
@@ -22,11 +23,13 @@ if (typeof window !== "undefined") {
 
     // Reassign the original functions. Now their writable attribute
     // should be true. Hackish, I know, but it works.
+    /*global sinon*/
     setTimeout = sinon.timers.setTimeout;
     clearTimeout = sinon.timers.clearTimeout;
     setImmediate = sinon.timers.setImmediate;
     clearImmediate = sinon.timers.clearImmediate;
     setInterval = sinon.timers.setInterval;
     clearInterval = sinon.timers.clearInterval;
-    Date = sinon.timers.Date;
+    Date = sinon.timers.Date; // eslint-disable-line no-native-reassign
 }
+/*eslint-enable no-inner-declarations*/

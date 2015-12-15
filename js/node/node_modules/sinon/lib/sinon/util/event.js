@@ -10,13 +10,13 @@
  *
  * Copyright (c) 2011 Sven Fuchs, Christian Johansen
  */
-"use strict";
-
-if (typeof sinon == "undefined") {
+if (typeof sinon === "undefined") {
     this.sinon = {};
 }
 
 (function () {
+    "use strict";
+
     var push = [].push;
 
     function makeApi(sinon) {
@@ -48,7 +48,7 @@ if (typeof sinon == "undefined") {
 
         sinon.ProgressEvent.prototype = new sinon.Event();
 
-        sinon.ProgressEvent.prototype.constructor =  sinon.ProgressEvent;
+        sinon.ProgressEvent.prototype.constructor = sinon.ProgressEvent;
 
         sinon.CustomEvent = function CustomEvent(type, customData, target) {
             this.initEvent(type, false, false, target);
@@ -57,7 +57,7 @@ if (typeof sinon == "undefined") {
 
         sinon.CustomEvent.prototype = new sinon.Event();
 
-        sinon.CustomEvent.prototype.constructor =  sinon.CustomEvent;
+        sinon.CustomEvent.prototype.constructor = sinon.CustomEvent;
 
         sinon.EventTarget = {
             addEventListener: function addEventListener(event, listener) {
@@ -70,7 +70,7 @@ if (typeof sinon == "undefined") {
                 var listeners = this.eventListeners && this.eventListeners[event] || [];
 
                 for (var i = 0, l = listeners.length; i < l; ++i) {
-                    if (listeners[i] == listener) {
+                    if (listeners[i] === listener) {
                         return listeners.splice(i, 1);
                     }
                 }
@@ -81,7 +81,7 @@ if (typeof sinon == "undefined") {
                 var listeners = this.eventListeners && this.eventListeners[type] || [];
 
                 for (var i = 0; i < listeners.length; i++) {
-                    if (typeof listeners[i] == "function") {
+                    if (typeof listeners[i] === "function") {
                         listeners[i].call(this, event);
                     } else {
                         listeners[i].handleEvent(event);
@@ -93,7 +93,7 @@ if (typeof sinon == "undefined") {
         };
     }
 
-    var isNode = typeof module !== "undefined" && module.exports && typeof require == "function";
+    var isNode = typeof module !== "undefined" && module.exports && typeof require === "function";
     var isAMD = typeof define === "function" && typeof define.amd === "object" && define.amd;
 
     function loadDependencies(require) {
@@ -106,6 +106,6 @@ if (typeof sinon == "undefined") {
     } else if (isNode) {
         loadDependencies(require);
     } else {
-        makeApi(sinon);
+        makeApi(sinon); // eslint-disable-line no-undef
     }
 }());

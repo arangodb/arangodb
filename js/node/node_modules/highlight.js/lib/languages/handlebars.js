@@ -3,7 +3,7 @@ module.exports = function(hljs) {
   return {
     aliases: ['hbs', 'html.hbs', 'html.handlebars'],
     case_insensitive: true,
-    subLanguage: 'xml', subLanguageMode: 'continuous',
+    subLanguage: 'xml',
     contains: [
       {
         className: 'expression',

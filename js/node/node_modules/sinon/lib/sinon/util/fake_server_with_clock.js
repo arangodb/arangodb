@@ -16,9 +16,9 @@
  *
  * Copyright (c) 2010-2013 Christian Johansen
  */
-"use strict";
-
 (function () {
+    "use strict";
+
     function makeApi(sinon) {
         function Server() {}
         Server.prototype = sinon.fakeServer;
@@ -27,7 +27,7 @@
 
         sinon.fakeServerWithClock.addRequest = function addRequest(xhr) {
             if (xhr.async) {
-                if (typeof setTimeout.clock == "object") {
+                if (typeof setTimeout.clock === "object") {
                     this.clock = setTimeout.clock;
                 } else {
                     this.clock = sinon.useFakeTimers();
@@ -81,7 +81,7 @@
         };
     }
 
-    var isNode = typeof module !== "undefined" && module.exports && typeof require == "function";
+    var isNode = typeof module !== "undefined" && module.exports && typeof require === "function";
     var isAMD = typeof define === "function" && typeof define.amd === "object" && define.amd;
 
     function loadDependencies(require) {
@@ -96,6 +96,6 @@
     } else if (isNode) {
         loadDependencies(require);
     } else {
-        makeApi(sinon);
+        makeApi(sinon); // eslint-disable-line no-undef
     }
 }());
