@@ -214,13 +214,8 @@ module.exports = function(hljs) {
         begin: '`', end: '`',
         contains: [hljs.BACKSLASH_ESCAPE]
       },
-      {
-        className: 'variable',
-        variants: [
-          {begin: '\\$\\d'},
-          {begin: '[\\$\\%\\@](\\^\\w\\b|#\\w+|[^\\s\\w{]|{\\w+}|\\w+)'},
-          {begin: '\\*(\\^\\w\\b|#\\w+|[^\\s\\w{]|{\\w+}|\\w+)', relevance: 0}
-        ]
+      { // eats variables
+        begin: '[\\$\\%\\@](\\^\\w\\b|#\\w+|[^\\s\\w{]|{\\w+}|\\w+)'
       },
       hljs.C_LINE_COMMENT_MODE,
       hljs.C_BLOCK_COMMENT_MODE

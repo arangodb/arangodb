@@ -25,7 +25,7 @@ module.exports = function(hljs) {
         'ocr1bh ocr1bl icr1h icr1l tccr2 tcnt2 ocr2 ocdr wdtcr sfior eearh eearl eedr eecr ' +
         'porta ddra pina portb ddrb pinb portc ddrc pinc portd ddrd pind spdr spsr spcr udr0 ' +
         'ucsr0a ucsr0b ubrr0l acsr admux adcsr adch adcl porte ddre pine pinf',
-      preprocessor:
+      meta:
         '.byte .cseg .db .def .device .dseg .dw .endmacro .equ .eseg .exit .include .list ' +
         '.listmac .macro .nolist .org .set'
     },
@@ -50,10 +50,10 @@ module.exports = function(hljs) {
         begin: '\'', end: '[^\\\\]\'',
         illegal: '[^\\\\][^\']'
       },
-      {className: 'label',  begin: '^[A-Za-z0-9_.$]+:'},
-      {className: 'preprocessor', begin: '#', end: '$'},
+      {className: 'symbol',  begin: '^[A-Za-z0-9_.$]+:'},
+      {className: 'meta', begin: '#', end: '$'},
       {  // подстановка в «.macro»
-        className: 'localvars',
+        className: 'subst',
         begin: '@[0-9]+'
       }
     ]

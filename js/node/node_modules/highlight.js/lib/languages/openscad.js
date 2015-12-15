@@ -14,8 +14,8 @@ module.exports = function(hljs) {
 	},
 	STRING = hljs.inherit(hljs.QUOTE_STRING_MODE,{illegal: null}),
 	PREPRO = {
-		className: 'preprocessor',
-		keywords: 'include use',
+		className: 'meta',
+		keywords: {'meta-keyword': 'include use'},
 		begin: 'include|use <',
 		end: '>'
 	},
@@ -25,7 +25,6 @@ module.exports = function(hljs) {
 		contains: ['self', NUMBERS, STRING, SPECIAL_VARS, LITERALS]
 	},
 	MODIFIERS = {
-		className: 'built_in',
 		begin: '[*!#%]',
 		relevance: 0
 	},

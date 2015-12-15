@@ -4,7 +4,7 @@ function(hljs) {
     case_insensitive: true,
     contains: [
       {
-        className: 'doctype',
+        className: 'meta',
         begin: '^!!!( (5|1\\.1|Strict|Frameset|Basic|Mobile|RDFa|XML\\b.*))?$',
         relevance: 10
       },
@@ -28,27 +28,29 @@ function(hljs) {
         begin: '^\\s*%',
         contains: [
           {
-            className: 'title',
+            className: 'selector-tag',
             begin: '\\w+'
           },
           {
-            className: 'value',
-            begin: '[#\\.][\\w-]+'
+            className: 'selector-id',
+            begin: '#[\\w-]+'
+          },
+          {
+            className: 'selector-class',
+            begin: '\\.[\\w-]+'
           },
           {
             begin: '{\\s*',
             end: '\\s*}',
-            excludeEnd: true,
             contains: [
               {
-                //className: 'attribute',
                 begin: ':\\w+\\s*=>',
                 end: ',\\s+',
                 returnBegin: true,
                 endsWithParent: true,
                 contains: [
                   {
-                    className: 'symbol',
+                    className: 'attr',
                     begin: ':\\w+'
                   },
                   hljs.APOS_STRING_MODE,
@@ -67,14 +69,13 @@ function(hljs) {
             excludeEnd: true,
             contains: [
               {
-                //className: 'attribute',
                 begin: '\\w+\\s*=',
                 end: '\\s+',
                 returnBegin: true,
                 endsWithParent: true,
                 contains: [
                   {
-                    className: 'attribute',
+                    className: 'attr',
                     begin: '\\w+',
                     relevance: 0
                   },
@@ -91,9 +92,7 @@ function(hljs) {
         ]
       },
       {
-        className: 'bullet',
-        begin: '^\\s*[=~]\\s*',
-        relevance: 0
+        begin: '^\\s*[=~]\\s*'
       },
       {
         begin: '#{',

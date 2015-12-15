@@ -62,7 +62,7 @@ module.exports = function(hljs) {
       ]
     },
     {
-      className: 'pi',
+      className: 'regexp',
       variants: [
         {
           begin: '//', end: '//[gim]*',
@@ -76,7 +76,6 @@ module.exports = function(hljs) {
       ]
     },
     {
-      className: 'property',
       begin: '@' + JS_IDENT_RE
     },
     {
@@ -140,7 +139,6 @@ module.exports = function(hljs) {
         ]
       },
       {
-        className: 'attribute',
         begin: JS_IDENT_RE + ':', end: ':',
         returnBegin: true, returnEnd: true,
         relevance: 0

@@ -49,7 +49,7 @@ module.exports = function(hljs) {
       hljs.QUOTE_STRING_MODE,
       hljs.C_NUMBER_MODE,
       {
-        className: 'array',
+        className: 'literal',
         variants: [
           {begin: '#\\s+[a-zA-Z\\ \\.]*', relevance: 0}, // looks like #-comment
           {begin: '#[a-zA-Z\\ \\.]+'}
