@@ -1334,7 +1334,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       const EnumeratedPath<edgeIdentifier, vertexIdentifier>& next () {
-        if (_lastEdges.size() == 0) {
+        if (_lastEdges.empty()) {
           _enumeratedPath.edges.clear();
           _enumeratedPath.vertices.clear();
           return _enumeratedPath;
@@ -1348,17 +1348,18 @@ namespace triagens {
           vertexIdentifier v;
           bool isValid = _getVertex(_enumeratedPath.edges.back(), _enumeratedPath.vertices.back(), _enumeratedPath.vertices.size(), v);
           _enumeratedPath.vertices.push_back(v);
-          TRI_ASSERT(_enumeratedPath.vertices.size() == _enumeratedPath.edges.size() + 1);
           if (! isValid) {
             prune();
             return next();
           }
-        } else {
-          if (_enumeratedPath.edges.size() == 0) {
+        } 
+        else {
+          if (_enumeratedPath.edges.empty()) {
             // We are done with enumerating paths
             _enumeratedPath.edges.clear();
             _enumeratedPath.vertices.clear();
-          } else {
+          } 
+          else {
             prune();
             return next();
           }
@@ -1372,11 +1373,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void prune () {
-        if (_lastEdges.size() > 0) {
+        if (! _lastEdges.empty()) {
           _lastEdges.pop();
           _lastEdgesDir.pop();
           _lastEdgesIdx.pop();
-          if (_enumeratedPath.edges.size() > 0) {
+          if (! _enumeratedPath.edges.empty()) {
             _enumeratedPath.edges.pop_back();
             _enumeratedPath.vertices.pop_back();
           }
@@ -1440,9 +1441,9 @@ namespace triagens {
 
       public:
 
-        ConstDistanceFinder (ExpanderFunction left, ExpanderFunction right) :
-          _leftNeighborExpander(left),
-          _rightNeighborExpander(right) {
+        ConstDistanceFinder (ExpanderFunction left, ExpanderFunction right) 
+          : _leftNeighborExpander(left),
+            _rightNeighborExpander(right) {
         }
 
         ~ConstDistanceFinder () {
@@ -1472,7 +1473,7 @@ namespace triagens {
 
           std::vector<EdgeId> edges;
           std::vector<VertexId> neighbors;
-          while (_leftClosure.size() > 0 && _rightClosure.size() > 0) {
+          while (! _leftClosure.empty() && ! _rightClosure.empty()) {
             edges.clear();
             neighbors.clear();
             std::deque<VertexId> _nextClosure;
@@ -1557,7 +1558,6 @@ namespace triagens {
     };
   }
 }
-
 
 #endif
 
