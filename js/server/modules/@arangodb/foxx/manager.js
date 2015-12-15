@@ -59,7 +59,7 @@ const cluster = require('@arangodb/cluster');
 const download = require('internal').download;
 const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
 const actions = require('@arangodb/actions');
-const plainServerVersion = require("@arangodb").plainServerVersion;
+const plainServerVersion = require('@arangodb').plainServerVersion;
 const _ = require('underscore');
 
 const throwDownloadError = arangodb.throwDownloadError;
