@@ -524,7 +524,7 @@ static inline Json ExpandShapedJson (VocShaper* shaper,
 ///        Returns null if the document does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-static Json readDocument (triagens::arango::AqlTransaction* trx,
+static Json ReadDocument (triagens::arango::AqlTransaction* trx,
                           CollectionNameResolver const* resolver,
                           TRI_voc_cid_t cid,
                           char const* key) {
@@ -607,6 +607,7 @@ static void RequestEdges (triagens::basics::Json const& vertexJson,
     // Return (error for illegal input is thrown outside
     return;
   }
+
   std::vector<std::string> parts = triagens::basics::StringUtils::split(vertexId, "/");
   if (parts.size() != 2) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD, vertexId);
@@ -618,6 +619,7 @@ static void RequestEdges (triagens::basics::Json const& vertexJson,
                                   "'%s'",
                                   parts[0].c_str());
   }
+
   char* key = const_cast<char*>(parts[1].c_str());
   std::vector<TRI_doc_mptr_copy_t> edges = TRI_LookupEdgesDocumentCollection(
     collection,
@@ -638,8 +640,8 @@ static void RequestEdges (triagens::basics::Json const& vertexJson,
         cid,
         &(edges[i])
       ));
-      char const* targetKey;
-      TRI_voc_cid_t targetCid;
+      char const* targetKey = nullptr;
+      TRI_voc_cid_t targetCid = 0;
 
       switch (direction) {
         case TRI_EDGE_OUT:
@@ -656,11 +658,16 @@ static void RequestEdges (triagens::basics::Json const& vertexJson,
           if (targetCid == startCid && strcmp(targetKey, key) == 0) {
             targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
             targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
-          }; 
+          } 
           break;
       }
 
-      resultPair.set("vertex", readDocument(trx, resolver, targetCid, targetKey));
+      if (targetKey == nullptr || targetCid == 0) {
+        // somehow invalid
+        continue;
+      }
+
+      resultPair.set("vertex", ReadDocument(trx, resolver, targetCid, targetKey));
       result.add(resultPair);
     }
   }
@@ -675,9 +682,6 @@ static void RequestEdges (triagens::basics::Json const& vertexJson,
     }
   }
 }
-
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      AQL functions public helpers
