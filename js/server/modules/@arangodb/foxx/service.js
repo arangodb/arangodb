@@ -37,6 +37,8 @@ const path = require('path');
 const fs = require('fs');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
+const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
+const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
 const APP_PATH = internal.appPath ? path.resolve(internal.appPath) : undefined;
 const STARTUP_PATH = internal.startupPath ? path.resolve(internal.startupPath) : undefined;
@@ -232,8 +234,8 @@ class FoxxService {
     const foxxConsole = require('@arangodb/foxx/console')(this.mount);
     this.main = new Module(`foxx:${data.mount}`);
     this.main.filename = path.resolve(moduleRoot, '.foxx');
-    this.main.root = moduleRoot;
-    this.main._context.console = foxxConsole;
+    this.main[$_MODULE_ROOT] = moduleRoot;
+    this.main[$_MODULE_CONTEXT].console = foxxConsole;
     this.main.require.cache = this.requireCache;
     this.main.context = new FoxxContext(this);
   }
@@ -384,10 +386,10 @@ class FoxxService {
 
   run(filename, options) {
     options = options || {};
-    filename = path.resolve(this.main._context.__dirname, filename);
+    filename = path.resolve(this.main[$_MODULE_CONTEXT].__dirname, filename);
 
     var module = new Module(filename, this.main);
-    module._context.console = this.main._context.console;
+    module[$_MODULE_CONTEXT].console = this.main[$_MODULE_CONTEXT].console;
     module.context = _.extend(
       new FoxxContext(this),
       this.main.context,
@@ -400,7 +402,7 @@ class FoxxService {
 
     if (options.context) {
       Object.keys(options.context).forEach(function (key) {
-        module._context[key] = options.context[key];
+        module[$_MODULE_CONTEXT][key] = options.context[key];
       });
     }
 

@@ -65,6 +65,8 @@ const console = NATIVE_MODULES.console;
 delete global.SCAFFOLDING_MODULES;
 delete global.DEFINE_MODULE;
 const LOADING = [];
+const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
+const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
 const GLOBAL_PATHS = [];
 global.MODULES_PATH.forEach(function (p) {
@@ -117,7 +119,7 @@ function Module(id, parent) {
     parent.children.push(this);
   }
 
-  Object.defineProperty(this, '_context', {
+  Object.defineProperty(this, $_MODULE_CONTEXT, {
     value: {
       print: internal.print,
       process: NATIVE_MODULES.process,
@@ -133,11 +135,11 @@ function Module(id, parent) {
   if (parent) {
     this.context = parent.context;
     this.require.cache = parent.require.cache;
-    this.root = parent.root;
+    this[$_MODULE_ROOT] = parent[$_MODULE_ROOT];
     this.preprocess = parent.preprocess;
-    Object.keys(parent._context).forEach(function (key) {
-      if (!hasOwnProperty(this._context, key)) {
-        this._context[key] = parent._context[key];
+    Object.keys(parent[$_MODULE_CONTEXT]).forEach(function (key) {
+      if (!hasOwnProperty(this[$_MODULE_CONTEXT], key)) {
+        this[$_MODULE_CONTEXT][key] = parent[$_MODULE_CONTEXT][key];
       }
     }.bind(this));
   }
@@ -146,11 +148,11 @@ function Module(id, parent) {
     configurable: true,
     enumerable: true,
     get() {
-      return this._context.__filename;
+      return this[$_MODULE_CONTEXT].__filename;
     },
     set(filename) {
-      this._context.__filename = filename;
-      this._context.__dirname = filename === null ? null : path.dirname(filename);
+      this[$_MODULE_CONTEXT].__filename = filename;
+      this[$_MODULE_CONTEXT].__dirname = filename === null ? null : path.dirname(filename);
     }
   });
 
@@ -519,7 +521,7 @@ Module._resolveFilename = function(request, parent) {
 Module.prototype.load = function(filename) {
   assert(!this.loaded);
   this.filename = filename;
-  this.paths = Module._nodeModulePaths(path.dirname(filename), this.root);
+  this.paths = Module._nodeModulePaths(path.dirname(filename), this[$_MODULE_ROOT]);
 
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
@@ -559,7 +561,7 @@ Module.prototype._compile = function(content, filename) {
 
   this.filename = filename;
 
-  var args = this._context;
+  var args = this[$_MODULE_CONTEXT];
   var keys = Object.keys(args);
   // Do not use Function constructor or line numbers will be wrong
   var wrapper = `(function (${keys.join(', ')}) {${content}\n})`;
