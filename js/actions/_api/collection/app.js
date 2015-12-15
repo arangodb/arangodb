@@ -1464,7 +1464,7 @@ function put_api_collection_properties (req, res, collection) {
 ///
 /// - *name*: The new name.
 ///
-/// If returns an object with the attributes
+/// It returns an object with the attributes
 ///
 /// - *id*: The identifier of the collection.
 ///
@@ -1477,6 +1477,11 @@ function put_api_collection_properties (req, res, collection) {
 ///   - 3: edges collection
 ///
 /// - *isSystem*: If *true* then the collection is a system collection.
+///
+/// If renaming the collection succeeds, then the collection is also renamed in 
+/// all graph definitions inside the `_graphs` collection in the current database.
+///
+/// **Note**: this method is not available in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1552,7 +1557,7 @@ function put_api_collection_rename (req, res, collection) {
 /// Saving new data in the collection subsequently will create a new journal file
 /// automatically if there is no current journal.
 ///
-/// If returns an object with the attributes
+/// It returns an object with the attributes
 ///
 /// - *result*: will be *true* if rotation succeeded
 ///

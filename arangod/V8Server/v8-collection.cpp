@@ -2485,6 +2485,8 @@ static int RenameGraphCollections (v8::Isolate* isolate,
 /// to the [naming conventions](../NamingConventions/README.md).
 ///
 /// If renaming fails for any reason, an error is thrown.
+/// If renaming the collection succeeds, then the collection is also renamed in 
+/// all graph definitions inside the `_graphs` collection in the current database.
 ///
 /// **Note**: this method is not available in a cluster.
 ///
