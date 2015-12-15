@@ -29,12 +29,7 @@ module.define("@arangodb/general-graph", function(exports, module) {
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< 821b807484cc4e848dd44a5c4153d613f21f56c1:js/common/modules/org/arangodb/general-graph.js
-var arangodb = require("org/arangodb"),
-=======
-
 var arangodb = require("@arangodb"),
->>>>>>> org/arangodb -> @arangodb:js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/general-graph.js
   internal = require("internal"),
   ArangoCollection = arangodb.ArangoCollection,
   ArangoError = arangodb.ArangoError,
