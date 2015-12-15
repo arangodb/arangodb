@@ -482,6 +482,198 @@ static bool SortNumberList (Json const& values, std::vector<double>& result) {
   return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Expands a shaped Json
+////////////////////////////////////////////////////////////////////////////////
+
+static inline Json ExpandShapedJson (VocShaper* shaper,
+                                     CollectionNameResolver const* resolver,
+                                     TRI_voc_cid_t const& cid,
+                                     TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+
+  TRI_shaped_json_t shaped;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
+  Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+  char const* key = TRI_EXTRACT_MARKER_KEY(marker);
+  std::string id(resolver->getCollectionName(cid));
+  id.push_back('/');
+  id.append(key);
+  json(TRI_VOC_ATTRIBUTE_ID, Json(id));
+  json(TRI_VOC_ATTRIBUTE_REV, Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+  json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
+
+  if (TRI_IS_EDGE_MARKER(marker)) {
+    std::string from(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(marker)));
+    from.push_back('/');
+    from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
+    json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
+    std::string to(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
+
+    to.push_back('/');
+    to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
+    json(TRI_VOC_ATTRIBUTE_TO, Json(to));
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads a document by cid and key
+///        Also lazy locks the collection.
+///        Returns null if the document does not exist
+////////////////////////////////////////////////////////////////////////////////
+
+static Json readDocument (triagens::arango::AqlTransaction* trx,
+                          CollectionNameResolver const* resolver,
+                          TRI_voc_cid_t cid,
+                          char const* key) {
+  auto collection = trx->trxCollection(cid);
+
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
+    }
+  }
+  
+  TRI_doc_mptr_copy_t mptr;
+  int res = trx->readSingle(collection, &mptr, key); 
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return Json(Json::Null);
+  }
+
+  return ExpandShapedJson(
+    collection->_collection->_collection->getShaper(),
+    resolver,
+    cid,
+    &mptr
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function to filter the given list of mptr
+////////////////////////////////////////////////////////////////////////////////
+
+static void FilterDocuments (triagens::arango::ExampleMatcher const* matcher,
+                             TRI_voc_cid_t cid,
+                             std::vector<TRI_doc_mptr_copy_t>& toFilter) {
+  if (matcher == nullptr) {
+    return;
+  }
+  size_t resultCount = toFilter.size();
+  for (size_t i = 0; i < resultCount; /* nothing */) {
+    if (! matcher->matches(cid, &toFilter[i])) {
+      toFilter.erase(toFilter.begin() + i);
+      --resultCount;
+    }
+    else {
+      ++i;
+    }
+  }
+}
+
+static void RequestEdges (triagens::basics::Json const& vertexJson,
+                          triagens::arango::AqlTransaction* trx,
+                          CollectionNameResolver const* resolver,
+                          VocShaper* shaper,
+                          TRI_voc_cid_t cid,
+                          TRI_document_collection_t* collection,
+                          TRI_edge_direction_e direction,
+                          triagens::arango::ExampleMatcher const* matcher,
+                          bool includeVertices,
+                          triagens::basics::Json& result) {
+  if (! vertexJson.isString()) {
+    // Nothing to do.
+    // Return (error for illegal input is thrown outside
+    return;
+  }
+  // TODO Check vertexJson is string
+  std::string vertexId = triagens::basics::JsonHelper::getStringValue(vertexJson.json(), "");
+  std::vector<std::string> parts = triagens::basics::StringUtils::split(vertexId, "/");
+  if (parts.size() != 2) {
+    return;
+  }
+
+  TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
+  if (startCid == 0) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                  "'%s'",
+                                  parts[0].c_str());
+  }
+  char* key = const_cast<char*>(parts[1].c_str());
+  std::vector<TRI_doc_mptr_copy_t> edges = TRI_LookupEdgesDocumentCollection(
+    collection,
+    direction,
+    startCid,
+    key
+  );
+  FilterDocuments(matcher, cid, edges);
+  size_t resultCount = edges.size();
+  result.reserve(resultCount);
+
+  if (includeVertices) {
+    for (size_t i = 0; i < resultCount; ++i) {
+      Json resultPair(Json::Object, 2);
+      resultPair.set("edge", ExpandShapedJson(
+        shaper,
+        resolver,
+        cid,
+        &(edges[i])
+      ));
+      char const* targetKey;
+      TRI_voc_cid_t targetCid;
+
+      switch (direction) {
+        case TRI_EDGE_OUT:
+          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
+          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
+          break;
+        case TRI_EDGE_IN:
+          targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
+          targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
+          break;
+        case TRI_EDGE_ANY:
+          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
+          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
+          if (targetCid == startCid && strcmp(targetKey, key) == 0) {
+            targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
+            targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
+          }; 
+          break;
+      }
+
+      resultPair.set("vertex", readDocument(trx, resolver, targetCid, targetKey));
+      result.add(resultPair);
+    }
+  }
+  else {
+    for (size_t i = 0; i < resultCount; ++i) {
+      result.add(ExpandShapedJson(
+        shaper,
+        resolver,
+        cid,
+        &(edges[i])
+      ));
+    }
+  }
+}
+
+
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      AQL functions public helpers
 // -----------------------------------------------------------------------------
@@ -2096,83 +2288,6 @@ AqlValue Functions::Intersection (triagens::aql::Query* query,
   return AqlValue(jr);
 }
 
-static inline Json ExpandShapedJson (VocShaper* shaper,
-                                     CollectionNameResolver const* resolver,
-                                     TRI_voc_cid_t const& cid,
-                                     TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
-
-  TRI_shaped_json_t shaped;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-  Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
-  char const* key = TRI_EXTRACT_MARKER_KEY(marker);
-  std::string id(resolver->getCollectionName(cid));
-  id.push_back('/');
-  id.append(key);
-  json(TRI_VOC_ATTRIBUTE_ID, Json(id));
-  json(TRI_VOC_ATTRIBUTE_REV, Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
-  json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
-
-  if (TRI_IS_EDGE_MARKER(marker)) {
-    std::string from(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(marker)));
-    from.push_back('/');
-    from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
-    json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
-    std::string to(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
-
-    to.push_back('/');
-    to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
-    json(TRI_VOC_ATTRIBUTE_TO, Json(to));
-  }
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Reads a document by cid and key
-///        Also lazy locks the collection.
-///        Returns null if the document does not exist
-////////////////////////////////////////////////////////////////////////////////
-
-static Json readDocument (triagens::arango::AqlTransaction* trx,
-                          CollectionNameResolver const* resolver,
-                          TRI_voc_cid_t cid,
-                          char const* key) {
-  auto collection = trx->trxCollection(cid);
-
-  if (collection == nullptr) {
-    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
-                                           cid,
-                                           TRI_TRANSACTION_READ,
-                                           trx->nestingLevel(),
-                                           true,
-                                           true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    TRI_EnsureCollectionsTransaction(trx->getInternals());
-    collection = trx->trxCollection(cid);
-
-    if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
-    }
-  }
-  
-  TRI_doc_mptr_copy_t mptr;
-  int res = trx->readSingle(collection, &mptr, key); 
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Json(Json::Null);
-  }
-
-  return ExpandShapedJson(
-    collection->_collection->_collection->getShaper(),
-    resolver,
-    cid,
-    &mptr
-  );
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms VertexId to Json
 ////////////////////////////////////////////////////////////////////////////////
@@ -3234,18 +3349,11 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
   }
 
   Json vertexJson = ExtractFunctionParameter(trx, parameters, 1, false);
-  if (! vertexJson.isString()) {
+  if ( ! vertexJson.isArray() && ! vertexJson.isString()) {
     // Invalid Start vertex
+    // Early Abort before parsing other parameters
     return AqlValue(new Json(Json::Null));
   }
-
-  std::string vertexId = basics::JsonHelper::getStringValue(vertexJson.json(), "");
-  std::vector<std::string> parts = triagens::basics::StringUtils::split(vertexId, "/");
-  if (parts.size() != 2) {
-    // Invalid Start vertex
-    return AqlValue(new Json(Json::Null));
-  }
-
 
   Json directionJson = ExtractFunctionParameter(trx, parameters, 2, false);
   if (! directionJson.isString()) {
@@ -3272,25 +3380,9 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
     return AqlValue(new Json(Json::Null));
   }
   auto resolver = trx->resolver();
-  
-  TRI_voc_cid_t startCid = resolver->getCollectionId(parts[0]);
-  if (startCid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "'%s'",
-                                  parts[0].c_str());
-  }
-
-  char* key = const_cast<char*>(parts[1].c_str());
-  std::vector<TRI_doc_mptr_copy_t> edges = TRI_LookupEdgesDocumentCollection(
-    collection->_collection->_collection,
-    direction,
-    startCid,
-    key
-  );
-
-  size_t resultCount = edges.size();
 
   auto shaper = collection->_collection->_collection->getShaper();
+  std::unique_ptr<triagens::arango::ExampleMatcher> matcher;
   if (n > 3) {
     // We might have examples
     Json exampleJson = ExtractFunctionParameter(trx, parameters, 3, false);
@@ -3331,29 +3423,21 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
       }
       if (buildMatcher) {
         try {
-          triagens::arango::ExampleMatcher matcher(exampleJson.json(), shaper, resolver);
-          for (size_t i = 0; i < resultCount; /* nothing */) {
-            if (! matcher.matches(cid, &edges[i])) {
-              edges.erase(edges.begin() + i);
-              --resultCount;
-            }
-            else {
-              ++i;
-            }
-          }
+          matcher.reset(new triagens::arango::ExampleMatcher(exampleJson.json(), shaper, resolver));
         }
         catch (triagens::basics::Exception const& e) {
           if (e.code() != TRI_RESULT_ELEMENT_NOT_FOUND) {
             throw;
           }
-          // Illegal match, we cannot filter anything
-          edges.clear();
-          resultCount = 0;
+          // We can never fulfill this filter!
+          // RETURN empty Array
+          Json result(Json::Array, 0);
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
         }
       }
     }
   }
-  
+
   bool includeVertices = false;
   if (n == 5) {
     // We have options
@@ -3363,55 +3447,34 @@ AqlValue Functions::Edges (triagens::aql::Query* query,
     }
   }
 
-  if (includeVertices) {
-    Json result(Json::Array, resultCount);
-
-    for (size_t i = 0; i < resultCount; ++i) {
-      Json resultPair(Json::Object, 2);
-      resultPair.set("edge", ExpandShapedJson(
-        shaper,
-        resolver,
-        cid,
-        &(edges[i])
-      ));
-      char const* targetKey;
-      TRI_voc_cid_t targetCid;
-
-      switch (direction) {
-        case TRI_EDGE_OUT:
-          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
-          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
-          break;
-        case TRI_EDGE_IN:
-          targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
-          targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
-          break;
-        case TRI_EDGE_ANY:
-          targetKey = TRI_EXTRACT_MARKER_TO_KEY(&edges[i]);
-          targetCid = TRI_EXTRACT_MARKER_TO_CID(&edges[i]);
-          if (targetCid == startCid && strcmp(targetKey, key) == 0) {
-            targetKey = TRI_EXTRACT_MARKER_FROM_KEY(&edges[i]);
-            targetCid = TRI_EXTRACT_MARKER_FROM_CID(&edges[i]);
-          }; 
-          break;
-      }
-
-      resultPair.set("vertex", readDocument(trx, resolver, targetCid, targetKey));
-      result.add(resultPair);
+  Json result(Json::Array, 0);
+  if (vertexJson.isArray()) {
+    size_t length = vertexJson.size();
+    for (size_t i = 0; i < length; ++i) {
+      RequestEdges(vertexJson.at(i),
+                   trx,
+                   resolver,
+                   shaper,
+                   cid,
+                   collection->_collection->_collection,
+                   direction,
+                   matcher.get(),
+                   includeVertices,
+                   result);
     }
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
   }
-  Json result(Json::Array, resultCount);
-
-  for (size_t i = 0; i < resultCount; ++i) {
-    result.add(ExpandShapedJson(
-      shaper,
-      resolver,
-      cid,
-      &(edges[i])
-    ));
+  else {
+    RequestEdges(vertexJson,
+                 trx,
+                 resolver,
+                 shaper,
+                 cid,
+                 collection->_collection->_collection,
+                 direction,
+                 matcher.get(),
+                 includeVertices,
+                 result);
   }
-
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, result.steal()));
 }
 
