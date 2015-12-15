@@ -135,15 +135,20 @@ bool ClientConnection::connectSocket () {
 
   if (_endpoint->isConnected()) {
     _endpoint->disconnect();
+    _isConnected = false;
   }
 
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
   if (! TRI_isvalidsocket(_socket)) {
     _errorDetails = _endpoint->_errorMessage; 
+    _isConnected = false;
     return false;
   }
+    
+  _isConnected = true;
 
+  // note: checkSocket will disconnect the socket if the check fails
   if (checkSocket()) {
     return _endpoint->isConnected();
   }

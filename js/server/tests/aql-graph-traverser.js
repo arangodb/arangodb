@@ -869,7 +869,7 @@ function complexInternaSuite () {
     },
 
     testMultipleBlocksResult: function () {
-      var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
+      var query = "FOR x IN OUTBOUND @startId @@eCol SORT x._key RETURN x";
       var amount = 10000;
       var startId = vn + "/test";
       var bindVars = {
