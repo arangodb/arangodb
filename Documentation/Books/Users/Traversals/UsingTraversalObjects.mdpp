@@ -4,8 +4,8 @@ To use a traversal object, we first need to require the *traversal* module:
 
 
 ```js
-var traversal = require("org/arangodb/graph/traversal");
-var examples = require("org/arangodb/graph-examples/example-graph.js");
+var traversal = require("@arangodb/graph/traversal");
+var examples = require("@arangodb/graph-examples/example-graph.js");
 examples.loadGraph("worldCountry");
 ```
 
@@ -54,7 +54,7 @@ require("internal").print(result.visited.vertices.map(function(vertex) {
 The full script, which includes all steps carried out so far is thus:
 
 ```js
-var traversal = require("org/arangodb/graph/traversal");
+var traversal = require("@arangodb/graph/traversal");
 
 var config = {
   datasource: traversal.generalGraphDatasourceFactory("worldCountry"),
@@ -141,7 +141,7 @@ start the traversal at the *v/world* vertex.
 Still, we can use the outbound expander if we start somewhere else in the graph, e.g. 
 
 ```js
-var traversal = require("org/arangodb/graph/traversal");
+var traversal = require("@arangodb/graph/traversal");
 
 var config = {
   datasource: traversal.generalGraphDatasourceFactory("world_graph"),

@@ -14,7 +14,7 @@ var jasmine = require('jasmine/core'),
   fs = require('fs'),
   Reporter = require('jasmine/reporter').Reporter;
   
-// tasks = require('org/arangodb/tasks');
+// tasks = require('@arangodb/tasks');
 
 jasmine = jasmine.core(jasmine);
 

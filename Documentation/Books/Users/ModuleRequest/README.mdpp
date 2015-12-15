@@ -3,7 +3,7 @@
 The request module provides the functionality for making HTTP requests.
 
 ```js
-require('org/arangodb/request');
+require('@arangodb/request');
 ```
 
 !SECTION Making HTTP requests

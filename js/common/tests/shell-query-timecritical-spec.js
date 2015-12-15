@@ -16,7 +16,7 @@
     var query = "FOR x IN 1..5 LET y = SLEEP(1) RETURN x";
     var internal = require("internal");
     var testee;
-    var tasks = require("org/arangodb/tasks");
+    var tasks = require("@arangodb/tasks");
     var taskInfo = {
       offset: 0,
       command: function () {
@@ -54,7 +54,7 @@
     };
 
     beforeEach(function() {
-      testee = require("org/arangodb/aql/queries");
+      testee = require("@arangodb/aql/queries");
       restoreDefaults(testee);
     });
 

@@ -14,16 +14,16 @@ documents which do not fulfill these requirements.
 
 !SECTION Accessing Geo Indexes from the Shell
 
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock collectionEnsureGeoIndex
 
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionGeo
 
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionNear
 
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionWithin
 
 

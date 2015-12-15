@@ -28,8 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("org/arangodb/actions");
-var foxxManager = require("org/arangodb/foxx/manager");
+var actions = require("@arangodb/actions");
+var foxxManager = require("@arangodb/foxx/manager");
 
 var easyPostCallback = actions.easyPostCallback;
 

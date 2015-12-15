@@ -30,7 +30,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 
 // -----------------------------------------------------------------------------
@@ -284,7 +284,7 @@ function DatabaseSuite () {
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
       internal.db._useDatabase("UnitTestsDatabase0");
-      var userManager = require("org/arangodb/users");
+      var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
 
       assertEqual("admin", user.user);
@@ -321,7 +321,7 @@ function DatabaseSuite () {
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
       internal.db._useDatabase("UnitTestsDatabase0");
-      var userManager = require("org/arangodb/users");
+      var userManager = require("@arangodb/users");
       var user = userManager.document("admin");
       assertEqual("admin", user.user);
       assertTrue(user.active);

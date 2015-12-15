@@ -81,14 +81,14 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* GlobalContextMethods::CodeReloadRouting 
-  = "require(\"org/arangodb/actions\").reloadRouting();"; 
+  = "require(\"@arangodb/actions\").reloadRouting();"; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload AQL functions
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* GlobalContextMethods::CodeReloadAql
-  = "try { require(\"org/arangodb/aql\").reload(); } catch (err) { }";
+  = "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collect garbage
@@ -110,7 +110,7 @@ char const* GlobalContextMethods::CodeBootstrapCoordinator
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* GlobalContextMethods::CodeWarmupExports 
-  = "require(\"org/arangodb/actions\").warmupExports()";
+  = "require(\"@arangodb/actions\").warmupExports()";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we'll store deprecated config option values in here

@@ -30,8 +30,8 @@
 var jsunity = require('jsunity');
 var expect = require('expect.js');
 var util = require('util');
-var Console = require('org/arangodb/foxx/console').Console;
-var db = require('org/arangodb').db;
+var Console = require('@arangodb/foxx/console').Console;
+var db = require('@arangodb').db;
 var qb = require('aqb');
 
 var mountPath = '##TEST##';

@@ -43,6 +43,6 @@ When not in the default database, you must first switch to it using the
 *db._useDatabase* method.
 
 !SUBSECTION List
-<!-- js/server/modules/org/arangodb/arango-database.js -->
+<!-- js/server/modules/@arangodb/arango-database.js -->
 @startDocuBlock listEndpoints
 

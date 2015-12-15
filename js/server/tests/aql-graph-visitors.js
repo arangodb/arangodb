@@ -29,8 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("org/arangodb").db;
-var graph = require("org/arangodb/general-graph");
+var db = require("@arangodb").db;
+var graph = require("@arangodb/general-graph");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for EDGES() function
@@ -39,7 +39,7 @@ var graph = require("org/arangodb/general-graph");
 function ahuacatlGraphVisitorsSuite () {
   var vertex = null;
   var edge   = null;
-  var aqlfunctions = require("org/arangodb/aql/functions");
+  var aqlfunctions = require("@arangodb/aql/functions");
 
   return {
 
@@ -3010,7 +3010,7 @@ function ahuacatlGraphVisitorsSuite () {
 
 /*
     testNeighborsBuiltinHasAnyAttributesVisitor : function () {
-      var graphModule = require("org/arangodb/general-graph");
+      var graphModule = require("@arangodb/general-graph");
 
       try {
         graphModule._drop("UnitTestsAhuacatlGraph");

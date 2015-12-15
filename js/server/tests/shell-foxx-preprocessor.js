@@ -30,8 +30,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity"),
-  preprocess = require("org/arangodb/foxx/preprocessor").preprocess,
-  Preprocessor = require("org/arangodb/foxx/preprocessor").Preprocessor;
+  preprocess = require("@arangodb/foxx/preprocessor").preprocess,
+  Preprocessor = require("@arangodb/foxx/preprocessor").Preprocessor;
 
 // High Level Spec Suite for the preprocess Function
 function PreprocessSpec () {

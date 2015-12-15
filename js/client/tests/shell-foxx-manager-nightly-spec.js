@@ -30,11 +30,11 @@
 
 'use strict';
 
-var FoxxManager = require("org/arangodb/foxx/manager");
+var FoxxManager = require("@arangodb/foxx/manager");
 var fs = require("fs");
 var db = require("internal").db;
 var basePath = fs.makeAbsolute(fs.join(require("internal").startupPath, "common", "test-data", "apps"));
-var arango = require("org/arangodb").arango;
+var arango = require("@arangodb").arango;
 var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
 
 describe("Foxx Manager", function() {

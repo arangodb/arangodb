@@ -29,11 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var internal = require("internal");
 var errors = internal.errors;
-var helper = require("org/arangodb/aql-helper");
-var cluster = require("org/arangodb/cluster");
+var helper = require("@arangodb/aql-helper");
+var cluster = require("@arangodb/cluster");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
 var assertQueryError = helper.assertQueryError;
@@ -1045,7 +1045,7 @@ function ahuacatlQueryShortestPathTestSuite () {
   var vertexCollection;
   var edgeCollection;
 
-  var aqlfunctions = require("org/arangodb/aql/functions");
+  var aqlfunctions = require("@arangodb/aql/functions");
 
   return {
 
@@ -1323,7 +1323,7 @@ function ahuacatlQueryTraversalFilterTestSuite () {
   var vertexCollection;
   var edgeCollection;
       
-  var aqlfunctions = require("org/arangodb/aql/functions");
+  var aqlfunctions = require("@arangodb/aql/functions");
 
   return {
 

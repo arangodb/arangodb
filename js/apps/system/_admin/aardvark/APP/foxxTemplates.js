@@ -29,13 +29,13 @@
 (function() {
   "use strict";
 
-  var FoxxController = require("org/arangodb/foxx").Controller,
+  var FoxxController = require("@arangodb/foxx").Controller,
       UnauthorizedError = require("http-errors").Unauthorized,
       internal = require("internal"),
       Configuration = require("./models/configuration").Model,
       controller = new FoxxController(applicationContext),
       db = require("internal").db,
-      FoxxManager = require("org/arangodb/foxx/manager");
+      FoxxManager = require("@arangodb/foxx/manager");
 
   controller.activateSessions({
     autoCreateSession: false,

@@ -30,10 +30,10 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var arangodb = require("org/arangodb");
-var helper = require("org/arangodb/aql-helper");
+var arangodb = require("@arangodb");
+var helper = require("@arangodb/aql-helper");
 var db = arangodb.db;
-var testHelper = require("org/arangodb/test-helper").Helper;
+var testHelper = require("@arangodb/test-helper").Helper;
 
 var compareStringIds = function (l, r) {
   'use strict';
@@ -1935,7 +1935,7 @@ function transactionGraphSuite () {
   var cn1 = "UnitTestsVertices";
   var cn2 = "UnitTestsEdges";
 
-  var G = require('org/arangodb/graph').Graph; 
+  var G = require('@arangodb/graph').Graph; 
 
   var c1 = null;
   var c2 = null;

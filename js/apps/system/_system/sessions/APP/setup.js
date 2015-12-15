@@ -1,5 +1,5 @@
 'use strict';
-var db = require('org/arangodb').db;
+var db = require('@arangodb').db;
 var collectionName = '_sessions';
 
 if (db._collection(collectionName) === null) {

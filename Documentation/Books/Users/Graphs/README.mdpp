@@ -23,7 +23,7 @@ You [may use AQL Graph Functions](../Aql/GraphFunctions.md) that are a little de
 
 !SUBSECTION Example Graphs
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrace the APIs.
-The module `org/arangodb/graph-examples/example-graph` contains scripts that can be used to create instances of these graphs in your ArangoDB.
+The module `@arangodb/graph-examples/example-graph` contains scripts that can be used to create instances of these graphs in your ArangoDB.
 Once you've created them, you can [inspect them in the webinterface](../WebInterface/README.md#graphs-tab) - which was used to create the pictures below.
 
 !SUBSUBSECTION The Knows\_Graph
@@ -42,7 +42,7 @@ We will have the following directed relations:
 This is how we create it, inspect its *vertices* and *edges*, and drop it again:
     @startDocuBlockInline graph_create_knows_sample
     @EXAMPLE_ARANGOSH_OUTPUT{graph_create_knows_sample}
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var examples = require("@arangodb/graph-examples/example-graph.js");
     var g = examples.loadGraph("knows_graph");
     db.persons.toArray()
     db.knows.toArray();
@@ -61,7 +61,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
 
     @startDocuBlockInline graph_create_social_sample
     @EXAMPLE_ARANGOSH_OUTPUT{graph_create_social_sample}
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var examples = require("@arangodb/graph-examples/example-graph.js");
     var graph = examples.loadGraph("social");
     db.female.toArray()
     db.male.toArray()
@@ -80,7 +80,7 @@ The example has the cities as *vertices* in several *vertex collections* - `germ
 
     @startDocuBlockInline graph_create_cities_sample
     @EXAMPLE_ARANGOSH_OUTPUT{graph_create_cities_sample}
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var examples = require("@arangodb/graph-examples/example-graph.js");
     var g = examples.loadGraph("routeplanner");
     db.frenchCity.toArray();
     db.germanCity.toArray();
@@ -101,7 +101,7 @@ Circles have uniq numeric labels. Edges have two boolean attributes (*theFalse* 
 
     @startDocuBlockInline graph_create_traversal_sample
     @EXAMPLE_ARANGOSH_OUTPUT{graph_create_traversal_sample}
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var examples = require("@arangodb/graph-examples/example-graph.js");
     var g = examples.loadGraph("traversalGraph");
     db.circles.toArray();
     db.edges.toArray();
@@ -115,7 +115,7 @@ It is used to demonstrate raw traversal operations.
 
     @startDocuBlockInline graph_create_world_sample
     @EXAMPLE_ARANGOSH_OUTPUT{graph_create_world_sample}
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var examples = require("@arangodb/graph-examples/example-graph.js");
     var g = examples.loadGraph("worldCountry");
     db.worldVertices.toArray();
     db.worldEdges.toArray();

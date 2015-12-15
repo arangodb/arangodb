@@ -30,8 +30,8 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var testHelper = require("org/arangodb/test-helper").Helper;
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+var testHelper = require("@arangodb/test-helper").Helper;
+var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        compaction

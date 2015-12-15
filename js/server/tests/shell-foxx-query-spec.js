@@ -29,8 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require('underscore'),
-  createQuery = require('org/arangodb/foxx/query').createQuery,
-  arangodb = require('org/arangodb'),
+  createQuery = require('@arangodb/foxx/query').createQuery,
+  arangodb = require('@arangodb'),
   db = arangodb.db;
 
 describe('createQuery(query)', function () {

@@ -53,16 +53,16 @@ The log entries will always contain stacktraces and error messages:
 ERROR Error in foxx route '{ "match" : "/failed", "methods" : [ "get" ] }': 'Unhandled Error', Stacktrace: Error: Unhandled Error
 ERROR   at fail (js/apps/_db/_system/example/APP/app.js:279:13)
 ERROR   at js/apps/_db/_system/example/APP/app.js:284:5
-ERROR   at Object.res.action.callback (./js/server/modules/org/arangodb/foxx/internals.js:108:5)
-ERROR   at ./js/server/modules/org/arangodb/foxx/routing.js:346:19
-ERROR   at execute (./js/server/modules/org/arangodb/actions.js:1291:7)
-ERROR   at next (./js/server/modules/org/arangodb/actions.js:1308:7)
+ERROR   at Object.res.action.callback (./js/server/modules/@arangodb/foxx/internals.js:108:5)
+ERROR   at ./js/server/modules/@arangodb/foxx/routing.js:346:19
+ERROR   at execute (./js/server/modules/@arangodb/actions.js:1291:7)
+ERROR   at next (./js/server/modules/@arangodb/actions.js:1308:7)
 ERROR   at [object Object]:386:5
-ERROR   at execute (./js/server/modules/org/arangodb/actions.js:1291:7)
-ERROR   at routeRequest (./js/server/modules/org/arangodb/actions.js:1312:3)
-ERROR   at foxxRouting (./js/server/modules/org/arangodb/actions.js:1082:7)
-ERROR   at execute (./js/server/modules/org/arangodb/actions.js:1291:7)
-ERROR   at Object.routeRequest (./js/server/modules/org/arangodb/actions.js:1312:3)
+ERROR   at execute (./js/server/modules/@arangodb/actions.js:1291:7)
+ERROR   at routeRequest (./js/server/modules/@arangodb/actions.js:1312:3)
+ERROR   at foxxRouting (./js/server/modules/@arangodb/actions.js:1082:7)
+ERROR   at execute (./js/server/modules/@arangodb/actions.js:1291:7)
+ERROR   at Object.routeRequest (./js/server/modules/@arangodb/actions.js:1312:3)
 ERROR   at Function.actions.defineHttp.callback (js/actions/api-system.js:51:15)
 ERROR
 ```

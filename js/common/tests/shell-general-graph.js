@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var db = arangodb.db;
-var graph = require("org/arangodb/general-graph");
+var graph = require("@arangodb/general-graph");
 var ERRORS = arangodb.errors;
 
 var _ = require("underscore");

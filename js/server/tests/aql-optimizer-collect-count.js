@@ -31,8 +31,8 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
-var db = require("org/arangodb").db;
-var helper = require("org/arangodb/aql-helper");
+var db = require("@arangodb").db;
+var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////

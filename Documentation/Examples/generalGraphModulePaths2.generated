@@ -1,4 +1,4 @@
-arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> g = examples.loadGraph(<span class="hljs-string">"social"</span>);
 arangosh&gt; g._paths({direction : <span class="hljs-string">'inbound'</span>, minLength : <span class="hljs-number">1</span>, maxLength :  <span class="hljs-number">2</span>});
 [ 

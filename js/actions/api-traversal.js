@@ -28,12 +28,12 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
+var arangodb = require("@arangodb");
+var actions = require("@arangodb/actions");
 var db = require("internal").db;
-var traversal = require("org/arangodb/graph/traversal");
+var traversal = require("@arangodb/graph/traversal");
 var Traverser = traversal.Traverser;
-var graph = require("org/arangodb/general-graph");
+var graph = require("@arangodb/general-graph");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -229,7 +229,7 @@ function notFound (req, res, code, message) {
 /// Follow only outbound edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalOutbound}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -248,7 +248,7 @@ function notFound (req, res, code, message) {
 /// Follow only inbound edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalInbound}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -266,7 +266,7 @@ function notFound (req, res, code, message) {
 /// Follow any direction of edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalAny}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -290,7 +290,7 @@ function notFound (req, res, code, message) {
 /// Excluding *Charlie* and *Bob*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalFilterExclude}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -316,7 +316,7 @@ function notFound (req, res, code, message) {
 /// Do not follow edges from *Bob*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalFilterPrune}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -340,7 +340,7 @@ function notFound (req, res, code, message) {
 /// Visit only nodes in a depth of at least 2
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMinDepth}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -359,7 +359,7 @@ function notFound (req, res, code, message) {
 /// Visit only nodes in a depth of at most 1
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxDepth}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -378,7 +378,7 @@ function notFound (req, res, code, message) {
 /// Using a visitor function to return vertex ids only
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorFunc}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -397,7 +397,7 @@ function notFound (req, res, code, message) {
 /// Count all visited nodes and return a list of nodes only
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorCountAndList}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -417,7 +417,7 @@ function notFound (req, res, code, message) {
 /// Expand only inbound edges of *Alice* and outbound edges of *Eve*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalVisitorExpander}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -454,7 +454,7 @@ function notFound (req, res, code, message) {
 /// Follow the *depthfirst* strategy
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalDepthFirst}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -475,7 +475,7 @@ function notFound (req, res, code, message) {
 /// Using *postorder* ordering
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalPostorder}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -496,7 +496,7 @@ function notFound (req, res, code, message) {
 /// Using *backward* item-ordering:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalBackwardItemOrder}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -518,7 +518,7 @@ function notFound (req, res, code, message) {
 /// but nodes are included every time they are visited
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalEdgeUniqueness}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var url = "/_api/traversal";
@@ -548,7 +548,7 @@ function notFound (req, res, code, message) {
 ///
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxIterations}
-///     var examples = require("org/arangodb/graph-examples/example-graph.js");
+///     var examples = require("@arangodb/graph-examples/example-graph.js");
 ///     var g = examples.loadGraph("knows_graph");
 ///     var a = g.persons.document("alice")._id;
 ///     var b = g.persons.document("bob")._id;

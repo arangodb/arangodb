@@ -30,22 +30,22 @@
 
 "use strict";
 
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 var publicController = new Foxx.Controller(applicationContext);
 var controller = new Foxx.Controller(applicationContext);
 var underscore = require("underscore");
-var cluster = require("org/arangodb/cluster");
+var cluster = require("@arangodb/cluster");
 var joi = require("joi");
 var util = require("util");
 var internal = require("internal");
-var notifications = require("org/arangodb/configuration").notifications;
-var db = require("org/arangodb").db;
+var notifications = require("@arangodb/configuration").notifications;
+var db = require("@arangodb").db;
 var foxxInstallKey = joi.string().required().description(
   "The _key attribute, where the information of this Foxx-Install is stored."
 );
 
 var foxxes = new (require("./lib/foxxes").Foxxes)();
-var FoxxManager = require("org/arangodb/foxx/manager");
+var FoxxManager = require("@arangodb/foxx/manager");
 var UnauthorizedError = require("http-errors").Unauthorized;
 
 publicController.activateSessions({
@@ -176,13 +176,13 @@ controller.post("/query/explain", function(req, res) {
   if (query.length > 0) {
     try {
       if (bindVars) {
-        explain = require("org/arangodb/aql/explainer").explain({
+        explain = require("@arangodb/aql/explainer").explain({
           query: query,
           bindVars: bindVars
         }, {colors: false}, false, bindVars);
       }
       else {
-        explain = require("org/arangodb/aql/explainer").explain(query, {colors: false}, false);
+        explain = require("@arangodb/aql/explainer").explain(query, {colors: false}, false);
       }
     }
     catch (e) {
@@ -292,7 +292,7 @@ controller.get("/query/result/download/:query", function(req, res) {
 
 controller.post("/graph-examples/create/:name", function(req, res) {
   var name = req.params("name"), g,
-  examples = require("org/arangodb/graph-examples/example-graph.js");
+  examples = require("@arangodb/graph-examples/example-graph.js");
 
   if (name === 'knows_graph') {
     g = examples.loadGraph("knows_graph");

@@ -1,7 +1,7 @@
 arangosh&gt; db._routing.save({
 ........&gt;  url: <span class="hljs-string">"/redirectMe"</span>,
 ........&gt;  action: {
-........&gt;    <span class="hljs-keyword">do</span>: <span class="hljs-string">"org/arangodb/actions/redirectRequest"</span>,
+........&gt;    <span class="hljs-keyword">do</span>: <span class="hljs-string">"@arangodb/actions/redirectRequest"</span>,
 ........&gt;    options: {
 ........&gt;      permanently: <span class="hljs-literal">true</span>,
 ........&gt;      destination: <span class="hljs-string">"/somewhere.else/"</span>

@@ -24,7 +24,7 @@ unix>foxx-manager run /my-app-mount-point send-mail '{"to": "user@example.com", 
 You can also use the script with the Foxx job queue:
 
 ```js
-var Foxx = require('org/arangodb/foxx');
+var Foxx = require('@arangodb/foxx');
 var queue = Foxx.queues.get('default');
 queue.push(
   {mount: '/my-app-mount-point', name: 'send-mail'},
@@ -82,7 +82,7 @@ The setup script is typically used to create collections your app needs or inser
 **Examples**
 
 ```js
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var textsCollectionName = applicationContext.collectionName("texts");
 // `textsCollectionName` is now the prefixed name of this app's "texts" collection.
 // e.g. "example_texts" if the app has been mounted at `/example`
@@ -113,7 +113,7 @@ This script typically removes the collections and/or documents created by your a
 **Examples**
 
 ```js
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 
 var textsCollection = applicationContext.collection("texts");
 

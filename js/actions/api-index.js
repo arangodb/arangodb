@@ -28,8 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
+var arangodb = require("@arangodb");
+var actions = require("@arangodb/actions");
 
 var API = "_api/index";
 
