@@ -1,6 +1,4 @@
-// export the class if we are in a Node-like system.
-if (typeof module === 'object' && module.exports === exports)
-  exports = module.exports = SemVer;
+exports = module.exports = SemVer;
 
 // The debug function is excluded entirely from the minified version.
 /* nomin */ var debug;
@@ -334,10 +332,6 @@ SemVer.prototype.format = function() {
   return this.version;
 };
 
-SemVer.prototype.inspect = function() {
-  return '<SemVer "' + this + '">';
-};
-
 SemVer.prototype.toString = function() {
   return this.version;
 };
@@ -483,6 +477,7 @@ SemVer.prototype.inc = function(release, identifier) {
       throw new Error('invalid increment argument: ' + release);
   }
   this.format();
+  this.raw = this.version;
   return this;
 };
 
@@ -693,10 +688,6 @@ Comparator.prototype.parse = function(comp) {
     this.semver = new SemVer(m[2], this.loose);
 };
 
-Comparator.prototype.inspect = function() {
-  return '<SemVer Comparator "' + this + '">';
-};
-
 Comparator.prototype.toString = function() {
   return this.value;
 };
@@ -739,10 +730,6 @@ function Range(range, loose) {
 
   this.format();
 }
-
-Range.prototype.inspect = function() {
-  return '<SemVer Range "' + this.range + '">';
-};
 
 Range.prototype.format = function() {
   this.range = this.set.map(function(comps) {
@@ -1199,7 +1186,3 @@ function outside(version, range, hilo, loose) {
   }
   return true;
 }
-
-// Use the define() function if we're in AMD land
-if (typeof define === 'function' && define.amd)
-  define(exports);
