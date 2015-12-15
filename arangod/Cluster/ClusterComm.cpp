@@ -604,18 +604,20 @@ ClusterCommResult const ClusterComm::wait (
         if (match(clientTransactionID, coordTransactionID, shardID, *q)) {
           found = true;
           if ((*q)->result.status >= CL_COMM_TIMEOUT) {
-            std::unique_ptr<ClusterCommOperation> op(*q);
+            ClusterCommOperation* op = *q;
             // It is done, let's remove it from the queue and return it:
             i = receivedByOpID.find(op->result.operationID);  // cannot fail!
             TRI_ASSERT(i != receivedByOpID.end());
             TRI_ASSERT(i->second == q);
             receivedByOpID.erase(i);
             received.erase(q);
+            ClusterCommResult res = op->result;
+            delete op;
             // tell Dispatcher that we are back in business
             if (triagens::rest::DispatcherThread::currentDispatcherThread != nullptr) {
               triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
             }
-            return op->result;
+            return res;
           }
         }
       }
@@ -926,7 +928,7 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
   TRI_ASSERT(i != toSendByOpID.end());
 
   QueueIterator q = i->second;
-  ClusterCommOperation op = *q;
+  ClusterCommOperation* op = *q;
   TRI_ASSERT(op->result.operationID == operationID);
   toSendByOpID.erase(i);
   toSend.erase(q);
