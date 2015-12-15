@@ -35,7 +35,7 @@
   </footer>
 
   <div class="arangoFrame" style="">
-    <div class="Outer">
-      <div class="Inner"></div>
+    <div class="outerDiv">
+      <div class="innerDiv"></div>
     </div>
   </div>
