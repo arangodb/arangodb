@@ -386,10 +386,31 @@ function ahuacatlQueryEdgesTestSuite () {
       queries.forEach(function (q) {
         var actual;
         actual = getQueryResults(q, {start: [ "UnitTestsAhuacatlVertex/v1", "UnitTestsAhuacatlVertex/v2" ]});
+        assertEqual(actual, [ "v1->v2", "v1->v3", "v2->v3" ]);
 
+        actual = getQueryResults(q, {start: [ {_id: "UnitTestsAhuacatlVertex/v1"}, {_id: "UnitTestsAhuacatlVertex/v2"} ]});
         assertEqual(actual, [ "v1->v2", "v1->v3", "v2->v3" ]);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesStartVertexObject : function () {
+      var queries = [
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound'))) SORT e.what RETURN e.what",
+        "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'outbound') SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound')) SORT e.what RETURN e.what"
+      ];
+     
+      queries.forEach(function (q) {
+        var actual;
+        actual = getQueryResults(q, {start: { _id: "UnitTestsAhuacatlVertex/v1" }});
+        assertEqual(actual, [ "v1->v2", "v1->v3" ]);
+      });
     }
+
 
 
 
