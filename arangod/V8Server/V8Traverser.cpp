@@ -967,6 +967,13 @@ void DepthFirstTraverser::_defInternalFunctions () {
           _getEdge(startVertex, edges, last, eColIdx, dir);
           return;
         }
+        auto search = std::find(edges.begin(), edges.end(), e);
+        if (search != edges.end()) {
+          edges.push_back(e);
+          // The edge is now included twice. Go on with the next
+          _getEdge(startVertex, edges, last, eColIdx, dir);
+          return;
+        }
         edges.push_back(e);
       }
     };
@@ -1006,6 +1013,13 @@ void DepthFirstTraverser::_defInternalFunctions () {
         _getVertex(e, startVertex, 0, other);
         if (! vertexMatchesConditions(other, edges.size() + 1)) {
           // Retry with the next element
+          _getEdge(startVertex, edges, last, eColIdx, dir);
+          return;
+        }
+        auto search = std::find(edges.begin(), edges.end(), e);
+        if (search != edges.end()) {
+          edges.push_back(e);
+          // The edge is now included twice. Go on with the next
           _getEdge(startVertex, edges, last, eColIdx, dir);
           return;
         }
