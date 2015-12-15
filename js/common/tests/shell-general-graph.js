@@ -115,7 +115,7 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameEdge: function() {
-      if (! cluster.isCluster()) {
+      if (cluster.isCluster()) {
         return;
       }
 
@@ -152,7 +152,7 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameVertex: function() {
-      if (! cluster.isCluster()) {
+      if (cluster.isCluster()) {
         return;
       }
 
@@ -180,7 +180,7 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameVertices: function() {
-      if (! cluster.isCluster()) {
+      if (cluster.isCluster()) {
         return;
       }
 
