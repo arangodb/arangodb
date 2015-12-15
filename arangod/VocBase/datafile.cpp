@@ -1950,6 +1950,8 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename,
   TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
                    TRI_MADVISE_WILLNEED);
 
+  TRI_SetCloseOnExitFile(datafile->_fd);
+
   return datafile;
 }
 
