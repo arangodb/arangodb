@@ -115,7 +115,7 @@ function GeneralGraphCreationSuite() {
     
     test_collectionRenameEdge: function() {
       var cluster = require("org/arangodb/cluster");
-      if (cluster.isCluster()) {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
         return;
       }
 
@@ -153,7 +153,7 @@ function GeneralGraphCreationSuite() {
     
     test_collectionRenameVertex: function() {
       var cluster = require("org/arangodb/cluster");
-      if (cluster.isCluster()) {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
         return;
       }
 
@@ -182,7 +182,7 @@ function GeneralGraphCreationSuite() {
     
     test_collectionRenameVertices: function() {
       var cluster = require("org/arangodb/cluster");
-      if (cluster.isCluster()) {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
         return;
       }
 
