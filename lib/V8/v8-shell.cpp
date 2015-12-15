@@ -166,7 +166,7 @@ static void JS_ProcessCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   // read and convert
-  int fd = TRI_OPEN(*filename, O_RDONLY);
+  int fd = TRI_OPEN(*filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     TRI_V8_THROW_EXCEPTION_SYS("cannot open file");

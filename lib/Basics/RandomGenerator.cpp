@@ -97,7 +97,7 @@ namespace RandomHelper {
     public:
       explicit RandomDeviceDirect (std::string const& path)
         : fd(-1), pos(0)  {
-        fd = TRI_OPEN(path.c_str(), O_RDONLY);
+        fd = TRI_OPEN(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
         if (fd < 0) {
           std::string message("cannot open random source '" + path + "'");
@@ -160,8 +160,7 @@ namespace RandomHelper {
     public:
       explicit RandomDeviceCombined (std::string const& path)
         : fd(-1),  pos(0), rseed(0) {
-
-        fd = TRI_OPEN(path.c_str(), O_RDONLY);
+        fd = TRI_OPEN(path.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
         if (fd < 0) {
           std::string message("cannot open random source '" + path + "'");

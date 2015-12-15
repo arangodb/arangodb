@@ -238,7 +238,7 @@ static int CreateDatafile (char const* filename,
   TRI_ERRORBUF;
   
   // open the file
-  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
+  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
   
   TRI_IF_FAILURE("CreateDatafile1") {
     // intentionally fail
@@ -404,7 +404,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   string filename = ptr;
   TRI_FreeString(TRI_CORE_MEM_ZONE, ptr);
 
-  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  int fd = TRI_CREATE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
@@ -1126,7 +1126,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   // attempt to open a datafile file
   // ..........................................................................
 
-  fd = TRI_OPEN(filename, O_RDWR);
+  fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     TRI_SYSTEM_ERROR();
@@ -1343,7 +1343,7 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
   // ugly workaround if MAP_ANONYMOUS is not available
   // TODO: make this more portable
   // TODO: find a good workaround for Windows
-  fd = TRI_OPEN("/dev/zero", O_RDWR);
+  fd = TRI_OPEN("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
   if (fd == -1) {
     return nullptr;
   }
@@ -1949,8 +1949,6 @@ TRI_datafile_t* TRI_OpenDatafile (char const* filename,
                    TRI_MADVISE_SEQUENTIAL);
   TRI_MMFileAdvise(datafile->_data, datafile->_maximalSize,
                    TRI_MADVISE_WILLNEED);
-
-  TRI_SetCloseOnExitFile(datafile->_fd);
 
   return datafile;
 }

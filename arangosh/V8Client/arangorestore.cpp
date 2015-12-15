@@ -730,7 +730,7 @@ static int ProcessInputDirectory (std::string& errorMsg) {
             cout << "# Loading data into " << collectionType << " collection '" << cname << "'..." << endl;
           }
 
-          int fd = TRI_OPEN(datafile.c_str(), O_RDONLY);
+          int fd = TRI_OPEN(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";
