@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("org/arangodb").db;
-var graph = require("org/arangodb/general-graph");
-var helper = require("org/arangodb/aql-helper");
+var db = require("@arangodb").db;
+var graph = require("@arangodb/general-graph");
+var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
 

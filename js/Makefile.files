@@ -9,30 +9,30 @@
 ################################################################################
 
 JAVASCRIPT_BROWSER = \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-collection.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-database.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-query-cursor.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arango-statement.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/arangosh.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/general-graph.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/graph-blueprint.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/is.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/simple-query.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/tutorial.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/index.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/arango-collection.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/arango-database.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/arango-query-cursor.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/arango-statement.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/arangosh.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/general-graph.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/graph.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/graph-blueprint.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/is.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/simple-query.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/tutorial.js \
 	\
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/arango-collection-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/arango-statement-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph-common.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph/traversal.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/aql/explainer.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/aql/functions.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/aql/queries.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/mimetypes.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/replication.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/simple-query-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/arango-collection-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/arango-statement-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/graph-common.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/graph/traversal.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/aql/explainer.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/aql/functions.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/aql/queries.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/mimetypes.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/replication.js \
+	js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/simple-query-common.js \
 	\
 	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/modules/internal.js \
 	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/modules/console.js \
@@ -56,9 +56,9 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/client/bootstrap -name "*.js"` \
 	`find @srcdir@/js/server/bootstrap -name "*.js"` \
 	\
-	`find @srcdir@/js/common/modules/org -name "*.js"` \
-	`find @srcdir@/js/client/modules -name "*.js"` \
-	`find @srcdir@/js/server/modules -name "*.js"` \
+	`find @srcdir@/js/common/modules/@arangodb -name "*.js"` \
+	`find @srcdir@/js/client/modules/@arangodb -name "*.js"` \
+	`find @srcdir@/js/server/modules/@arangodb -name "*.js"` \
 	`find @srcdir@/js/server/tests -name "*.js" | grep -v "ranges-combined"` \
 	`find @srcdir@/js/common/tests -name "*.js"` \
 	`find @srcdir@/js/client/tests -name "*.js"` \
@@ -123,9 +123,9 @@ gitjslint:
 BUILT_SOURCES += @builddir@/.setup-js-directories
 
 @builddir@/.setup-js-directories:
-	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/graph
-	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/common/arangodb/aql || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/org/arangodb/aql
-	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/aql || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/org/arangodb/aql
+	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/graph || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/graph
+	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/common/arangodb/aql || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/aql
+	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/aql || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/@arangodb/aql
 	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap
 	@test -d js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap || mkdir -p js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap
 	@touch $@

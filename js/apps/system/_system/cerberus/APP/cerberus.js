@@ -2,8 +2,8 @@
 (function () {
     "use strict";
 
-    var Foxx = require("org/arangodb/foxx"),
-        users = require("org/arangodb/users"),
+    var Foxx = require("@arangodb/foxx"),
+        users = require("@arangodb/users"),
         controller = new Foxx.Controller(applicationContext),
         url = require("url"),
         token,

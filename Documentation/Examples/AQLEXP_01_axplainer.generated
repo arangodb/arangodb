@@ -13,7 +13,7 @@ arangosh&gt; db.test.ensureSkiplist(<span class="hljs-string">"value"</span>);
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
-arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/aql/explainer"</span>).explain;
+arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/aql/explainer"</span>).explain;
 arangosh&gt; explain(<span class="hljs-string">"FOR i IN test FILTER i.value &gt; 97 SORT i.value RETURN i.value"</span>, {colors:<span class="hljs-literal">false</span>});
 Query string:
  FOR i IN test FILTER i.value &gt; <span class="hljs-number">97</span> SORT i.value RETURN i.value

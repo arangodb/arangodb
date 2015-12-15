@@ -16,7 +16,7 @@
 
     verifyPassword = mockuire('../auth', {
       applicationContext: {configuration: cfg},
-      'org/arangodb/crypto': crypto
+      '@arangodb/crypto': crypto
     }).verifyPassword;
 
     beforeEach(function () {

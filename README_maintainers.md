@@ -83,7 +83,7 @@ Use jslint standalone for your js file
 If you want to search errors in your js file, jslint is very handy - like a compiler is for C/C++.
 You can invoke it like this:
 
-    bin/arangosh --jslint js/server/modules/org/arangodb/testing.js
+    bin/arangosh --jslint js/server/modules/@arangodb/testing.js
 
 __________________________________________________________________________________________________________
 
@@ -266,7 +266,7 @@ Testing a single rspec test:
     scripts/unittest http_server --test api-users-spec.rb
 
 **scripts/unittest** is mostly only a wrapper; The backend functionality lives in:
-**js/server/modules/org/arangodb/testing.js**
+**js/server/modules/@arangodb/testing.js**
 
 Running foxx tests with a fake foxx Repo
 ----------------------------------------

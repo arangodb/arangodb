@@ -165,7 +165,7 @@ We will create a simple symmetric traversal demonstration graph:
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_01_create_graph}
     ~addIgnoreCollection("circles");
     ~addIgnoreCollection("edges");
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var examples = require("@arangodb/graph-examples/example-graph.js");
     var graph = examples.loadGraph("traversalGraph");
     db.circles.toArray();
     db.edges.toArray();
@@ -264,7 +264,7 @@ The second query on the other hand only operates on the path, and therefore this
 And finally clean it up again:
     @startDocuBlockInline GRAPHTRAV_99_drop_graph
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_99_drop_graph}
-    var examples = require("org/arangodb/graph-examples/example-graph.js");
+    var examples = require("@arangodb/graph-examples/example-graph.js");
     examples.dropGraph("traversalGraph");
     ~removeIgnoreCollection("circles");
     ~removeIgnoreCollection("edges");

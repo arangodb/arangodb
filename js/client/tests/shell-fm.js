@@ -29,8 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var fm = require("org/arangodb/foxx/manager");
-var arango = require("org/arangodb").arango;
+var fm = require("@arangodb/foxx/manager");
+var arango = require("@arangodb").arango;
 var db = require("internal").db;
 
 // -----------------------------------------------------------------------------

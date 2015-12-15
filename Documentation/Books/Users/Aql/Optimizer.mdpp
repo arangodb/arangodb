@@ -32,7 +32,7 @@ You may use it like this: (we disable syntax highlighting here)
     db._create("test"); 
     for (i = 0; i < 100; ++i) { db.test.save({ value: i }); }
     db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
-    var explain = require("org/arangodb/aql/explainer").explain;
+    var explain = require("@arangodb/aql/explainer").explain;
     explain("FOR i IN test FILTER i.value > 97 SORT i.value RETURN i.value", {colors:false});
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_01_axplainer

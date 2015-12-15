@@ -8,7 +8,7 @@ The most straightforward way to perform AQL queries is using the `db._query` API
 
 **Examples**
 ```js
-var db = require('org/arangodb').db;
+var db = require('@arangodb').db;
 var console = require('console');
 
 var result = db._query('RETURN 42').toArray();
@@ -22,7 +22,7 @@ ArangoDB supports ES2015-style template strings for queries using the `aqlQuery`
 **Examples**
 
 ```js
-var db = require('org/arangodb').db;
+var db = require('@arangodb').db;
 var console = require('console');
 
 var isAdmin = true;
@@ -48,7 +48,7 @@ For a full overview of the query builder API [see the project documentation](htt
 **Examples**
 
 ```js
-var db = require('org/arangodb').db;
+var db = require('@arangodb').db;
 var qb = require('aqb');
 var console = require('console');
 

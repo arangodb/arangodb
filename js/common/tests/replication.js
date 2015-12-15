@@ -30,12 +30,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var errors = arangodb.errors;
 var db = arangodb.db;
 var internal = require("internal");
 
-var replication = require("org/arangodb/replication");
+var replication = require("@arangodb/replication");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           replication logger test

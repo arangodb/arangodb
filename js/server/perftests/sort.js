@@ -29,7 +29,7 @@
 var internal = require("internal");
 var exports;
 var db = internal.db;
-//var helper = require("org/arangodb/aql-helper");
+//var helper = require("@arangodb/aql-helper");
 //var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

@@ -1,11 +1,11 @@
 'use strict';
 const _ = require('underscore');
 const joi = require('joi');
-const arangodb = require('org/arangodb');
+const arangodb = require('@arangodb');
 const db = arangodb.db;
-const Foxx = require('org/arangodb/foxx');
+const Foxx = require('@arangodb/foxx');
 const errors = require('./errors');
-const refreshUserCache = require('org/arangodb/users').reload;
+const refreshUserCache = require('@arangodb/users').reload;
 const User = Foxx.Model.extend({
   schema: {
     user: joi.string().required(),

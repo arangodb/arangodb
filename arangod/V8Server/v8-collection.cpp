@@ -2455,6 +2455,31 @@ static void JS_RemoveVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to rename collections in _graphs as well
+////////////////////////////////////////////////////////////////////////////////
+
+static int RenameGraphCollections (v8::Isolate* isolate, 
+                                   std::string const& oldName, 
+                                   std::string const& newName) {
+  v8::HandleScope scope(isolate);
+
+  StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  buffer.appendText("require('@arangodb/general-graph')._renameCollection(\"");
+  buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
+  buffer.appendText("\", \"");
+  buffer.appendJsonEncoded(newName.c_str(), newName.size());
+  buffer.appendText("\");");
+
+  TRI_ExecuteJavaScriptString(isolate,
+                              isolate->GetCurrentContext(),
+                              TRI_V8_ASCII_PAIR_STRING(buffer.c_str(), buffer.length()),
+                              TRI_V8_ASCII_STRING("collection rename"),
+                              false);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a collection
 /// @startDocuBlock collectionRename
 /// `collection.rename(new-name)`
@@ -2465,6 +2490,8 @@ static void JS_RemoveVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 /// to the [naming conventions](../NamingConventions/README.md).
 ///
 /// If renaming fails for any reason, an error is thrown.
+/// If renaming the collection succeeds, then the collection is also renamed in 
+/// all graph definitions inside the `_graphs` collection in the current database.
 ///
 /// **Note**: this method is not available in a cluster.
 ///
@@ -2494,7 +2521,7 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
 
-  string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   // second parameter "override" is to override renaming restrictions, e.g.
   // renaming from a system collection name to a non-system collection name and
@@ -2521,6 +2548,8 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
   }
 
+  std::string const oldName(collection->_name);
+
   int res = TRI_RenameCollectionVocBase(collection->_vocbase,
                                         collection,
                                         name.c_str(),
@@ -2530,6 +2559,9 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename collection");
   }
+
+  // rename collection inside _graphs as well
+  RenameGraphCollections(isolate, oldName, name);
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

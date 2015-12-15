@@ -1,27 +1,27 @@
 !CHAPTER Collection Methods
 
 !SUBSECTION All
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionAll
 
 !SUBSECTION Query by example
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionByExample
 
 !SUBSECTION First Example
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock collectionFirstExample
 
 !SUBSECTION Range
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionRange
 
 !SUBSECTION Closed range
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionClosedRange
 
 !SUBSECTION Any
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionAny
 
 !SUBSECTION Count
@@ -29,7 +29,7 @@
 @startDocuBlock collectionCount
 
 !SUBSECTION toArray
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock collectionToArray
 
 !SUBSECTION Document
@@ -65,23 +65,23 @@
 @startDocuBlock collectionRemoveByKeys
 
 !SUBSECTION Remove By Example
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock documentsCollectionRemoveByExample
 
 !SUBSECTION Replace By Example
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock documentsCollectionReplaceByExample
 
 !SUBSECTION Update By Example
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock documentsCollectionUpdateByExample
 
 !SUBSECTION First
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionFirst
 
 !SUBSECTION Last
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionLast
 
 !SUBSECTION Collection type

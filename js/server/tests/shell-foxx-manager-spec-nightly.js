@@ -30,7 +30,7 @@
 
 'use strict';
 
-var FoxxManager = require("org/arangodb/foxx/manager");
+var FoxxManager = require("@arangodb/foxx/manager");
 
 describe("Foxx Manager", function() {
 
@@ -65,7 +65,7 @@ describe("Foxx Manager", function() {
         // this app cannot be installed at the moment
         continue;
         /*
-        var arangodb = require("org/arangodb");
+        var arangodb = require("@arangodb");
         var errors = arangodb.errors;
         // Requires oauth2 to be installed
         try {

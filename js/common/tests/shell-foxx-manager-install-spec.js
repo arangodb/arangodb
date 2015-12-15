@@ -30,8 +30,8 @@
 
 'use strict';
 
-var FoxxManager = require("org/arangodb/foxx/manager");
-var arangodb = require("org/arangodb");
+var FoxxManager = require("@arangodb/foxx/manager");
+var arangodb = require("@arangodb");
 var ArangoError = arangodb.ArangoError;
 var fs = require("fs");
 var Module = require('module');

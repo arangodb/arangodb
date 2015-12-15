@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var actions = require("org/arangodb/actions");
+var actions = require("@arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

@@ -30,13 +30,13 @@
 
 var jsunity = require("jsunity");
 
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var internal = require("internal");
 
 var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-var testHelper = require("org/arangodb/test-helper").Helper;
+var testHelper = require("@arangodb/test-helper").Helper;
 
 var compareStringIds = function (l, r) {
   var i;

@@ -29,8 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("org/arangodb").db;
-var isCluster = require("org/arangodb/cluster").isCluster();
+var db = require("@arangodb").db;
+var isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

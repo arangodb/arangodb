@@ -26,7 +26,7 @@ In order to export modules in a Foxx app you need to list the files in your mani
 The file **doodads.js** in the app's base path could look like this:
 
 ```js
-var Foxx = require('org/arangodb/foxx');
+var Foxx = require('@arangodb/foxx');
 class Doodad extends Foxx.Model {}
 var doodadRepo = new Foxx.Repository(
     applicationContext.collection('doodads'),
@@ -54,7 +54,7 @@ In order to import from another app, you need to know where the app is mounted.
 Let's say we have mounted the example app above at **/my-doodads**. We could now access the app's exports in another app like so:
 
 ```js
-var Foxx = require('org/arangodb/foxx');
+var Foxx = require('@arangodb/foxx');
 var doodads = Foxx.requireApp('/my-doodads').doodads;
 var Doodad = doodads.model;
 var doodadRepo = doodads.repo;
@@ -105,7 +105,7 @@ module.exports = function () {
 Assuming the app is mounted at `/hello`, we could now use it in other apps like this:
 
 ```js
-var Foxx = require('org/arangodb/foxx');
+var Foxx = require('@arangodb/foxx');
 var helloExport = Foxx.requireApp('/hello');
 var greeting = helloExport(); // "Hello!"
 ```

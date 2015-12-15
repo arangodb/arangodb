@@ -10,7 +10,7 @@
 /// upgrades.
 ///
 /// If you add any task here, please update the database version in
-/// org/arangodb/database-version.js.
+/// @arangodb/database-version.js.
 ///
 /// DISCLAIMER
 ///
@@ -39,10 +39,10 @@
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
-  var userManager = require("org/arangodb/users");
-  var FoxxService = require("org/arangodb/foxx/service");
-  require("org/arangodb/cluster"); // TODO Is this unused or magic?
-  var currentVersion = require("org/arangodb/database-version").CURRENT_VERSION;
+  var userManager = require("@arangodb/users");
+  var FoxxService = require("@arangodb/foxx/service");
+  require("@arangodb/cluster"); // TODO Is this unused or magic?
+  var currentVersion = require("@arangodb/database-version").CURRENT_VERSION;
   var sprintf = internal.sprintf;
   var db = internal.db;
 
@@ -869,7 +869,7 @@
           routing.save({
             url: src,
             action: {
-              "do": "org/arangodb/actions/redirectRequest",
+              "do": "@arangodb/actions/redirectRequest",
               options: {
                 permanently: true,
                 destination: "/_db/" + db._name() + "/_admin/aardvark/index.html"
@@ -1050,7 +1050,7 @@
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
-        return require("org/arangodb/statistics").createStatisticsCollections();
+        return require("@arangodb/statistics").createStatisticsCollections();
       }
     });
 
@@ -1135,7 +1135,7 @@
       task: function () {
         var plans = db._collection("_cluster_kickstarter_plans");
         var cursor = plans.all();
-        var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
+        var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
 
         while (cursor.hasNext()) {
           var plan = cursor.next();
@@ -1273,8 +1273,8 @@
         var mapAppZip = {};
         var tmp;
         var path;
-        var fmUtils = require("org/arangodb/foxx/manager-utils");
-        var foxxManager = require("org/arangodb/foxx/manager");
+        var fmUtils = require("@arangodb/foxx/manager-utils");
+        var foxxManager = require("@arangodb/foxx/manager");
 
         // 1. Zip all production APPs and create a map appId => zipFile
 

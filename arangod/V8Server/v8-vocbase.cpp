@@ -1339,7 +1339,6 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
 static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -3452,9 +3451,9 @@ static void CreateDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>
 /// session) and add or modify users with the following commands.
 ///
 /// ```js
-///   require("org/arangodb/users").save(username, password, true);
-///   require("org/arangodb/users").update(username, password, true);
-///   require("org/arangodb/users").remove(username);
+///   require("@arangodb/users").save(username, password, true);
+///   require("@arangodb/users").update(username, password, true);
+///   require("@arangodb/users").remove(username);
 /// ```
 /// Alternatively, you can specify user data directly. For example:
 ///

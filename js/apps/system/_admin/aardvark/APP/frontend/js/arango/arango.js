@@ -240,19 +240,19 @@
       docFrameView.colid = ids[0];
       docFrameView.docid = ids[1];
 
-      docFrameView.el = '.arangoFrame .Inner';
+      docFrameView.el = '.arangoFrame .innerDiv';
       docFrameView.render();
       docFrameView.setType(type);
 
       //remove header
       $('.arangoFrame .headerBar').remove();
       //append close button
-      $('.arangoFrame .Outer').prepend('<i class="fa fa-times"></i>');
+      $('.arangoFrame .outerDiv').prepend('<i class="fa fa-times"></i>');
       //add close events
-      $('.arangoFrame .Outer').click(function() {
+      $('.arangoFrame .outerDiv').click(function() {
         self.closeDocEditor();
       });
-      $('.arangoFrame .Inner').click(function(e) {
+      $('.arangoFrame .innerDiv').click(function(e) {
         e.stopPropagation();
       });
       $('.fa-times').click(function() {
@@ -278,7 +278,7 @@
     },
 
     closeDocEditor: function () {
-      $('.arangoFrame .Outer .fa-times').remove();
+      $('.arangoFrame .outerDiv .fa-times').remove();
       $('.arangoFrame').hide();
     },
 

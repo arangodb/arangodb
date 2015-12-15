@@ -149,7 +149,7 @@ The **success** and **failure** callbacks receive the following arguments:
 Let's say we have an app mounted at `/mailer` that provides a script called `send-mail`:
 
 ```js
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 var queue = Foxx.queues.create("my-queue");
 queue.push(
   {mount: "/mailer", name: "send-mail"},
@@ -160,7 +160,7 @@ queue.push(
 This will **not** work, because **log** was defined outside the callback function (the callback must be serializable to a string):
 
 ```js
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 var queue = Foxx.queues.create("my-queue");
 var log = require("console").log; // outside the callback's function scope
 queue.push(
@@ -175,7 +175,7 @@ queue.push(
 Here's an example of a job that will be executed every 5 seconds until tomorrow:
 
 ```js
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 var queue = Foxx.queues.create("my-queue");
 queue.push(
   {mount: "/mailer", name: "send-mail"},

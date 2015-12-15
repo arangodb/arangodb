@@ -1,4 +1,4 @@
-arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"social"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> query = graph._vertices({name: <span class="hljs-string">"Alice"</span>});
 arangosh&gt; query.edges().vertices().restrict([<span class="hljs-string">"female"</span>, <span class="hljs-string">"male"</span>, <span class="hljs-string">"products"</span>]).toArray();

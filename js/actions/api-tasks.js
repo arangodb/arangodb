@@ -27,9 +27,9 @@
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
-var tasks = require("org/arangodb/tasks");
+var arangodb = require("@arangodb");
+var actions = require("@arangodb/actions");
+var tasks = require("@arangodb/tasks");
 
 var API = "_api/tasks";
 

@@ -29,8 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var helper = require("org/arangodb/aql-helper");
-var db = require("org/arangodb").db;
+var helper = require("@arangodb/aql-helper");
+var db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

@@ -30,9 +30,9 @@ exports.Foxxes = function () {
 
   // Define the Repository
   var aal = require("internal").db._collection("_tmp_aal"),
-    foxxmanager = require("org/arangodb/foxx/manager"),
+    foxxmanager = require("@arangodb/foxx/manager"),
     _ = require("underscore"),
-    ArangoError = require("org/arangodb").ArangoError,
+    ArangoError = require("@arangodb").ArangoError,
     fs = require("fs");
 
     // Define the functionality to create a new foxx
@@ -125,7 +125,7 @@ exports.Foxxes = function () {
     return success;
   };
 
-  // TODO: merge with functionality js/client/modules/org/arangodb/foxx/manager.js
+  // TODO: merge with functionality js/client/modules/@arangodb/foxx/manager.js
   this.repackZipFile = function (path) {
     if (! fs.exists(path) || ! fs.isDirectory(path)) {
       throw "'" + String(path) + "' is not a directory";
@@ -154,7 +154,7 @@ exports.Foxxes = function () {
     return tempFile;
   };
 
-  // TODO: merge with functionality js/client/modules/org/arangodb/foxx/manager.js
+  // TODO: merge with functionality js/client/modules/@arangodb/foxx/manager.js
   this.inspectUploadedFile = function (filename) {
     var console = require("console");
 

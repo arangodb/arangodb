@@ -382,7 +382,7 @@ version of a query's execution plan, the following commands can be used:
     @startDocuBlockInline 10_workWithAQL_statementsPlansOptimizer3
     @EXAMPLE_ARANGOSH_OUTPUT{10_workWithAQL_statementsPlansOptimizer3}
     var query = "FOR doc IN mycollection FILTER doc.value > 42 RETURN doc";
-    require("org/arangodb/aql/explainer").explain(query, {colors:false});
+    require("@arangodb/aql/explainer").explain(query, {colors:false});
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 10_workWithAQL_statementsPlansOptimizer3
 

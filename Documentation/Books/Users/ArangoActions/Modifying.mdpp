@@ -147,7 +147,7 @@ Use the following for a permanent redirect:
     | db._routing.save({
     |  url: "/redirectMe",
     |  action: {
-    |    do: "org/arangodb/actions/redirectRequest",
+    |    do: "@arangodb/actions/redirectRequest",
     |    options: {
     |      permanently: true,
     |      destination: "/somewhere.else/"
@@ -314,19 +314,19 @@ Now we add some other simple routings to test all this:
     |db._routing.save({
     |    url: "/subdirectory/ourtest/1",
     |    action: {
-    |      do: "org/arangodb/actions/echoRequest"
+    |      do: "@arangodb/actions/echoRequest"
     |    }
     });
     |db._routing.save({
     |    url: "/subdirectory/ourtest/2",
     |    action: {
-    |      do: "org/arangodb/actions/echoRequest"
+    |      do: "@arangodb/actions/echoRequest"
     |    }
     });
     |db._routing.save({
     |    url: "/subdirectory/ourtest/3",
     |    action: {
-    |      do: "org/arangodb/actions/echoRequest"
+    |      do: "@arangodb/actions/echoRequest"
     |    }
     });
     require("internal").reloadRouting()
@@ -435,7 +435,7 @@ whereas this definition allows HTTP *GET*, *POST*, and *PUT*:
     |      methods: [ "get", "post", "put" ]
     |    },
     |    action: {
-    |      do: "org/arangodb/actions/echoRequest"
+    |      do: "@arangodb/actions/echoRequest"
     |    }
     });
     require("internal").reloadRouting()

@@ -12,7 +12,7 @@ child_process:        not supported
 cluster:              not supported
 console:              compatibility (see bootstrap/modules/console)
 constants:            not supported
-crypto:               not supported (see org/arangodb/crypto)
+crypto:               not supported (see @arangodb/crypto)
 dgram:                not supported
 dns:                  not supported
 domain:               not supported

@@ -28,9 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
-var cluster = require("org/arangodb/cluster");
+var arangodb = require("@arangodb");
+var actions = require("@arangodb/actions");
+var cluster = require("@arangodb/cluster");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -1464,7 +1464,7 @@ function put_api_collection_properties (req, res, collection) {
 ///
 /// - *name*: The new name.
 ///
-/// If returns an object with the attributes
+/// It returns an object with the attributes
 ///
 /// - *id*: The identifier of the collection.
 ///
@@ -1477,6 +1477,11 @@ function put_api_collection_properties (req, res, collection) {
 ///   - 3: edges collection
 ///
 /// - *isSystem*: If *true* then the collection is a system collection.
+///
+/// If renaming the collection succeeds, then the collection is also renamed in 
+/// all graph definitions inside the `_graphs` collection in the current database.
+///
+/// **Note**: this method is not available in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1492,7 +1497,7 @@ function put_api_collection_properties (req, res, collection) {
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
 ///     var cn = "products1";
 ///     var coll = db._create(cn);
-///     var url = "/_api/collection/"+ coll.name() + "/rename";
+///     var url = "/_api/collection/" + coll.name() + "/rename";
 ///
 ///     var response = logCurlRequest('PUT', url, { name: "newname" });
 ///
@@ -1552,7 +1557,7 @@ function put_api_collection_rename (req, res, collection) {
 /// Saving new data in the collection subsequently will create a new journal file
 /// automatically if there is no current journal.
 ///
-/// If returns an object with the attributes
+/// It returns an object with the attributes
 ///
 /// - *result*: will be *true* if rotation succeeded
 ///

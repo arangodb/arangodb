@@ -50,7 +50,7 @@
         var name = databases[i];
         try {
           db._useDatabase(name);
-          require("org/arangodb/actions").reloadRouting();
+          require("@arangodb/actions").reloadRouting();
         }
         catch (e) {
           console.info("trying to loading actions of a new database %s, ignored", name);

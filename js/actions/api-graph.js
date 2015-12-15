@@ -30,9 +30,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("org/arangodb/actions");
-var graph = require("org/arangodb/graph-blueprint");
-var arangodb = require("org/arangodb");
+var actions = require("@arangodb/actions");
+var graph = require("@arangodb/graph-blueprint");
+var arangodb = require("@arangodb");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables

@@ -9,7 +9,7 @@ All of this is done for performance reasons. It often allows ommitting the creat
 
 Here's an example:
 ```js
-var ShapedJson = require("org/arangodb").ShapedJson;
+var ShapedJson = require("@arangodb").ShapedJson;
 // fetches document from collection into a JavaScript object
 var doc = db.test.any(); 
 
