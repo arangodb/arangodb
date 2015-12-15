@@ -1497,7 +1497,7 @@ function put_api_collection_properties (req, res, collection) {
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
 ///     var cn = "products1";
 ///     var coll = db._create(cn);
-///     var url = "/_api/collection/"+ coll.name() + "/rename";
+///     var url = "/_api/collection/" + coll.name() + "/rename";
 ///
 ///     var response = logCurlRequest('PUT', url, { name: "newname" });
 ///

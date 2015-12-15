@@ -29,12 +29,7 @@ module.define("@arangodb/general-graph", function(exports, module) {
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-<<<<<<< 821b807484cc4e848dd44a5c4153d613f21f56c1:js/common/modules/org/arangodb/general-graph.js
-var arangodb = require("org/arangodb"),
-=======
-
 var arangodb = require("@arangodb"),
->>>>>>> org/arangodb -> @arangodb:js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/@arangodb/general-graph.js
   internal = require("internal"),
   ArangoCollection = arangodb.ArangoCollection,
   ArangoError = arangodb.ArangoError,
@@ -2403,7 +2398,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ///
 /// `graph_module._graph(graphName)`
 ///
-/// A graph can be get by its name.
+/// A graph can be retrieved by its name.
 ///
 /// @PARAMS
 ///
@@ -2427,7 +2422,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ////////////////////////////////////////////////////////////////////////////////
 
 var _graph = function(graphName) {
-
   var gdb = getGraphCollection(),
     g, collections, orphanCollections;
 
@@ -4257,7 +4251,6 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollections, possibleOrphans, self) {
-
   var graphCollections = [];
   var graphObj = _graph(graph._key);
   var eDs = graph.edgeDefinitions;
@@ -4406,7 +4399,6 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
   );
   updateBindCollections(this);
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
@@ -4577,7 +4569,6 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
   this.__orphanCollections.push(vertexCollectionName);
   updateBindCollections(this);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4675,7 +4666,6 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
   updateBindCollections(this);
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_connectingEdges
 /// @brief Get all connecting edges between 2 groups of vertices defined by the examples
@@ -4718,7 +4708,6 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
-
   options = options || {};
 
   var opts = {
@@ -4759,9 +4748,6 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
   return result[0];
 };
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print basic information for the graph
 ////////////////////////////////////////////////////////////////////////////////
@@ -4798,16 +4784,6 @@ exports._exists = _exists;
 exports._renameCollection = _renameCollection;
 exports._list = _list;
 exports._listObjects = _listObjects;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// some more documentation
@@ -4856,4 +4832,13 @@ exports._listObjects = _listObjects;
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// End:
 });
