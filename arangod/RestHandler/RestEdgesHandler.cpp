@@ -362,7 +362,6 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
     collectionName = trx.resolver()->getCollectionName(trx.cid());
   }
 
-  std::string startVertexString(startVertex);
   size_t filtered = 0;
   size_t scannedIndex = 0;
   
@@ -400,7 +399,6 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
 
   return true;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Internal function to receive all edges for a list of vertices
