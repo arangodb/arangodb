@@ -163,31 +163,37 @@ bool SslClientConnection::connectSocket () {
 
   if (_endpoint->isConnected()) {
     disconnectSocket();
+    _isConnected = false;
   }
 
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
   if (! TRI_isvalidsocket(_socket) || _ctx == nullptr) {
     _errorDetails = _endpoint->_errorMessage; 
+    _isConnected = false;
     return false;
   }
+    
+  _isConnected = true;
 
   _ssl = SSL_new(_ctx);
 
   if (_ssl == nullptr) {
     _errorDetails = std::string("failed to create ssl context");
     disconnectSocket();
+    _isConnected = false;
     return false;
   }
 
   if (SSL_set_fd(_ssl, (int) TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
     _errorDetails = std::string("SSL: failed to create context ") + 
-      ERR_error_string(ERR_get_error(), NULL);
+      ERR_error_string(ERR_get_error(), nullptr);
     disconnectSocket();
+    _isConnected = false;
     return false;
   }
 
-  SSL_set_verify(_ssl, SSL_VERIFY_NONE, NULL);
+  SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
 
   ERR_clear_error();
 
@@ -242,6 +248,7 @@ bool SslClientConnection::connectSocket () {
         }
     }
     disconnectSocket();
+    _isConnected = false;
     return false;
   }
 

@@ -1512,7 +1512,8 @@ triagens::arango::TransactionContext* Query::createTransactionContext () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a TransactionContext
+/// @brief look up a graph either from our cache list or from the  _graphs
+///        collection
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph const* Query::lookupGraphByName (std::string &name) {
@@ -1527,7 +1528,6 @@ Graph const* Query::lookupGraphByName (std::string &name) {
   }
   return g;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
