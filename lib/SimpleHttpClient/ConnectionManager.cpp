@@ -297,10 +297,6 @@ ConnectionManager::SingleServerConnection* ConnectionManager::leaseConnection (s
   // finally create the SingleServerConnection
   std::unique_ptr<SingleServerConnection> c(new SingleServerConnection(s, cn.get(), ep.get(), endpoint));
 
-  if (c == nullptr) {
-    return nullptr;
-  }
-
   // Now put it into our administration:
   s->addConnection(c.get());
 
