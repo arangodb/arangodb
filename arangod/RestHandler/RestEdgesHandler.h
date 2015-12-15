@@ -100,6 +100,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool readFilteredEdges ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads all edges in given direction for a given list of vertices
+////////////////////////////////////////////////////////////////////////////////
+
+        bool readEdgesForMultipleVertices ();
+
+ ////////////////////////////////////////////////////////////////////////////////
+/// @brief get all edges for a given vertex. Independent from the request
+////////////////////////////////////////////////////////////////////////////////
+
+        bool getEdgesForVertex (std::string const& id,
+                                std::vector<traverser::TraverserExpression*> const& expressions,
+                                TRI_edge_direction_e direction,
+                                SingleCollectionReadOnlyTransaction& trx,
+                                triagens::basics::Json& result,
+                                size_t& scannedIndex,
+                                size_t& filtered);
+
     };
 
   }
