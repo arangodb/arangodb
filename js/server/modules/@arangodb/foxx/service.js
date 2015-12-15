@@ -47,12 +47,10 @@ const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : u
 class FoxxContext {
   constructor(service) {
     this.basePath = path.resolve(service.root, service.path);
+    this.service = service;
+    this.argv = [];
+
     this.comments = [];
-    Object.defineProperty(this, '_service', {
-      get() {
-        return service;
-      }
-    });
   }
 
   fileName(filename) {
@@ -91,31 +89,31 @@ class FoxxContext {
   }
 
   get baseUrl() {
-    return `/_db/${encodeURIComponent(internal.db._name())}/${this._service.mount.slice(1)}`;
+    return `/_db/${encodeURIComponent(internal.db._name())}/${this.service.mount.slice(1)}`;
   }
 
   get collectionPrefix() {
-    return this._service.collectionPrefix;
+    return this.service.collectionPrefix;
   }
 
   get mount() {
-    return this._service.mount;
+    return this.service.mount;
   }
 
   get name() {
-    return this._service.name;
+    return this.service.name;
   }
 
   get version() {
-    return this._service.version;
+    return this.service.version;
   }
 
   get manifest() {
-    return this._service.manifest;
+    return this.service.manifest;
   }
 
   get isDevelopment() {
-    return this._service.isDevelopment;
+    return this.service.isDevelopment;
   }
 
   get isProduction() {
@@ -123,15 +121,15 @@ class FoxxContext {
   }
 
   get options() {
-    return this._service.options;
+    return this.service.options;
   }
 
   get configuration() {
-    return this._service.configuration;
+    return this.service.configuration;
   }
 
   get dependencies() {
-    return this._service.dependencies;
+    return this.service.dependencies;
   }
 }
 
