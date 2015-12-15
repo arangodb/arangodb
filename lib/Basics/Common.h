@@ -159,6 +159,7 @@ typedef long suseconds_t;
 #include "Basics/voc-errors.h"
 #include "Basics/error.h"
 #include "Basics/debugging.h"
+#include "Basics/make_unique.h"
 #include "Basics/memory.h"
 #include "Basics/mimetypes.h"
 #include "Basics/structures.h"
