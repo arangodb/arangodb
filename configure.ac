@@ -107,7 +107,7 @@ case $target in
     ;;
 
   armv7l-*-linux-gnueabihf)
-    CPPFLAGS="${CPPFLAGS} -O0"
+    CXXFLAGS="${CXXFLAGS} -O0"
     tr_ARM="yes"
     tr_ARM7="yes"
     ;;
@@ -117,6 +117,7 @@ case $target in
     dnl special flags for Arm V6 (pi)
     dnl ----------------------------------------------------------------------------
     CPPFLAGS="${CPPFLAGS} -O0 -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
+    CXXFLAGS="${CXXFLAGS} -O0"
     tr_ARM="yes"
     tr_ARM6="yes"
     ;;
