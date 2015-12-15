@@ -91,7 +91,9 @@ function hasOwnProperty(obj, prop) {
 
 function createRequire(module) {
   function require(path) {
-    return module.require(path);
+    assert(path, 'missing path');
+    assert(typeof path === 'string', 'path must be a string');
+    return Module._load(path, module);
   }
 
   require.resolve = function(request) {
@@ -101,20 +103,19 @@ function createRequire(module) {
   // Enable support to add extra extension types
   require.extensions = Module._extensions;
 
-  require.cache = module.cache;
+  require.cache = Module._cache;
 
   return require;
 }
 
-function Module(id, parent, cache) {
+function Module(id, parent) {
   this.id = id;
   this.exports = {};
+  this.require = createRequire(this);
   this.parent = parent;
   if (parent && parent.children) {
     parent.children.push(this);
   }
-
-  this.cache = cache || (parent ? parent.cache : Module._cache);
 
   Object.defineProperty(this, '_context', {
     value: {
@@ -123,7 +124,7 @@ function Module(id, parent, cache) {
       console: NATIVE_MODULES.console,
       module: this,
       exports: this.exports,
-      require: createRequire(this),
+      require: this.require,
       __filename: null,
       __dirname: null
     }
@@ -131,6 +132,7 @@ function Module(id, parent, cache) {
 
   if (parent) {
     this.context = parent.context;
+    this.require.cache = parent.require.cache;
     this.root = parent.root;
     this.preprocess = parent.preprocess;
     Object.keys(parent._context).forEach(function (key) {
@@ -438,8 +440,11 @@ Module._load = function(request, parent, isMain) {
   }
 
   var cache;
-  if (parent && (dbModule || !isGlobalModule(filename))) cache = parent.cache;
-  else cache = Module._cache;
+  if (parent && (dbModule || !isGlobalModule(filename))) {
+    cache = parent.require.cache;
+  } else {
+    cache = Module._cache;
+  }
 
   var cachedModule = cache[filename];
   if (cachedModule) {
@@ -529,15 +534,6 @@ Module.prototype._loadDbModule = function (dbModule) {
   this.filename = filename;
   this._compile(dbModule.content, filename);
   this.loaded = true;
-};
-
-
-// Loads a module at the given file path. Returns that module's
-// `exports` property.
-Module.prototype.require = function(path) {
-  assert(path, 'missing path');
-  assert(typeof path === 'string', 'path must be a string');
-  return Module._load(path, this);
 };
 
 

@@ -226,14 +226,16 @@ class FoxxService {
       this.thumbnail = null;
     }
 
-    let lib = this.manifest.lib || '.';
-    let moduleRoot = path.resolve(this.root, this.path, lib);
-    this.moduleCache = {};
-    this.main = new Module(`foxx:${data.mount}`, undefined, this.moduleCache);
-    this.main.root = moduleRoot;
+    this.requireCache = {};
+    const lib = this.manifest.lib || '.';
+    const moduleRoot = path.resolve(this.root, this.path, lib);
+    const foxxConsole = require('@arangodb/foxx/console')(this.mount);
+    this.main = new Module(`foxx:${data.mount}`);
     this.main.filename = path.resolve(moduleRoot, '.foxx');
+    this.main.root = moduleRoot;
+    this.main._context.console = foxxConsole;
+    this.main.require.cache = this.requireCache;
     this.main.context = new FoxxContext(this);
-    this.main._context.console = require('@arangodb/foxx/console')(this.mount);
   }
 
   applyConfiguration(config) {
@@ -389,7 +391,7 @@ class FoxxService {
     module.context = _.extend(
       new FoxxContext(this),
       this.main.context,
-      options.context
+      options.foxxContext
     );
 
     if (options.preprocess) {
@@ -406,10 +408,6 @@ class FoxxService {
       module.load(filename);
       return module.exports;
     } catch(e) {
-      if (e instanceof ArangoError) {
-        e.errorMessage += "\n(app relative include paths not supported anymore) \nFile: " + filename;
-        throw e;
-      }
       var err = new ArangoError({
         errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
         errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
