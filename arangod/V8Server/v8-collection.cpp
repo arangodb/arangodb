@@ -2459,7 +2459,7 @@ static int RenameGraphCollections (v8::Isolate* isolate,
   v8::HandleScope scope(isolate);
 
   StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
-  buffer.appendText("require('org/arangodb/general-graph')._renameCollection(\"");
+  buffer.appendText("require('@arangodb/general-graph')._renameCollection(\"");
   buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
   buffer.appendText("\", \"");
   buffer.appendJsonEncoded(newName.c_str(), newName.size());
