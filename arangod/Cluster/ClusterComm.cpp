@@ -28,15 +28,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterComm.h"
-
 #include "Basics/logging.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
-#include "SimpleHttpClient/ConnectionManager.h"
 #include "Dispatcher/DispatcherThread.h"
+#include "SimpleHttpClient/ConnectionManager.h"
 #include "Utils/Transaction.h"
-
 #include "VocBase/server.h"
 
 using namespace std;
@@ -50,7 +48,7 @@ using namespace triagens::arango;
 /// @brief global callback for asynchronous REST handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void triagens::arango::ClusterCommRestCallback(string& coordinator,
+void triagens::arango::ClusterCommRestCallback (std::string& coordinator,
                              triagens::rest::HttpResponse* response) {
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
@@ -954,7 +952,6 @@ bool ClusterComm::moveFromSendToReceived (OperationID operationID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanupAllQueues() {
-  QueueIterator i;
   {
     CONDITION_LOCKER(locker, somethingToSend);
 
