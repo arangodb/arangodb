@@ -71,6 +71,7 @@ int hs4[4]={33972992,9770664,11661062,28398735};
 int hs5[4]={79685116,67516870,19274248,35037618};
 
 static GeoIndex * gi;
+static GeoCursor * gcr;
 static GeoCoordinate gcp;
 static GeoCoordinate gcp1, gcp2, gcp3, gcp4;
 static GeoCoordinates * list1;
@@ -293,6 +294,32 @@ BOOST_AUTO_TEST_CASE (tst_geo1) {
 /* first some easily recognizable GeoStrings       */
 /* mainly for debugging rather than regression     */
 
+BOOST_AUTO_TEST_CASE (tst_geo15) {
+gi=GeoIndex_new();
+GeoIndex_hint(gi,10);  /* set it to "robust" mode */
+for(i=0;i<50;i++)
+{
+    gcp.latitude  = 90.0;
+    gcp.longitude = 180.0;
+    gcp.data = ix + i;
+    r = GeoIndex_insert(gi,&gcp);
+    icheck(10,0,r);
+}
+gcp.latitude = 0.0;
+gcp.longitude= 25.5;
+gcr = GeoIndex_NewCursor(gi,&gcp);
+list1 = GeoIndex_ReadCursor(gcr,1);
+icheck(11,1,list1->length);
+gcp.latitude  = 89.9;
+gcp.longitude = -180.0;
+gcp.data = ix + 64;
+GeoIndex_insert(gi,&gcp);
+list1 = GeoIndex_NearestCountPoints(gi,&gcp,1);
+gccheck(13,list1,  1,"AAAAAAAAAAAAAAAABAAAAAAAA"); 
+gicheck(14,gi);
+/*GeoIndex_INDEXDUMP(gi,stdout);*/
+MyFree(gi);
+}
 BOOST_AUTO_TEST_CASE (tst_geo10) {
 gi=GeoIndex_new();
 GeoIndex_hint(gi,10);  /* set it to "robust" mode */

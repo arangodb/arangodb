@@ -2193,6 +2193,7 @@ GeoFix makedist(GeoPot * pot, GeoDetailedPoint * gd)
             d1=gd->fixdist[i]-pot->maxdist[i];
         else d1=0;
         if(d1>dist) dist=d1;
+printf("makedist %d %u %u %u\n",i,dist,gd->fixdist[i],pot->maxdist[i]);
     }
     return dist;
 }
@@ -2208,6 +2209,12 @@ GeoCursor * GeoIndex_NewCursor(GeoIndex * gi, GeoCoordinate * c)
     if (gcr == NULL) {
       return (GeoCursor *) gcr;
     }
+    gcr->Ix=gix;
+    
+    std::vector<hpot>* p = new (&gcr->potheap) std::vector<hpot>();
+    std::vector<hslot>* q = new (&gcr->slotheap) std::vector<hslot>();
+    (void) p;    // avoid compiler warnings - I just want to call
+    (void) q;    // the constructors and have no use for p,q.
     GeoMkDetail(gix,&(gcr->gd),c);
     hp.pot=1;
     hp.dist = makedist(gix->pots+1,&(gcr->gd));
@@ -2224,31 +2231,37 @@ GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count)
     GeoCoordinate * ct;
     GeoResults * gr;
     GeoCoordinates * gcts;
-    double snmd;
     GeoCr * gcr;
-    gcr=(GeoCr *) gc;
-    GeoPot * pot;
+    GeoPot pot;
     int slox;
+    double tsnmd;
     hslot hs;
     hpot hp;
+    gcr=(GeoCr *) gc;
     gr=GeoResultsCons(count);
     if(gr==NULL) return NULL;
     while(gr->pointsct<count)
     {
+printf("pots %10.8f points %10.8f\n",gcr->potsnmd,gcr->slotsnmd);
         if(gcr->potsnmd < gcr->slotsnmd*1.000001)
         {
 // smash top pot - if there is one 
             if(gcr->potheap.size()==0) break; // that's all there is
-            pot=(gcr->Ix)->pots+(gcr->potheap.front().pot);
+printf("potheapsiz1 is %ld\n",gcr->potheap.size()); // that's all there is
+            pot=*((gcr->Ix)->pots+(gcr->potheap.front().pot));
 // anyway remove top from heap
+printf("potheapsiz2 is %ld\n",gcr->potheap.size()); // that's all there is
             std::pop_heap(gcr->potheap.begin(),
                    gcr->potheap.end(),hpotcompare);
-            if(pot->LorLeaf==0)
+            gcr->potheap.pop_back();
+printf("potheapsiz3 is %ld\n",gcr->potheap.size()); // that's all there is
+            if(pot.LorLeaf==0)
             {
+printf("Leaf pot\n");
 // leaf pot - put all the points into the points heap
-                for(i=0;i<pot->RorPoints;i++)
+                for(i=0;i<pot.RorPoints;i++)
                 {
-                    j=pot->points[i];
+                    j=pot.points[i];
                     ct=((gcr->Ix)->gc+j);
                     hs.slot=j;
                     hs.snmd=GeoSNMD(&(gcr->gd),ct);
@@ -2259,18 +2272,19 @@ GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count)
                 if(gcr->slotheap.size()!=0)
                 {
                     slox=gcr->slotheap.front().slot;
-                    snmd=GeoSNMD(&gcr->gd,(gcr->Ix)->gc+slox);
+                    gcr->slotsnmd=GeoSNMD(&gcr->gd,(gcr->Ix)->gc+slox);
                 }
             }
             else
             {
-                hp.pot=pot->LorLeaf;
-                hp.dist = makedist((gcr->Ix)->pots+pot->LorLeaf,&(gcr->gd));
+printf("Non-leaf pot\n");
+                hp.pot=pot.LorLeaf;
+                hp.dist = makedist((gcr->Ix)->pots+pot.LorLeaf,&(gcr->gd));
                 gcr->potheap.push_back(hp);
                 std::push_heap(gcr->potheap.begin(),
                      gcr->potheap.end(),hpotcompare);
-                hp.pot=pot->RorPoints;
-                hp.dist = makedist((gcr->Ix)->pots+pot->RorPoints,&(gcr->gd));
+                hp.pot=pot.RorPoints;
+                hp.dist = makedist((gcr->Ix)->pots+pot.RorPoints,&(gcr->gd));
                 gcr->potheap.push_back(hp);
                 std::push_heap(gcr->potheap.begin(),
                      gcr->potheap.end(),hpotcompare);
@@ -2278,15 +2292,15 @@ GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count)
             gcr->potsnmd=10.0;
             if(gcr->potheap.size()!=0)
             {
-                pot=(gcr->Ix)->pots+(gcr->potheap.front().pot);
-                gcr->potsnmd=GeoFixtoSNMD(makedist(pot,&(gcr->gd)));
+                pot=*((gcr->Ix)->pots+(gcr->potheap.front().pot));
+                gcr->potsnmd=GeoFixtoSNMD(makedist(&pot,&(gcr->gd)));
             }
         }
         else
         {
             if(gcr->slotheap.size()==0) break; // that's all there is
             slox=gcr->slotheap.front().slot;
-            snmd=GeoSNMD(&gcr->gd,(gcr->Ix)->gc+slox);
+            tsnmd=GeoSNMD(&gcr->gd,(gcr->Ix)->gc+slox);
             r = GeoResultsGrow(gr);
             if(r==-1)
             {
@@ -2296,27 +2310,19 @@ GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count)
                 return NULL;
             }
             gr->slot[gr->pointsct]=slox;
-            gr->snmd[gr->pointsct]=snmd;
+            gr->snmd[gr->pointsct]=tsnmd;
             gr->pointsct++;
+            gcr->slotsnmd=5.0;
+            if(gcr->slotheap.size()!=0)
+            {
+                slox=gcr->slotheap.front().slot;
+                gcr->slotsnmd=GeoSNMD(&gcr->gd,(gcr->Ix)->gc+slox);
+            }
         }
     }
     gcts=GeoAnswers(gcr->Ix,gr);
     return gcts;
 }
-#ifdef NEVER
-            for(i=0;i<gp->RorPoints;i++)
-            {
-                slot=gp->points[i];
-                if(snmd > (maxsnmd * 1.00000000000001)) continue;
-typedef struct {
-  GeoIx * Ix;           /* GeoIndex          */
-  GeoDetailedPoint gd;
-  double potsnmd;
-  double pointsnmd;
-  std::vector<hpot> potheap;
-  std::vector<hslot> pointheap;
-} GeoCr;
-#endif
 
 void GeoIndex_CursorFree(GeoCursor * gc)
 {
