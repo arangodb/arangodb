@@ -5602,7 +5602,8 @@ div.headerBar {
   border: 0 !important;
   border-radius: 3px !important;
   box-shadow: 0;
-  width: 580px; }
+  width: 580px;
+  z-index: 9999999; }
   .modal .fade.in {
     top: 12.1% !important; }
   .modal table tr:last-child {
@@ -6599,6 +6600,29 @@ toolbar {
   min-height: 200px;
   padding-top: 13px; }
 
+.arangoFrame {
+  background-color: rgba(0, 0, 0, 0.5);
+  bottom: 0;
+  display: none;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 77777; }
+  .arangoFrame .outerDiv {
+    min-height: 100%;
+    padding: 40px;
+    z-index: 88888; }
+  .arangoFrame .innerDiv {
+    z-index: 99999; }
+  .arangoFrame .fa-times {
+    color: #fff;
+    float: right;
+    font-size: 12pt; }
+  .arangoFrame .fa-times:hover {
+    color: #c2c2c2;
+    cursor: pointer; }
+
 .container {
   margin-left: 20px;
   margin-right: 20px;
@@ -7065,11 +7089,16 @@ div.gv-background {
 .link > line {
   stroke-width: 1; }
 
+div.gv-colour-list:hover {
+  opacity: 1; }
+
 div.gv-colour-list {
   border-radius: 3px;
   max-height: 350px;
-  max-width: 130px;
-  overflow-x: none !important;
+  max-width: 300px;
+  min-width: 190px;
+  opacity: .1;
+  overflow-x: hidden !important;
   overflow-y: auto;
   position: absolute;
   right: 8px;

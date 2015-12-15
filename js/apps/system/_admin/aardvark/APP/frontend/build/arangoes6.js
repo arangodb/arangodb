@@ -2036,7 +2036,7 @@ return exports;
     "ERROR_ARANGO_COLLECTION_NOT_UNLOADED" : { "code" : 1217, "message" : "collection must be unloaded" },
     "ERROR_ARANGO_COLLECTION_TYPE_INVALID" : { "code" : 1218, "message" : "collection type invalid" },
     "ERROR_ARANGO_VALIDATION_FAILED" : { "code" : 1219, "message" : "validator failed" },
-    "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1220, "message" : "parser failed" },
+    "ERROR_ARANGO_PARSER_FAILED"   : { "code" : 1220, "message" : "parsing definition failed" },
     "ERROR_ARANGO_DOCUMENT_KEY_BAD" : { "code" : 1221, "message" : "illegal document key" },
     "ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED" : { "code" : 1222, "message" : "unexpected document key" },
     "ERROR_ARANGO_DATADIR_NOT_WRITABLE" : { "code" : 1224, "message" : "server database directory not writable" },
@@ -8483,6 +8483,9 @@ function annotation (v) {
 
 function value (v) {
   'use strict';
+  if (typeof v === 'string' && v.length > 1024) {
+    return colors.COLOR_GREEN + v.substr(0, 1024) + "..." + colors.COLOR_RESET;
+  }
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
   
@@ -8883,7 +8886,7 @@ function processQuery (query, explain) {
         if (node.hasOwnProperty("subNodes")) {
           if (node.subNodes.length > 20) {
             // print only the first 20 values from the array
-            return "[ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + " ... ]";
+            return "[ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + ", ... ]";
           }
           return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";
         }
@@ -8928,8 +8931,14 @@ function processQuery (query, explain) {
       case "modulus":
         return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);
       case "compare not in":
+        if (node.sorted) {
+          return buildExpression(node.subNodes[0]) + " not in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
+        }
         return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);
       case "compare in":
+        if (node.sorted) {
+          return buildExpression(node.subNodes[0]) + " in " + annotation("/* sorted */") + " " + buildExpression(node.subNodes[1]);
+        }
         return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);
       case "compare ==":
         return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);
@@ -11130,7 +11139,6 @@ var arangodb = require("org/arangodb"),
   errors = arangodb.errors,
   _ = require("underscore");
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
 // -----------------------------------------------------------------------------
@@ -11143,7 +11151,6 @@ var arangodb = require("org/arangodb"),
 /// @brief transform a string into an array.
 ////////////////////////////////////////////////////////////////////////////////
 
-
 var stringToArray = function (x) {
   if (typeof x === "string") {
     return [x];
@@ -11155,7 +11162,6 @@ var stringToArray = function (x) {
 /// @brief checks if a parameter is not defined, an empty string or an empty
 //  array
 ////////////////////////////////////////////////////////////////////////////////
-
 
 var isValidCollectionsParameter = function (x) {
   if (!x) {
@@ -11232,6 +11238,9 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 
 var getGraphCollection = function() {
   var gCol = db._graphs;
+  if (gCol === null || gCol === undefined) {
+    gCol = db._collection("_graphs");
+  }
   if (gCol === null || gCol === undefined) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_NO_GRAPH_COLLECTION.code;
@@ -11332,7 +11341,6 @@ var checkAllowsRestriction = function(list, rest, msg) {
   }
   return true;
 };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/general-graph"
@@ -11731,7 +11739,6 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
   this._path.push(vertexName);
   this._pathVertices.push(vertexName);
   return this;
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -12675,13 +12682,9 @@ var _list = function() {
   return _.pluck(gdb.toArray(), "_key");
 };
 
-
 var _listObjects = function() {
   return getGraphCollection().toArray();
 };
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_definitions
@@ -12875,7 +12878,6 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var _create = function (graphName, edgeDefinitions, orphanCollections, options) {
-
   if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
   }
@@ -13518,7 +13520,6 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ////////////////////////////////////////////////////////////////////////////////
 
 var _graph = function(graphName) {
-
   var gdb = getGraphCollection(),
     g, collections, orphanCollections;
 
@@ -13646,7 +13647,6 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var _drop = function(graphId, dropCollections) {
-
   var gdb = getGraphCollection(),
     graphs;
 
@@ -15709,7 +15709,6 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
   }
   updateBindCollections(this);
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_connectingEdges
