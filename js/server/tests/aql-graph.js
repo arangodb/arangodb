@@ -409,11 +409,47 @@ function ahuacatlQueryEdgesTestSuite () {
         actual = getQueryResults(q, {start: { _id: "UnitTestsAhuacatlVertex/v1" }});
         assertEqual(actual, [ "v1->v2", "v1->v3" ]);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks EDGES()
+////////////////////////////////////////////////////////////////////////////////
+
+    testEdgesStartVertexIllegal : function () {
+      var queries = [
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound'))) SORT e.what RETURN e.what",
+        "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'outbound') SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound')) SORT e.what RETURN e.what"
+      ];
+     
+      queries.forEach(function (q) {
+        var actual;
+
+        var bindVars = {start: {_id: "v1"}}; // No collection
+        assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, q, bindVars);
+
+        bindVars = {start: "UnitTestTheFuxx/v1"}; // Non existing collection
+        assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, q, bindVars);
+
+        bindVars = {start: { id: "UnitTestTheFuxx/v1" } }; // No _id attribute
+        assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, q, bindVars);
+
+        bindVars = {start: [{ id: "UnitTestTheFuxx/v1" }] }; // Error in Array
+        actual = getQueryResults(q, bindVars);
+        // No Error thrown here
+        assertEqual(actual, [ ]);
+
+        bindVars = {start: ["UnitTestTheFuxx/v1"] }; // Error in Array
+        actual = getQueryResults(q, bindVars);
+        // No Error thrown here
+        assertEqual(actual, [ ]);
+
+        bindVars = {start: ["v1"] }; // Error in Array
+        actual = getQueryResults(q, bindVars);
+        // No Error thrown here
+        assertEqual(actual, [ ]);
+      });
     }
-
-
-
-
   };
 }
 
