@@ -66,12 +66,12 @@
 namespace linenoise_ng {
 
 struct interval {
-  int first;
-  int last;
+  char32_t first;
+  char32_t last;
 };
 
 /* auxiliary function for binary search in interval table */
-static int bisearch(wchar_t ucs, const struct interval *table, int max) {
+static int bisearch(char32_t ucs, const struct interval *table, int max) {
   int min = 0;
   int mid;
 

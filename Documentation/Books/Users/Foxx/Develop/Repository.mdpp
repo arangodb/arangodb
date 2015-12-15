@@ -3,7 +3,7 @@
 A repository is a gateway to the database. It gets data from the database, updates it or saves new data. It uses the given model when it returns a model and expects instances of the model for methods like save. In your repository file, export the repository as **repository**.
 
 ```javascript
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 
 class TodosRepository extends Foxx.Repository {
     // ...
@@ -68,7 +68,7 @@ Making a simple query in the repository and using it from the controller:
 
 ```js
 // in the repository
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 
 class TodosRepository extends Foxx.Repository {
     // ...
@@ -152,7 +152,7 @@ The syntax for defining indexes is the same used in [*collection.ensureIndex*](.
 **Examples**
 
 ```js
-var Foxx = require('org/arangodb/foxx');
+var Foxx = require('@arangodb/foxx');
 class FulltextRepository extends Foxx.Repository {
     // ...
 }

@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var crypto = require("org/arangodb/crypto");
+var crypto = require("@arangodb/crypto");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    crypto methods

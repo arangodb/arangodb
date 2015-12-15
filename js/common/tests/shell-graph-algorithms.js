@@ -42,7 +42,7 @@ var console = require("console");
 
 function neighborSuite() {
   'use strict';
-  var Graph = require("org/arangodb/graph").Graph,
+  var Graph = require("@arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
@@ -158,7 +158,7 @@ function neighborSuite() {
 
 function dijkstraSuite() {
   'use strict';
-  var Graph = require("org/arangodb/graph").Graph,
+  var Graph = require("@arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
@@ -451,7 +451,7 @@ function dijkstraSuite() {
 
 function commonSuite() {
   'use strict';
-  var Graph = require("org/arangodb/graph").Graph,
+  var Graph = require("@arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",

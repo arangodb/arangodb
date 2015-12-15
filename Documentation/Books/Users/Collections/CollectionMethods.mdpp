@@ -5,7 +5,7 @@
 @startDocuBlock collectionDrop
 
 !SUBSECTION Truncate
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock collectionTruncate
 
 !SUBSECTION Properties

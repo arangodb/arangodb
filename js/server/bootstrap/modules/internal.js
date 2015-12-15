@@ -98,7 +98,7 @@ delete global.FE_VERSION_CHECK;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.reloadRouting = function () {
-  require("org/arangodb/actions").reloadRouting(); 
+  require("@arangodb/actions").reloadRouting(); 
 };
 
 // -----------------------------------------------------------------------------
@@ -110,7 +110,7 @@ exports.reloadRouting = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.resetEngine = function () {
-  require('org/arangodb/actions').reloadRouting();
+  require('@arangodb/actions').reloadRouting();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,13 +224,13 @@ else {
 if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
   exports.reloadAqlFunctions = function () {
     exports.executeGlobalContextFunction('reloadAql');
-    require('org/arangodb/aql').reload();
+    require('@arangodb/aql').reload();
   };
   delete global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
 }
 else {
   exports.reloadAqlFunctions = function () {
-    require('org/arangodb/aql').reload();
+    require('@arangodb/aql').reload();
   };
 }
 

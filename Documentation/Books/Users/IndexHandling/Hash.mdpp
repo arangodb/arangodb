@@ -16,9 +16,9 @@ of `null`.
 
 !SECTION Accessing Hash Indexes from the Shell
 
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock ensureUniqueConstraint
 
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock ensureHashIndex
 

@@ -334,7 +334,7 @@ if ENABLE_MAINTAINER_MODE
 BUILT_SOURCES += \
 	@top_srcdir@/lib/Basics/voc-mimetypes.h \
 	@top_srcdir@/lib/Basics/voc-mimetypes.cpp \
-	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
+	@top_srcdir@/js/common/modules/@arangodb/mimetypes.js
 
 @top_srcdir@/lib/Basics/voc-mimetypes.h: lib/Basics/mimetypes.dat
 	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/Basics/mimetypes.dat @top_srcdir@/lib/Basics/voc-mimetypes.h
@@ -342,8 +342,8 @@ BUILT_SOURCES += \
 @top_srcdir@/lib/Basics/voc-mimetypes.cpp: lib/Basics/mimetypes.dat
 	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/Basics/mimetypes.dat @top_srcdir@/lib/Basics/voc-mimetypes.cpp
 
-@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js: lib/Basics/mimetypes.dat
-	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/Basics/mimetypes.dat js/common/modules/org/arangodb/mimetypes.js
+@top_srcdir@/js/common/modules/@arangodb/mimetypes.js: lib/Basics/mimetypes.dat
+	@top_srcdir@/config/build_mimetypes.sh @top_srcdir@/config/generateMimetypes.py lib/Basics/mimetypes.dat js/common/modules/@arangodb/mimetypes.js
 
 endif
 
@@ -372,7 +372,7 @@ superclean: distclean
 built-sources: \
 	build.h \
 	@top_srcdir@/js/common/bootstrap/errors.js \
-	@top_srcdir@/js/common/modules/org/arangodb/mimetypes.js
+	@top_srcdir@/js/common/modules/@arangodb/mimetypes.js
 
 ################################################################################
 ### @brief tags file
@@ -393,7 +393,7 @@ update-disclaimer:
 	find lib arangod arangosh "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec utils/cleanupCFiles "{}" ";"
 	find lib arangod arangosh "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec chmod "644" "{}" ";"
 	find js/common/bootstrap js/client/bootstrap js/server/bootstrap -name "*.js" -a ! -name errors.js -exec utils/cleanupCFiles "{}" ";"
-	find js/common/modules/org/arangodb js/client/modules/org/arangodb js/server/modules/org/arangodb -name "*.js"
+	find js/common/modules/@arangodb js/client/modules/@arangodb js/server/modules/@arangodb -name "*.js"
 	find js -name "*.js"  -exec chmod "644" "{}" ";"
 
 ## -----------------------------------------------------------------------------

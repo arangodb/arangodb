@@ -28,7 +28,7 @@ commit the transaction. If an error occurs during transaction execution, the
 transaction is automatically aborted, and all changes are rolled back.
 
 !SUBSECTION Execute transaction
-<!-- js/server/modules/org/arangodb/arango-database.js -->
+<!-- js/server/modules/@arangodb/arango-database.js -->
 @startDocuBlock executeTransaction
 
 !SUBSECTION Declaration of collections
@@ -92,7 +92,7 @@ db._executeTransaction({
                              than specified */
   },
   action: function () {
-    var db = require("org/arangodb").db;
+    var db = require("@arangodb").db;
     return db.foobar.toArray(); /* will fail because db.foobar must not be accessed
                                    for reading inside this transaction */
   }

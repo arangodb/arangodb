@@ -30,7 +30,7 @@
 
 var jsunity = require("jsunity");
 
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var wait = require("internal").wait;

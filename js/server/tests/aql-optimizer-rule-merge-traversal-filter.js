@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var helper = require("org/arangodb/aql-helper");
+var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +49,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var graph_module = require("org/arangodb/general-graph");
+      var graph_module = require("@arangodb/general-graph");
 
 
       var graph = graph_module._create(graphName, [
@@ -81,7 +81,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      var graph_module = require("org/arangodb/general-graph");
+      var graph_module = require("@arangodb/general-graph");
       graph_module._drop(graphName, true);
     },
 

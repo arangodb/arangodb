@@ -88,13 +88,13 @@ global.aqlQuery = function () {
 };
 
 // extend prototypes for internally defined classes
-require('org/arangodb');
+require('@arangodb');
 
 // load the actions from the actions directory
-require('org/arangodb/actions').startup();
+require('@arangodb/actions').startup();
 
 // initialize AQL
-require('org/arangodb/aql');
+require('@arangodb/aql');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

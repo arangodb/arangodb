@@ -29,11 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var errors = arangodb.errors;
 var db = arangodb.db;
 
-var replication = require("org/arangodb/replication");
+var replication = require("@arangodb/replication");
 var console = require("console");
 var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
@@ -387,7 +387,7 @@ function ReplicationSuite () {
             }
           });
 
-          state.task = require("org/arangodb/tasks").register({
+          state.task = require("@arangodb/tasks").register({
             name: "replication-test",
             command: String(func),
             params: { 
@@ -401,7 +401,7 @@ function ReplicationSuite () {
 
           connectToMaster();
           try {
-            require("org/arangodb/tasks").get(state.task);
+            require("@arangodb/tasks").get(state.task);
             // task exists
           }
           catch (err) {
@@ -459,7 +459,7 @@ function ReplicationSuite () {
             }
           });
 
-          state.task = require("org/arangodb/tasks").register({
+          state.task = require("@arangodb/tasks").register({
             name: "replication-test",
             command: String(func),
             params: { 
@@ -476,7 +476,7 @@ function ReplicationSuite () {
 
           connectToMaster();
           try {
-            require("org/arangodb/tasks").get(state.task);
+            require("@arangodb/tasks").get(state.task);
             // task exists
           }
           catch (err) {

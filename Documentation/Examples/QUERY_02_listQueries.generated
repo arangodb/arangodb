@@ -1,5 +1,5 @@
 arangosh&gt; <span class="hljs-keyword">var</span> theQuery = <span class="hljs-string">'FOR sleepLoooong IN 1..5 LET sleepLoooonger = SLEEP(1000) RETURN sleepLoooong'</span>;
-arangosh&gt; <span class="hljs-keyword">var</span> tasks = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/tasks"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> tasks = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/tasks"</span>);
 arangosh&gt; tasks.register({
 ........&gt;  id: <span class="hljs-string">"mytask-1"</span>,
 ........&gt;  name: <span class="hljs-string">"this is a sample task to spawn a slow aql query"</span>,

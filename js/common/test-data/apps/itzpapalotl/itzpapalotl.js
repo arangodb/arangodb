@@ -32,15 +32,15 @@
   'use strict';
 
   // initialize a new FoxxApplication
-  var FoxxApplication = require("org/arangodb/foxx").Controller;
+  var FoxxApplication = require("@arangodb/foxx").Controller;
   var controller = new FoxxApplication(applicationContext);
 
   // include console module so we can log something (in the server's log)
   var console = require("console");
-  var ArangoError = require("org/arangodb").ArangoError;
+  var ArangoError = require("@arangodb").ArangoError;
 
   // we also need this module for custom responses
-  var actions = require("org/arangodb/actions");
+  var actions = require("@arangodb/actions");
 
   // use joi for validation 
   var joi = require("joi");

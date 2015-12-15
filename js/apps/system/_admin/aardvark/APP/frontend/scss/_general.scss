@@ -18,21 +18,22 @@
 }
 
 .arangoFrame {
-
   background-color: rgba(0, 0, 0, .5);
+  bottom: 0;
   display: none;
   left: 0;
-  position: absolute;
+  position: fixed;
   right: 0;
   top: 0;
   z-index: 77777;
 
-  .Outer {
+  .outerDiv {
+    min-height: 100%;
     padding: 40px;
     z-index: 88888;
   }
 
-  .Inner {
+  .innerDiv {
     z-index: 99999;
   }
 

@@ -51,19 +51,19 @@ module "name", than there exists a companion module "name-common" which contains
 these parts.
 
 For large prototypes with a lot of methods, there exist separate files. I. e.
-`ArangoCollection` is defined in `org/arangodb/arango-collection.js`.
+`ArangoCollection` is defined in `@arangodb/arango-collection.js`.
 
 Module "internal"
 -----------------
 
 The module "internal" should not be used except during bootstrapping. All
-required prototypes and variables are copied into the module "org/arangodb",
+required prototypes and variables are copied into the module "@arangodb",
 which can be used everywhere.
 
-Module "org/arangodb"
+Module "@arangodb"
 ---------------------
 
-The module "org/arangodb" exports the following prototypes
+The module "@arangodb" exports the following prototypes
 
 - ArangoCollection
 - ArangoConnection (client-only)

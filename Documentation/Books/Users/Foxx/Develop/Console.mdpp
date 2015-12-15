@@ -138,8 +138,8 @@ By default the message will be logged with the log level **INFO**.
 **Examples**
 
 ```js
-console.log(require('org/arangodb').db); // => '[ArangoDatabase "_system"]'
-console.dir(require('org/arangodb').db);
+console.log(require('@arangodb').db); // => '[ArangoDatabase "_system"]'
+console.dir(require('@arangodb').db);
 /* =>
 { [ArangoDatabase "_system"]
   _version: [Function: _version],

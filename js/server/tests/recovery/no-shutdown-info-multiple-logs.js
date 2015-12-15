@@ -27,7 +27,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var internal = require("internal");
 var jsunity = require("jsunity");
 
@@ -46,7 +46,7 @@ function runSetup () {
       write: [ "UnitTestsRecovery" ]
     },
     action: function () {
-      var db = require("org/arangodb").db, i;
+      var db = require("@arangodb").db, i;
       var c = db._collection("UnitTestsRecovery");
 
       for (i = 0; i < 200000; ++i) {

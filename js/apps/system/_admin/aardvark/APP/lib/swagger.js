@@ -30,7 +30,7 @@
   // Get details of one specific installed foxx.
   exports.Swagger = function (mount) {
 
-    var foxx_manager = require("org/arangodb/foxx/manager");
+    var foxx_manager = require("@arangodb/foxx/manager");
 
     var result = {},
         apis = [],

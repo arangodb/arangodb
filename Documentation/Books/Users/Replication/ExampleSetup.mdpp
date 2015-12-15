@@ -19,7 +19,7 @@ in the slave's *_system* database:
 
 ```js
 db._useDatabase("_system");
-require("org/arangodb/replication").applier.stop();
+require("@arangodb/replication").applier.stop();
 ```
 
 The *stop* operation will terminate any replication activity in the _system database on the slave.
@@ -32,7 +32,7 @@ execute the following commands on the slave:
 
 ```js
 db._useDatabase("_system");
-require("org/arangodb/replication").sync({
+require("@arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",
   password: "mypasswd",
@@ -71,7 +71,7 @@ Here's the command to configure the replication applier with several options:
 
 ```js
 db._useDatabase("_system");
-require("org/arangodb/replication").applier.properties({
+require("@arangodb/replication").applier.properties({
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",
   password: "mypasswd",
@@ -125,7 +125,7 @@ before:
 
 ```js
 db._useDatabase("_system");
-require("org/arangodb/replication").applier.start("40694126");
+require("@arangodb/replication").applier.start("40694126");
 ```
 
 This will replicate all operations happening in the master's system database and apply them
@@ -136,7 +136,7 @@ applier by executing the *state* command on the slave server:
 
 ```js
     db._useDatabase("_system");
-    require("org/arangodb/replication").applier.state();
+    require("@arangodb/replication").applier.state();
 ```
 
 Please note that stopping the replication applier on the slave using the *stop* command 
@@ -164,7 +164,7 @@ can be queried using the *getSyncResult* function as follows:
 
 ```js
 db._useDatabase("_system");
-var replication = require("org/arangodb/replication");
+var replication = require("@arangodb/replication");
 var id = replication.sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "myuser",

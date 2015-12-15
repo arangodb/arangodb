@@ -68,7 +68,7 @@ the server authentication cache is [reloaded](#reload).
 
     @startDocuBlockInline USER_02_saveUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_02_saveUser}
-    require("org/arangodb/users").save("my-user", "my-secret-password");
+    require("@arangodb/users").save("my-user", "my-secret-password");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_02_saveUser
 
@@ -86,7 +86,7 @@ and this can be performed by called this method.
 
     @startDocuBlockInline USER_03_reloadUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_03_reloadUser}
-    require("org/arangodb/users").reload();
+    require("@arangodb/users").reload();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_03_reloadUser
 
@@ -107,7 +107,7 @@ This method will fail if the user cannot be found in the database.
 
     @startDocuBlockInline USER_04_documentUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_04_documentUser}
-    require("org/arangodb/users").document("my-user");
+    require("@arangodb/users").document("my-user");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_04_documentUser
 
@@ -141,7 +141,7 @@ database.
 
     @startDocuBlockInline USER_03_replaceUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_03_replaceUser}
-    require("org/arangodb/users").replace("my-user", "my-changed-password");
+    require("@arangodb/users").replace("my-user", "my-changed-password");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_03_replaceUser
 
@@ -170,7 +170,7 @@ database.
 
     @startDocuBlockInline USER_04_updateUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_04_updateUser}
-    require("org/arangodb/users").update("my-user", "my-secret-password");
+    require("@arangodb/users").update("my-user", "my-secret-password");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_04_updateUser
 
@@ -189,7 +189,7 @@ amount of time.
 
     @startDocuBlockInline USER_05_isValidUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_05_isValidUser}
-    require("org/arangodb/users").isValid("my-user", "my-secret-password");
+    require("@arangodb/users").isValid("my-user", "my-secret-password");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_05_isValidUser
 
@@ -205,7 +205,7 @@ Fetches all existing ArangoDB users from the database.
 
     @startDocuBlockInline USER_06_AllUsers
     @EXAMPLE_ARANGOSH_OUTPUT{USER_06_AllUsers}
-    require("org/arangodb/users").all();
+    require("@arangodb/users").all();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_06_AllUsers
 
@@ -226,7 +226,7 @@ This method will fail if the user cannot be found in the database.
 
     @startDocuBlockInline USER_07_removeUser
     @EXAMPLE_ARANGOSH_OUTPUT{USER_07_removeUser}
-    require("org/arangodb/users").remove("my-user");
+    require("@arangodb/users").remove("my-user");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock USER_07_removeUser
 

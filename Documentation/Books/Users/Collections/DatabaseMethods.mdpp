@@ -23,9 +23,9 @@
 @startDocuBlock collectionDatabaseCollectionName
 
 !SUBSECTION Drop
-<!-- js/server/modules/org/arangodb/arango-database.js -->
+<!-- js/server/modules/@arangodb/arango-database.js -->
 @startDocuBlock collectionDatabaseDrop
 
 !SUBSECTION Truncate
-<!-- js/server/modules/org/arangodb/arango-database.js -->
+<!-- js/server/modules/@arangodb/arango-database.js -->
 @startDocuBlock collectionDatabaseTruncate

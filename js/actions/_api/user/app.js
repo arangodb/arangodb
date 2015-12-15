@@ -28,9 +28,9 @@
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
-var users = require("org/arangodb/users");
+var arangodb = require("@arangodb");
+var actions = require("@arangodb/actions");
+var users = require("@arangodb/users");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

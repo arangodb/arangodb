@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var helper = require("org/arangodb/aql-helper");
+var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
 

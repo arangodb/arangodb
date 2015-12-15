@@ -30,8 +30,8 @@
   "use strict";
 
   var _ = require("underscore"),
-    Foxx = require("org/arangodb/foxx"),
-    version = require("org/arangodb/database-version").CURRENT_VERSION + "", // do not use new String, there is bug in update
+    Foxx = require("@arangodb/foxx"),
+    version = require("@arangodb/database-version").CURRENT_VERSION + "", // do not use new String, there is bug in update
     Plans;
 
   Plans = Foxx.Repository.extend({

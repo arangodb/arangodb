@@ -670,7 +670,7 @@ Object.defineProperty(Object.prototype,'propertyKeys',{get:function get(){return
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
-module.define("org/arangodb",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+module.define("@arangodb",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
 ///
 /// @file
@@ -696,7 +696,7 @@ module.define("org/arangodb",function(exports,module){'use strict'; ////////////
 /// @author Dr. Frank Celler
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var common=require("org/arangodb-common");Object.keys(common).forEach(function(key){exports[key] = common[key];}); // -----------------------------------------------------------------------------
+var internal=require("internal");var common=require("@arangodb/common");Object.keys(common).forEach(function(key){exports[key] = common[key];}); // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
@@ -709,22 +709,22 @@ exports.isClient = true; ///////////////////////////////////////////////////////
 /// @brief class "ArangoCollection"
 ////////////////////////////////////////////////////////////////////////////////
 // cannot yet not use arangodb
-exports.ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection; ////////////////////////////////////////////////////////////////////////////////
+exports.ArangoCollection = require("@arangodb/arango-collection").ArangoCollection; ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoConnection"
 ////////////////////////////////////////////////////////////////////////////////
 exports.ArangoConnection = internal.ArangoConnection; ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoDatabase"
 ////////////////////////////////////////////////////////////////////////////////
 // cannot yet not use arangodb
-exports.ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase; ////////////////////////////////////////////////////////////////////////////////
+exports.ArangoDatabase = require("@arangodb/arango-database").ArangoDatabase; ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoStatement"
 ////////////////////////////////////////////////////////////////////////////////
 // cannot yet not use arangodb
-exports.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement; ////////////////////////////////////////////////////////////////////////////////
+exports.ArangoStatement = require("@arangodb/arango-statement").ArangoStatement; ////////////////////////////////////////////////////////////////////////////////
 /// @brief class "ArangoQueryCursor"
 ////////////////////////////////////////////////////////////////////////////////
 // cannot yet not use arangodb
-exports.ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryCursor; ////////////////////////////////////////////////////////////////////////////////
+exports.ArangoQueryCursor = require("@arangodb/arango-query-cursor").ArangoQueryCursor; ////////////////////////////////////////////////////////////////////////////////
 /// @brief the global "db" and "arango" object
 ////////////////////////////////////////////////////////////////////////////////
 if(typeof internal.arango !== 'undefined'){try{exports.arango = internal.arango;exports.db = new exports.ArangoDatabase(internal.arango);internal.db = exports.db; // TODO remove
@@ -734,7 +734,7 @@ if(typeof internal.arango !== 'undefined'){try{exports.arango = internal.arango;
 exports.plainServerVersion = function(){if(internal.arango){var version=internal.arango.getVersion();var devel=version.match(/(.*)-(rc[0-9]*|devel)$/);if(devel !== null){version = devel[1];}return version;}else {return undefined;}}; // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-});module.define("org/arangodb/aql/queries",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/aql/queries",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL query management
 ///
 /// @file
@@ -760,8 +760,8 @@ exports.plainServerVersion = function(){if(internal.arango){var version=internal
 /// @author Jan Steemann
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var arangosh=require("org/arangodb/arangosh"); // -----------------------------------------------------------------------------
-// --SECTION--                                 module "org/arangodb/aql/queries"
+var internal=require("internal");var arangosh=require("@arangodb/arangosh"); // -----------------------------------------------------------------------------
+// --SECTION--                                 module "@arangodb/aql/queries"
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the slow query log
@@ -785,7 +785,7 @@ exports.kill = function(id){if(typeof id === 'object' && id.hasOwnProperty('id')
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/arango-collection",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/arango-collection",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
 ///
 /// @file
@@ -812,7 +812,7 @@ exports.kill = function(id){if(typeof id === 'object' && id.hasOwnProperty('id')
 /// @author Dr. Frank Celler
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var arangosh=require("org/arangodb/arangosh"); // -----------------------------------------------------------------------------
+var internal=require("internal");var arangosh=require("@arangodb/arangosh"); // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
@@ -830,7 +830,7 @@ Object.keys(parameters[i]).forEach(setOption);break;}}return body;} // ---------
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 function ArangoCollection(database,data){this._database = database;this._dbName = database._name();if(typeof data === "string"){this._id = null;this._name = data;this._status = null;this._type = null;}else if(data !== undefined){this._id = data.id;this._name = data.name;this._status = data.status;this._type = data.type;}else {this._id = null;this._name = null;this._status = null;this._type = null;}}exports.ArangoCollection = ArangoCollection; // must be called after exporting ArangoCollection
-require("org/arangodb/arango-collection-common");var ArangoError=require("org/arangodb").ArangoError; // -----------------------------------------------------------------------------
+require("@arangodb/arango-collection-common");var ArangoError=require("@arangodb").ArangoError; // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
@@ -1057,7 +1057,7 @@ ArangoCollection.prototype.removeByKeys = function(keys){var data={collection:th
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/arango-database",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/arango-database",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
 ///
 /// @file
@@ -1084,7 +1084,7 @@ ArangoCollection.prototype.removeByKeys = function(keys){var data={collection:th
 /// @author Dr. Frank Celler
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var arangosh=require("org/arangodb/arangosh"); // -----------------------------------------------------------------------------
+var internal=require("internal");var arangosh=require("@arangodb/arangosh"); // -----------------------------------------------------------------------------
 // --SECTION--                                                    ArangoDatabase
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -1095,7 +1095,7 @@ var internal=require("internal");var arangosh=require("org/arangodb/arangosh"); 
 ////////////////////////////////////////////////////////////////////////////////
 var ArangoCollection;function ArangoDatabase(connection){this._connection = connection;this._collectionConstructor = ArangoCollection;this._properties = null;this._registerCollection = function(name,obj){ // store the collection in our own list
 this[name] = obj;};}exports.ArangoDatabase = ArangoDatabase; // load after exporting ArangoDatabase
-ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;var ArangoError=require("org/arangodb").ArangoError;var ArangoStatement=require("org/arangodb/arango-statement").ArangoStatement; // -----------------------------------------------------------------------------
+ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;var ArangoError=require("@arangodb").ArangoError;var ArangoStatement=require("@arangodb/arango-statement").ArangoStatement; // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
@@ -1216,7 +1216,7 @@ ArangoDatabase.prototype._createStatement = function(data){return new ArangoStat
 ArangoDatabase.prototype._query = function(query,bindVars,cursorOptions,options){if(typeof query === "object" && query !== null && arguments.length === 1){return new ArangoStatement(this,query).execute();}var data={query:query,bindVars:bindVars || undefined,count:cursorOptions && cursorOptions.count || false,batchSize:cursorOptions && cursorOptions.batchSize || undefined,options:options || undefined,cache:options && options.cache || undefined};return new ArangoStatement(this,data).execute();}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief explains a query
 ////////////////////////////////////////////////////////////////////////////////
-ArangoDatabase.prototype._explain = function(query,bindVars,options){if(typeof query === 'object' && typeof query.toAQL === 'function'){query = {query:query.toAQL()};}if(arguments.length > 1){query = {query:query,bindVars:bindVars,options:options};}require("org/arangodb/aql/explainer").explain(query);}; // -----------------------------------------------------------------------------
+ArangoDatabase.prototype._explain = function(query,bindVars,options){if(typeof query === 'object' && typeof query.toAQL === 'function'){query = {query:query.toAQL()};}if(arguments.length > 1){query = {query:query,bindVars:bindVars,options:options};}require("@arangodb/aql/explainer").explain(query);}; // -----------------------------------------------------------------------------
 // --SECTION--                                                database functions
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
@@ -1252,7 +1252,7 @@ ArangoDatabase.prototype._executeTransaction = function(data){if(!data || typeof
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/arango-query-cursor",function(exports,module){ /*jshint strict: false */ /*global more:true */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/arango-query-cursor",function(exports,module){ /*jshint strict: false */ /*global more:true */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoQueryCursor
 ///
 /// @file
@@ -1279,7 +1279,7 @@ ArangoDatabase.prototype._executeTransaction = function(data){if(!data || typeof
 /// @author Dr. Frank Celler
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var arangosh=require("org/arangodb/arangosh"); // -----------------------------------------------------------------------------
+var internal=require("internal");var arangosh=require("@arangodb/arangosh"); // -----------------------------------------------------------------------------
 // --SECTION--                                                 ArangoQueryCursor
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -1349,7 +1349,7 @@ ArangoQueryCursor.prototype._baseurl = function(){return "/_db/" + encodeURIComp
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint\\)"
 // End:
-});module.define("org/arangodb/arango-statement",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/arango-statement",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement
 ///
 /// @file
@@ -1376,7 +1376,7 @@ ArangoQueryCursor.prototype._baseurl = function(){return "/_db/" + encodeURIComp
 /// @author Dr. Frank Celler
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var arangosh=require("org/arangodb/arangosh");var ArangoStatement=require("org/arangodb/arango-statement-common").ArangoStatement;var ArangoQueryCursor=require("org/arangodb/arango-query-cursor").ArangoQueryCursor; // -----------------------------------------------------------------------------
+var internal=require("internal");var arangosh=require("@arangodb/arangosh");var ArangoStatement=require("@arangodb/arango-statement-common").ArangoStatement;var ArangoQueryCursor=require("@arangodb/arango-query-cursor").ArangoQueryCursor; // -----------------------------------------------------------------------------
 // --SECTION--                                                   ArangoStatement
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -1415,7 +1415,7 @@ exports.ArangoStatement = ArangoStatement; // ----------------------------------
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/arangosh",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/arangosh",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
 ///
 /// @file
@@ -1462,7 +1462,7 @@ exports.createHelpHeadline = function(text){var i;var p="";var x=Math.abs(78 - t
 /// throws an exception in case of an an error
 ////////////////////////////////////////////////////////////////////////////////
 // must came after the export of createHelpHeadline
-var arangodb=require("org/arangodb");var ArangoError=arangodb.ArangoError;exports.checkRequestResult = function(requestResult){if(requestResult === undefined){throw new ArangoError({"error":true,"code":500,"errorNum":arangodb.ERROR_INTERNAL,"errorMessage":"Unknown error. Request result is empty"});}if(requestResult.hasOwnProperty('error')){if(requestResult.error){if(requestResult.errorNum === arangodb.ERROR_TYPE_ERROR){throw new TypeError(requestResult.errorMessage);}throw new ArangoError(requestResult);} // remove the property from the original object
+var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError;exports.checkRequestResult = function(requestResult){if(requestResult === undefined){throw new ArangoError({"error":true,"code":500,"errorNum":arangodb.ERROR_INTERNAL,"errorMessage":"Unknown error. Request result is empty"});}if(requestResult.hasOwnProperty('error')){if(requestResult.error){if(requestResult.errorNum === arangodb.ERROR_TYPE_ERROR){throw new TypeError(requestResult.errorMessage);}throw new ArangoError(requestResult);} // remove the property from the original object
 delete requestResult.error;}return requestResult;}; // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1482,7 +1482,7 @@ exports.helpExtended = exports.createHelpHeadline("More help") + 'Pager:        
 // mode: outline-minor
 // outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
-});module.define("org/arangodb/graph-blueprint",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/graph-blueprint",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
 /// @file
@@ -1508,7 +1508,7 @@ exports.helpExtended = exports.createHelpHeadline("More help") + 'Pager:        
 /// @author Dr. Frank Celler, Lucas Dohmen
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var arangodb=require("org/arangodb"),is=require("org/arangodb/is"),common=require("org/arangodb/graph-common"),Edge=common.Edge,Graph=common.Graph,Vertex=common.Vertex,GraphArray=common.GraphArray,Iterator=common.Iterator,GraphAPI=require("org/arangodb/api/graph").GraphAPI; // -----------------------------------------------------------------------------
+var arangodb=require("@arangodb"),is=require("@arangodb/is"),common=require("@arangodb/graph-common"),Edge=common.Edge,Graph=common.Graph,Vertex=common.Vertex,GraphArray=common.GraphArray,Iterator=common.Iterator,GraphAPI=require("@arangodb/api/graph").GraphAPI; // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
@@ -1594,14 +1594,14 @@ Graph.prototype.removeVertex = function(vertex){this.emptyCachedPredecessors();G
 Graph.prototype.removeEdge = function(edge){this.emptyCachedPredecessors();GraphAPI.deleteEdge(this._properties._key,edge._properties._key);this._edgesCache[edge._properties._id] = undefined;edge._properties = undefined;}; // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
-exports.Edge = Edge;exports.Graph = Graph;exports.Vertex = Vertex;exports.GraphArray = GraphArray;require("org/arangodb/graph/algorithms-common"); // -----------------------------------------------------------------------------
+exports.Edge = Edge;exports.Graph = Graph;exports.Vertex = Vertex;exports.GraphArray = GraphArray;require("@arangodb/graph/algorithms-common"); // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-});module.define("org/arangodb/replication",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/replication",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replication management
 ///
 /// @file
@@ -1627,8 +1627,8 @@ exports.Edge = Edge;exports.Graph = Graph;exports.Vertex = Vertex;exports.GraphA
 /// @author Jan Steemann
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var arangosh=require("org/arangodb/arangosh"); // -----------------------------------------------------------------------------
-// --SECTION--                                 module "org/arangodb/replication"
+var internal=require("internal");var arangosh=require("@arangodb/arangosh"); // -----------------------------------------------------------------------------
+// --SECTION--                                 module "@arangodb/replication"
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -1680,7 +1680,7 @@ exports.logger = logger;exports.applier = applier;exports.sync = sync;exports.sy
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/simple-query",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/simple-query",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
 ///
 /// @file
@@ -1706,7 +1706,7 @@ exports.logger = logger;exports.applier = applier;exports.sync = sync;exports.sy
 /// @author Dr. Frank Celler
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var arangosh=require("org/arangodb/arangosh");var ArangoQueryCursor=require("org/arangodb/arango-query-cursor").ArangoQueryCursor;var sq=require("org/arangodb/simple-query-common");var GeneralArrayCursor=sq.GeneralArrayCursor;var SimpleQueryAll=sq.SimpleQueryAll;var SimpleQueryArray=sq.SimpleQueryArray;var SimpleQueryByExample=sq.SimpleQueryByExample;var SimpleQueryByCondition=sq.SimpleQueryByCondition;var SimpleQueryFulltext=sq.SimpleQueryFulltext;var SimpleQueryGeo=sq.SimpleQueryGeo;var SimpleQueryNear=sq.SimpleQueryNear;var SimpleQueryRange=sq.SimpleQueryRange;var SimpleQueryWithin=sq.SimpleQueryWithin;var SimpleQueryWithinRectangle=sq.SimpleQueryWithinRectangle; // -----------------------------------------------------------------------------
+var arangosh=require("@arangodb/arangosh");var ArangoQueryCursor=require("@arangodb/arango-query-cursor").ArangoQueryCursor;var sq=require("@arangodb/simple-query-common");var GeneralArrayCursor=sq.GeneralArrayCursor;var SimpleQueryAll=sq.SimpleQueryAll;var SimpleQueryArray=sq.SimpleQueryArray;var SimpleQueryByExample=sq.SimpleQueryByExample;var SimpleQueryByCondition=sq.SimpleQueryByCondition;var SimpleQueryFulltext=sq.SimpleQueryFulltext;var SimpleQueryGeo=sq.SimpleQueryGeo;var SimpleQueryNear=sq.SimpleQueryNear;var SimpleQueryRange=sq.SimpleQueryRange;var SimpleQueryWithin=sq.SimpleQueryWithin;var SimpleQueryWithinRectangle=sq.SimpleQueryWithinRectangle; // -----------------------------------------------------------------------------
 // --SECTION--                                                  SIMPLE QUERY ALL
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -1788,7 +1788,7 @@ exports.GeneralArrayCursor = GeneralArrayCursor;exports.SimpleQueryAll = SimpleQ
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-});module.define("org/arangodb/tutorial",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/tutorial",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Shell tutorial
 ///
 /// @file
@@ -1815,7 +1815,7 @@ exports.GeneralArrayCursor = GeneralArrayCursor;exports.SimpleQueryAll = SimpleQ
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 // -----------------------------------------------------------------------------
-// --SECTION--                                    module "org/arangodb/tutorial"
+// --SECTION--                                    module "@arangodb/tutorial"
 // -----------------------------------------------------------------------------
 var index=0;var next="Type 'tutorial' again to get to the next chapter.";var lessons=[{title:"Welcome to the tutorial!",text:"This is a user-interactive tutorial on ArangoDB and the ArangoDB shell.\n" + "It will give you a first look into ArangoDB and how it works."},{title:"JavaScript Shell",text:"On this shell's prompt, you can issue arbitrary JavaScript commands.\n" + "So you are able to do things like...:\n\n" + "  number = 123;\n" + "  number = number * 10;"},{title:"Running Complex Instructions",text:"You can also run more complex instructions, such as for loops:\n\n" + "  for (i = 0; i < 10; i++) { number = number + 1; }"},{title:"Printing Results",text:"As you can see, the result of the last command executed is printed automatically. " + "To explicitly print a value at any other time, there is the print function:\n\n" + "  for (i = 0; i < 5; ++i) { print(\"I am a JavaScript shell\"); }"},{title:"Creating Collections",text:"ArangoDB is a document database. This means that we store data as documents " + "(which are similar to JavaScript objects) in so-called 'collections'. " + "Let's create a collection named 'places' now:\n\n" + "  db._create('places');\n\n" + "Note: each collection is identified by a unique name. Trying to create a " + "collection that already exists will produce an error."},{title:"Displaying Collections",text:"Now you can take a look at the collection(s) you just created:\n\n" + "  db._collections();\n\n" + "Please note that all collections will be returned, including ArangoDB's pre-defined " + "system collections."},{title:"Creating Documents",text:"Now we have a collection, but it is empty. So let's create some documents!\n\n" + "  db.places.save({ _key : \"foo\", city : \"foo-city\" });\n" + "  for (i = 0; i <= 10; i++) { db.places.save({ _key: \"example\" + i, zipcode: i }) };"},{title:"Displaying All Documents",text:"You want to take a look at your docs? No problem:\n\n" + "  db.places.toArray();"},{title:"Counting Documents",text:"To see how many documents there are in a collection, use the 'count' method:\n\n" + "  db.places.count();"},{title:"Retrieving Single Documents",text:"As you can see, each document has some meta attributes '_id', '_key' and '_rev'.\n" + "The '_key' attribute can be used to quickly retrieve a single document from " + "a collection:\n\n" + "  db.places.document(\"foo\");\n" + "  db.places.document(\"example5\");"},{title:"Retrieving Single Documents",text:"The '_id' attribute can also be used to retrieve documents using the 'db' object:\n\n" + "  db._document(\"places/foo\");\n" + "  db._document(\"places/example5\");"},{title:"Modifying Documents",text:"You can modify existing documents. Try to add a new attribute to a document and " + "verify whether it has been added:\n\n" + "  db._update(\"places/foo\", { zipcode: 39535 });\n" + "  db._document(\"places/foo\");"},{title:"Document Revisions",text:"Note that after updating the document, its '_rev' attribute changed automatically.\n" + "The '_rev' attribute contains a document revision number, and it can be used for " + "conditional modifications. Here's an example of how to avoid lost updates in case " + "multiple clients are accessing the documents in parallel:\n\n" + "  doc = db._document(\"places/example1\");\n" + "  db._update(\"places/example1\", { someValue: 23 });\n" + "  db._update(doc, { someValue: 42 });\n\n" + "Note that the first update will succeed because it was unconditional. The second " + "update however is conditional because we're also passing the document's revision " + "id in the first parameter to _update. As the revision id we're passing to update " + "does not match the document's current revision anymore, the update is rejected."},{title:"Removing Documents",text:"Deleting single documents can be achieved by providing the document _id or _key:\n\n" + "  db._remove(\"places/example7\");\n" + "  db.places.remove(\"example8\");\n" + "  db.places.count();"},{title:"Searching Documents",text:"Searching for documents with specific attributes can be done by using the " + "byExample method:\n\n" + "  db._create(\"users\");\n" + "  for (i = 0; i < 10; ++i) { " + "db.users.save({ name: \"username\" + i, active: (i % 3 == 0), age: 30 + i }); }\n" + "  db.users.byExample({ active: false }).toArray();\n" + "  db.users.byExample({ name: \"username3\", active: true }).toArray();\n"},{title:"Running AQL Queries",text:"ArangoDB also provides a query language for more complex matching:\n\n" + "  db._query(\"FOR u IN users FILTER u.active == true && u.age >= 33 " + "RETURN { username: u.name, age: u.age }\").toArray();"},{title:"Using Databases",text:"By default, the ArangoShell connects to the default database. The default database " + "is named '_system'. To create another database, use the '_createDatabase' method of the " + "'db' object. To switch into an existing database, use '_useDatabase'. To get rid of a " + "database and all of its collections, use '_dropDatabase':\n\n" + "  db._createDatabase(\"mydb\");\n" + "  db._useDatabase(\"mydb\");\n" + "  db._dropDatabase(\"mydb\");"}]; // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -1830,7 +1830,7 @@ exports._PRINT = function(context){var colors=require("internal").COLORS; /*jsli
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb-common",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/common",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
 ///
 /// @file
@@ -1856,7 +1856,7 @@ exports._PRINT = function(context){var colors=require("internal").COLORS; /*jsli
 /// @author Dr. Frank Celler
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var fs=require("fs");var mimetypes=require("org/arangodb/mimetypes").mimeTypes; // -----------------------------------------------------------------------------
+var internal=require("internal");var fs=require("fs");var mimetypes=require("@arangodb/mimetypes").mimeTypes; // -----------------------------------------------------------------------------
 // --SECTION--                                                 module "arangodb"
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -1947,19 +1947,19 @@ exports.throwBadParameter = function(msg){throw new exports.ArangoError({errorNu
 exports.checkParameter = function(usage,descs,vars){var i;for(i = 0;i < descs.length;++i) {var desc=descs[i];if(typeof vars[i] === "undefined"){exports.throwBadParameter(desc[0] + " missing, usage: " + usage);}if(typeof vars[i] !== desc[1]){exports.throwBadParameter(desc[0] + " should be a '" + desc[1] + "', " + "not '" + typeof vars[i] + "'");}}}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate info message for newer version(s) available
 ////////////////////////////////////////////////////////////////////////////////
-exports.checkAvailableVersions = function(version){var console=require("console");var log;if(require("org/arangodb").isServer){log = console.info;}else {log = internal.print;}if(version === undefined){version = internal.version;}if(version.match(/beta|alpha|preview|devel/) !== null){log("You are using an alpha/beta/preview version ('" + version + "') of ArangoDB");return;}try{var u="https://www.arangodb.com/repositories/versions.php?version=" + version + "&os=" + internal.platform;var d=internal.download(u,"",{timeout:300});var v=JSON.parse(d.body);if(v.hasOwnProperty("bugfix")){log("Please note that a new bugfix version '" + v.bugfix.version + "' is available");}if(v.hasOwnProperty("minor")){log("Please note that a new minor version '" + v.minor.version + "' is available");}if(v.hasOwnProperty("major")){log("Please note that a new major version '" + v.major.version + "' is available");}}catch(err) {if(console && console.debug){console.debug("cannot check for newer version: ",err.stack);}}}; // -----------------------------------------------------------------------------
+exports.checkAvailableVersions = function(version){var console=require("console");var log;if(require("@arangodb").isServer){log = console.info;}else {log = internal.print;}if(version === undefined){version = internal.version;}if(version.match(/beta|alpha|preview|devel/) !== null){log("You are using an alpha/beta/preview version ('" + version + "') of ArangoDB");return;}try{var u="https://www.arangodb.com/repositories/versions.php?version=" + version + "&os=" + internal.platform;var d=internal.download(u,"",{timeout:300});var v=JSON.parse(d.body);if(v.hasOwnProperty("bugfix")){log("Please note that a new bugfix version '" + v.bugfix.version + "' is available");}if(v.hasOwnProperty("minor")){log("Please note that a new minor version '" + v.minor.version + "' is available");}if(v.hasOwnProperty("major")){log("Please note that a new major version '" + v.major.version + "' is available");}}catch(err) {if(console && console.debug){console.debug("cannot check for newer version: ",err.stack);}}}; // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/aql/explainer",function(exports,module){ /*jshint strict: false, maxlen: 300 */var db=require("org/arangodb").db,internal=require("internal"),systemColors=internal.COLORS,print=internal.print,colors={};if(typeof internal.printBrowser === "function"){print = internal.printBrowser;}var stringBuilder={output:"",appendLine:function appendLine(line){if(!line){this.output += "\n";}else {this.output += line + "\n";}},getOutput:function getOutput(){return this.output;},clearOutput:function clearOutput(){this.output = "";}}; /* set colors for output */function setColors(useSystemColors){'use strict';["COLOR_RESET","COLOR_CYAN","COLOR_BLUE","COLOR_GREEN","COLOR_MAGENTA","COLOR_YELLOW","COLOR_RED","COLOR_WHITE","COLOR_BOLD_CYAN","COLOR_BOLD_BLUE","COLOR_BOLD_GREEN","COLOR_BOLD_MAGENTA","COLOR_BOLD_YELLOW","COLOR_BOLD_RED","COLOR_BOLD_WHITE"].forEach(function(c){colors[c] = useSystemColors?systemColors[c]:"";});} /* colorizer and output helper functions */function attributeUncolored(v){'use strict';return "`" + v + "`";}function keyword(v){'use strict';return colors.COLOR_CYAN + v + colors.COLOR_RESET;}function annotation(v){'use strict';return colors.COLOR_BLUE + v + colors.COLOR_RESET;}function value(v){'use strict';return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function variable(v){'use strict';if(v[0] === "#"){return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}return colors.COLOR_YELLOW + v + colors.COLOR_RESET;}function func(v){'use strict';return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function collection(v){'use strict';return colors.COLOR_RED + v + colors.COLOR_RESET;}function attribute(v){'use strict';return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";}function header(v){'use strict';return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}function section(v){'use strict';return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;}function pad(n){'use strict';if(n < 0){ // value seems invalid...
-n = 0;}return new Array(n).join(" ");}function wrap(str,width){'use strict';var re=".{1," + width + "}(\\s|$)|\\S+?(\\s|$)";return str.match(new RegExp(re,"g")).join("\n");} /* print functions */ /* print query string */function printQuery(query){'use strict';stringBuilder.appendLine(section("Query string:"));stringBuilder.appendLine(" " + value(wrap(query,100).replace(/\n+/g,"\n ",query)));stringBuilder.appendLine();} /* print write query modification flags */function printModificationFlags(flags){'use strict';if(flags === undefined){return;}stringBuilder.appendLine(section("Write query options:"));var keys=Object.keys(flags),maxLen="Option".length;keys.forEach(function(k){if(k.length > maxLen){maxLen = k.length;}});stringBuilder.appendLine(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));keys.forEach(function(k){stringBuilder.appendLine(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k])));});stringBuilder.appendLine();} /* print optimizer rules */function printRules(rules){'use strict';stringBuilder.appendLine(section("Optimization rules applied:"));if(rules.length === 0){stringBuilder.appendLine(" " + value("none"));}else {var maxIdLen=String("Id").length;stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("RuleName"));for(var i=0;i < rules.length;++i) {stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + "   " + keyword(rules[i]));}}stringBuilder.appendLine();} /* print warnings */function printWarnings(warnings){'use strict';if(!Array.isArray(warnings) || warnings.length === 0){return;}stringBuilder.appendLine(section("Warnings:"));var maxIdLen=String("Code").length;stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Code").length) + header("Code") + "   " + header("Message"));for(var i=0;i < warnings.length;++i) {stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + "   " + keyword(warnings[i].message));}stringBuilder.appendLine();} /* print indexes used */function printIndexes(indexes){'use strict';stringBuilder.appendLine(section("Indexes used:"));if(indexes.length === 0){stringBuilder.appendLine(" " + value("none"));}else {var maxIdLen=String("By").length;var maxCollectionLen=String("Collection").length;var maxUniqueLen=String("Unique").length;var maxSparseLen=String("Sparse").length;var maxTypeLen=String("Type").length;var maxSelectivityLen=String("Selectivity").length;var maxFieldsLen=String("Fields").length;indexes.forEach(function(index){var l=String(index.node).length;if(l > maxIdLen){maxIdLen = l;}l = index.type.length;if(l > maxTypeLen){maxTypeLen = l;}l = index.fields.map(attributeUncolored).join(", ").length + "[  ]".length;if(l > maxFieldsLen){maxFieldsLen = l;}l = index.collection.length;if(l > maxCollectionLen){maxCollectionLen = l;}});var line=" " + pad(1 + maxIdLen - String("By").length) + header("By") + "   " + header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " + header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " + header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " + header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " + header("Selectivity") + "   " + header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " + header("Ranges");stringBuilder.appendLine(line);for(var i=0;i < indexes.length;++i) {var uniqueness=indexes[i].unique?"true":"false";var sparsity=indexes[i].hasOwnProperty("sparse")?indexes[i].sparse?"true":"false":"n/a";var fields="[ " + indexes[i].fields.map(attribute).join(", ") + " ]";var fieldsLen=indexes[i].fields.map(attributeUncolored).join(", ").length + "[  ]".length;var ranges;if(indexes[i].hasOwnProperty("condition")){ranges = indexes[i].condition;}else {ranges = "[ " + indexes[i].ranges + " ]";}var selectivity=indexes[i].hasOwnProperty("selectivityEstimate")?(indexes[i].selectivityEstimate * 100).toFixed(2) + " %":"n/a";line = " " + pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + "   " + keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + "   " + collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + "   " + value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + "   " + value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + "   " + pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + "   " + fields + pad(1 + maxFieldsLen - fieldsLen) + "   " + ranges;stringBuilder.appendLine(line);}}} /* print indexes used */function printTraversalDetails(traversals){'use strict';if(traversals.length === 0){return;}stringBuilder.appendLine();stringBuilder.appendLine(section("Traversals on graphs:"));var maxIdLen=String("Id").length;var maxMinMaxDepth=String("Depth").length;var maxVertexCollectionNameStrLen=String("Vertex collections").length;var maxEdgeCollectionNameStrLen=String("Edge collections").length;var maxConditionsLen=String("Filter conditions").length;traversals.forEach(function(node){var l=String(node.id).length;if(l > maxIdLen){maxIdLen = l;}if(node.minMaxDepthLen > maxMinMaxDepth){maxMinMaxDepth = node.minMaxDepthLen;}if(node.hasOwnProperty('ConditionStr')){if(node.ConditionStr.length > maxConditionsLen){maxConditionsLen = node.ConditionStr.length;}}if(node.hasOwnProperty('vertexCollectionNameStr')){if(node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen){maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;}}if(node.hasOwnProperty('edgeCollectionNameStr')){if(node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen){maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;}}});var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("Depth") + pad(1 + maxMinMaxDepth - String("Depth").length) + "   " + header("Vertex collections") + pad(1 + maxVertexCollectionNameStrLen - "Vertex collections".length) + "   " + header("Edge collections") + pad(1 + maxEdgeCollectionNameStrLen - "Edge collections".length) + "   " + header("Filter conditions");stringBuilder.appendLine(line);for(var i=0;i < traversals.length;++i) {line = " " + pad(1 + maxIdLen - String(traversals[i].id).length) + traversals[i].id + "   ";line += traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) + "   ";if(traversals[i].hasOwnProperty('vertexCollectionNameStr')){line += traversals[i].vertexCollectionNameStr + pad(1 + maxVertexCollectionNameStrLen - traversals[i].vertexCollectionNameStrLen) + "   ";}else {line += pad(1 + maxVertexCollectionNameStrLen) + "   ";}if(traversals[i].hasOwnProperty('edgeCollectionNameStr')){line += traversals[i].edgeCollectionNameStr + pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + "   ";}else {line += pad(1 + maxEdgeCollectionNameStrLen) + "   ";}if(traversals[i].hasOwnProperty('ConditionStr')){line += traversals[i].ConditionStr;}stringBuilder.appendLine(line);}} /* analzye and print execution plan */function processQuery(query,explain){'use strict';var nodes={},parents={},rootNode=null,maxTypeLen=0,maxSiteLen=0,maxIdLen=String("Id").length,maxEstimateLen=String("Est.").length,plan=explain.plan,cluster=require("org/arangodb/cluster");var recursiveWalk=function recursiveWalk(n,level){n.forEach(function(node){nodes[node.id] = node;if(level === 0 && node.dependencies.length === 0){rootNode = node.id;}if(node.type === "SubqueryNode"){recursiveWalk(node.subquery.nodes,level + 1);}node.dependencies.forEach(function(d){if(!parents.hasOwnProperty(d)){parents[d] = [];}parents[d].push(node.id);});if(String(node.id).length > maxIdLen){maxIdLen = String(node.id).length;}if(String(node.type).length > maxTypeLen){maxTypeLen = String(node.type).length;}if(String(node.site).length > maxSiteLen){maxSiteLen = String(node.site).length;}if(String(node.estimatedNrItems).length > maxEstimateLen){maxEstimateLen = String(node.estimatedNrItems).length;}});var count=n.length,site="COOR";while(count > 0) {--count;var node=n[count];node.site = site;if(node.type === "RemoteNode"){site = site === "COOR"?"DBS":"COOR";}}};recursiveWalk(plan.nodes,0);var references={},collectionVariables={},usedVariables={},indexes=[],traversalDetails=[],modificationFlags,isConst=true;var variableName=function variableName(node){try{if(/^[0-9_]/.test(node.name)){return variable("#" + node.name);}}catch(x) {print(node);throw x;}if(collectionVariables.hasOwnProperty(node.id)){usedVariables[node.name] = collectionVariables[node.id];}return variable(node.name);};var buildExpression=function buildExpression(_x){var _again=true;_function: while(_again) {var node=_x;ref = out = undefined;_again = false;isConst = isConst && ["value","object","object element","array"].indexOf(node.type) !== -1;switch(node.type){case "reference":if(references.hasOwnProperty(node.name)){var ref=references[node.name];delete references[node.name];if(Array.isArray(ref)){var out=buildExpression(ref[1]) + "[" + new Array(ref[0] + 1).join('*');if(ref[2].type !== "no-op"){out += " " + keyword("FILTER") + " " + buildExpression(ref[2]);}if(ref[3].type !== "no-op"){out += " " + keyword("LIMIT ") + " " + buildExpression(ref[3]);}if(ref[4].type !== "no-op"){out += " " + keyword("RETURN ") + " " + buildExpression(ref[4]);}out += "]";return out;}return buildExpression(ref) + "[*]";}return variableName(node);case "collection":return collection(node.name) + "   " + annotation("/* all collection documents */");case "value":return value(JSON.stringify(node.value));case "object":if(node.hasOwnProperty("subNodes")){return "{ " + node.subNodes.map(buildExpression).join(", ") + " }";}return "{ }";case "object element":return value(JSON.stringify(node.name)) + " : " + buildExpression(node.subNodes[0]);case "calculated object element":return "[ " + buildExpression(node.subNodes[0]) + " ] : " + buildExpression(node.subNodes[1]);case "array":if(node.hasOwnProperty("subNodes")){if(node.subNodes.length > 20){ // print only the first 20 values from the array
+});module.define("@arangodb/aql/explainer",function(exports,module){ /*jshint strict: false, maxlen: 300 */var db=require("@arangodb").db,internal=require("internal"),systemColors=internal.COLORS,print=internal.print,colors={};if(typeof internal.printBrowser === "function"){print = internal.printBrowser;}var stringBuilder={output:"",appendLine:function appendLine(line){if(!line){this.output += "\n";}else {this.output += line + "\n";}},getOutput:function getOutput(){return this.output;},clearOutput:function clearOutput(){this.output = "";}}; /* set colors for output */function setColors(useSystemColors){'use strict';["COLOR_RESET","COLOR_CYAN","COLOR_BLUE","COLOR_GREEN","COLOR_MAGENTA","COLOR_YELLOW","COLOR_RED","COLOR_WHITE","COLOR_BOLD_CYAN","COLOR_BOLD_BLUE","COLOR_BOLD_GREEN","COLOR_BOLD_MAGENTA","COLOR_BOLD_YELLOW","COLOR_BOLD_RED","COLOR_BOLD_WHITE"].forEach(function(c){colors[c] = useSystemColors?systemColors[c]:"";});} /* colorizer and output helper functions */function attributeUncolored(v){'use strict';return "`" + v + "`";}function keyword(v){'use strict';return colors.COLOR_CYAN + v + colors.COLOR_RESET;}function annotation(v){'use strict';return colors.COLOR_BLUE + v + colors.COLOR_RESET;}function value(v){'use strict';return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function variable(v){'use strict';if(v[0] === "#"){return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}return colors.COLOR_YELLOW + v + colors.COLOR_RESET;}function func(v){'use strict';return colors.COLOR_GREEN + v + colors.COLOR_RESET;}function collection(v){'use strict';return colors.COLOR_RED + v + colors.COLOR_RESET;}function attribute(v){'use strict';return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";}function header(v){'use strict';return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;}function section(v){'use strict';return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;}function pad(n){'use strict';if(n < 0){ // value seems invalid...
+n = 0;}return new Array(n).join(" ");}function wrap(str,width){'use strict';var re=".{1," + width + "}(\\s|$)|\\S+?(\\s|$)";return str.match(new RegExp(re,"g")).join("\n");} /* print functions */ /* print query string */function printQuery(query){'use strict';stringBuilder.appendLine(section("Query string:"));stringBuilder.appendLine(" " + value(wrap(query,100).replace(/\n+/g,"\n ",query)));stringBuilder.appendLine();} /* print write query modification flags */function printModificationFlags(flags){'use strict';if(flags === undefined){return;}stringBuilder.appendLine(section("Write query options:"));var keys=Object.keys(flags),maxLen="Option".length;keys.forEach(function(k){if(k.length > maxLen){maxLen = k.length;}});stringBuilder.appendLine(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));keys.forEach(function(k){stringBuilder.appendLine(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k])));});stringBuilder.appendLine();} /* print optimizer rules */function printRules(rules){'use strict';stringBuilder.appendLine(section("Optimization rules applied:"));if(rules.length === 0){stringBuilder.appendLine(" " + value("none"));}else {var maxIdLen=String("Id").length;stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("RuleName"));for(var i=0;i < rules.length;++i) {stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + "   " + keyword(rules[i]));}}stringBuilder.appendLine();} /* print warnings */function printWarnings(warnings){'use strict';if(!Array.isArray(warnings) || warnings.length === 0){return;}stringBuilder.appendLine(section("Warnings:"));var maxIdLen=String("Code").length;stringBuilder.appendLine(" " + pad(1 + maxIdLen - String("Code").length) + header("Code") + "   " + header("Message"));for(var i=0;i < warnings.length;++i) {stringBuilder.appendLine(" " + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + "   " + keyword(warnings[i].message));}stringBuilder.appendLine();} /* print indexes used */function printIndexes(indexes){'use strict';stringBuilder.appendLine(section("Indexes used:"));if(indexes.length === 0){stringBuilder.appendLine(" " + value("none"));}else {var maxIdLen=String("By").length;var maxCollectionLen=String("Collection").length;var maxUniqueLen=String("Unique").length;var maxSparseLen=String("Sparse").length;var maxTypeLen=String("Type").length;var maxSelectivityLen=String("Selectivity").length;var maxFieldsLen=String("Fields").length;indexes.forEach(function(index){var l=String(index.node).length;if(l > maxIdLen){maxIdLen = l;}l = index.type.length;if(l > maxTypeLen){maxTypeLen = l;}l = index.fields.map(attributeUncolored).join(", ").length + "[  ]".length;if(l > maxFieldsLen){maxFieldsLen = l;}l = index.collection.length;if(l > maxCollectionLen){maxCollectionLen = l;}});var line=" " + pad(1 + maxIdLen - String("By").length) + header("By") + "   " + header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " + header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " + header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " + header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " + header("Selectivity") + "   " + header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " + header("Ranges");stringBuilder.appendLine(line);for(var i=0;i < indexes.length;++i) {var uniqueness=indexes[i].unique?"true":"false";var sparsity=indexes[i].hasOwnProperty("sparse")?indexes[i].sparse?"true":"false":"n/a";var fields="[ " + indexes[i].fields.map(attribute).join(", ") + " ]";var fieldsLen=indexes[i].fields.map(attributeUncolored).join(", ").length + "[  ]".length;var ranges;if(indexes[i].hasOwnProperty("condition")){ranges = indexes[i].condition;}else {ranges = "[ " + indexes[i].ranges + " ]";}var selectivity=indexes[i].hasOwnProperty("selectivityEstimate")?(indexes[i].selectivityEstimate * 100).toFixed(2) + " %":"n/a";line = " " + pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + "   " + keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + "   " + collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + "   " + value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + "   " + value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + "   " + pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + "   " + fields + pad(1 + maxFieldsLen - fieldsLen) + "   " + ranges;stringBuilder.appendLine(line);}}} /* print indexes used */function printTraversalDetails(traversals){'use strict';if(traversals.length === 0){return;}stringBuilder.appendLine();stringBuilder.appendLine(section("Traversals on graphs:"));var maxIdLen=String("Id").length;var maxMinMaxDepth=String("Depth").length;var maxVertexCollectionNameStrLen=String("Vertex collections").length;var maxEdgeCollectionNameStrLen=String("Edge collections").length;var maxConditionsLen=String("Filter conditions").length;traversals.forEach(function(node){var l=String(node.id).length;if(l > maxIdLen){maxIdLen = l;}if(node.minMaxDepthLen > maxMinMaxDepth){maxMinMaxDepth = node.minMaxDepthLen;}if(node.hasOwnProperty('ConditionStr')){if(node.ConditionStr.length > maxConditionsLen){maxConditionsLen = node.ConditionStr.length;}}if(node.hasOwnProperty('vertexCollectionNameStr')){if(node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen){maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;}}if(node.hasOwnProperty('edgeCollectionNameStr')){if(node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen){maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;}}});var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("Depth") + pad(1 + maxMinMaxDepth - String("Depth").length) + "   " + header("Vertex collections") + pad(1 + maxVertexCollectionNameStrLen - "Vertex collections".length) + "   " + header("Edge collections") + pad(1 + maxEdgeCollectionNameStrLen - "Edge collections".length) + "   " + header("Filter conditions");stringBuilder.appendLine(line);for(var i=0;i < traversals.length;++i) {line = " " + pad(1 + maxIdLen - String(traversals[i].id).length) + traversals[i].id + "   ";line += traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) + "   ";if(traversals[i].hasOwnProperty('vertexCollectionNameStr')){line += traversals[i].vertexCollectionNameStr + pad(1 + maxVertexCollectionNameStrLen - traversals[i].vertexCollectionNameStrLen) + "   ";}else {line += pad(1 + maxVertexCollectionNameStrLen) + "   ";}if(traversals[i].hasOwnProperty('edgeCollectionNameStr')){line += traversals[i].edgeCollectionNameStr + pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + "   ";}else {line += pad(1 + maxEdgeCollectionNameStrLen) + "   ";}if(traversals[i].hasOwnProperty('ConditionStr')){line += traversals[i].ConditionStr;}stringBuilder.appendLine(line);}} /* analzye and print execution plan */function processQuery(query,explain){'use strict';var nodes={},parents={},rootNode=null,maxTypeLen=0,maxSiteLen=0,maxIdLen=String("Id").length,maxEstimateLen=String("Est.").length,plan=explain.plan,cluster=require("@arangodb/cluster");var recursiveWalk=function recursiveWalk(n,level){n.forEach(function(node){nodes[node.id] = node;if(level === 0 && node.dependencies.length === 0){rootNode = node.id;}if(node.type === "SubqueryNode"){recursiveWalk(node.subquery.nodes,level + 1);}node.dependencies.forEach(function(d){if(!parents.hasOwnProperty(d)){parents[d] = [];}parents[d].push(node.id);});if(String(node.id).length > maxIdLen){maxIdLen = String(node.id).length;}if(String(node.type).length > maxTypeLen){maxTypeLen = String(node.type).length;}if(String(node.site).length > maxSiteLen){maxSiteLen = String(node.site).length;}if(String(node.estimatedNrItems).length > maxEstimateLen){maxEstimateLen = String(node.estimatedNrItems).length;}});var count=n.length,site="COOR";while(count > 0) {--count;var node=n[count];node.site = site;if(node.type === "RemoteNode"){site = site === "COOR"?"DBS":"COOR";}}};recursiveWalk(plan.nodes,0);var references={},collectionVariables={},usedVariables={},indexes=[],traversalDetails=[],modificationFlags,isConst=true;var variableName=function variableName(node){try{if(/^[0-9_]/.test(node.name)){return variable("#" + node.name);}}catch(x) {print(node);throw x;}if(collectionVariables.hasOwnProperty(node.id)){usedVariables[node.name] = collectionVariables[node.id];}return variable(node.name);};var buildExpression=function buildExpression(_x){var _again=true;_function: while(_again) {var node=_x;ref = out = undefined;_again = false;isConst = isConst && ["value","object","object element","array"].indexOf(node.type) !== -1;switch(node.type){case "reference":if(references.hasOwnProperty(node.name)){var ref=references[node.name];delete references[node.name];if(Array.isArray(ref)){var out=buildExpression(ref[1]) + "[" + new Array(ref[0] + 1).join('*');if(ref[2].type !== "no-op"){out += " " + keyword("FILTER") + " " + buildExpression(ref[2]);}if(ref[3].type !== "no-op"){out += " " + keyword("LIMIT ") + " " + buildExpression(ref[3]);}if(ref[4].type !== "no-op"){out += " " + keyword("RETURN ") + " " + buildExpression(ref[4]);}out += "]";return out;}return buildExpression(ref) + "[*]";}return variableName(node);case "collection":return collection(node.name) + "   " + annotation("/* all collection documents */");case "value":return value(JSON.stringify(node.value));case "object":if(node.hasOwnProperty("subNodes")){return "{ " + node.subNodes.map(buildExpression).join(", ") + " }";}return "{ }";case "object element":return value(JSON.stringify(node.name)) + " : " + buildExpression(node.subNodes[0]);case "calculated object element":return "[ " + buildExpression(node.subNodes[0]) + " ] : " + buildExpression(node.subNodes[1]);case "array":if(node.hasOwnProperty("subNodes")){if(node.subNodes.length > 20){ // print only the first 20 values from the array
 return "[ " + node.subNodes.slice(0,20).map(buildExpression).join(", ") + " ... ]";}return "[ " + node.subNodes.map(buildExpression).join(", ") + " ]";}return "[ ]";case "unary not":return "! " + buildExpression(node.subNodes[0]);case "unary plus":return "+ " + buildExpression(node.subNodes[0]);case "unary minus":return "- " + buildExpression(node.subNodes[0]);case "array limit":return buildExpression(node.subNodes[0]) + ", " + buildExpression(node.subNodes[1]);case "attribute access":return buildExpression(node.subNodes[0]) + "." + attribute(node.name);case "indexed access":return buildExpression(node.subNodes[0]) + "[" + buildExpression(node.subNodes[1]) + "]";case "range":return buildExpression(node.subNodes[0]) + " .. " + buildExpression(node.subNodes[1]) + "   " + annotation("/* range */");case "expand":case "expansion":if(node.subNodes.length > 2){ // [FILTER ...]
 references[node.subNodes[0].subNodes[0].name] = [node.levels,node.subNodes[0].subNodes[1],node.subNodes[2],node.subNodes[3],node.subNodes[4]];}else { // [*]
 references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];}_x = node.subNodes[1];_again = true;continue _function;case "user function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")" + "   " + annotation("/* user-defined function */");case "function call":return func(node.name) + "(" + (node.subNodes && node.subNodes[0].subNodes || []).map(buildExpression).join(", ") + ")";case "plus":return buildExpression(node.subNodes[0]) + " + " + buildExpression(node.subNodes[1]);case "minus":return buildExpression(node.subNodes[0]) + " - " + buildExpression(node.subNodes[1]);case "times":return buildExpression(node.subNodes[0]) + " * " + buildExpression(node.subNodes[1]);case "division":return buildExpression(node.subNodes[0]) + " / " + buildExpression(node.subNodes[1]);case "modulus":return buildExpression(node.subNodes[0]) + " % " + buildExpression(node.subNodes[1]);case "compare not in":return buildExpression(node.subNodes[0]) + " not in " + buildExpression(node.subNodes[1]);case "compare in":return buildExpression(node.subNodes[0]) + " in " + buildExpression(node.subNodes[1]);case "compare ==":return buildExpression(node.subNodes[0]) + " == " + buildExpression(node.subNodes[1]);case "compare !=":return buildExpression(node.subNodes[0]) + " != " + buildExpression(node.subNodes[1]);case "compare >":return buildExpression(node.subNodes[0]) + " > " + buildExpression(node.subNodes[1]);case "compare >=":return buildExpression(node.subNodes[0]) + " >= " + buildExpression(node.subNodes[1]);case "compare <":return buildExpression(node.subNodes[0]) + " < " + buildExpression(node.subNodes[1]);case "compare <=":return buildExpression(node.subNodes[0]) + " <= " + buildExpression(node.subNodes[1]);case "logical or":return buildExpression(node.subNodes[0]) + " || " + buildExpression(node.subNodes[1]);case "logical and":return buildExpression(node.subNodes[0]) + " && " + buildExpression(node.subNodes[1]);case "ternary":return buildExpression(node.subNodes[0]) + " ? " + buildExpression(node.subNodes[1]) + " : " + buildExpression(node.subNodes[2]);case "n-ary or":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" || ");}return "";case "n-ary and":if(node.hasOwnProperty("subNodes")){return node.subNodes.map(function(sub){return buildExpression(sub);}).join(" && ");}return "";default:return "unhandled node type (" + node.type + ")";}}};var buildSimpleExpression=function buildSimpleExpression(simpleExpressions){var rc="";for(var indexNo in simpleExpressions) {if(simpleExpressions.hasOwnProperty(indexNo)){if(rc.length > 0){rc += " AND ";}for(var i=0;i < simpleExpressions[indexNo].length;i++) {var item=simpleExpressions[indexNo][i];rc += attribute("Path") + ".";if(item.isEdgeAccess){rc += attribute("edges");}else {rc += attribute("vertices");}rc += "[" + value(indexNo) + "] -> ";rc += buildExpression(item.varAccess);rc += " " + item.comparisonType + " ";rc += buildExpression(item.compareTo);}}}return rc;};var buildBound=function buildBound(attr,operators,bound){var boundValue=bound.isConstant?value(JSON.stringify(bound.bound)):buildExpression(bound.bound);return attribute(attr) + " " + operators[bound.include?1:0] + " " + boundValue;};var buildRanges=function buildRanges(ranges){var results=[];ranges.forEach(function(range){var attr=range.attr;if(range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") && JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)){range.equality = true;}if(range.equality){if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,["==","=="],range.lowConst));}else if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,["==","=="],bound));});}}else {if(range.lowConst.hasOwnProperty("bound")){results.push(buildBound(attr,[">",">="],range.lowConst));}if(range.highConst.hasOwnProperty("bound")){results.push(buildBound(attr,["<","<="],range.highConst));}if(range.hasOwnProperty("lows")){range.lows.forEach(function(bound){results.push(buildBound(attr,[">",">="],bound));});}if(range.hasOwnProperty("highs")){range.highs.forEach(function(bound){results.push(buildBound(attr,["<","<="],bound));});}}});if(results.length > 1){return "(" + results.join(" && ") + ")";}return results[0];};var label=function label(node){switch(node.type){case "SingletonNode":return keyword("ROOT");case "NoResultsNode":return keyword("EMPTY") + "   " + annotation("/* empty result set */");case "EnumerateCollectionNode":collectionVariables[node.outVariable.id] = node.collection;return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* full collection scan" + (node.random?", random order":"") + " */");case "EnumerateListNode":return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + variableName(node.inVariable) + "   " + annotation("/* list iteration */");case "IndexNode":collectionVariables[node.outVariable.id] = node.collection;var types=[];node.indexes.forEach(function(idx,i){var what=(idx.reverse?"reverse ":"") + idx.type + " index scan";if(types.length === 0 || what !== types[types.length - 1]){types.push(what);}idx.collection = node.collection;idx.node = node.id;if(node.condition.type && node.condition.type === 'n-ary or'){idx.condition = buildExpression(node.condition.subNodes[i]);}else {idx.condition = "*"; // empty condition. this is likely an index used for sorting only
-}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "TraversalNode":node.minMaxDepth = node.minDepth + ".." + node.maxDepth;node.minMaxDepthLen = node.minMaxDepth.length;var rc=keyword("FOR ") + variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */");if(node.hasOwnProperty('edgeOutVariable')){rc += "  , " + variableName(node.edgeOutVariable) + "  " + annotation("/* edge */");}if(node.hasOwnProperty('pathOutVariable')){rc += "  , " + variableName(node.pathOutVariable) + "  " + annotation("/* paths */");}rc += "  " + keyword("IN") + " " + value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  " + keyword("OUTBOUND") + " '" + value(node.vertexId) + "'  " + annotation("/* startnode */") + "  ";if(Array.isArray(node.graph)){rc += node.graph.map(function(g){return collection(g);}).join(", ");}else {rc += keyword("GRAPH") + " '" + value(node.graph) + "'";}traversalDetails.push(node);if(node.hasOwnProperty('simpleExpressions')){node.ConditionStr = buildSimpleExpression(node.simpleExpressions);}var e=[];if(node.hasOwnProperty('graphDefinition')){var v=[];node.graphDefinition.vertexCollectionNames.forEach(function(vcn){v.push(collection(vcn));});node.vertexCollectionNameStr = v.join(", ");node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;node.graphDefinition.edgeCollectionNames.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;}else {var edgeCols=node.graph;edgeCols.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = edgeCols.join(", ").length;node.graph = "<anonymous>";}return rc;case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){var isLeafNode=!parents.hasOwnProperty(node.id);if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(isLeafNode && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + "  ";}line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += header("Site") + pad(1 + maxSiteLen - String("Site").length) + "  ";}line += pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);printTraversalDetails(traversalDetails);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}if(options === undefined){options = data.options;}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("org/arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+}indexes.push(idx);});return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + types.join(", ") + " */");case "IndexRangeNode":collectionVariables[node.outVariable.id] = node.collection;var index=node.index;index.ranges = node.ranges.map(buildRanges).join(" || ");index.collection = node.collection;index.node = node.id;indexes.push(index);return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse?"reverse ":"") + node.index.type + " index scan */");case "TraversalNode":node.minMaxDepth = node.minDepth + ".." + node.maxDepth;node.minMaxDepthLen = node.minMaxDepth.length;var rc=keyword("FOR ") + variableName(node.vertexOutVariable) + "  " + annotation("/* vertex */");if(node.hasOwnProperty('edgeOutVariable')){rc += "  , " + variableName(node.edgeOutVariable) + "  " + annotation("/* edge */");}if(node.hasOwnProperty('pathOutVariable')){rc += "  , " + variableName(node.pathOutVariable) + "  " + annotation("/* paths */");}rc += "  " + keyword("IN") + " " + value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  " + keyword("OUTBOUND") + " '" + value(node.vertexId) + "'  " + annotation("/* startnode */") + "  ";if(Array.isArray(node.graph)){rc += node.graph.map(function(g){return collection(g);}).join(", ");}else {rc += keyword("GRAPH") + " '" + value(node.graph) + "'";}traversalDetails.push(node);if(node.hasOwnProperty('simpleExpressions')){node.ConditionStr = buildSimpleExpression(node.simpleExpressions);}var e=[];if(node.hasOwnProperty('graphDefinition')){var v=[];node.graphDefinition.vertexCollectionNames.forEach(function(vcn){v.push(collection(vcn));});node.vertexCollectionNameStr = v.join(", ");node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(", ").length;node.graphDefinition.edgeCollectionNames.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(", ").length;}else {var edgeCols=node.graph;edgeCols.forEach(function(ecn){e.push(collection(ecn));});node.edgeCollectionNameStr = e.join(", ");node.edgeCollectionNameStrLen = edgeCols.join(", ").length;node.graph = "<anonymous>";}return rc;case "CalculationNode":return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");case "FilterNode":return keyword("FILTER") + " " + variableName(node.inVariable);case "AggregateNode":return keyword("COLLECT") + " " + node.aggregates.map(function(node){return variableName(node.outVariable) + " = " + variableName(node.inVariable);}).join(", ") + (node.count?" " + keyword("WITH COUNT"):"") + (node.outVariable?" " + keyword("INTO") + " " + variableName(node.outVariable):"") + (node.keepVariables?" " + keyword("KEEP") + " " + node.keepVariables.map(function(variable){return variableName(variable);}).join(", "):"") + "   " + annotation("/* " + node.aggregationOptions.method + "*/");case "SortNode":return keyword("SORT") + " " + node.elements.map(function(node){return variableName(node.inVariable) + " " + keyword(node.ascending?"ASC":"DESC");}).join(", ");case "LimitNode":return keyword("LIMIT") + " " + value(JSON.stringify(node.offset)) + ", " + value(JSON.stringify(node.limit));case "ReturnNode":return keyword("RETURN") + " " + variableName(node.inVariable);case "SubqueryNode":return keyword("LET") + " " + variableName(node.outVariable) + " = ...   " + annotation("/* subquery */");case "InsertNode":modificationFlags = node.modificationFlags;return keyword("INSERT") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpdateNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("UPDATE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("UPDATE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "ReplaceNode":modificationFlags = node.modificationFlags;if(node.hasOwnProperty("inKeyVariable")){return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);}return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);case "UpsertNode":modificationFlags = node.modificationFlags;return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace?"REPLACE":"UPDATE") + " " + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoveNode":modificationFlags = node.modificationFlags;return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);case "RemoteNode":return keyword("REMOTE");case "DistributeNode":return keyword("DISTRIBUTE");case "ScatterNode":return keyword("SCATTER");case "GatherNode":return keyword("GATHER");}return "unhandled node type (" + node.type + ")";};var level=0,subqueries=[];var indent=function indent(level,isRoot){return pad(1 + level + level) + (isRoot?"* ":"- ");};var preHandle=function preHandle(node){usedVariables = {};isConst = true;if(node.type === "SubqueryNode"){subqueries.push(level);}};var postHandle=function postHandle(node){var isLeafNode=!parents.hasOwnProperty(node.id);if(["EnumerateCollectionNode","EnumerateListNode","IndexRangeNode","IndexNode","SubqueryNode"].indexOf(node.type) !== -1){level++;}else if(isLeafNode && subqueries.length > 0){level = subqueries.pop();}else if(node.type === "SingletonNode"){level++;}};var constNess=function constNess(){if(isConst){return "   " + annotation("/* const assignment */");}return "";};var variablesUsed=function variablesUsed(){var used=[];for(var a in usedVariables) {if(usedVariables.hasOwnProperty(a)){used.push(variable(a) + " : " + collection(usedVariables[a]));}}if(used.length > 0){return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");}return "";};var printNode=function printNode(node){preHandle(node);var line=" " + pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " + keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + "  ";}line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + "   " + indent(level,node.type === "SingletonNode") + label(node);if(node.type === "CalculationNode"){line += variablesUsed() + constNess();}stringBuilder.appendLine(line);postHandle(node);};printQuery(query);stringBuilder.appendLine(section("Execution plan:"));var line=" " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + header("NodeType") + pad(1 + maxTypeLen - String("NodeType").length) + "   ";if(cluster && cluster.isCluster && cluster.isCluster()){line += header("Site") + pad(1 + maxSiteLen - String("Site").length) + "  ";}line += pad(1 + maxEstimateLen - String("Est.").length) + header("Est.") + "   " + header("Comment");stringBuilder.appendLine(line);var walk=[rootNode];while(walk.length > 0) {var id=walk.pop();var node=nodes[id];printNode(node);if(parents.hasOwnProperty(id)){walk = walk.concat(parents[id]);}if(node.type === "SubqueryNode"){walk = walk.concat([node.subquery.nodes[0].id]);}}stringBuilder.appendLine();printIndexes(indexes);printTraversalDetails(traversalDetails);stringBuilder.appendLine();printRules(plan.rules);printModificationFlags(modificationFlags);printWarnings(explain.warnings);} /* the exposed function */function explain(data,options,shouldPrint){'use strict';if(typeof data === "string"){data = {query:data};}if(!(data instanceof Object)){throw "ArangoStatement needs initial data";}if(options === undefined){options = data.options;}options = options || {};setColors(options.colors === undefined?true:options.colors);var stmt=db._createStatement(data);var result=stmt.explain(options);stringBuilder.clearOutput();processQuery(data.query,result,true);if(shouldPrint === undefined || shouldPrint){print(stringBuilder.getOutput());}else {return stringBuilder.getOutput();}}exports.explain = explain;});module.define("@arangodb/aql/functions",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
 ///
 /// @file
@@ -1985,8 +1985,8 @@ references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];}_x
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var internal=require("internal");var arangodb=require("org/arangodb");var db=arangodb.db;var ArangoError=arangodb.ArangoError; // -----------------------------------------------------------------------------
-// --SECTION--                               module "org/arangodb/aql/functions"
+var internal=require("internal");var arangodb=require("@arangodb");var db=arangodb.db;var ArangoError=arangodb.ArangoError; // -----------------------------------------------------------------------------
+// --SECTION--                               module "@arangodb/aql/functions"
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -2023,7 +2023,7 @@ var err=new ArangoError();err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_IN
 /// @EXAMPLES
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
+///   require("@arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -2040,9 +2040,9 @@ var unregisterFunction=function unregisterFunction(name){'use strict';var func=n
 /// @EXAMPLES
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
+///   require("@arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
 ///
-///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
+///   require("@arangodb/aql/functions").unregisterGroup("myfunctions");
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -2077,7 +2077,7 @@ var unregisterFunctionsGroup=function unregisterFunctionsGroup(group){'use stric
 /// @EXAMPLES
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
+///   require("@arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
 ///   function (celsius) {
 ///     return celsius * 1.8 + 32;
 ///   });
@@ -2103,19 +2103,19 @@ validateName(name);code = stringifyFunction(code,name);var testCode="(function()
 /// To list all available user functions:
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").toArray();
+///   require("@arangodb/aql/functions").toArray();
 /// ```
 ///
 /// To list all available user functions in the *myfunctions* namespace:
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").toArray("myfunctions");
+///   require("@arangodb/aql/functions").toArray("myfunctions");
 /// ```
 ///
 /// To list all available user functions in the *myfunctions::temperature* namespace:
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").toArray("myfunctions::temperature");
+///   require("@arangodb/aql/functions").toArray("myfunctions::temperature");
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -2129,7 +2129,7 @@ exports.unregister = unregisterFunction;exports.unregisterGroup = unregisterFunc
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/arango-collection-common",function(exports,module){ /*jshint strict: false, unused: false, maxlen: 200 */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/arango-collection-common",function(exports,module){ /*jshint strict: false, unused: false, maxlen: 200 */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
 ///
 /// @file
@@ -2155,7 +2155,7 @@ exports.unregister = unregisterFunction;exports.unregisterGroup = unregisterFunc
 /// @author Dr. Frank Celler
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var ArangoCollection=require("org/arangodb/arango-collection").ArangoCollection;var arangodb=require("org/arangodb");var ArangoError=arangodb.ArangoError;var sprintf=arangodb.sprintf;var db=arangodb.db;var simple=require("org/arangodb/simple-query");var SimpleQueryAll=simple.SimpleQueryAll;var SimpleQueryByExample=simple.SimpleQueryByExample;var SimpleQueryByCondition=simple.SimpleQueryByCondition;var SimpleQueryRange=simple.SimpleQueryRange;var SimpleQueryGeo=simple.SimpleQueryGeo;var SimpleQueryNear=simple.SimpleQueryNear;var SimpleQueryWithin=simple.SimpleQueryWithin;var SimpleQueryWithinRectangle=simple.SimpleQueryWithinRectangle;var SimpleQueryFulltext=simple.SimpleQueryFulltext; // -----------------------------------------------------------------------------
+var ArangoCollection=require("@arangodb/arango-collection").ArangoCollection;var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError;var sprintf=arangodb.sprintf;var db=arangodb.db;var simple=require("@arangodb/simple-query");var SimpleQueryAll=simple.SimpleQueryAll;var SimpleQueryByExample=simple.SimpleQueryByExample;var SimpleQueryByCondition=simple.SimpleQueryByCondition;var SimpleQueryRange=simple.SimpleQueryRange;var SimpleQueryGeo=simple.SimpleQueryGeo;var SimpleQueryNear=simple.SimpleQueryNear;var SimpleQueryWithin=simple.SimpleQueryWithin;var SimpleQueryWithinRectangle=simple.SimpleQueryWithinRectangle;var SimpleQueryFulltext=simple.SimpleQueryFulltext; // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
@@ -2862,7 +2862,7 @@ ArangoCollection.prototype.updateByExample = function(example,newValue,keepNull,
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/arango-statement-common",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/arango-statement-common",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements
 ///
 /// @file
@@ -2970,7 +2970,7 @@ exports.ArangoStatement = ArangoStatement; // ----------------------------------
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
 // End:
-});module.define("org/arangodb/general-graph",function(exports,module){ /*jshint strict: false */ /*global ArangoClusterComm */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/general-graph",function(exports,module){ /*jshint strict: false */ /*global ArangoClusterComm */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
 /// @file
@@ -2996,8 +2996,8 @@ exports.ArangoStatement = ArangoStatement; // ----------------------------------
 /// @author Florian Bartels, Michael Hackstein, Guido Schwab
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var arangodb=require("org/arangodb"),internal=require("internal"),ArangoCollection=arangodb.ArangoCollection,ArangoError=arangodb.ArangoError,db=arangodb.db,errors=arangodb.errors,_=require("underscore"); // -----------------------------------------------------------------------------
-// --SECTION--                             module "org/arangodb/general-graph"
+var arangodb=require("@arangodb"),internal=require("internal"),ArangoCollection=arangodb.ArangoCollection,ArangoError=arangodb.ArangoError,db=arangodb.db,errors=arangodb.errors,_=require("underscore"); // -----------------------------------------------------------------------------
+// --SECTION--                             module "@arangodb/general-graph"
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -3041,7 +3041,7 @@ var wrapCollection=function wrapCollection(col){var wrapper={};_.each(_.function
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 var transformExample=function transformExample(example){if(example === undefined){return {};}if(typeof example === "string"){return {_id:example};}if(typeof example === "object"){if(Array.isArray(example)){return _.map(example,function(e){if(typeof e === "string"){return {_id:e};}return e;});}return example;}var err=new ArangoError();err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.code;err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.message;throw err;};var checkAllowsRestriction=function checkAllowsRestriction(list,rest,msg){var unknown=[];var colList=_.map(list,function(item){return item.name();});_.each(rest,function(r){if(!_.contains(colList,r)){unknown.push(r);}});if(unknown.length > 0){var err=new ArangoError();err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;err.errorMessage = msg + ": " + unknown.join(" and ") + " are not known to the graph";throw err;}return true;}; // -----------------------------------------------------------------------------
-// --SECTION--                             module "org/arangodb/general-graph"
+// --SECTION--                             module "@arangodb/general-graph"
 // -----------------------------------------------------------------------------
 // -----------------------------------------------------------------------------
 // --SECTION--                             Fluent AQL Interface
@@ -3102,7 +3102,7 @@ AQLGenerator.prototype._edges = function(edgeExample,options){this._clearCursor(
 /// To request unfiltered edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges().toArray();
@@ -3112,7 +3112,7 @@ AQLGenerator.prototype._edges = function(edgeExample,options){this._clearCursor(
 /// To request filtered edges by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges({type: "married"}).toArray();
@@ -3122,7 +3122,7 @@ AQLGenerator.prototype._edges = function(edgeExample,options){this._clearCursor(
 /// To request filtered edges by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLEdgesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.edges([{type: "married"}, {type: "friend"}]).toArray();
@@ -3151,7 +3151,7 @@ AQLGenerator.prototype.edges = function(example){this._addToPrint("edges",exampl
 /// To request unfiltered outbound edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges().toArray();
@@ -3161,7 +3161,7 @@ AQLGenerator.prototype.edges = function(example){this._addToPrint("edges",exampl
 /// To request filtered outbound edges by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges({type: "married"}).toArray();
@@ -3171,7 +3171,7 @@ AQLGenerator.prototype.edges = function(example){this._addToPrint("edges",exampl
 /// To request filtered outbound edges by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLOutEdgesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.outEdges([{type: "married"}, {type: "friend"}]).toArray();
@@ -3201,7 +3201,7 @@ AQLGenerator.prototype.outEdges = function(example){this._addToPrint("outEdges",
 /// To request unfiltered inbound edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges().toArray();
@@ -3211,7 +3211,7 @@ AQLGenerator.prototype.outEdges = function(example){this._addToPrint("outEdges",
 /// To request filtered inbound edges by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges({type: "married"}).toArray();
@@ -3221,7 +3221,7 @@ AQLGenerator.prototype.outEdges = function(example){this._addToPrint("outEdges",
 /// To request filtered inbound edges by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLInEdgesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices([{name: "Alice"}, {name: "Bob"}]);
 ///   query.inEdges([{type: "married"}, {type: "friend"}]).toArray();
@@ -3260,7 +3260,7 @@ AQLGenerator.prototype._vertices = function(example,options,mergeWith){this._cle
 /// To request unfiltered vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices().toArray();
@@ -3270,7 +3270,7 @@ AQLGenerator.prototype._vertices = function(example,options,mergeWith){this._cle
 /// To request filtered vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices({name: "Alice"}).toArray();
@@ -3280,7 +3280,7 @@ AQLGenerator.prototype._vertices = function(example,options,mergeWith){this._cle
 /// To request filtered vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLVerticesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices([{name: "Alice"}, {name: "Charly"}]).toArray();
@@ -3310,7 +3310,7 @@ AQLGenerator.prototype.vertices = function(example){this._addToPrint("vertices",
 /// To request unfiltered source vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices().toArray();
@@ -3320,7 +3320,7 @@ AQLGenerator.prototype.vertices = function(example){this._addToPrint("vertices",
 /// To request filtered source vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices({name: "Alice"}).toArray();
@@ -3330,7 +3330,7 @@ AQLGenerator.prototype.vertices = function(example){this._addToPrint("vertices",
 /// To request filtered source vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFromVerticesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
@@ -3360,7 +3360,7 @@ AQLGenerator.prototype.fromVertices = function(example){this._addToPrint("fromVe
 /// To request unfiltered target vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().toArray();
@@ -3370,7 +3370,7 @@ AQLGenerator.prototype.fromVertices = function(example){this._addToPrint("fromVe
 /// To request filtered target vertices by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices({name: "Bob"}).toArray();
@@ -3380,7 +3380,7 @@ AQLGenerator.prototype.fromVertices = function(example){this._addToPrint("fromVe
 /// To request filtered target vertices by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToVerticesFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices([{name: "Bob"}, {name: "Diana"}]).toArray();
@@ -3414,7 +3414,7 @@ AQLGenerator.prototype.getLastVar = function(){if(this.lastVar === ""){return fa
 /// Request the iteratively explored path using vertices and edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathSimple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.outEdges().toVertices().path().toArray();
@@ -3424,7 +3424,7 @@ AQLGenerator.prototype.getLastVar = function(){if(this.lastVar === ""){return fa
 /// When requesting neighbors the path to these neighbors is expanded:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLPathNeighbors}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors().path().toArray();
@@ -3464,7 +3464,7 @@ AQLGenerator.prototype.path = function(){this._clearCursor();var statement=new A
 /// To request unfiltered neighbors:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors().toArray();
@@ -3474,7 +3474,7 @@ AQLGenerator.prototype.path = function(){this._clearCursor();var statement=new A
 /// To request filtered neighbors by a single example:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredSingle}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.neighbors({name: "Bob"}).toArray();
@@ -3484,7 +3484,7 @@ AQLGenerator.prototype.path = function(){this._clearCursor();var statement=new A
 /// To request filtered neighbors by multiple examples:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNeighborsFilteredMultiple}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.vertices([{name: "Bob"}, {name: "Charly"}]).toArray();
@@ -3531,7 +3531,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function(){var i=this
 /// Request all directly connected vertices unrestricted:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnrestricted}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().toArray();
@@ -3541,7 +3541,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function(){var i=this
 /// Apply a restriction to the directly connected vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestricted}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().restrict("female").toArray();
@@ -3551,7 +3551,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function(){var i=this
 /// Restriction of a query is only valid for collections known to the graph:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestrictedUnknown}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
 ///   query.edges().vertices().restrict(["female", "male", "products"]).toArray(); // xpError(ERROR_BAD_PARAMETER);
@@ -3579,7 +3579,7 @@ AQLGenerator.prototype.restrict = function(restrictions){var rest=stringToArray(
 /// Request vertices unfiltered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredVertices}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().toArray();
@@ -3589,7 +3589,7 @@ AQLGenerator.prototype.restrict = function(restrictions){var rest=stringToArray(
 /// Request vertices filtered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredVertices}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().filter({name: "Alice"}).toArray();
@@ -3599,7 +3599,7 @@ AQLGenerator.prototype.restrict = function(restrictions){var rest=stringToArray(
 /// Request edges unfiltered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredEdges}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().outEdges().toArray();
@@ -3609,7 +3609,7 @@ AQLGenerator.prototype.restrict = function(restrictions){var rest=stringToArray(
 /// Request edges filtered:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredEdges}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._edges({type: "married"});
 ///   query.toVertices().outEdges().filter({type: "married"}).toArray();
@@ -3636,7 +3636,7 @@ AQLGenerator.prototype.filter = function(example){this._addToPrint("filter",exam
 /// To collect the entire result of a query toArray can be used:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLToArray}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.toArray();
@@ -3662,7 +3662,7 @@ AQLGenerator.prototype.toArray = function(){this._createCursor();return this.cur
 /// To count the number of matched elements:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLCount}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.count();
@@ -3689,7 +3689,7 @@ AQLGenerator.prototype.count = function(){this._createCursor();return this.curso
 /// Start query execution with hasNext:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNext}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.hasNext();
@@ -3699,7 +3699,7 @@ AQLGenerator.prototype.count = function(){this._createCursor();return this.curso
 /// Iterate over the result as long as it has more elements:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNextIteration}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 /// | while (query.hasNext()) {
@@ -3730,7 +3730,7 @@ AQLGenerator.prototype.hasNext = function(){this._createCursor();return this.cur
 /// Request some elements with next:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNext}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.next();
@@ -3743,7 +3743,7 @@ AQLGenerator.prototype.hasNext = function(){this._createCursor();return this.cur
 /// The cursor is recreated if the query is changed:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNextRecreate}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices();
 ///   query.next();
@@ -3785,14 +3785,14 @@ AQLGenerator.prototype.next = function(){this._createCursor();return this.cursor
 /// To define simple relation with only one vertex collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition1}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._undirectedRelation("friend", "user");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// To define a relation between several vertex collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphUndirectedRelationDefinition2}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._undirectedRelation("marriage", ["female", "male"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -3833,7 +3833,7 @@ var _undirectedRelation=function _undirectedRelation(relationName,vertexCollecti
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDirectedRelationDefinition}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -3868,12 +3868,12 @@ var _undirectedRelation=function _undirectedRelation(relationName,vertexCollecti
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinition}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._relation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSingle}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._relation("has_bought", "Customer", "Product");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3891,7 +3891,7 @@ var _relation=function _relation(relationName,fromVertexCollections,toVertexColl
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphList}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._list();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -3913,7 +3913,7 @@ var _list=function _list(){var gdb=getGraphCollection();return _.pluck(gdb.toArr
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   directed_relation = graph_module._relation("lives_in", "user", "city");
 ///   undirected_relation = graph_module._relation("knows", "user", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
@@ -3941,7 +3941,7 @@ var _edgeDefinitions=function _edgeDefinitions(){var res=[],args=arguments;Objec
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   directed_relation = graph_module._relation("lives_in", "user", "city");
 ///   undirected_relation = graph_module._relation("knows", "user", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation);
@@ -3962,7 +3962,7 @@ var sortEdgeDefinition=function sortEdgeDefinition(edgeDefinition){edgeDefinitio
 /// * Create a graph
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo1}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   var graph = graph_module._create("myGraph");
 ///   graph;
 /// ~ graph_module._drop("myGraph", true);
@@ -3971,7 +3971,7 @@ var sortEdgeDefinition=function sortEdgeDefinition(edgeDefinition){edgeDefinitio
 /// * Add some vertex collections
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo2}
-/// ~ var graph_module = require("org/arangodb/general-graph");
+/// ~ var graph_module = require("@arangodb/general-graph");
 /// ~ var graph = graph_module._create("myGraph");
 ///   graph._addVertexCollection("shop");
 ///   graph._addVertexCollection("customer");
@@ -3983,7 +3983,7 @@ var sortEdgeDefinition=function sortEdgeDefinition(edgeDefinition){edgeDefinitio
 /// * Define relations on the
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
-/// ~ var graph_module = require("org/arangodb/general-graph");
+/// ~ var graph_module = require("@arangodb/general-graph");
 /// ~ var graph = graph_module._create("myGraph");
 ///   var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
 ///   graph._extendEdgeDefinitions(rel);
@@ -4023,7 +4023,7 @@ var sortEdgeDefinition=function sortEdgeDefinition(edgeDefinition){edgeDefinitio
 /// Create an empty graph, edge definitions can be added at runtime:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph = graph_module._create("myGraph");
 /// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -4033,7 +4033,7 @@ var sortEdgeDefinition=function sortEdgeDefinition(edgeDefinition){edgeDefinitio
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphSingle}
 /// ~ db._drop("edges");
 /// ~ db._drop("vertices");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   var edgeDefinitions = [ { collection: "edges", "from": [ "vertices" ], "to" : [ "vertices" ] } ];
 ///   graph = graph_module._create("myGraph", edgeDefinitions);
 /// ~ graph_module._drop("myGraph", true);
@@ -4042,7 +4042,7 @@ var sortEdgeDefinition=function sortEdgeDefinition(edgeDefinition){edgeDefinitio
 /// Create a graph with edge definitions and orphan collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 /// | graph = graph_module._create("myGraph",
 ///   [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])], ["sessions"]);
 /// ~ graph_module._drop("myGraph", true);
@@ -4079,7 +4079,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionSave}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({name: "Floyd", _key: "floyd"});
 /// ~ examples.dropGraph("social");
@@ -4108,7 +4108,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionReplace}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({neym: "Jon", _key: "john"});
 ///   graph.male.replace("male/john", {name: "John"});
@@ -4138,7 +4138,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionUpdate}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.female.save({name: "Lynda", _key: "linda"});
 ///   graph.female.update("female/linda", {name: "Linda", _key: "linda"});
@@ -4168,7 +4168,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertexCollectionRemove}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.male.save({name: "Kermit", _key: "kermit"});
 ///   db._exists("male/kermit")
@@ -4203,7 +4203,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("male/bob", "female/alice", {type: "married", _key: "bobAndAlice"});
 /// ~ examples.dropGraph("social");
@@ -4213,7 +4213,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// the edge will not be stored.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   | graph.relation.save(
 ///   |  "relation/aliceAndBob",
@@ -4244,7 +4244,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionReplace}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {typo: "nose", _key: "aliceAndDiana"});
 ///   graph.relation.replace("relation/aliceAndDiana", {type: "knows"});
@@ -4274,7 +4274,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionUpdate}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {type: "knows", _key: "aliceAndDiana"});
 ///   graph.relation.update("relation/aliceAndDiana", {type: "quarrelled", _key: "aliceAndDiana"});
@@ -4303,7 +4303,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionRemove}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph.relation.save("female/alice", "female/diana", {_key: "aliceAndDiana"});
 ///   db._exists("relation/aliceAndDiana")
@@ -4317,7 +4317,7 @@ Object.keys(graph).forEach(function(key){if(key.substring(0,1) !== "_"){delete g
 ////////////////////////////////////////////////////////////////////////////////
 var Graph=function Graph(graphName,edgeDefinitions,vertexCollections,edgeCollections,orphanCollections,revision,id){edgeDefinitions.forEach(function(eD,index){var tmp=sortEdgeDefinition(eD);edgeDefinitions[index] = tmp;});if(!orphanCollections){orphanCollections = [];} // we can call the "fast" version of some edge functions if we are
 // running server-side and are not a coordinator
-var useBuiltIn=typeof ArangoClusterComm === "object";if(useBuiltIn && require("org/arangodb/cluster").isCoordinator()){useBuiltIn = false;}var self=this; // Create Hidden Properties
+var useBuiltIn=typeof ArangoClusterComm === "object";if(useBuiltIn && require("@arangodb/cluster").isCoordinator()){useBuiltIn = false;}var self=this; // Create Hidden Properties
 createHiddenProperty(this,"__useBuiltIn",useBuiltIn);createHiddenProperty(this,"__name",graphName);createHiddenProperty(this,"__vertexCollections",vertexCollections);createHiddenProperty(this,"__edgeCollections",edgeCollections);createHiddenProperty(this,"__edgeDefinitions",edgeDefinitions);createHiddenProperty(this,"__idsToRemove",{});createHiddenProperty(this,"__collectionsToLock",{});createHiddenProperty(this,"__id",id);createHiddenProperty(this,"__rev",revision);createHiddenProperty(this,"__orphanCollections",orphanCollections);updateBindCollections(self);}; ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_graph
 /// @brief Get a graph
@@ -4336,9 +4336,9 @@ createHiddenProperty(this,"__useBuiltIn",useBuiltIn);createHiddenProperty(this,"
 /// Get a graph:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphLoadGraph}
-/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph = graph_module._graph("social");
 /// ~ examples.dropGraph("social");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -4376,9 +4376,9 @@ var checkIfMayBeDropped=function checkIfMayBeDropped(colName,graphName,graphs){v
 /// Drop a graph and keep collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphKeep}
-/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._drop("social");
 ///   db._collection("female");
 ///   db._collection("male");
@@ -4390,9 +4390,9 @@ var checkIfMayBeDropped=function checkIfMayBeDropped(colName,graphName,graphs){v
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDropGraphDropCollections}
-/// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// ~ var examples = require("@arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   graph_module._drop("social", true);
 ///   db._collection("female");
 ///   db._collection("male");
@@ -4442,7 +4442,7 @@ Graph.prototype._OUTEDGES = function(vertexId){var err;if(vertexId.indexOf("/") 
 /// The description of this function can be found below.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._edges().toArray();
 /// ~ examples.dropGraph("social");
@@ -4451,7 +4451,7 @@ Graph.prototype._OUTEDGES = function(vertexId){var err;if(vertexId.indexOf("/") 
 /// To request filtered edges:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgesFiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._edges({type: "married"}).toArray();
 /// ~ examples.dropGraph("social");
@@ -4486,7 +4486,7 @@ return AQLStmt.outEdges(edgeExample);}; ////////////////////////////////////////
 /// To request unfiltered vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesUnfiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._vertices().toArray();
 /// ~ examples.dropGraph("social");
@@ -4495,7 +4495,7 @@ return AQLStmt.outEdges(edgeExample);}; ////////////////////////////////////////
 /// To request filtered vertices:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVerticesFiltered}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
 /// ~ examples.dropGraph("social");
@@ -4519,7 +4519,7 @@ Graph.prototype._vertices = function(example){var AQLStmt=new AQLGenerator(this)
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetFromVertex}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._fromVertex("relation/aliceAndBob")
 /// ~ examples.dropGraph("social");
@@ -4544,7 +4544,7 @@ Graph.prototype._fromVertex = function(edgeId){if(typeof edgeId !== 'string' || 
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphGetToVertex}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   graph._toVertex("relation/aliceAndBob")
 /// ~ examples.dropGraph("social");
@@ -4592,7 +4592,7 @@ Graph.prototype._getVertexCollectionByName = function(name){if(this.__vertexColl
 /// A route planner example, all neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._neighbors({isCapital : true});
 /// ~ examples.dropGraph("routeplanner");
@@ -4601,7 +4601,7 @@ Graph.prototype._getVertexCollectionByName = function(name){if(this.__vertexColl
 /// A route planner example, all outbound neighbors of Hamburg.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleNeighbors2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDepth : 2});
 /// ~ examples.dropGraph("routeplanner");
@@ -4632,7 +4632,7 @@ if(!options){options = {};}return AQLStmt.vertices(vertexExample).neighbors(opti
 /// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors1}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._commonNeighbors({isCapital : true}, {isCapital : true});
 /// ~ examples.dropGraph("routeplanner");
@@ -4642,7 +4642,7 @@ if(!options){options = {};}return AQLStmt.vertices(vertexExample).neighbors(opti
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._commonNeighbors(
 /// |   'germanCity/Hamburg',
@@ -4667,7 +4667,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example,vertex2Example,option
 /// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   var example = { isCapital: true };
 ///   var options = { includeData: true };
@@ -4679,7 +4679,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example,vertex2Example,option
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   var options = { direction: 'outbound', maxDepth: 2, includeData: true };
 ///   graph._countCommonNeighbors('germanCity/Hamburg', {}, options, options);
@@ -4721,7 +4721,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example,vertex2Example,o
 /// A route planner example, all locations with the same properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {});
 /// ~ examples.dropGraph("routeplanner");
@@ -4730,7 +4730,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example,vertex2Example,o
 /// A route planner example, all cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {}, {ignoreProperties: 'population'});
 /// ~ examples.dropGraph("routeplanner");
@@ -4753,7 +4753,7 @@ Graph.prototype._commonProperties = function(vertex1Example,vertex2Example,optio
 /// A route planner example, all locations with the same properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties1}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._countCommonProperties({}, {});
 /// ~ examples.dropGraph("routeplanner");
@@ -4762,7 +4762,7 @@ Graph.prototype._commonProperties = function(vertex1Example,vertex2Example,optio
 /// A route planner example, all German cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// | graph._countCommonProperties({}, {}, {vertex1CollectionRestriction : 'germanCity',
 ///   vertex2CollectionRestriction : 'germanCity' ,ignoreProperties: 'population'});
@@ -4801,7 +4801,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example,vertex2Example,
 /// Return all paths of the graph "social":
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths();
 /// ~ examples.dropGraph("social");
@@ -4811,7 +4811,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example,vertex2Example,
 /// length of 1 and a minimal length of 2:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
 /// ~ examples.dropGraph("social");
@@ -4884,7 +4884,7 @@ Graph.prototype._paths = function(options){var query="RETURN" + " GRAPH_PATHS(@g
 /// A route planner example, shortest path from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ///   startVertexCollectionRestriction : 'germanCity'});
@@ -4894,7 +4894,7 @@ Graph.prototype._paths = function(options){var query="RETURN" + " GRAPH_PATHS(@g
 /// A route planner example, shortest path from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
 ///   {weight : 'distance'});
@@ -4918,7 +4918,7 @@ Graph.prototype._shortestPath = function(startVertexExample,endVertexExample,opt
 /// A route planner example, shortest distance from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
 ///   startVertexCollectionRestriction : 'germanCity'});
@@ -4928,7 +4928,7 @@ Graph.prototype._shortestPath = function(startVertexExample,endVertexExample,opt
 /// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
 ///   {weight : 'distance'});
@@ -4982,7 +4982,7 @@ Graph.prototype._distanceTo = function(startVertexExample,endVertexExample,optio
 /// A route planner example, the absolute eccentricity of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 /// |   + "'routeplanner', {})"
@@ -4994,7 +4994,7 @@ Graph.prototype._distanceTo = function(startVertexExample,endVertexExample,optio
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteEccentricity({}, {weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5004,7 +5004,7 @@ Graph.prototype._distanceTo = function(startVertexExample,endVertexExample,optio
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsEccentricity3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'germanCity',
 ///   direction : 'outbound', weight : 'distance'});
@@ -5031,7 +5031,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample,options){var ex1=
 /// A route planner example, the eccentricity of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleEccentricity2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._eccentricity();
 /// ~ examples.dropGraph("routeplanner");
@@ -5040,7 +5040,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample,options){var ex1=
 /// A route planner example, the weighted eccentricity.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleEccentricity3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._eccentricity({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5093,7 +5093,7 @@ Graph.prototype._eccentricity = function(options){var query="RETURN" + " GRAPH_E
 /// A route planner example, the absolute closeness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteCloseness({});
 /// ~ examples.dropGraph("routeplanner");
@@ -5103,7 +5103,7 @@ Graph.prototype._eccentricity = function(options){var query="RETURN" + " GRAPH_E
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteCloseness({}, {weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5113,7 +5113,7 @@ Graph.prototype._eccentricity = function(options){var query="RETURN" + " GRAPH_E
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._absoluteCloseness({}, {startVertexCollectionRestriction : 'germanCity',
 ///   direction : 'outbound', weight : 'distance'});
@@ -5141,7 +5141,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample,options){var ex1=tra
 /// A route planner example, the normalized closeness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness1}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness();
 /// ~ examples.dropGraph("routeplanner");
@@ -5151,7 +5151,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample,options){var ex1=tra
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness2}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5161,7 +5161,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample,options){var ex1=tra
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCloseness3}
-/// var examples = require("org/arangodb/graph-examples/example-graph.js");
+/// var examples = require("@arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._closeness({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5201,7 +5201,7 @@ Graph.prototype._closeness = function(options){var query="RETURN" + " GRAPH_CLOS
 /// A route planner example, the absolute betweenness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({});
 /// ~ examples.dropGraph("routeplanner");
@@ -5211,7 +5211,7 @@ Graph.prototype._closeness = function(options){var query="RETURN" + " GRAPH_CLOS
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5221,7 +5221,7 @@ Graph.prototype._closeness = function(options){var query="RETURN" + " GRAPH_CLOS
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsBetweenness3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._absoluteBetweenness({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5245,7 +5245,7 @@ Graph.prototype._absoluteBetweenness = function(example,options){var query="RETU
 /// A route planner example, the betweenness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness();
 /// ~ examples.dropGraph("routeplanner");
@@ -5255,7 +5255,7 @@ Graph.prototype._absoluteBetweenness = function(example,options){var query="RETU
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5265,7 +5265,7 @@ Graph.prototype._absoluteBetweenness = function(example,options){var query="RETU
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleBetweenness3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._betweenness({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5305,7 +5305,7 @@ Graph.prototype._betweenness = function(options){var query="RETURN" + " GRAPH_BE
 /// A route planner example, the radius of the graph.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius();
 /// ~ examples.dropGraph("routeplanner");
@@ -5315,7 +5315,7 @@ Graph.prototype._betweenness = function(options){var query="RETURN" + " GRAPH_BE
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5325,7 +5325,7 @@ Graph.prototype._betweenness = function(options){var query="RETURN" + " GRAPH_BE
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleRadius3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._radius({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5365,7 +5365,7 @@ Graph.prototype._radius = function(options){var query="RETURN" + " GRAPH_RADIUS(
 /// A route planner example, the diameter of the graph.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter();
 /// ~ examples.dropGraph("routeplanner");
@@ -5375,7 +5375,7 @@ Graph.prototype._radius = function(options){var query="RETURN" + " GRAPH_RADIUS(
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter2}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter({weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5385,7 +5385,7 @@ Graph.prototype._radius = function(options){var query="RETURN" + " GRAPH_RADIUS(
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDiameter3}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._diameter({direction : 'outbound', weight : 'distance'});
 /// ~ examples.dropGraph("routeplanner");
@@ -5412,7 +5412,7 @@ Graph.prototype._diameter = function(options){var query="RETURN" + " GRAPH_DIAME
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
@@ -5460,7 +5460,7 @@ if(graph._key === self.__name){newCollections.forEach(function(nc){if(self.__ver
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var original = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var modified = graph_module._relation("myEC1", ["myVC2"], ["myVC3"]);
@@ -5497,7 +5497,7 @@ var graphs=getGraphCollection().toArray();graphs.forEach(function(graph){changeE
 /// Remove an edge definition but keep the edge collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
@@ -5511,7 +5511,7 @@ var graphs=getGraphCollection().toArray();graphs.forEach(function(graph){changeE
 /// Remove an edge definition and drop the edge collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinitionWithDrop}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
@@ -5546,7 +5546,7 @@ if(this.__edgeCollections[edgeCollection] === undefined){var err=new ArangoError
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
@@ -5570,7 +5570,7 @@ var ec=db._collection(vertexCollectionName);var err;if(ec === null){if(createCol
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
@@ -5604,7 +5604,7 @@ Graph.prototype._orphanCollections = function(){return this.__orphanCollections;
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
-///   var graph_module = require("org/arangodb/general-graph")
+///   var graph_module = require("@arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
 ///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
@@ -5650,7 +5650,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName,dropColl
 /// A route planner example, all connecting edges between capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleConnectingEdges1}
-///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var examples = require("@arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._getConnectingEdges({isCapital : true}, {isCapital : true});
 /// ~ examples.dropGraph("routeplanner");
@@ -5681,7 +5681,7 @@ exports._directedRelation = function(){return _relation.apply(this,arguments);};
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create_graph_example1
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example1}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 ///   var edgeDefinitions = graph_module._edgeDefinitions();
 ///   graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._relation("friend_of", "Customer", "Customer"));
 /// | graph_module._extendEdgeDefinitions(
@@ -5703,7 +5703,7 @@ exports._directedRelation = function(){return _relation.apply(this,arguments);};
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_create_graph_example2
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example2}
-///   var graph_module = require("org/arangodb/general-graph");
+///   var graph_module = require("@arangodb/general-graph");
 /// |  var edgeDefinitions = graph_module._edgeDefinitions(
 /// |  graph_module._relation("friend_of", ["Customer"], ["Customer"]), graph_module._relation(
 ///    "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
@@ -5720,7 +5720,7 @@ exports._directedRelation = function(){return _relation.apply(this,arguments);};
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
-});module.define("org/arangodb/graph-common",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/graph-common",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
 /// @file
@@ -5746,8 +5746,8 @@ exports._directedRelation = function(){return _relation.apply(this,arguments);};
 /// @author Dr. Frank Celler, Lucas Dohmen
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var is=require("org/arangodb/is"),Edge,Graph,Vertex,GraphArray,Iterator; // -----------------------------------------------------------------------------
-// --SECTION--                             module "org/arangodb/graph-blueprint"
+var is=require("@arangodb/is"),Edge,Graph,Vertex,GraphArray,Iterator; // -----------------------------------------------------------------------------
+// --SECTION--                             module "@arangodb/graph-blueprint"
 // -----------------------------------------------------------------------------
 Iterator = function(wrapper,cursor,stringRepresentation){this.next = function next(){if(cursor.hasNext()){return wrapper(cursor.next());}return undefined;};this.hasNext = function hasNext(){return cursor.hasNext();};this._PRINT = function(context){context.output += stringRepresentation;};}; // -----------------------------------------------------------------------------
 // --SECTION--                                                        GraphArray
@@ -5846,7 +5846,7 @@ Edge.prototype.getOutVertex = function(){return this._graph.getVertex(this._prop
 /// @EXAMPLE_ARANGOSH_OUTPUT{edgeGetPeerVertex}
 /// ~ db._drop("v");
 /// ~ db._drop("e");
-///   Graph = require("org/arangodb/graph-blueprint").Graph;
+///   Graph = require("@arangodb/graph-blueprint").Graph;
 ///   g = new Graph("example", "v", "e");
 ///   v1 = g.addVertex("1");
 ///   v2 = g.addVertex("2");
@@ -6028,7 +6028,7 @@ exports.Edge = Edge;exports.Graph = Graph;exports.Vertex = Vertex;exports.GraphA
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-});module.define("org/arangodb/graph",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/graph",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
 /// @file
@@ -6054,7 +6054,7 @@ exports.Edge = Edge;exports.Graph = Graph;exports.Vertex = Vertex;exports.GraphA
 /// @author Florian Bartels
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var gp=require("org/arangodb/graph-blueprint"); // The warning will be activated soon.
+var gp=require("@arangodb/graph-blueprint"); // The warning will be activated soon.
 /*
  * require("console").warn('module "graph" is deprecated, please use ' +
  *                      'module "general-graph" instead');
@@ -6065,7 +6065,7 @@ var gp=require("org/arangodb/graph-blueprint"); // The warning will be activated
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-});module.define("org/arangodb/graph/traversal",function(exports,module){ /*jshint strict: false, unused: false */ /*global ArangoClusterComm, AQL_QUERY_IS_KILLED */ ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/graph/traversal",function(exports,module){ /*jshint strict: false, unused: false */ /*global ArangoClusterComm, AQL_QUERY_IS_KILLED */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"
 ///
 /// @file
@@ -6092,7 +6092,7 @@ var gp=require("org/arangodb/graph-blueprint"); // The warning will be activated
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var graph=require("org/arangodb/graph-blueprint");var generalGraph=require("org/arangodb/general-graph");var arangodb=require("org/arangodb");var BinaryHeap=require("org/arangodb/heap").BinaryHeap;var ArangoError=arangodb.ArangoError;var ShapedJson=require("internal").ShapedJson; // this may be undefined/null on the client
+var graph=require("@arangodb/graph-blueprint");var generalGraph=require("@arangodb/general-graph");var arangodb=require("@arangodb");var BinaryHeap=require("@arangodb/heap").BinaryHeap;var ArangoError=arangodb.ArangoError;var ShapedJson=require("internal").ShapedJson; // this may be undefined/null on the client
 var db=arangodb.db;var ArangoTraverser; // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
@@ -6122,7 +6122,7 @@ var abortedException=function abortedException(message,options){'use strict';thi
 ////////////////////////////////////////////////////////////////////////////////
 function collectionDatasourceFactory(edgeCollection){var c=edgeCollection;if(typeof c === 'string'){c = db._collection(c);} // we can call the "fast" version of some edge functions if we are
 // running server-side and are not a coordinator
-var useBuiltIn=typeof ArangoClusterComm === "object";if(useBuiltIn && require("org/arangodb/cluster").isCoordinator()){useBuiltIn = false;}return {edgeCollection:c,useBuiltIn:useBuiltIn,getVertexId:function getVertexId(vertex){return vertex._id;},getPeerVertex:function getPeerVertex(edge,vertex){if(edge._from === vertex._id){return db._document(edge._to);}if(edge._to === vertex._id){return db._document(edge._from);}return null;},getInVertex:function getInVertex(edge){return db._document(edge._to);},getOutVertex:function getOutVertex(edge){return db._document(edge._from);},getEdgeId:function getEdgeId(edge){return edge._id;},getEdgeFrom:function getEdgeFrom(edge){return edge._from;},getEdgeTo:function getEdgeTo(edge){return edge._to;},getLabel:function getLabel(edge){return edge.$label;},getAllEdges:function getAllEdges(vertex){if(this.useBuiltIn){return this.edgeCollection.EDGES(vertex._id);}return this.edgeCollection.edges(vertex._id);},getInEdges:function getInEdges(vertex){if(this.useBuiltIn){return this.edgeCollection.INEDGES(vertex._id);}return this.edgeCollection.inEdges(vertex._id);},getOutEdges:function getOutEdges(vertex){if(this.useBuiltIn){return this.edgeCollection.OUTEDGES(vertex._id);}return this.edgeCollection.outEdges(vertex._id);}};} ////////////////////////////////////////////////////////////////////////////////
+var useBuiltIn=typeof ArangoClusterComm === "object";if(useBuiltIn && require("@arangodb/cluster").isCoordinator()){useBuiltIn = false;}return {edgeCollection:c,useBuiltIn:useBuiltIn,getVertexId:function getVertexId(vertex){return vertex._id;},getPeerVertex:function getPeerVertex(edge,vertex){if(edge._from === vertex._id){return db._document(edge._to);}if(edge._to === vertex._id){return db._document(edge._from);}return null;},getInVertex:function getInVertex(edge){return db._document(edge._to);},getOutVertex:function getOutVertex(edge){return db._document(edge._from);},getEdgeId:function getEdgeId(edge){return edge._id;},getEdgeFrom:function getEdgeFrom(edge){return edge._from;},getEdgeTo:function getEdgeTo(edge){return edge._to;},getLabel:function getLabel(edge){return edge.$label;},getAllEdges:function getAllEdges(vertex){if(this.useBuiltIn){return this.edgeCollection.EDGES(vertex._id);}return this.edgeCollection.edges(vertex._id);},getInEdges:function getInEdges(vertex){if(this.useBuiltIn){return this.edgeCollection.INEDGES(vertex._id);}return this.edgeCollection.inEdges(vertex._id);},getOutEdges:function getOutEdges(vertex){if(this.useBuiltIn){return this.edgeCollection.OUTEDGES(vertex._id);}return this.edgeCollection.outEdges(vertex._id);}};} ////////////////////////////////////////////////////////////////////////////////
 /// @brief general graph datasource
 ///
 /// This is a factory function that creates a datasource that operates on the
@@ -6315,7 +6315,7 @@ exports.collectionDatasourceFactory = collectionDatasourceFactory;exports.genera
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
-});module.define("org/arangodb/is",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
+});module.define("@arangodb/is",function(exports,module){'use strict'; ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if something is something
 ///
 /// @file
@@ -6346,7 +6346,7 @@ function existy(x){return x !== null && x !== undefined;} // Check if a value is
 function notExisty(x){return !existy(x);} // Check if a value is existy and not false
 function truthy(x){return x !== false && existy(x);} // Check if a value is not truthy
 function falsy(x){return !truthy(x);} // is.object, is.noObject, is.array, is.noArray...
-['Object','Array','Boolean','Date','Function','Number','String','RegExp'].forEach(function(type){exports[type.toLowerCase()] = function(obj){return Object.prototype.toString.call(obj) === '[object ' + type + ']';};exports["no" + type] = function(obj){return Object.prototype.toString.call(obj) !== '[object ' + type + ']';};});exports.existy = existy;exports.notExisty = notExisty;exports.truthy = truthy;exports.falsy = falsy;});module.define("org/arangodb/mimetypes",function(exports,module){ /*jslint indent: 2,
+['Object','Array','Boolean','Date','Function','Number','String','RegExp'].forEach(function(type){exports[type.toLowerCase()] = function(obj){return Object.prototype.toString.call(obj) === '[object ' + type + ']';};exports["no" + type] = function(obj){return Object.prototype.toString.call(obj) !== '[object ' + type + ']';};});exports.existy = existy;exports.notExisty = notExisty;exports.truthy = truthy;exports.falsy = falsy;});module.define("@arangodb/mimetypes",function(exports,module){ /*jslint indent: 2,
          nomen: true,
          maxlen: 100,
          sloppy: true,
@@ -6355,7 +6355,7 @@ function falsy(x){return !truthy(x);} // is.object, is.noObject, is.array, is.no
          plusplus: true */ /*global exports */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from mimetypes.dat
 ////////////////////////////////////////////////////////////////////////////////
-exports.mimeTypes = {"gif":["image/gif",false],"jpg":["image/jpg",false],"png":["image/png",false],"tiff":["image/tiff",false],"ico":["image/x-icon",false],"css":["text/css",true],"js":["text/javascript",true],"json":["application/json",true],"html":["text/html",true],"htm":["text/html",true],"pdf":["application/pdf",false],"ps":["application/postscript",false],"txt":["text/plain",true],"text":["text/plain",true],"xml":["application/xml",true],"dtd":["application/xml-dtd",true],"svg":["image/svg+xml",true],"ttf":["application/x-font-ttf",false],"otf":["application/x-font-opentype",false],"woff":["application/font-woff",false],"eot":["application/vnd.ms-fontobject",false],"bz2":["application/x-bzip2",false],"gz":["application/x-gzip",false],"tgz":["application/x-tar",false],"zip":["application/x-compressed-zip",false],"doc":["application/msword",false],"docx":["application/vnd.openxmlformats-officedocument.wordprocessingml.document",false],"dotx":["application/vnd.openxmlformats-officedocument.wordprocessingml.template",false],"potx":["application/vnd.openxmlformats-officedocument.presentationml.template",false],"ppsx":["application/vnd.openxmlformats-officedocument.presentationml.slideshow",false],"ppt":["application/vnd.ms-powerpoint",false],"pptx":["application/vnd.openxmlformats-officedocument.presentationml.presentation",false],"xls":["application/vnd.ms-excel",false],"xlsb":["application/vnd.ms-excel.sheet.binary.macroEnabled.12",false],"xlsx":["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",false],"xltx":["application/vnd.openxmlformats-officedocument.spreadsheetml.template",false],"swf":["application/x-shockwave-flash",false]};exports.extensions = {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":["xlsx"],"image/svg+xml":["svg"],"application/postscript":["ps"],"image/png":["png"],"application/x-font-ttf":["ttf"],"application/vnd.ms-excel.sheet.binary.macroEnabled.12":["xlsb"],"application/x-font-opentype":["otf"],"application/vnd.openxmlformats-officedocument.wordprocessingml.document":["docx"],"application/x-bzip2":["bz2"],"application/json":["json"],"application/pdf":["pdf"],"application/vnd.openxmlformats-officedocument.presentationml.presentation":["pptx"],"application/vnd.ms-fontobject":["eot"],"application/xml-dtd":["dtd"],"application/x-shockwave-flash":["swf"],"image/gif":["gif"],"image/jpg":["jpg"],"application/xml":["xml"],"application/vnd.ms-excel":["xls"],"image/tiff":["tiff"],"application/vnd.ms-powerpoint":["ppt"],"application/font-woff":["woff"],"application/vnd.openxmlformats-officedocument.presentationml.template":["potx"],"text/plain":["txt","text"],"application/x-tar":["tgz"],"application/vnd.openxmlformats-officedocument.spreadsheetml.template":["xltx"],"application/x-gzip":["gz"],"text/javascript":["js"],"text/html":["html","htm"],"application/vnd.openxmlformats-officedocument.wordprocessingml.template":["dotx"],"image/x-icon":["ico"],"application/x-compressed-zip":["zip"],"application/vnd.openxmlformats-officedocument.presentationml.slideshow":["ppsx"],"text/css":["css"],"application/msword":["doc"]};});module.define("org/arangodb/simple-query-common",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
+exports.mimeTypes = {"gif":["image/gif",false],"jpg":["image/jpg",false],"png":["image/png",false],"tiff":["image/tiff",false],"ico":["image/x-icon",false],"css":["text/css",true],"js":["text/javascript",true],"json":["application/json",true],"html":["text/html",true],"htm":["text/html",true],"pdf":["application/pdf",false],"ps":["application/postscript",false],"txt":["text/plain",true],"text":["text/plain",true],"xml":["application/xml",true],"dtd":["application/xml-dtd",true],"svg":["image/svg+xml",true],"ttf":["application/x-font-ttf",false],"otf":["application/x-font-opentype",false],"woff":["application/font-woff",false],"eot":["application/vnd.ms-fontobject",false],"bz2":["application/x-bzip2",false],"gz":["application/x-gzip",false],"tgz":["application/x-tar",false],"zip":["application/x-compressed-zip",false],"doc":["application/msword",false],"docx":["application/vnd.openxmlformats-officedocument.wordprocessingml.document",false],"dotx":["application/vnd.openxmlformats-officedocument.wordprocessingml.template",false],"potx":["application/vnd.openxmlformats-officedocument.presentationml.template",false],"ppsx":["application/vnd.openxmlformats-officedocument.presentationml.slideshow",false],"ppt":["application/vnd.ms-powerpoint",false],"pptx":["application/vnd.openxmlformats-officedocument.presentationml.presentation",false],"xls":["application/vnd.ms-excel",false],"xlsb":["application/vnd.ms-excel.sheet.binary.macroEnabled.12",false],"xlsx":["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",false],"xltx":["application/vnd.openxmlformats-officedocument.spreadsheetml.template",false],"swf":["application/x-shockwave-flash",false]};exports.extensions = {"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":["xlsx"],"image/svg+xml":["svg"],"application/postscript":["ps"],"image/png":["png"],"application/x-font-ttf":["ttf"],"application/vnd.ms-excel.sheet.binary.macroEnabled.12":["xlsb"],"application/x-font-opentype":["otf"],"application/vnd.openxmlformats-officedocument.wordprocessingml.document":["docx"],"application/x-bzip2":["bz2"],"application/json":["json"],"application/pdf":["pdf"],"application/vnd.openxmlformats-officedocument.presentationml.presentation":["pptx"],"application/vnd.ms-fontobject":["eot"],"application/xml-dtd":["dtd"],"application/x-shockwave-flash":["swf"],"image/gif":["gif"],"image/jpg":["jpg"],"application/xml":["xml"],"application/vnd.ms-excel":["xls"],"image/tiff":["tiff"],"application/vnd.ms-powerpoint":["ppt"],"application/font-woff":["woff"],"application/vnd.openxmlformats-officedocument.presentationml.template":["potx"],"text/plain":["txt","text"],"application/x-tar":["tgz"],"application/vnd.openxmlformats-officedocument.spreadsheetml.template":["xltx"],"application/x-gzip":["gz"],"text/javascript":["js"],"text/html":["html","htm"],"application/vnd.openxmlformats-officedocument.wordprocessingml.template":["dotx"],"image/x-icon":["ico"],"application/x-compressed-zip":["zip"],"application/vnd.openxmlformats-officedocument.presentationml.slideshow":["ppsx"],"text/css":["css"],"application/msword":["doc"]};});module.define("@arangodb/simple-query-common",function(exports,module){ /*jshint strict: false */ ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
 ///
 /// @file
@@ -6381,7 +6381,7 @@ exports.mimeTypes = {"gif":["image/gif",false],"jpg":["image/jpg",false],"png":[
 /// @author Dr. Frank Celler
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var arangodb=require("org/arangodb");var ArangoError=arangodb.ArangoError; // forward declaration
+var arangodb=require("@arangodb");var ArangoError=arangodb.ArangoError; // forward declaration
 var SimpleQueryArray;var SimpleQueryNear;var SimpleQueryWithin;var SimpleQueryWithinRectangle; // -----------------------------------------------------------------------------
 // --SECTION--                                              GENERAL ARRAY CURSOR
 // -----------------------------------------------------------------------------
@@ -7235,7 +7235,7 @@ global.start_pager = function start_pager(){var internal=require("internal");int
 global.stop_pager = function stop_pager(){var internal=require("internal");internal.stopPager();}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief print the overall help
 ////////////////////////////////////////////////////////////////////////////////
-global.help = function help(){var internal=require("internal");var arangodb=require("org/arangodb");var arangosh=require("org/arangodb/arangosh");internal.print(arangosh.HELP);arangodb.ArangoDatabase.prototype._help();arangodb.ArangoCollection.prototype._help();arangodb.ArangoStatement.prototype._help();arangodb.ArangoQueryCursor.prototype._help();internal.print(arangosh.helpExtended);}; ////////////////////////////////////////////////////////////////////////////////
+global.help = function help(){var internal=require("internal");var arangodb=require("@arangodb");var arangosh=require("@arangodb/arangosh");internal.print(arangosh.HELP);arangodb.ArangoDatabase.prototype._help();arangodb.ArangoCollection.prototype._help();arangodb.ArangoStatement.prototype._help();arangodb.ArangoQueryCursor.prototype._help();internal.print(arangosh.helpExtended);}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear screen (poor man's way)
 ////////////////////////////////////////////////////////////////////////////////
 global.clear = function clear(){var internal=require("internal");var result='';for(var i=0;i < 100;++i) {result += '\n';}internal.print(result);}; ////////////////////////////////////////////////////////////////////////////////
@@ -7244,25 +7244,25 @@ global.clear = function clear(){var internal=require("internal");var result='';f
 global.console = global.console || require("console"); ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'db'
 ////////////////////////////////////////////////////////////////////////////////
-global.db = require("org/arangodb").db; ////////////////////////////////////////////////////////////////////////////////
+global.db = require("@arangodb").db; ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'arango'
 ////////////////////////////////////////////////////////////////////////////////
-global.arango = require("org/arangodb").arango; ////////////////////////////////////////////////////////////////////////////////
+global.arango = require("@arangodb").arango; ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'fm'
 ////////////////////////////////////////////////////////////////////////////////
-global.fm = require("org/arangodb/foxx/manager"); ////////////////////////////////////////////////////////////////////////////////
+global.fm = require("@arangodb/foxx/manager"); ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'ArangoStatement'
 ////////////////////////////////////////////////////////////////////////////////
-global.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement; ////////////////////////////////////////////////////////////////////////////////
+global.ArangoStatement = require("@arangodb/arango-statement").ArangoStatement; ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell tutorial
 ////////////////////////////////////////////////////////////////////////////////
-global.tutorial = require("org/arangodb/tutorial"); // -----------------------------------------------------------------------------
+global.tutorial = require("@arangodb/tutorial"); // -----------------------------------------------------------------------------
 // --SECTION--                                                        initialize
 // -----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
-var initHelp=function initHelp(){var internal=require("internal");if(internal.db){try{internal.db._collections();}catch(e) {}}if(internal.quiet !== true){require("org/arangodb").checkAvailableVersions();if(internal.arango && internal.arango.isConnected && internal.arango.isConnected()){internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");}}}; ////////////////////////////////////////////////////////////////////////////////
+var initHelp=function initHelp(){var internal=require("internal");if(internal.db){try{internal.db._collections();}catch(e) {}}if(internal.quiet !== true){require("@arangodb").checkAvailableVersions();if(internal.arango && internal.arango.isConnected && internal.arango.isConnected()){internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");}}}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief read rc file
 ////////////////////////////////////////////////////////////////////////////////
 if(typeof window === 'undefined'){ // We're in arangosh
