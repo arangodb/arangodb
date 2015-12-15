@@ -3,6 +3,7 @@
  */
 
 var Runnable = require('./runnable');
+var inherits = require('./utils').inherits;
 
 /**
  * Expose `Test`.
@@ -13,11 +14,10 @@ module.exports = Test;
 /**
  * Initialize a new `Test` with the given `title` and callback `fn`.
  *
+ * @api private
  * @param {String} title
  * @param {Function} fn
- * @api private
  */
-
 function Test(title, fn) {
   Runnable.call(this, title, fn);
   this.pending = !fn;
@@ -27,5 +27,4 @@ function Test(title, fn) {
 /**
  * Inherit from `Runnable.prototype`.
  */
-
-Test.prototype.__proto__ = Runnable.prototype;
+inherits(Test, Runnable);

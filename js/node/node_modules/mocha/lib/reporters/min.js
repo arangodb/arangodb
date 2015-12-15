@@ -3,6 +3,7 @@
  */
 
 var Base = require('./base');
+var inherits = require('../utils').inherits;
 
 /**
  * Expose `Min`.
@@ -13,14 +14,13 @@ exports = module.exports = Min;
 /**
  * Initialize a new `Min` minimal test reporter (best used with --watch).
  *
- * @param {Runner} runner
  * @api public
+ * @param {Runner} runner
  */
-
 function Min(runner) {
   Base.call(this, runner);
 
-  runner.on('start', function(){
+  runner.on('start', function() {
     // clear screen
     process.stdout.write('\u001b[2J');
     // set cursor position
@@ -33,5 +33,4 @@ function Min(runner) {
 /**
  * Inherit from `Base.prototype`.
  */
-
-Min.prototype.__proto__ = Base.prototype;
+inherits(Min, Base);

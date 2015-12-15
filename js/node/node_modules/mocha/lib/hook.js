@@ -3,6 +3,7 @@
  */
 
 var Runnable = require('./runnable');
+var inherits = require('./utils').inherits;
 
 /**
  * Expose `Hook`.
@@ -17,7 +18,6 @@ module.exports = Hook;
  * @param {Function} fn
  * @api private
  */
-
 function Hook(title, fn) {
   Runnable.call(this, title, fn);
   this.type = 'hook';
@@ -26,8 +26,7 @@ function Hook(title, fn) {
 /**
  * Inherit from `Runnable.prototype`.
  */
-
-Hook.prototype.__proto__ = Runnable.prototype;
+inherits(Hook, Runnable);
 
 /**
  * Get or set the test `err`.
@@ -36,10 +35,9 @@ Hook.prototype.__proto__ = Runnable.prototype;
  * @return {Error}
  * @api public
  */
-
-Hook.prototype.error = function(err){
-  if (0 == arguments.length) {
-    var err = this._error;
+Hook.prototype.error = function(err) {
+  if (!arguments.length) {
+    err = this._error;
     this._error = null;
     return err;
   }
