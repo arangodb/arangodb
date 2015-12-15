@@ -163,7 +163,7 @@ bool ServerJob::execute () {
     
     // execute script inside the context
     auto file = TRI_V8_ASCII_STRING("handle-plan-change");
-    auto content = TRI_V8_ASCII_STRING("require('org/arangodb/cluster').handlePlanChange();");
+    auto content = TRI_V8_ASCII_STRING("require('@arangodb/cluster').handlePlanChange();");
     v8::Handle<v8::Value> res = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), content, file, false);
     if (res->IsBoolean() && res->IsTrue()) {
       LOG_ERROR("An error occurred whilst executing the handlePlanChange in JavaScript.");

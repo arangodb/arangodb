@@ -41,7 +41,7 @@ replication logger on the master.
 
 To query the current state of the logger, use the *state* command:
   
-    require("org/arangodb/replication").logger.state();
+    require("@arangodb/replication").logger.state();
 
 The result might look like this:
 
@@ -77,13 +77,13 @@ fetching of data.
 To query which data ranges are still available for replication clients to fetch,
 the logger provides the *firstTick* and *tickRanges* functions:
 
-    require("org/arangodb/replication").logger.firstTick();
+    require("@arangodb/replication").logger.firstTick();
 
 This will return the minimum tick value that the server can provide to replication
 clients via its replication APIS. The *tickRanges* function returns the minimum and
 maximum tick values per logfile:
 
-    require("org/arangodb/replication").logger.tickRanges();
+    require("@arangodb/replication").logger.tickRanges();
 
 
 !SUBSUBSECTION Configuration
@@ -122,7 +122,7 @@ The replication applier state is queryable at any time by using the *state* comm
 applier. This will return the state of the applier of the current database:
 
 ```js
-require("org/arangodb/replication").applier.state();
+require("@arangodb/replication").applier.state();
 ```
 
 The result might look like this:
@@ -206,8 +206,8 @@ To start and stop the applier in the current database, the *start* and *stop* co
 be used:
 
 ```js
-require("org/arangodb/replication").applier.start(<tick>);
-require("org/arangodb/replication").applier.stop();
+require("@arangodb/replication").applier.start(<tick>);
+require("@arangodb/replication").applier.stop();
 ```
 
 **Note**: Starting a replication applier without setting up an initial configuration will 
@@ -244,7 +244,7 @@ To configure the replication applier of a specific database, use the *properties
 it without any arguments will return the current configuration:
 
 ```js
-require("org/arangodb/replication").applier.properties();
+require("@arangodb/replication").applier.properties();
 ```
 
 The result might look like this:
@@ -271,7 +271,7 @@ for the replication applier to be startable. You may also want to configure a us
 for the connection via the *username* and *password* attributes. 
 
 ```js
-require("org/arangodb/replication").applier.properties({ 
+require("@arangodb/replication").applier.properties({ 
   endpoint: "tcp://master.domain.org:8529", 
   username:  "root", 
   password: "secret",
@@ -356,7 +356,7 @@ only be used for diagnosing replication problems.
 The following example will set most of the discussed properties for the current database's applier:
 
 ```js
-require("org/arangodb/replication").applier.properties({ 
+require("@arangodb/replication").applier.properties({ 
   endpoint: "tcp://master.domain.org:8529", 
   username: "root", 
   password: "secret",
@@ -385,7 +385,7 @@ The only safe method for doing a full synchronization (or re-synchronization) is
 The initial synchronization for the current database is executed with the *sync* command:
 
 ```js
-require("org/arangodb/replication").sync({
+require("@arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "root",
   password: "secret,
@@ -402,7 +402,7 @@ collections using the *restrictType* and *restrictCollection* parameters.
 The following command only synchronizes collection *foo* and *bar*:
 
 ```js
-require("org/arangodb/replication").sync({
+require("@arangodb/replication").sync({
   endpoint: "tcp://master.domain.org:8529",
   username: "root",
   password: "secret,
@@ -434,7 +434,7 @@ Now you can start the continuous synchronization for the current database on the
 with the command
 
 ```js
-require("org/arangodb/replication").applier.start("231848833079705");
+require("@arangodb/replication").applier.start("231848833079705");
 ```
 
 **Note**: The tick values should be treated as strings. Using numeric data types for tick

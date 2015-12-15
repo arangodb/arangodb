@@ -91,7 +91,7 @@ function hasOwnProperty(obj, prop) {
 
 function createRequire(module) {
   function require(path) {
-    return module.require(path);
+    return module.require(path.replace(/^org\/arangodb/, '@arangodb'));
   }
 
   require.resolve = function(request) {
@@ -631,7 +631,7 @@ Module._extensions['.json'] = function(module, filename) {
 
 
 Module._extensions['.coffee'] = function(module, filename) {
-  require('org/arangodb/deprecated')(
+  require('@arangodb/deprecated')(
     '2.9',
     'CoffeeScript support is deprecated,'
     + ' please pre-compile CoffeeScript modules to JavaScript using external build tools.'

@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity"),
-  arangodb = require("org/arangodb"),
+  arangodb = require("@arangodb"),
   db = arangodb.db;
 
 function TemplateMiddlewareSpec () {
@@ -42,7 +42,7 @@ function TemplateMiddlewareSpec () {
       response = {};
       options = {};
       next = function () {};
-      TemplateMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
+      TemplateMiddleware = require("@arangodb/foxx/template_middleware").TemplateMiddleware;
       db._drop("templateTest");
       templateCollection = db._create("templateTest");
     },

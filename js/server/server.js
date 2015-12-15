@@ -50,7 +50,7 @@
 
   // statistics can be turned off
   if (internal.enableStatistics && internal.threadNumber === 0) {
-    require("org/arangodb/statistics").startup();
+    require("@arangodb/statistics").startup();
   }
 
   // load all foxxes
@@ -66,12 +66,12 @@
 
   // start the queue manager once
   if (internal.threadNumber === 0) {
-    require('org/arangodb/foxx/queues/manager').run();
+    require('@arangodb/foxx/queues/manager').run();
   }
 
   // check available versions
   if (internal.threadNumber === 0 && internal.quiet !== true) {
-    require("org/arangodb").checkAvailableVersions();
+    require("@arangodb").checkAvailableVersions();
   }
 
   return true;

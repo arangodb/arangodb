@@ -255,7 +255,7 @@ When using a custom AQL function as a visitor, the result may have a different s
 
       // to register the custom AQL functions, execute something in the fashion of the 
       // following commands in arangosh once: 
-      var aqlfunctions = require("org/arangodb/aql/functions");
+      var aqlfunctions = require("@arangodb/aql/functions");
 
       // these are the actual filter functions
       aqlfunctions.register("myfunctions::checkedge", function (config, vertex, edge, path) { 
@@ -279,7 +279,7 @@ When using a custom AQL function as a visitor, the result may have a different s
 
       // to register the custom AQL function visitor that only returns leaf nodes, run
       // the following commands in arangosh once:
-      var aqlfunctions = require("org/arangodb/aql/functions");
+      var aqlfunctions = require("@arangodb/aql/functions");
 
       aqlfunctions.register("myfunctions::leafnodevisitor", function (config, vertex, edge, path, connections) { 
         if (connected && connected.length === 0) {
@@ -467,7 +467,7 @@ When using a custom AQL function as a visitor, the result may have a different s
 
       // to register a custom AQL distance function, execute something in the fashion of the 
       // following commands in arangosh once: 
-      var aqlfunctions = require("org/arangodb/aql/functions");
+      var aqlfunctions = require("@arangodb/aql/functions");
 
       // this is the actual distance function
       aqlfunctions.register("myfunctions::distance", function (config, vertex1, vertex2, edge) { 

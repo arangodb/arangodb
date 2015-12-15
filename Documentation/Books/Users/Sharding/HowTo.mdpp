@@ -26,7 +26,7 @@ the Arango shell *arangosh*. Then you can ask it to plan a cluster for
 you:
 
 ```js
-arangodb> var Planner = require("org/arangodb/cluster").Planner;
+arangodb> var Planner = require("@arangodb/cluster").Planner;
 arangodb> p = new Planner({numberOfDBservers:3, numberOfCoordinators:2});
 [object Object]
 ```
@@ -87,7 +87,7 @@ same cluster plan you will lose all your data. Use the *relaunch* method
 described below instead in that case.
 
 ```js
-arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+arangodb> var Kickstarter = require("@arangodb/cluster").Kickstarter;
 arangodb> k = new Kickstarter(p.getPlan());
 arangodb> k.launch();
 ```js
@@ -165,7 +165,7 @@ Then you can later do (in another session):
 ```js
 arangodb> var plan = require("fs").read("saved_plan.json");
 arangodb> plan = JSON.parse(plan);
-arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+arangodb> var Kickstarter = require("@arangodb/cluster").Kickstarter;
 arangodb> var k = new Kickstarter(plan);
 arangodb> k.relaunch();
 ```
@@ -199,7 +199,7 @@ all network devices, so that they can talk to each other. Also enable
 the dispatcher functionality on both of them, as described above.
 
 ```js
-arangodb> var Planner = require("org/arangodb/cluster").Planner;
+arangodb> var Planner = require("@arangodb/cluster").Planner;
 arangodb> var p = new Planner({
     dispatchers: {"me":{"endpoint":"tcp://192.168.173.78:8529"},
                   "theother":{"endpoint":"tcp://192.168.173.13:6789"}}, 
@@ -211,7 +211,7 @@ The planner will put one DBserver and one Coordinator on each machine.
 You can now launch this cluster exactly as explained earlier:
 
 ```js
-    arangodb> var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+    arangodb> var Kickstarter = require("@arangodb/cluster").Kickstarter;
     arangodb> k = new Kickstarter(p.getPlan());
     arangodb> k.launch();
 ```

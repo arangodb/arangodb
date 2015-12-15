@@ -41,7 +41,7 @@
   return function () {
     // statistics can be turned off
     if (internal.enableStatistics) {
-      require("org/arangodb/statistics").startup();
+      require("@arangodb/statistics").startup();
     }
 
     // load all foxxes
@@ -51,7 +51,7 @@
     internal.executeGlobalContextFunction("bootstrapCoordinator");
 
     // start the queue manager once
-    require('org/arangodb/foxx/queues/manager').run();
+    require('@arangodb/foxx/queues/manager').run();
 
     console.info("bootstraped coordinator %s", global.ArangoServerState.id());
     return true;

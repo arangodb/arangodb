@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var helper = require("org/arangodb/aql-helper");
+var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var _ = require("underscore");
 
 ////////////////////////////////////////////////////////////////////////////////

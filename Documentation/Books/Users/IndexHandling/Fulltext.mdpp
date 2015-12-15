@@ -28,7 +28,7 @@ Other data types are ignored and not indexed.
 
 !SECTION Accessing Fulltext Indexes from the Shell
 
-<!-- js/server/modules/org/arangodb/arango-collection.js -->
+<!-- js/server/modules/@arangodb/arango-collection.js -->
 @startDocuBlock ensureFulltextIndex
 
 @startDocuBlock lookUpFulltextIndex

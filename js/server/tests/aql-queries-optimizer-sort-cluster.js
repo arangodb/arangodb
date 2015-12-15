@@ -30,7 +30,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var helper = require("org/arangodb/aql-helper");
+var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var getQueryResults = helper.getQueryResults;

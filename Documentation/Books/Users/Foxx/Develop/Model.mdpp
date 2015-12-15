@@ -6,7 +6,7 @@ the prototype in your model prototype via the object you give to extend. In
 your model file, export the model as **model**.
 
 ```js
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 
 class TodoModel extends Foxx.Model {
   // ...
@@ -24,7 +24,7 @@ You can define attributes in the schema using the bundled **joi** library.
 For more information on the syntax see [the official joi documentation](https://github.com/spumko/joi).
 
 ```js
-var Foxx = require("org/arangodb/foxx");
+var Foxx = require("@arangodb/foxx");
 var joi = require("joi");
 
 class PersonModel extends Foxx.Model {
@@ -114,41 +114,41 @@ people.remove(person);
 ```
 
 !SUBSECTION Extend
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_extend
 
 !SUBSECTION Initialize
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_initializer
 
 !SUBSECTION Get
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_get
 
 !SUBSECTION Set
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_set
 
 !SUBSECTION Has
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_has
 
 !SUBSECTION isValid
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_isvalid
 
 !SUBSECTION Errors
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_errors
 
 !SUBSECTION Attributes
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_attributes
 
 !SUBSECTION forDB
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_forDB
 
 !SUBSECTION forClient
-<!-- js/server/modules/org/arangodb/foxx/model.js -->
+<!-- js/server/modules/@arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_forClient

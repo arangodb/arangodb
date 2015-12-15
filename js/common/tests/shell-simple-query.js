@@ -31,8 +31,8 @@
 
 var jsunity = require("jsunity");
 
-var db = require("org/arangodb").db;
-var SimpleQueryArray = require("org/arangodb/simple-query").SimpleQueryArray;
+var db = require("@arangodb").db;
+var SimpleQueryArray = require("@arangodb/simple-query").SimpleQueryArray;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     lookup-by-key
@@ -1792,7 +1792,7 @@ function SimpleQueryByExampleHashSuite () {
   'use strict';
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
-  var errors = require("org/arangodb").errors;
+  var errors = require("@arangodb").errors;
 
   var id = function(d) { return d._id; };
 
@@ -1994,7 +1994,7 @@ function SimpleQueryByExampleSkiplistSuite () {
   'use strict';
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
-  var errors = require("org/arangodb").errors;
+  var errors = require("@arangodb").errors;
 
   var id = function(d) { return d._id; };
 
@@ -2439,7 +2439,7 @@ function SimpleQuerySparseRangeSuite () {
   var collection = null;
   var age = function(d) { return d.age; };
   var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
-  var errors = require("org/arangodb").errors;
+  var errors = require("@arangodb").errors;
 
   return {
 
@@ -2591,7 +2591,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
   var collection = null;
   var age = function(d) { return d.age; };
   var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
-  var errors = require("org/arangodb").errors;
+  var errors = require("@arangodb").errors;
 
   return {
 

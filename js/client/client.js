@@ -94,8 +94,8 @@ global.stop_pager = function stop_pager () {
 
 global.help = function help () {
   var internal = require("internal");
-  var arangodb = require("org/arangodb");
-  var arangosh = require("org/arangodb/arangosh");
+  var arangodb = require("@arangodb");
+  var arangosh = require("@arangodb/arangosh");
 
   internal.print(arangosh.HELP);
   arangodb.ArangoDatabase.prototype._help();
@@ -129,31 +129,31 @@ global.console = global.console || require("console");
 /// @brief global 'db'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.db = require("org/arangodb").db;
+global.db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'arango'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.arango = require("org/arangodb").arango;
+global.arango = require("@arangodb").arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'fm'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.fm = require("org/arangodb/foxx/manager");
+global.fm = require("@arangodb/foxx/manager");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'ArangoStatement'
 ////////////////////////////////////////////////////////////////////////////////
 
-global.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
+global.ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell tutorial
 ////////////////////////////////////////////////////////////////////////////////
 
-global.tutorial = require("org/arangodb/tutorial");
+global.tutorial = require("@arangodb/tutorial");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        initialize
@@ -174,7 +174,7 @@ var initHelp = function() {
   }
 
   if (internal.quiet !== true) {
-    require("org/arangodb").checkAvailableVersions();
+    require("@arangodb").checkAvailableVersions();
 
     if (internal.arango && internal.arango.isConnected && internal.arango.isConnected()) {
       internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");

@@ -31,8 +31,8 @@
 var internal = require("internal");
 var console = require("console");
 
-var actions = require("org/arangodb/actions");
-var arangodb = require("org/arangodb");
+var actions = require("@arangodb/actions");
+var arangodb = require("@arangodb");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -40,7 +40,7 @@
   var db = internal.db;
   return {
     foxx: function () {
-      require("org/arangodb/foxx/manager").initializeFoxx();
+      require("@arangodb/foxx/manager").initializeFoxx();
     },
     foxxes: function () {
       var dbName = db._name();
@@ -54,7 +54,7 @@
           db._useDatabase(databases[i]);
           // and initialize Foxx applications
           try {
-            require("org/arangodb/foxx/manager").initializeFoxx();
+            require("@arangodb/foxx/manager").initializeFoxx();
           }
           catch (e) {
             require('console').error(e.stack);

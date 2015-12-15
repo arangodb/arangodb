@@ -29,5 +29,5 @@ of "old" documents, and so save the user from implementing own jobs to purge
 
 !SECTION Accessing Cap Constraints from the Shell
 
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock collectionEnsureCapConstraint

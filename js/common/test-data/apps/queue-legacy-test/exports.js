@@ -1,7 +1,7 @@
 'use strict';
 var joi = require('joi');
 var schema = joi.object().required();
-var queues = require('org/arangodb/foxx').queues;
+var queues = require('@arangodb/foxx').queues;
 
 queues.registerJobType('queue-legacy-test', {
   schema: schema,

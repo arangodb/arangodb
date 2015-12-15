@@ -29,7 +29,7 @@
 
 (function () {
   'use strict';
-  var db = require("org/arangodb").db;
+  var db = require("@arangodb").db;
 
   db._drop("UnitTestsImportJson1");
   db._drop("UnitTestsImportJson2");

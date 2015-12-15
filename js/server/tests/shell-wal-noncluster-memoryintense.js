@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
-var testHelper = require("org/arangodb/test-helper").Helper;
-var ArangoCollection = require("org/arangodb/arango-collection").ArangoCollection;
+var arangodb = require("@arangodb");
+var testHelper = require("@arangodb/test-helper").Helper;
+var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 var db = arangodb.db;
 var internal = require("internal");
 

@@ -93,7 +93,7 @@ The simplest dynamic action is:
 ```js
 { 
   action: { 
-    do: "org/arangodb/actions/echoRequest" 
+    do: "@arangodb/actions/echoRequest" 
   } 
 }
 ```
@@ -102,7 +102,7 @@ better to call functions defined in modules. In the above example the function
 can be accessed from JavaScript as:
 
 ```js
-require("org/arangodb/actions").echoRequest
+require("@arangodb/actions").echoRequest
 ```
 
 The function *echoRequest* is pre-defined. It takes the request objects and
@@ -121,7 +121,7 @@ function (req, res, options, next)
     |db._routing.save({ 
     |    url: "/hello/echo",
     |    action: { 
-    |    do: "org/arangodb/actions/echoRequest" 
+    |    do: "@arangodb/actions/echoRequest" 
     |  } 
     });
     ~require("internal").reloadRouting()
@@ -186,7 +186,7 @@ called.
     |db._routing.save({ 
     |  url: "/hello/echo",
     |  action: { 
-    |    controller: "org/arangodb/actions/echoController" 
+    |    controller: "@arangodb/actions/echoController" 
     |  } 
     });
     ~require("internal").reloadRouting()
@@ -229,13 +229,13 @@ You can use
 ```js
 { 
   action: { 
-    prefixController: "org/arangodb/actions" 
+    prefixController: "@arangodb/actions" 
   } 
 }
 ```
 
 to define a prefix controller. If the URL */hello/echoController* is given, then
-the module *org/arangodb/actions/echoController* is used.
+the module *@arangodb/actions/echoController* is used.
 
 If you use a prefix controller, you should make certain that no unwanted actions
 are available under the prefix.
@@ -244,7 +244,7 @@ The definition
 
 ```js
 { 
-  action: "org/arangodb/actions" 
+  action: "@arangodb/actions" 
 }
 ```
 is a short-cut for a prefix controller definition.
@@ -281,7 +281,7 @@ The controller must define handler functions which take a request object and
 fill the response object.
 
 A very simple example is the function *echoRequest* defined in the module
-*org/arangodb/actions*.
+*@arangodb/actions*.
 
 ```js
 function (req, res, options, next) {
@@ -302,7 +302,7 @@ Install it via:
     |db._routing.save({ 
     |  url: "/echo",
     |  action: { 
-    |    do: "org/arangodb/actions/echoRequest" 
+    |    do: "@arangodb/actions/echoRequest" 
     |  }
     })
     ~require("internal").reloadRouting()
@@ -328,7 +328,7 @@ You may also pass options to the called function:
     |db._routing.save({ 
     |  url: "/echo",
     |  action: {
-    |    do: "org/arangodb/actions/echoRequest",
+    |    do: "@arangodb/actions/echoRequest",
     |    options: { 
     |      "Hello": "World" 
     |    }

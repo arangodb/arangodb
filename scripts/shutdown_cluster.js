@@ -8,7 +8,7 @@ function main (argv) {
     runInfoName = argv[1];
     print("Using runInfo from:", runInfoName);
   }
-  var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+  var Kickstarter = require("@arangodb/cluster").Kickstarter;
   var runInfo = JSON.parse(fs.read(runInfoName));
   var k = new Kickstarter(runInfo.plan);
   k.runInfo = runInfo.runInfo;

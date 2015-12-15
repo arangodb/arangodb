@@ -28,9 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var jsunity = require("jsunity");
-var helper = require("org/arangodb/aql-helper");
+var helper = require("@arangodb/aql-helper");
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 
 ////////////////////////////////////////////////////////////////////////////////

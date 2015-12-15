@@ -31,8 +31,8 @@
 /// @author Copyright 2013-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("org/arangodb/actions");
-var cluster = require("org/arangodb/cluster");
+var actions = require("@arangodb/actions");
+var cluster = require("@arangodb/cluster");
 var internal = require("internal");
 
 // -----------------------------------------------------------------------------
@@ -318,7 +318,7 @@ actions.defineHttp({
                           "Posted body was not valid JSON.");
       return;
     }
-    var Planner = require("org/arangodb/cluster/planner").Planner;
+    var Planner = require("@arangodb/cluster/planner").Planner;
     try {
       var p = new Planner(userconfig);
       res.responseCode = actions.HTTP_OK;
@@ -426,7 +426,7 @@ actions.defineHttp({
     var action = input.action;
     var Kickstarter, k, r;
     if (action === "launch") {
-      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         r = k.launch();
@@ -439,7 +439,7 @@ actions.defineHttp({
       }
     }
     else if (action === "relaunch") {
-      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         r = k.relaunch();
@@ -452,7 +452,7 @@ actions.defineHttp({
       }
     }
     else if (action === "upgrade") {
-      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         r = k.upgrade(input.username, input.password);
@@ -470,7 +470,7 @@ actions.defineHttp({
                             'Posted body needs a "runInfo" property.');
         return;
       }
-      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         k.runInfo = input.runInfo;
@@ -484,7 +484,7 @@ actions.defineHttp({
       }
     }
     else if (action === "cleanup") {
-      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         r = k.cleanup();
@@ -502,7 +502,7 @@ actions.defineHttp({
                             'Posted body needs a "runInfo" property.');
         return;
       }
-      Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
+      Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
       try {
         k = new Kickstarter(input.clusterPlan, input.myname);
         k.runInfo = input.runInfo;
@@ -618,7 +618,7 @@ actions.defineHttp({
                           "only GET requests are allowed");
       return;
     }
-    if (!require("org/arangodb/cluster").isCoordinator()) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
                           "only allowed on coordinator");
       return;
@@ -771,7 +771,7 @@ actions.defineHttp({
                           "only POST requests are allowed");
       return;
     }
-    if (!require("org/arangodb/cluster").isCoordinator()) {
+    if (!require("@arangodb/cluster").isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
                           "only allowed on coordinator");
       return;
@@ -933,7 +933,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
-        !require("org/arangodb/cluster").isCoordinator()) {
+        !require("@arangodb/cluster").isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
                     "only GET requests are allowed and only to coordinators");
       return;
@@ -1040,7 +1040,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     if (req.requestType !== actions.PUT ||
-        !require("org/arangodb/cluster").isCoordinator()) {
+        !require("@arangodb/cluster").isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
                     "only PUT requests are allowed and only to coordinators");
       return;
@@ -1229,7 +1229,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     if (req.requestType !== actions.PUT ||
-        !require("org/arangodb/cluster").isCoordinator()) {
+        !require("@arangodb/cluster").isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
                     "only PUT requests are allowed and only to coordinators");
       return;

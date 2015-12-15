@@ -29,16 +29,16 @@
 (function() {
   "use strict";
   var internal = require("internal");
-  var cluster = require("org/arangodb/cluster");
-  var actions = require("org/arangodb/actions");
+  var cluster = require("@arangodb/cluster");
+  var actions = require("@arangodb/actions");
 
-  var FoxxController = require("org/arangodb/foxx").Controller;
+  var FoxxController = require("@arangodb/foxx").Controller;
   var UnauthorizedError = require("http-errors").Unauthorized;
   var controller = new FoxxController(applicationContext);
-  var db = require("org/arangodb").db;
+  var db = require("@arangodb").db;
 
-  var STATISTICS_INTERVAL = require("org/arangodb/statistics").STATISTICS_INTERVAL;
-  var STATISTICS_HISTORY_INTERVAL = require("org/arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
+  var STATISTICS_INTERVAL = require("@arangodb/statistics").STATISTICS_INTERVAL;
+  var STATISTICS_HISTORY_INTERVAL = require("@arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private functions

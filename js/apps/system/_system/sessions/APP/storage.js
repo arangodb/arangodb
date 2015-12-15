@@ -2,9 +2,9 @@
 const _ = require('underscore');
 const joi = require('joi');
 const internal = require('internal');
-const arangodb = require('org/arangodb');
+const arangodb = require('@arangodb');
 const db = arangodb.db;
-const Foxx = require('org/arangodb/foxx');
+const Foxx = require('@arangodb/foxx');
 const errors = require('./errors');
 
 function getCollection() {

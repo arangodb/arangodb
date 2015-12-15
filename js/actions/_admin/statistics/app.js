@@ -30,10 +30,10 @@
 
 var internal = require("internal");
 var db = internal.db;
-var cluster = require("org/arangodb/cluster");
-var actions = require("org/arangodb/actions");
-var STATISTICS_INTERVAL = require("org/arangodb/statistics").STATISTICS_INTERVAL;
-var STATISTICS_HISTORY_INTERVAL = require("org/arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
+var cluster = require("@arangodb/cluster");
+var actions = require("@arangodb/actions");
+var STATISTICS_INTERVAL = require("@arangodb/statistics").STATISTICS_INTERVAL;
+var STATISTICS_HISTORY_INTERVAL = require("@arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

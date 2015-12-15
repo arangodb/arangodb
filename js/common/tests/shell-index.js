@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
-var testHelper = require("org/arangodb/test-helper").Helper;
+var testHelper = require("@arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     basic methods
