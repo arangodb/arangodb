@@ -69,8 +69,10 @@ HttpHandler::status_t RestEdgesHandler::execute () {
     case HttpRequest::HTTP_REQUEST_PUT:
       readFilteredEdges();
       break;
-    case HttpRequest::HTTP_REQUEST_HEAD:
     case HttpRequest::HTTP_REQUEST_POST:
+      readEdgesForMultipleVertices();
+      break;
+    case HttpRequest::HTTP_REQUEST_HEAD:
     case HttpRequest::HTTP_REQUEST_DELETE:
     case HttpRequest::HTTP_REQUEST_ILLEGAL:
     default: {
@@ -81,6 +83,67 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 
   // this handler is done
   return status_t(HANDLER_DONE);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            private helper methods
+// -----------------------------------------------------------------------------
+
+bool RestEdgesHandler::getEdgesForVertex (std::string const& id,
+                                          std::vector<traverser::TraverserExpression*> const& expressions,
+                                          TRI_edge_direction_e direction,
+                                          SingleCollectionReadOnlyTransaction& trx,
+                                          triagens::basics::Json& result,
+                                          size_t& scannedIndex,
+                                          size_t& filtered) {
+  triagens::arango::traverser::VertexId start;
+  try {
+    start = triagens::arango::traverser::IdStringToVertexId (
+      trx.resolver(),
+      id
+    );
+  }
+  catch (triagens::basics::Exception& e) {
+    handleError(e);
+    return false;
+  }
+  TRI_document_collection_t* docCol = trx.trxCollection()->_collection->_collection;
+
+  std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
+    docCol,
+    direction,
+    start.cid,
+    const_cast<char*>(start.key)
+  );
+
+  // generate result
+  result.reserve(edges.size());
+  scannedIndex += edges.size();
+
+  if (expressions.empty()) {
+    for (auto& e : edges) {
+      DocumentAccessor da(trx.resolver(), docCol, &e);
+      result.add(da.toJson());
+    }
+  }
+  else {
+    for (auto& e : edges) {
+      bool add = true;
+      // Expressions symbolize an and, so all have to be matched
+      for (auto& exp : expressions) {
+        if (exp->isEdgeAccess && ! exp->matchesCheck(e, docCol, trx.resolver())) {
+          ++filtered;
+          add = false;
+          break;
+        }
+      }
+      if (add) {
+        DocumentAccessor da(trx.resolver(), docCol, &e);
+        result.add(da.toJson());
+      }
+    }
+  }
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -293,67 +356,166 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
     return false;
   }
 
-  TRI_voc_cid_t const cid = trx.cid();
+  // If we are a DBserver, we want to use the cluster-wide collection
+  // name for error reporting:
+  if (ServerState::instance()->isDBServer()) {
+    collectionName = trx.resolver()->getCollectionName(trx.cid());
+  }
+
+  std::string startVertexString(startVertex);
+  size_t filtered = 0;
+  size_t scannedIndex = 0;
+  
+  triagens::basics::Json documents(triagens::basics::Json::Array);
+  bool ok = getEdgesForVertex(startVertex,
+                              expressions,
+                              direction,
+                              trx,
+                              documents,
+                              scannedIndex,
+                              filtered);
+  res = trx.finish(res);
+  if (! ok) {
+    // Error has been built internally
+    return false;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res);
+    return false;
+  }
+
+  triagens::basics::Json result(triagens::basics::Json::Object, 4);
+  result("edges", documents);
+  result("error", triagens::basics::Json(false));
+  result("code", triagens::basics::Json(200));
+  triagens::basics::Json stats(triagens::basics::Json::Object, 2);
+
+  stats("scannedIndex", triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
+  stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
+  result("stats", stats);
+
+  // and generate a response
+  generateResult(result.json());
+
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// Internal function to receive all edges for a list of vertices
+/// Not publicly documented on purpose.
+/// NOTE: It ONLY except _id strings. Nothing else
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestEdgesHandler::readEdgesForMultipleVertices () {
+
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected POST " + EDGES_PATH +
+                  "/<collection-identifier>?direction=<direction>");
+    return false;
+  }
+
+  std::unique_ptr<TRI_json_t> json(parseJsonBody());
+  if (json == nullptr) {
+    // A body is required
+    return false;
+  }
+
+  if (! TRI_IsArrayJson(json.get())) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Expected an array of vertex _id's in body parameter");
+    return false;
+  }
+
+  std::string collectionName = suffix[0];
+  CollectionNameResolver resolver(_vocbase);
+  TRI_col_type_t colType = resolver.getCollectionTypeCluster(collectionName);
+
+  if (colType == TRI_COL_TYPE_UNKNOWN) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return false;
+  }
+  else if (colType != TRI_COL_TYPE_EDGE) {
+    generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+    return false;
+  }
+
+  bool found;
+  char const* dir = _request->value("direction", found);
+
+  if (! found || *dir == '\0') {
+    dir = "any";
+  }
+
+  std::string dirString(dir);
+  TRI_edge_direction_e direction;
+
+  if (dirString == "any") {
+    direction = TRI_EDGE_ANY;
+  }
+  else if (dirString == "out" || dirString == "outbound") {
+    direction = TRI_EDGE_OUT;
+  }
+  else if (dirString == "in" || dirString == "inbound") {
+    direction = TRI_EDGE_IN;
+  }
+  else {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "<direction> must by any, in, or out, not: " + dirString);
+    return false;
+  }
+
+ 
+  if (ServerState::instance()->isCoordinator()) {
+    // This API is only for internal use on DB servers and is not (yet) allowed to
+    // be executed on the coordinator
+    return false;
+  }
+
+  // find and load collection given by name or identifier
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _vocbase, collectionName);
+
+  // .............................................................................
+  // inside read transaction
+  // .............................................................................
+
+  int res = trx.begin();
+  if (res != TRI_ERROR_NO_ERROR) {
+    generateTransactionError(collectionName, res);
+    return false;
+  }
 
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
   if (ServerState::instance()->isDBServer()) {
-    collectionName = trx.resolver()->getCollectionName(cid);
+    collectionName = trx.resolver()->getCollectionName(trx.cid());
   }
-
-  triagens::arango::traverser::VertexId start;
-  std::string startVertexString(startVertex);
-  try {
-    start = triagens::arango::traverser::IdStringToVertexId (
-      trx.resolver(),
-      startVertexString
-    );
-  }
-  catch (triagens::basics::Exception& e) {
-    handleError(e);
-    return false;
-  }
-
-  TRI_transaction_collection_t* collection = trx.trxCollection();
-
-  size_t filtered = 0;
-  std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
-    collection->_collection->_collection,
-    direction,
-    start.cid,
-    const_cast<char*>(start.key)
-  );
-
-
-  // generate result
+  
+  std::vector<std::string> ids = triagens::basics::JsonHelper::stringArray(json.get());
   triagens::basics::Json documents(triagens::basics::Json::Array);
-  documents.reserve(edges.size());
-  TRI_document_collection_t* docCol = collection->_collection->_collection;
+  size_t filtered = 0;
+  size_t scannedIndex = 0;
+  std::vector<traverser::TraverserExpression*> const expressions;
 
-  if (expressions.empty()) {
-    for (auto& e : edges) {
-      DocumentAccessor da(trx.resolver(), docCol, &e);
-      documents.add(da.toJson());
+  for (auto const& vertex : ids) {
+    bool ok = getEdgesForVertex(vertex,
+                                expressions,
+                                direction,
+                                trx,
+                                documents,
+                                scannedIndex,
+                                filtered);
+    if (! ok) {
+      // Ignore the error
     }
   }
-  else {
-    for (auto& e : edges) {
-      bool add = true;
-      // Expressions symbolize an and, so all have to be matched
-      for (auto& exp : expressions) {
-        if (exp->isEdgeAccess && ! exp->matchesCheck(e, docCol, trx.resolver())) {
-          ++filtered;
-          add = false;
-          break;
-        }
-      }
-      if (add) {
-        DocumentAccessor da(trx.resolver(), docCol, &e);
-        documents.add(da.toJson());
-      }
-    }
-  }
-
   res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collectionName, res);
@@ -366,7 +528,7 @@ bool RestEdgesHandler::readEdges (std::vector<traverser::TraverserExpression*> c
   result("code", triagens::basics::Json(200));
   triagens::basics::Json stats(triagens::basics::Json::Object, 2);
 
-  stats("scannedIndex", triagens::basics::Json(static_cast<int32_t>(edges.size())));
+  stats("scannedIndex", triagens::basics::Json(static_cast<int32_t>(scannedIndex)));
   stats("filtered", triagens::basics::Json(static_cast<int32_t>(filtered)));
   result("stats", stats);
 
