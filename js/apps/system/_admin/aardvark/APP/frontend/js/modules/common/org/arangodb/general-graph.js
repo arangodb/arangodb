@@ -29,7 +29,6 @@ module.define("org/arangodb/general-graph", function(exports, module) {
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 var arangodb = require("org/arangodb"),
   internal = require("internal"),
   ArangoCollection = arangodb.ArangoCollection,
@@ -2442,7 +2441,7 @@ var _graph = function(graphName) {
   }
 
   return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections,
-    g._rev , g._id);
+    g._rev, g._id);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2452,6 +2451,62 @@ var _graph = function(graphName) {
 var _exists = function(graphId) {
   var gCol = getGraphCollection();
   return gCol.exists(graphId);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rename a collection inside the _graphs collections
+////////////////////////////////////////////////////////////////////////////////
+
+var _renameCollection = function(oldName, newName) {
+  db._executeTransaction({
+    collections: {
+      write: "_graphs"
+    },
+    action: function(params) {
+      var gdb = getGraphCollection();
+      if (! gdb) {
+        return;
+      }
+      gdb.toArray().forEach(function(doc) {
+        var c = _.clone(doc), i, j, changed = false;
+        if (c.edgeDefinitions) {
+          for (i = 0; i < c.edgeDefinitions.length; ++i) {
+            var def = c.edgeDefinitions[i];
+            if (def.collection === params.oldName) {
+              c.edgeDefinitions[i].collection = params.newName;
+              changed = true;
+            }
+            for (j = 0; j < def.from.length; ++j) {
+              if (def.from[j] === params.oldName) {
+                c.edgeDefinitions[i].from[j] = params.newName;
+                changed = true;
+              }
+            }
+            for (j = 0; j < def.to.length; ++j) {
+              if (def.to[j] === params.oldName) {
+                c.edgeDefinitions[i].to[j] = params.newName;
+                changed = true;
+              }
+            }
+          }
+        }
+        for (i = 0; i < c.orphanCollections.length; ++i) {
+          if (c.orphanCollections[i] === params.oldName) {
+            c.orphanCollections[i] = params.newName;
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          gdb.update(doc._key, c);
+        }
+      });
+    },
+    params: {
+      oldName: oldName,
+      newName: newName
+    }
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4728,6 +4783,7 @@ exports._extendEdgeDefinitions = _extendEdgeDefinitions;
 exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
+exports._renameCollection = _renameCollection;
 exports._list = _list;
 exports._listObjects = _listObjects;
 

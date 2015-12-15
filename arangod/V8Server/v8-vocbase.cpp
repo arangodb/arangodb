@@ -1339,7 +1339,6 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
 static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-
   v8::HandleScope scope(isolate);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
