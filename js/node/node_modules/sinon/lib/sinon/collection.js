@@ -12,9 +12,9 @@
  *
  * Copyright (c) 2010-2013 Christian Johansen
  */
-"use strict";
+(function (sinonGlobal) {
+    "use strict";
 
-(function (sinon) {
     var push = [].push;
     var hasOwnProperty = Object.prototype.hasOwnProperty;
 
@@ -30,7 +30,7 @@
         var fakes = getFakes(fakeCollection);
 
         for (var i = 0, l = fakes.length; i < l; i += 1) {
-            if (typeof fakes[i][method] == "function") {
+            if (typeof fakes[i][method] === "function") {
                 fakes[i][method]();
             }
         }
@@ -88,7 +88,7 @@
                 if (property) {
                     var original = object[property];
 
-                    if (typeof original != "function") {
+                    if (typeof original !== "function") {
                         if (!hasOwnProperty.call(object, property)) {
                             throw new TypeError("Cannot stub non-existent own property " + property);
                         }
@@ -102,7 +102,7 @@
                         });
                     }
                 }
-                if (!property && !!object && typeof object == "object") {
+                if (!property && !!object && typeof object === "object") {
                     var stubbedObj = sinon.stub.apply(sinon, arguments);
 
                     for (var prop in stubbedObj) {
@@ -144,7 +144,7 @@
         return collection;
     }
 
-    var isNode = typeof module !== "undefined" && module.exports && typeof require == "function";
+    var isNode = typeof module !== "undefined" && module.exports && typeof require === "function";
     var isAMD = typeof define === "function" && typeof define.amd === "object" && define.amd;
 
     function loadDependencies(require, exports, module) {
@@ -157,11 +157,17 @@
 
     if (isAMD) {
         define(loadDependencies);
-    } else if (isNode) {
-        loadDependencies(require, module.exports, module);
-    } else if (!sinon) {
         return;
-    } else {
-        makeApi(sinon);
     }
-}(typeof sinon == "object" && sinon || null));
+
+    if (isNode) {
+        loadDependencies(require, module.exports, module);
+        return;
+    }
+
+    if (sinonGlobal) {
+        makeApi(sinonGlobal);
+    }
+}(
+    typeof sinon === "object" && sinon // eslint-disable-line no-undef
+));

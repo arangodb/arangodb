@@ -11,10 +11,13 @@
  *
  * Copyright (c) 2010-2013 Christian Johansen
  */
+/*eslint-disable strict*/
 if (typeof window !== "undefined") {
-    function XMLHttpRequest() {}
+    function XMLHttpRequest() {} // eslint-disable-line no-unused-vars, no-inner-declarations
 
     // Reassign the original function. Now its writable attribute
     // should be true. Hackish, I know, but it works.
+    /*global sinon*/
     XMLHttpRequest = sinon.xhr.XMLHttpRequest || undefined;
 }
+/*eslint-enable strict*/

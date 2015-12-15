@@ -7,18 +7,18 @@
 /**
  * Fake XDomainRequest object
  */
-"use strict";
-
-if (typeof sinon == "undefined") {
+if (typeof sinon === "undefined") {
     this.sinon = {};
 }
 
 // wrapper for global
 (function (global) {
+    "use strict";
+
     var xdr = { XDomainRequest: global.XDomainRequest };
     xdr.GlobalXDomainRequest = global.XDomainRequest;
-    xdr.supportsXDR = typeof xdr.GlobalXDomainRequest != "undefined";
-    xdr.workingXDR = xdr.supportsXDR ? xdr.GlobalXDomainRequest :  false;
+    xdr.supportsXDR = typeof xdr.GlobalXDomainRequest !== "undefined";
+    xdr.workingXDR = xdr.supportsXDR ? xdr.GlobalXDomainRequest : false;
 
     function makeApi(sinon) {
         sinon.xdr = xdr;
@@ -30,32 +30,32 @@ if (typeof sinon == "undefined") {
             this.status = 0;
             this.timeout = null;
 
-            if (typeof FakeXDomainRequest.onCreate == "function") {
+            if (typeof FakeXDomainRequest.onCreate === "function") {
                 FakeXDomainRequest.onCreate(this);
             }
         }
 
-        function verifyState(xdr) {
-            if (xdr.readyState !== FakeXDomainRequest.OPENED) {
+        function verifyState(x) {
+            if (x.readyState !== FakeXDomainRequest.OPENED) {
                 throw new Error("INVALID_STATE_ERR");
             }
 
-            if (xdr.sendFlag) {
+            if (x.sendFlag) {
                 throw new Error("INVALID_STATE_ERR");
             }
         }
 
-        function verifyRequestSent(xdr) {
-            if (xdr.readyState == FakeXDomainRequest.UNSENT) {
+        function verifyRequestSent(x) {
+            if (x.readyState === FakeXDomainRequest.UNSENT) {
                 throw new Error("Request not sent");
             }
-            if (xdr.readyState == FakeXDomainRequest.DONE) {
+            if (x.readyState === FakeXDomainRequest.DONE) {
                 throw new Error("Request done");
             }
         }
 
         function verifyResponseBodyType(body) {
-            if (typeof body != "string") {
+            if (typeof body !== "string") {
                 var error = new Error("Attempted to respond to fake XDomainRequest with " +
                                     body + ", which is not a string.");
                 error.name = "InvalidBodyException";
@@ -90,18 +90,18 @@ if (typeof sinon == "undefined") {
                     break;
                 case FakeXDomainRequest.DONE:
                     if (this.isTimeout) {
-                        eventName = "ontimeout"
+                        eventName = "ontimeout";
                     } else if (this.errorFlag || (this.status < 200 || this.status > 299)) {
                         eventName = "onerror";
                     } else {
-                        eventName = "onload"
+                        eventName = "onload";
                     }
                     break;
                 }
 
                 // raising event (if defined)
                 if (eventName) {
-                    if (typeof this[eventName] == "function") {
+                    if (typeof this[eventName] === "function") {
                         try {
                             this[eventName]();
                         } catch (e) {
@@ -123,7 +123,7 @@ if (typeof sinon == "undefined") {
                 this.sendFlag = true;
                 this.readyStateChange(FakeXDomainRequest.OPENED);
 
-                if (typeof this.onSend == "function") {
+                if (typeof this.onSend === "function") {
                     this.onSend(this);
                 }
             },
@@ -160,7 +160,7 @@ if (typeof sinon == "undefined") {
                 // content-type ignored, since XDomainRequest does not carry this
                 // we keep the same syntax for respond(...) as for FakeXMLHttpRequest to ease
                 // test integration across browsers
-                this.status = typeof status == "number" ? status : 200;
+                this.status = typeof status === "number" ? status : 200;
                 this.setResponseBody(body || "");
             },
 
@@ -201,7 +201,7 @@ if (typeof sinon == "undefined") {
         sinon.FakeXDomainRequest = FakeXDomainRequest;
     }
 
-    var isNode = typeof module !== "undefined" && module.exports && typeof require == "function";
+    var isNode = typeof module !== "undefined" && module.exports && typeof require === "function";
     var isAMD = typeof define === "function" && typeof define.amd === "object" && define.amd;
 
     function loadDependencies(require, exports, module) {
@@ -218,6 +218,6 @@ if (typeof sinon == "undefined") {
     } else if (isNode) {
         loadDependencies(require, module.exports, module);
     } else {
-        makeApi(sinon);
+        makeApi(sinon); // eslint-disable-line no-undef
     }
 })(typeof global !== "undefined" ? global : self);
