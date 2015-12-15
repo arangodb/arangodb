@@ -35,7 +35,7 @@ var graph = require("org/arangodb/general-graph");
 var ERRORS = arangodb.errors;
 
 var _ = require("underscore");
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      graph module
 // -----------------------------------------------------------------------------
@@ -114,6 +114,11 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameEdge: function() {
+      var cluster = require("org/arangodb/cluster");
+      if (cluster.isCluster()) {
+        return;
+      }
+
       var g = graph._create(
         gN1,
         graph._edgeDefinitions(
@@ -147,6 +152,11 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameVertex: function() {
+      var cluster = require("org/arangodb/cluster");
+      if (cluster.isCluster()) {
+        return;
+      }
+
       var g = graph._create(
         gN1,
         graph._edgeDefinitions(
@@ -171,6 +181,11 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameVertices: function() {
+      var cluster = require("org/arangodb/cluster");
+      if (cluster.isCluster()) {
+        return;
+      }
+
       var g = graph._create(
         gN1,
         graph._edgeDefinitions(
