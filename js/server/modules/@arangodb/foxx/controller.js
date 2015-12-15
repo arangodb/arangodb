@@ -125,12 +125,10 @@ class Controller {
     this.currentPriority = 0;
 
     var urlPrefix, baseMiddleware;
-    context.clearComments();
 
     if (is.notExisty(context)) {
       throw new Error('parameter <context> is missing');
     }
-    context.clearComments();
 
     this.routingInfo = {
       routes: []
@@ -212,19 +210,8 @@ class Controller {
     var requestContext = new RequestContext(
       this.allRoutes, this.models, newRoute, route, this.rootElement, constraints, this.extensions
     );
-    var summary;
 
     this.routingInfo.routes.push(newRoute);
-
-    if (this.applicationContext.comments.length > 0) {
-      do {
-        summary = this.applicationContext.comments.shift();
-      } while (summary === '');
-      requestContext.summary(summary || '');
-      requestContext.notes(this.applicationContext.comments.join('\n'));
-    }
-
-    this.applicationContext.clearComments();
 
     if (method === 'post' || method === 'put' || method === 'patch') {
       const Model = require('@arangodb/foxx').Model;

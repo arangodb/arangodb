@@ -125,25 +125,19 @@ var jsunity = require("jsunity"),
 fakeContext = {
   prefix: "",
   foxxes: [],
-  comments: [],
   manifest: {
     rootElement: false
   },
-  clearComments: function () {},
-  comment: function () {},
-  collectionName: function () {}
+  collectionName() {}
 };
 
 fakeContextWithRootElement = {
   prefix: "",
   foxxes: [],
-  comments: [],
   manifest: {
     rootElement: true
   },
-  clearComments: function () {},
-  comment: function () {},
-  collectionName: function () {}
+  collectionName() {}
 };
 
 function CreateFoxxControllerSpec () {
@@ -1297,63 +1291,17 @@ function CommentDrivenDocumentationSpec () {
     },
 
     testSettingTheSummary: function () {
-      fakeContext.comments = [
-        "Get all the foxes",
-        "A function to get all foxes from the database",
-        "in a good way."
-      ];
+      app.get('/simple/route', noop)
+      .summary('Get all the foxes');
 
-      app.get('/simple/route', noop);
-
-      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
+      assertEqual(routingInfo.routes[0].docs.summary, 'Get all the foxes');
     },
 
     testSettingTheNotes: function () {
-      fakeContext.comments = [
-        "Get all the foxes",
-        "A function to get all foxes from the database",
-        "in a good way."
-      ];
-
-      app.get('/simple/route', noop);
+      app.get('/simple/route', noop)
+      .notes('A function to get all foxes from the database\nin a good way.');
 
       assertEqual(routingInfo.routes[0].docs.notes, "A function to get all foxes from the database\nin a good way.");
-    },
-
-    testSettingTheSummaryWithAnEmptyFirstLine: function () {
-      fakeContext.comments = [
-        "",
-        "Get all the foxes"
-      ];
-
-      app.get('/simple/route', noop);
-
-      assertEqual(routingInfo.routes[0].docs.summary, "Get all the foxes");
-    },
-
-    testCleanUpCommentsAfterwards: function () {
-      var clearCommentsWasCalled = false;
-      fakeContext.clearComments = function () { clearCommentsWasCalled = true; };
-      fakeContext.comments = [
-        "Get all the foxes",
-        "A function to get all foxes from the database",
-        "in a good way."
-      ];
-
-      app.get('/simple/route', noop);
-      assertTrue(clearCommentsWasCalled);
-    },
-
-    testSetBothToEmptyStringsIfTheJSDocWasEmpty: function () {
-      fakeContext.comments = [
-        "",
-        "",
-        ""
-      ];
-
-      app.get('/simple/route', noop);
-      assertEqual(routingInfo.routes[0].docs.summary, "");
-      assertEqual(routingInfo.routes[0].docs.notes, "");
     }
   };
 }
@@ -1379,7 +1327,7 @@ function SetupAuthorization () {
         err = e;
       }
 
-      assertUndefined(err);
+      assertUndefined(err && err.stack);
     },
 
     testRefusesUnknownAuthTypes: function () {

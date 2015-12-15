@@ -133,7 +133,6 @@ function Module(id, parent) {
     this.context = parent.context;
     this.require.cache = parent.require.cache;
     this[$_MODULE_ROOT] = parent[$_MODULE_ROOT];
-    this.preprocess = parent.preprocess;
     Object.keys(parent[$_MODULE_CONTEXT]).forEach(function (key) {
       if (!hasOwnProperty(this[$_MODULE_CONTEXT], key)) {
         this[$_MODULE_CONTEXT][key] = parent[$_MODULE_CONTEXT][key];
@@ -573,9 +572,6 @@ Module.prototype._loadDbModule = function (dbModule) {
 Module.prototype._compile = function(content, filename) {
   // remove shebang
   content = content.replace(/^\#\!.*/, '');
-  if (this.preprocess) {
-    content = this.preprocess(content, filename);
-  }
 
   this.filename = filename;
 

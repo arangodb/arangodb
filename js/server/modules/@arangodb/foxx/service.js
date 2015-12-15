@@ -47,8 +47,6 @@ class FoxxContext {
     this.basePath = path.resolve(service.root, service.path);
     this.service = service;
     this.argv = [];
-
-    this.comments = [];
   }
 
   fileName(filename) {
@@ -130,19 +128,6 @@ class FoxxContext {
     return this.service.dependencies;
   }
 }
-
-Object.defineProperties(FoxxContext.prototype, {
-  comment: {
-    value: function (str) {
-      this.comments.push(str);
-    }
-  },
-  clearComments: {
-    value: function () {
-      this.comments.splice(0, this.comments.length);
-    }
-  }
-});
 
 function createConfiguration(definitions) {
   const config = {};
@@ -391,10 +376,6 @@ class FoxxService {
       this.main.context,
       options.foxxContext
     );
-
-    if (options.preprocess) {
-      module.preprocess = options.preprocess;
-    }
 
     if (options.context) {
       Object.keys(options.context).forEach(function (key) {
