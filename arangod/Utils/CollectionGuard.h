@@ -71,6 +71,25 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
           }
         }
+        
+        CollectionGuard (TRI_vocbase_t* vocbase,
+                         TRI_voc_cid_t id,
+                         char const* name) 
+          : _vocbase(vocbase),
+            _collection(nullptr),
+            _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
+            _restoreOriginalStatus(false) {
+
+          _collection = TRI_UseCollectionByIdVocBase(_vocbase, id, _originalStatus);
+
+          if (_collection == nullptr && name != nullptr) {
+            _collection = TRI_UseCollectionByNameVocBase(_vocbase, name, _originalStatus);
+          }
+
+          if (_collection == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+          }
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the guard, using a collection name
