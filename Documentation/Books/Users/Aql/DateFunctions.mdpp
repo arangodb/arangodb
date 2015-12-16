@@ -263,7 +263,7 @@ DATE_COMPARE("1984-02-29", DATE_NOW(), "months", days")
 DATE_COMPARE("2001-01-01T15:30:45.678Z", "2001-01-01T08:08:08.008Z", "years", "days")
 ```
 
-  You can directly compare ISO date strings if you want to find dates before or
+  You can directly compare ISO date **strings** if you want to find dates before or
   after a certain date, or in between two dates (`>=`, `>`, `<`, `<=`).
   No special date function is required. Equality tests (`==` and `!=`) will only
   match the exact same date and time however. You may use `SUBSTRING()` to
