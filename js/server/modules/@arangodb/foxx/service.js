@@ -59,10 +59,6 @@ class FoxxContext {
     return fs.readFileSync(this.fileName(filename), encoding);
   }
 
-  foxxFilename(filename) {
-    return this.fileName(filename);
-  }
-
   path(name) {
     return path.join(this._prefix, name);
   }
