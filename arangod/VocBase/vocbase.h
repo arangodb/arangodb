@@ -47,7 +47,6 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_col_info_s;
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
 struct TRI_server_t;
@@ -59,6 +58,7 @@ namespace triagens {
     class QueryList;
   }
   namespace arango {
+    class VocbaseCollectionInfo;
     class CollectionKeysRepository;
     class CursorRepository;
   }
@@ -535,7 +535,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*,
-                                                struct TRI_col_info_s*,
+                                                triagens::arango::VocbaseCollectionInfo&,
                                                 TRI_voc_cid_t cid, 
                                                 bool);
 
