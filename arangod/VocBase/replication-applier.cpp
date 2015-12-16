@@ -1207,11 +1207,13 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
   
   // TODO: prevent restart of the applier with a tick after a shutdown
 
-  std::unique_ptr<triagens::arango::ContinuousSyncer> syncer(new triagens::arango::ContinuousSyncer(_server,
-                                                         _vocbase,
-                                                         &_configuration,
-                                                         initialTick,
-                                                         useTick));
+  auto syncer = std::make_unique<triagens::arango::ContinuousSyncer>(
+    _server,
+    _vocbase,
+    &_configuration,
+    initialTick,
+    useTick
+  );
 
   // reset error
   if (_state._lastError._msg != nullptr) {

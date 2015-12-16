@@ -655,7 +655,7 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
 
   LOG_TRACE("starting transaction %llu", (unsigned long long) tid);
  
-  std::unique_ptr<ReplicationTransaction> trx(new ReplicationTransaction(_server, _vocbase, tid));
+  auto trx = std::make_unique<ReplicationTransaction>(_server, _vocbase, tid);
 
   int res = trx->begin();
 

@@ -1411,7 +1411,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
                                          char const* name,
                                          TRI_vocbase_defaults_t const* defaults) {
   try {
-    std::unique_ptr<TRI_vocbase_t> vocbase(new TRI_vocbase_t(server, type, path, id, name, defaults));
+    auto vocbase = std::make_unique<TRI_vocbase_t>(server, type, path, id, name, defaults);
 
     return vocbase.release();
   }

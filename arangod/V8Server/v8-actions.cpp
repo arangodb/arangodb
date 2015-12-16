@@ -582,7 +582,7 @@ static HttpResponse* ResponseV8ToCpp (v8::Isolate* isolate,
            ((int) (TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
 
-  std::unique_ptr<HttpResponse> response(new HttpResponse(code, compatibility));
+  auto response = std::make_unique<HttpResponse>(code, compatibility);
 
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {

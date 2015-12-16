@@ -951,7 +951,8 @@ SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
     TRI_set_errno(res);
     return nullptr;
   }
-  std::unique_ptr<SkiplistIterator> results(new SkiplistIterator(this, reverse));
+
+  auto results = std::make_unique<SkiplistIterator>(this, reverse);
 
   results->findHelper(slOperator, results->_intervals);
 

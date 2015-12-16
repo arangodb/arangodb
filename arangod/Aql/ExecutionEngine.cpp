@@ -688,7 +688,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     try {
-      std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(localQuery));
+      auto engine = std::make_unique<ExecutionEngine>(localQuery);
       localQuery->engine(engine.get());
 
       std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
@@ -929,7 +929,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
     if (isCoordinator) {
       // instantiate the engine on the coordinator
 
-      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
+      auto inst = std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
       plan->root()->walk(inst.get());
 
 #if 0
@@ -1076,7 +1076,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
     else {
       // instantiate the engine on a local server
       engine = new ExecutionEngine(query);
-      std::unique_ptr<Instanciator> inst(new Instanciator(engine));
+      auto inst = std::make_unique<Instanciator>(engine);
       plan->root()->walk(inst.get());
       root = inst.get()->root;
       TRI_ASSERT(root != nullptr);

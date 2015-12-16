@@ -101,7 +101,7 @@ void QueryRegistry::insert (QueryId id,
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
-    std::unique_ptr<QueryInfo> p(new QueryInfo());
+    auto p = std::make_unique<QueryInfo>();
     p->_vocbase = vocbase;
     p->_id = id;
     p->_query = query;

@@ -2003,7 +2003,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         }
 
         if (bestIndex != nullptr) {
-          std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
+          auto condition = std::make_unique<Condition>(_plan->getAst());
           condition->normalize(_plan);
             
           std::unique_ptr<ExecutionNode> newNode(new IndexNode(
@@ -2219,7 +2219,7 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
     auto conditionNode = calculationNode->expression()->node();
 
     // build the filter condition 
-    std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
+    auto condition = std::make_unique<Condition>(plan->getAst());
     condition->andCombine(conditionNode);
     condition->normalize(plan);
 
@@ -2262,7 +2262,7 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
             else if (newNode != condition->root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
-              std::unique_ptr<Expression> expr(new Expression(plan->getAst(), newNode));
+              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
               CalculationNode* cn = new CalculationNode(plan, plan->nextId(), expr.get(), calculationNode->outVariable());
               expr.release();
               plan->registerNode(cn);

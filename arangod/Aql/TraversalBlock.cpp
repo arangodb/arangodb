@@ -67,7 +67,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   for (auto& map : *_expressions) {
     for (size_t i = 0; i < map.second.size(); ++i) {
       SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      std::unique_ptr<Expression> e(new Expression(ast, it->toEvaluate));
+      auto e = std::make_unique<Expression>(ast, it->toEvaluate);
       _hasV8Expression |= e->isV8();
       std::unordered_set<Variable const*> inVars;
       e->variables(inVars);
@@ -439,7 +439,6 @@ AqlItemBlock* TraversalBlock::getSome (size_t, // atLeast,
   RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
   std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
-  // std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, nrRegs));
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
   

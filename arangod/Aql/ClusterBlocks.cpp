@@ -318,8 +318,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   AqlItemBlock* example =_gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
-  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend,
-        static_cast<triagens::aql::RegisterId>(nrRegs)));  
+  auto res = std::make_unique<AqlItemBlock>(toSend, static_cast<triagens::aql::RegisterId>(nrRegs));  
   // automatically deleted if things go wrong
     
   for (RegisterId i = 0; i < nrRegs; i++) {

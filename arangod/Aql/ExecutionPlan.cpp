@@ -93,7 +93,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst (Ast* ast) {
   TRI_ASSERT(root != nullptr);
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
-  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(ast));
+  auto plan = std::make_unique<ExecutionPlan>(ast);
 
   plan->_root = plan->fromNode(root);
 
@@ -142,7 +142,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {
   TRI_ASSERT(ast != nullptr);
 
-  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(ast));
+  auto plan = std::make_unique<ExecutionPlan>(ast);
 
   plan->_root = plan->fromJson(json);
   plan->_varUsageComputed = true;
@@ -186,7 +186,7 @@ class CloneNodeAdder final : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan* ExecutionPlan::clone () {
-  std::unique_ptr<ExecutionPlan> plan(new ExecutionPlan(_ast));
+  auto plan = std::make_unique<ExecutionPlan>(_ast);
 
   plan->_root = _root->clone(plan.get(), true, false);
   plan->_nextId = _nextId;
@@ -211,7 +211,7 @@ ExecutionPlan* ExecutionPlan::clone () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan* ExecutionPlan::clone (Query const& query) {
-  std::unique_ptr<ExecutionPlan> otherPlan(new ExecutionPlan(query.ast()));
+  auto otherPlan = std::make_unique<ExecutionPlan>(query.ast());
 
   for (auto const& it: _ids) {
     otherPlan->registerNode(it.second->clone(otherPlan.get(), false, true));
@@ -304,7 +304,7 @@ ExecutionNode* ExecutionPlan::createCalculation (Variable* out,
   }
 
   // generate a temporary calculation node
-  std::unique_ptr<Expression> expr(new Expression(_ast, const_cast<AstNode*>(expression)));
+  auto expr = std::make_unique<Expression>(_ast, const_cast<AstNode*>(expression));
 
   CalculationNode* en;
   if (conditionVariable != nullptr) {

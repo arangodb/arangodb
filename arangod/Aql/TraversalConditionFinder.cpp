@@ -284,7 +284,7 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
     case EN::TRAVERSAL: {
       auto node = static_cast<TraversalNode *>(en);
 
-      std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
+      auto condition = std::make_unique<Condition>(_plan->getAst());
 
       bool foundCondition = false;
       auto const& varsValidInTraversal = node->getVarsValid();

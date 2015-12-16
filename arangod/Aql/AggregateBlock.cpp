@@ -572,7 +572,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
     auto planNode = static_cast<AggregateNode const*>(getPlanNode());
     auto nrRegs = planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
 
-    std::unique_ptr<AqlItemBlock> result(new AqlItemBlock(allGroups.size(), nrRegs));
+    auto result = std::make_unique<AqlItemBlock>(allGroups.size(), nrRegs);
     
     if (src != nullptr) {
       inheritRegisters(src, result.get(), 0);

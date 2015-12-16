@@ -572,7 +572,7 @@ bool RestEdgesHandler::readFilteredEdges () {
   for (size_t i = 0; i < length; ++i) {
     TRI_json_t* exp = TRI_LookupArrayJson(json.get(), i);
     if (TRI_IsObjectJson(exp)) {
-      std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
+      auto expression = std::make_unique<traverser::TraverserExpression>(exp);
       expressions.emplace_back(expression.get());
       expression.release();
     }

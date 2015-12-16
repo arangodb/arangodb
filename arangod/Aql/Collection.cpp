@@ -288,7 +288,7 @@ void Collection::fillIndexesCoordinator () const {
         continue;
       }
 
-      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
+      auto idx = std::make_unique<triagens::aql::Index>(v);
 
       indexes.emplace_back(idx.get());
       auto p = idx.release();
@@ -376,7 +376,7 @@ void Collection::fillIndexesDBServer () const {
         }
       }
 
-      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
+      auto idx = std::make_unique<triagens::aql::Index>(v);
       // assign the found local index
       idx->setInternals(data, false);
 
@@ -403,7 +403,7 @@ void Collection::fillIndexesLocal () const {
       continue;
     }
 
-    std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(allIndexes[i]));
+    auto idx = std::make_unique<triagens::aql::Index>(allIndexes[i]);
     indexes.emplace_back(idx.get());
     idx.release();
   }

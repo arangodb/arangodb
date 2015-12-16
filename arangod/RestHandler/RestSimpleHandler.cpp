@@ -540,7 +540,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
           for (size_t j = 0; j < length; ++j) {
             TRI_json_t* exp = TRI_LookupArrayJson(postFilter, j);
             if (TRI_IsObjectJson(exp)) {
-              std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(exp));
+              auto expression = std::make_unique<traverser::TraverserExpression>(exp);
               expressions.emplace_back(expression.get());
               expression.release();
             }

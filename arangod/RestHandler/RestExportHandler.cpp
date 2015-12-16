@@ -391,7 +391,7 @@ void RestExportHandler::createCursor () {
     size_t limit = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "limit", 0);
 
     // this may throw!
-    std::unique_ptr<CollectionExport> collectionExport(new CollectionExport(_vocbase, name, _restrictions));
+    auto collectionExport = std::make_unique<CollectionExport>(_vocbase, name, _restrictions);
     collectionExport->run(waitTime, limit);
 
     { 

@@ -306,7 +306,7 @@ void HttpServer::handleAsync (HttpCommTask* task) {
 bool HttpServer::handleRequestAsync (std::unique_ptr<HttpHandler>& handler, 
                                      uint64_t* jobId) {
   // execute the handler using the dispatcher
-  std::unique_ptr<HttpServerJob> job(new HttpServerJob(this, handler.get(), nullptr));
+  auto job = std::make_unique<HttpServerJob>(this, handler.get(), nullptr);
   // handler now belongs to the job
   auto h = handler.release();
 
@@ -358,7 +358,7 @@ bool HttpServer::handleRequest (HttpCommTask* task,
 
     // execute the handler using the dispatcher
     else {
-      std::unique_ptr<HttpServerJob> job(new HttpServerJob(this, handler.get(), task));
+      auto job = std::make_unique<HttpServerJob>(this, handler.get(), task);
       // handler now belongs to the job
       auto h = handler.release();
   

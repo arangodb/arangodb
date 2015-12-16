@@ -148,7 +148,7 @@ int IndexBlock::initialize () {
   // instantiate expressions:
   auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
-    std::unique_ptr<Expression> e(new Expression(ast, a));
+    auto e = std::make_unique<Expression>(ast, a);
 
     TRI_IF_FAILURE("IndexBlock::initialize") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -159,7 +159,7 @@ int IndexBlock::initialize () {
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
     
-    std::unique_ptr<NonConstExpression> nce(new NonConstExpression(i, j, k, e.get()));
+    auto nce = std::make_unique<NonConstExpression>(i, j, k, e.get());
     e.release();
     _nonConstExpressions.push_back(nce.get());
     nce.release();

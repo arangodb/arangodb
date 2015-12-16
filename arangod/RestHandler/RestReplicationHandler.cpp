@@ -2227,7 +2227,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   // create a dummy primary index
   {
     TRI_document_collection_t* doc = nullptr;
-    std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(doc));
+    auto primaryIndex = std::make_unique<triagens::arango::PrimaryIndex>(doc);
 
     auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
@@ -2246,7 +2246,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   if (collectionType == TRI_COL_TYPE_EDGE) {
     // create a dummy edge index
-    std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(new_id_tick, nullptr));
+    auto edgeIndex = std::make_unique<triagens::arango::EdgeIndex>(new_id_tick, nullptr);
 
     auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
@@ -3119,7 +3119,7 @@ void RestReplicationHandler::handleCommandCreateKeys () {
     }
 
     // initialize a container with the keys
-    std::unique_ptr<CollectionKeys> keys(new CollectionKeys(_vocbase, col->_name, id, 300.0));
+    auto keys = std::make_unique<CollectionKeys>(_vocbase, col->_name, id, 300.0);
     
     std::string const idString(std::to_string(keys->id()));
 

@@ -2357,7 +2357,7 @@ static AqlValue VertexIdsToAqlValue (triagens::arango::AqlTransaction* trx,
                                      CollectionNameResolver const* resolver,
                                      std::unordered_set<VertexId>& ids,
                                      bool includeData = false) {
-  std::unique_ptr<Json> result(new Json(Json::Array, ids.size()));
+  auto result = std::make_unique<Json>(Json::Array, ids.size());
 
   if (includeData) {
     for (auto& it : ids) {
@@ -2541,11 +2541,11 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   // Function to return constant distance
   auto wc = [](TRI_doc_mptr_copy_t&) -> double { return 1; };
 
-  std::unique_ptr<EdgeCollectionInfo> eci(new EdgeCollectionInfo(
+  auto eci = std::make_unique<EdgeCollectionInfo>(
     eCid,
     trx->documentCollection(eCid),
     wc
-  ));
+  );
   TRI_IF_FAILURE("EdgeCollectionInfoOOM1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

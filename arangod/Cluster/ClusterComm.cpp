@@ -177,7 +177,7 @@ ClusterCommResult const ClusterComm::asyncRequest (
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout                  timeout) {
 
-  std::unique_ptr<ClusterCommOperation> op(new ClusterCommOperation());
+  auto op = std::make_unique<ClusterCommOperation>();
   op->result.clientTransactionID  = clientTransactionID;
   op->result.coordTransactionID   = coordTransactionID;
   do {
@@ -302,7 +302,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest (
 
   map<string, string> headersCopy(headerFields);
 
-  std::unique_ptr<ClusterCommResult> res(new ClusterCommResult());
+  auto res = std::make_unique<ClusterCommResult>();
   res->clientTransactionID  = clientTransactionID;
   res->coordTransactionID   = coordTransactionID;
   do {

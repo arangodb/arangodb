@@ -306,7 +306,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
   std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));
+  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     res->_docColls[col] = _docColls[col];
@@ -348,7 +348,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t row,
                                    std::unordered_set<RegisterId> const& registers) const {
   std::unordered_map<AqlValue, AqlValue> cache;
 
-  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(1, _nrRegs));
+  auto res = std::make_unique<AqlItemBlock>(1, _nrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {
@@ -395,7 +395,7 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
   std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));
+  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     res->_docColls[col] = _docColls[col];
@@ -443,7 +443,7 @@ AqlItemBlock* AqlItemBlock::steal (std::vector<size_t>& chosen,
                                    size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));
+  auto res = std::make_unique<AqlItemBlock>(to - from, _nrRegs);
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     res->_docColls[col] = _docColls[col];
@@ -494,7 +494,7 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
   TRI_ASSERT(totalSize > 0);
   TRI_ASSERT(nrRegs > 0);
 
-  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(totalSize, nrRegs));
+  auto res = std::make_unique<AqlItemBlock>(totalSize, nrRegs);
 
   size_t pos = 0;
   for (it = blocks.begin(); it != blocks.end(); ++it) {

@@ -70,7 +70,8 @@ TraverserExpression::TraverserExpression (TRI_json_t const* json) {
     _nodeRegister.emplace_back(node);
   };
   auto registerString = [&](std::string const& str) -> char const* {
-    std::unique_ptr<std::string> copy(new std::string(str.c_str(), str.size()));
+    auto copy = std::make_unique<std::string>(str.c_str(), str.size());
+
     _stringRegister.emplace_back(copy.get());
     auto p = copy.release();
     TRI_ASSERT(p != nullptr);

@@ -39,7 +39,8 @@ using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
 
 triagens::basics::Json* ClusterTraversalPath::pathToJson (triagens::arango::Transaction*,
                                                           triagens::arango::CollectionNameResolver*) {
-  std::unique_ptr<triagens::basics::Json> result(new triagens::basics::Json(triagens::basics::Json::Object));
+  auto result = std::make_unique<triagens::basics::Json>(triagens::basics::Json::Object);
+
   size_t vCount = _path.vertices.size();
   triagens::basics::Json vertices(triagens::basics::Json::Array, vCount);
   for (auto& it : _path.vertices) {
@@ -323,7 +324,7 @@ triagens::arango::traverser::TraversalPath* ClusterTraverser::next () {
     return nullptr;
   }
 
-  std::unique_ptr<ClusterTraversalPath> p(new ClusterTraversalPath(this, path));
+  auto p = std::make_unique<ClusterTraversalPath>(this, path);
   if (_opts.shouldPrunePath(p.get())) {
     _enumerator->prune();
     return next();

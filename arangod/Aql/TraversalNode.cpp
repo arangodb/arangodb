@@ -51,7 +51,8 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
-  std::unique_ptr<arango::CollectionNameResolver> resolver(new arango::CollectionNameResolver(vocbase));
+  auto resolver = std::make_unique<arango::CollectionNameResolver>(vocbase);
+  
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = triagens::basics::Json(triagens::basics::Json::Array, edgeCollectionCount);
@@ -457,10 +458,7 @@ void TraversalNode::storeSimpleExpression (bool isEdgeAccess,
     it = _expressions.find(indexAccess);
   }
 
-  std::unique_ptr<SimpleTraverserExpression> e(new SimpleTraverserExpression(isEdgeAccess,
-                                                                             comparisonType,
-                                                                             varAccess,
-                                                                             compareTo));
+  auto e = std::make_unique<SimpleTraverserExpression>(isEdgeAccess, comparisonType, varAccess, compareTo);
   it->second.push_back(e.get());
   e.release();
 }

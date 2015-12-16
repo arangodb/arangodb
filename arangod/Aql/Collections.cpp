@@ -73,7 +73,7 @@ Collection* Collections::add (std::string const& name,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS);
     }
 
-    std::unique_ptr<Collection> collection(new Collection(name, _vocbase, accessType));
+    auto collection = std::make_unique<Collection>(name, _vocbase, accessType);
     _collections.emplace(name, collection.get());
 
     return collection.release();

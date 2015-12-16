@@ -1113,7 +1113,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 
       if (collectionType == TRI_COL_TYPE_EDGE) {
         // create a dummy edge index
-        std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(id, nullptr));
+        auto edgeIndex = std::make_unique<triagens::arango::EdgeIndex>(id, nullptr);
 
         idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
         triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);

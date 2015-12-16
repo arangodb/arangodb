@@ -508,7 +508,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     init();
     enterState(PARSING);
 
-    std::unique_ptr<Parser> parser(new Parser(this));
+    auto parser = std::make_unique<Parser>(this);
     std::unique_ptr<ExecutionPlan> plan;
     
     if (_queryString != nullptr) {

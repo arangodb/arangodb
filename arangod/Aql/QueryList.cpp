@@ -124,7 +124,7 @@ bool QueryList::insert (Query const* query,
   }
 
   try { 
-    std::unique_ptr<QueryEntry> entry(new QueryEntry(query, stamp));
+    auto entry = std::make_unique<QueryEntry>(query, stamp);
 
     WRITE_LOCKER(_lock);
 

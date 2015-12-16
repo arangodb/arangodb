@@ -645,13 +645,13 @@ static void OutputMessage (TRI_log_level_e level,
   }
 
   if (ThreadedLogging) {
-    std::unique_ptr<log_message_t> msg(new log_message_t(
+    auto msg = std::make_unique<log_message_t>(
       level, 
       severity, 
       message, 
       length,
       claimOwnership
-    ));
+    );
 
     try {
       MUTEX_LOCKER(LogMessageQueueLock);

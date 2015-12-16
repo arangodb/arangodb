@@ -698,7 +698,7 @@ void TRI_RunNeighborsSearch (
 
 Json* SingleServerTraversalPath::pathToJson (Transaction* trx,
                                              CollectionNameResolver* resolver) {
-  std::unique_ptr<Json> path(new Json(Json::Object, 2));
+  auto path = std::make_unique<Json>(Json::Object, 2);
   Json vertices(Json::Array);
   for (size_t i = 0; i < _path.vertices.size(); ++i) {
     auto v = vertexToJson(trx, resolver, _path.vertices[i]);
@@ -1095,7 +1095,9 @@ TraversalPath* DepthFirstTraverser::next () {
     // Done traversing
     return nullptr;
   }
-  std::unique_ptr<SingleServerTraversalPath> p(new SingleServerTraversalPath(path));
+
+  auto p = std::make_unique<SingleServerTraversalPath>(path);
+
   if (_opts.shouldPrunePath(p.get())) {
     _enumerator->prune();
     return next();

@@ -106,7 +106,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
         break;
       }
 
-      std::unique_ptr<Condition> condition(new Condition(_plan->getAst()));
+      auto condition = std::make_unique<Condition>(_plan->getAst());
 
       bool foundCondition = false;
       for (auto& it : _variableDefinitions) {

@@ -1917,14 +1917,14 @@ static ExplicitTransaction* BeginTransaction (TRI_vocbase_t* vocbase,
   bool waitForSync = false;
 
   // Start Transaction to collect all parts of the path
-  std::unique_ptr<ExplicitTransaction> trx(new ExplicitTransaction(
+  auto trx = std::make_unique<ExplicitTransaction>(
     vocbase,
     readCollections,
     writeCollections,
     lockTimeout,
     waitForSync,
     embed
-  ));
+  );
   
   int res = trx->begin();
 

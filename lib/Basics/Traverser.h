@@ -1456,7 +1456,7 @@ namespace triagens {
         }
 
         Path* search (VertexId& start, VertexId& end) {
-          std::unique_ptr<Path> res(new Path());
+          auto res = std::make_unique<Path>();
           // Init
           if (start == end) {
             res->vertices.emplace_back(start);
