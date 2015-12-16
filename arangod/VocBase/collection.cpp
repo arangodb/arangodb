@@ -45,6 +45,7 @@
 #include "VocBase/vocbase.h"
 
 using namespace std;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              COLLECTION MIGRATION
@@ -1232,6 +1233,260 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                       class VocbaseCollectionInfo
+// -----------------------------------------------------------------------------
+
+// Only temporary until merge with Max
+VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other) {
+  _version      = TRI_COL_VERSION; 
+  _type         = collection.type();
+  _cid          = collection.id();
+  _revision     = 0; // TODO
+  _maximalSize  = collection.journalSize();
+  _initialCount = -1;
+
+  const std::string name = collection.name();
+  memset(_name, 0, sizeof(_name));
+  memcpy(_name, name.c_str(), name.size());
+  
+  _keyOptions   = collection.keyOptions();
+
+  _deleted      = collection.deleted();
+  _doCompact    = collection.doCompact();
+  _isSystem     = collection.isSystem();
+  _isVolatile   = collection.isVolatile();
+  _waitForSync  = collection.waitForSync();
+  _indexBuckets = collection.indexBuckets();
+}
+
+VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
+                                             char const* name,
+                                             VPackSlice const options)
+: _version(TRI_COL_VERSION),
+  _type(0),
+  _cid(0),
+  _planId(0),
+  _revision(0),
+  _initialCount(-1),
+  _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
+  _keyOptions(nullptr),
+  _deleted(false),
+  _doCompact(true),
+  _isVolatile(false),
+  _isSystem(false),
+  _waitForSync(vocbase->_settings.defaultWaitForSync)
+{
+  // TODO what if both are present?
+  TRI_voc_size_t maximalSize;
+  if (options.hasKey("journalSize")) {
+    maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(options, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+  }
+  else {
+    maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(options, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+  }
+  _doCompact    = triagens::basics::VelocyPackHelper::getBooleanValue(options, "doCompact", true);
+  _waitForSync  = triagens::basics::VelocyPackHelper::getBooleanValue(options, "waitForSync", _vocbase->_settings.defaultWaitForSync);
+  _isVolatile   = triagens::basics::VelocyPackHelper::getBooleanValue(options, "isVolatile", false);
+  _isSystem     = (name[0] == '_');
+  _indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+  // TODO
+  
+  VPackSlice const planIdSlice = slice.get("planId");
+  if (planIdSlice.isNumber()) {
+    planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+  }
+  else if (planIdSlice.isString()) {
+    std::string tmp = planIdSlice.copyString();
+    planId = static_cast<TRI_voc_cid_t>(TRI_UInt64String2(tmp.c_str(), tmp.length()));
+  }
+  
+  if (planId > 0) {
+    _planId = planId;
+  }
+ 
+  _maximalSize = static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
+  if (_maximalSize == 0 && maximalSize != 0) {
+    _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
+  }
+  memset(_name, 0, sizeof(_name));
+  TRI_CopyString(_name, name, sizeof(_name) - 1);
+  try {
+    if (options.hasKey("keyOptions")) {
+      VPackSlice const slice = keyOptions->slice();
+      VPackBuilder builder;
+      builder.add(slice);
+      _keyOptions = builder.steal();
+    }
+  }
+  catch (...) {
+    // Unparseable
+    // We keep a nullptr
+  }
+}
+
+VocbaseCollectionInfo::~VocbaseCollectionInfo () {
+  if (_keyOptions != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _keyOptions);
+    _keyOptions = nullptr;
+  }
+}
+
+VocbaseCollectionInfo VocbaseCollectionInfo::fromFile (char const* path,
+                                                       TRI_vocbase_t* vocbase,
+                                                       char const* collectionName,
+                                                       bool versionWarning) {
+  // find parameter file
+  char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
+
+  if (filename == nullptr) {
+    LOG_ERROR("cannot load parameter info for collection '%s', out of memory", path);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (! TRI_ExistsFile(filename)) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+  }
+
+  std::string filePath (filename, strlen(filename));
+  std::shared_ptr<VPackBuilder> content = triagens::basics::VelocyPackHelper::velocyPackFromFile (filePath);
+  VPackSlice const slice = content->slice();
+  if (! slice.isObject()) {
+    LOG_ERROR("cannot open '%s', collection parameters are not readable", filename);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
+  }
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+  VocbaseCollectionInfo info(vocbase, collectionName, slice);
+
+  // warn about wrong version of the collection
+  if (versionWarning && info.version() < TRI_COL_VERSION_20) {
+    if (info.name()[0] != '\0') {
+      // only warn if the collection version is older than expected, and if it's not a shape collection
+      LOG_WARNING("collection '%s' has an old version and needs to be upgraded.",
+                  info.name());
+    }
+  }
+  return info;
+}
+
+// collection version
+TRI_col_version_t VocbaseCollectionInfo::version () const {
+  return _version;
+}
+
+// collection type
+TRI_col_type_e VocbaseCollectionInfo::type () const {
+  return _type;
+}
+
+// local collection identifier
+TRI_voc_cid_t VocbaseCollectionInfo::id () const {
+  return _cid;
+}
+
+// cluster-wide collection identifier
+TRI_voc_cid_t VocbaseCollectionInfo::planId () const {
+  return _planId;
+}
+
+// last revision id written
+TRI_voc_rid_t VocbaseCollectionInfo::revision () const {
+  return _revision;
+}
+
+// maximal size of memory mapped file
+TRI_voc_size_t VocbaseCollectionInfo::maximalSize () const {
+  return _maximalSize;
+}
+
+// initial count, used when loading a collection
+int64_t VocbaseCollectionInfo::initialCount () const {
+  return _initialCount;
+}
+
+// number of buckets used in hash tables for indexes
+uint32_t VocbaseCollectionInfo::indexBuckets () const {
+  return _indexBuckets;
+}
+
+// name of the collection
+std::string VocbaseCollectionInfo::name () const {
+  return std::string(_name);
+}
+
+// options for key creation
+TRI_json_t* VocbaseCollectionInfo::keyOptions () const {
+  TRI_json_t const* keyOptions = triagens::basics::JsonHelper::getObjectElement(_json, "keyOptions");
+
+  if (keyOptions != nullptr) {
+    return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+  }
+
+  return nullptr;
+}
+
+// If true, collection has been deleted
+bool VocbaseCollectionInfo::deleted () const {
+  return _deleted;
+}
+
+// If true, collection will be compacted
+bool VocbaseCollectionInfo::doCompact () const {
+  return _doCompact;
+}
+
+// If true, collection is a system collection
+bool VocbaseCollectionInfo::isSystem () const {
+  return _isSystem;
+}
+
+// If true, collection is memory-only
+bool VocbaseCollectionInfo::isVolatile () const {
+  return _isVolatile;
+}
+
+// If true waits for mysnc
+bool VocbaseCollectionInfo::waitForSync () const {
+  return _waitForSync;
+}
+
+void VocbaseCollectionInfo::update (VPackSlice const& slice,
+                                    bool preferDefaults,
+                                    TRI_vocbase_t const* vocbase) {
+
+  // the following collection properties are intentionally not updated as updating
+  // them would be very complicated:
+  // - _cid
+  // - _name
+  // - _type
+  // - _isSystem
+  // - _isVolatile
+  // ... probably a few others missing here ...
+
+  if (preferDefaults) {
+    if (vocbase != nullptr) {
+      _doCompact = triagens::velocyPackHelper::getBooleanValue(slice, "doCompact", true);
+      _waitForSync = triagens::velocyPackHelper::getBooleanValue(slice, "waitForSync", vocbase->_settings.defaultWaitForSync);
+      _maximalSize = triagens::velocyPackHelper::getNumericValue<int>(slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
+      // TODO: verify In this case the indexBuckets are not updated
+      // _indexBuckets = triagens::velocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+    }
+    else {
+      _doCompact = triagens::velocyPackHelper::getBooleanValue(slice, "doCompact", true);
+      _waitForSync = triagens::velocyPackHelper::getBooleanValue(slice, "waitForSync", false);
+      _maximalSize = triagens::velocyPackHelper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
+      _indexBuckets = triagens::velocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+    }
+  }
+  else {
+    _doCompact = triagens::velocyPackHelper::getBooleanValue(slice, "doCompact", _doCompact);
+    _waitForSync = triagens::velocyPackHelper::getBooleanValue(slice, "waitForSync", _waitForSync);
+    _maximalSize = triagens::velocyPackHelper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize", _maximalSize);
+    _indexBuckets = triagens::velocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", _indexBuckets);
+  }
+}
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -1487,29 +1742,13 @@ int TRI_SaveCollectionInfo (char const* path,
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
                               TRI_collection_t* collection,
-                              TRI_col_info_t const* parameters,
+                              VPackSlice const& slice,
                               bool doSync) {
-
-  TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
-
-  if (parameters != nullptr) {
-    collection->_info._doCompact   = parameters->_doCompact;
-    collection->_info._maximalSize = parameters->_maximalSize;
-    collection->_info._waitForSync = parameters->_waitForSync;
-    collection->_info._indexBuckets = parameters->_indexBuckets;
-
-    // the following collection properties are intentionally not updated as updating
-    // them would be very complicated:
-    // - _cid
-    // - _name
-    // - _type
-    // - _isSystem
-    // - _isVolatile
-    // ... probably a few others missing here ...
+  if (! slice.isNone()) {
+    TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
+    collection->_info.update(slice);
+    TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
-
-  TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
-
   return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, doSync);
 }
 
