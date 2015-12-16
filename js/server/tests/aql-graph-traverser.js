@@ -318,7 +318,8 @@ function namedGraphSuite () {
       var result = db._query(query, bindVars).toArray();
       assertEqual(result.length, 0);
 
-      query = "FOR x, e, p IN 2 ANY @startId GRAPH @graph SORT x._id ASC RETURN {v: x._id, edges: p.edges, vertices: p.vertices}";
+      query = "FOR x, e, p IN 2 ANY @startId GRAPH @graph SORT x._id ASC " + 
+              "RETURN {v: x._id, edges: p.edges, vertices: p.vertices}";
       result = db._query(query, bindVars).toArray();
 
       // result: A->B->C
