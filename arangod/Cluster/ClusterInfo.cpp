@@ -333,7 +333,7 @@ void ClusterInfo::flush () {
   loadPlannedDatabases();
   loadCurrentDatabases();
   loadPlannedCollections();
-  loadCurrentCollections();
+  loadCurrentCollections(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1408,7 +1408,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
           return setErrormsg(
             TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, errorMsg);
         }
-        loadCurrentCollections();
+        loadCurrentCollections(true);
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
@@ -1779,7 +1779,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
           resultJson = newIndex;
           TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
-          loadCurrentCollections();
+          loadCurrentCollections(true);
 
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
@@ -1960,7 +1960,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
         }
 
         if (! found) {
-          loadCurrentCollections();
+          loadCurrentCollections(true);
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
       }
