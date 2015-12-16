@@ -2600,7 +2600,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
         TRI_V8_THROW_EXCEPTION(res);
       }
 
-      TRI_json_t* json = TRI_CreateJsonCollectionInfo(&base->_info);
+      TRI_json_t* json = TRI_CreateJsonCollectionInfo(base->_info);
 
       // now log the property changes
       res = TRI_ERROR_NO_ERROR;

@@ -43,6 +43,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
@@ -1561,88 +1562,95 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
   PREVENT_EMBEDDED_TRANSACTION();
 
 
-  // set default journal size
-  TRI_voc_size_t effectiveSize = vocbase->_settings.defaultMaximalSize;
 
   // extract the name
   string const name = TRI_ObjectToString(args[0]);
 
   // extract the parameters
-  TRI_col_info_t parameters;
   TRI_voc_cid_t cid = 0;
 
+
+  VPackBuilder builder;
+  builder.openObject();
+  VPackSlice infoSlice;
   if (2 <= args.Length()) {
     if (! args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
 
+    int res = TRI_V8ToVPack(isolate, builder, args[1], false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+    builder.close();
+    infoSlice = builder.slice();
+
+    if (infoSlice.hasKey("journalSize")) {
+      VPackSlice maxSizeSlice = infoSlice.get("journalSize");
+      TRI_voc_size_t maximalSize = maxSizeSlice.getNumericValue<TRI_voc_size_t>();
+      if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+        TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize too small");
+      }
+    }
+
+#ifndef TRI_HAVE_ANONYMOUS_MMAP
+    if (infoSlice.hasKey("isVolatile")) {
+      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections are not supported on this platform");
+    }
+#endif
+  }
+  else {
+    builder.close();
+    infoSlice = builder.slice();
+  }
+
+  VocbaseCollectionInfo parameters(vocbase, name.c_str(), infoSlice);
+
+  if (parameters.isVolatile() && parameters.waitForSync()) {
+    // the combination of waitForSync and isVolatile makes no sense
+    TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
+  }
+
+
+  if (parameters.indexBuckets() < 1 ||
+      parameters.indexBuckets() > 1024) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");
+  }
+
+  // TODO Remove these ASSERTS
+  
+  if (2 <= args.Length()) {
     v8::Handle<v8::Object> p = args[1]->ToObject();
     TRI_GET_GLOBALS();
 
     TRI_GET_GLOBAL_STRING(JournalSizeKey);
-    if (p->Has(JournalSizeKey)) {
-      double s = TRI_ObjectToDouble(p->Get(JournalSizeKey));
-
-      if (s < TRI_JOURNAL_MINIMAL_SIZE) {
-        TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize is too small");
-      }
-
-      // overwrite journal size with user-specified value
-      effectiveSize = (TRI_voc_size_t) s;
-    }
-
-    // get optional values
-    TRI_json_t* keyOptions = nullptr;
-    TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-    if (p->Has(KeyOptionsKey)) {
-      keyOptions = TRI_ObjectToJson(isolate, p->Get(KeyOptionsKey));
-    }
-
-    // TRI_InitCollectionInfo will copy keyOptions
-    TRI_InitCollectionInfo(vocbase, &parameters, name.c_str(), collectionType, effectiveSize, keyOptions);
-
-    if (keyOptions != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+    if (! p->Has(JournalSizeKey)) {
+      TRI_ASSERT(parameters.maximalSize() == vocbase->_settings.defaultMaximalSize);
     }
 
     if (p->Has(TRI_V8_ASCII_STRING("planId"))) {
-      parameters._planId = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("planId")), true);
+      TRI_ASSERT(parameters.planId() == TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("planId")), true));
     }
 
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
     if (p->Has(WaitForSyncKey)) {
-      parameters._waitForSync = TRI_ObjectToBoolean(p->Get(WaitForSyncKey));
+      TRI_ASSERT(parameters.waitForSync() == TRI_ObjectToBoolean(p->Get(WaitForSyncKey)));
     }
 
     TRI_GET_GLOBAL_STRING(DoCompactKey);
     if (p->Has(DoCompactKey)) {
-      parameters._doCompact = TRI_ObjectToBoolean(p->Get(DoCompactKey));
+      TRI_ASSERT(parameters.doCompact() == TRI_ObjectToBoolean(p->Get(DoCompactKey)));
     }
     else {
       // default value for compaction
-      parameters._doCompact = true;
+      TRI_ASSERT(parameters.doCompact());
     }
 
     TRI_GET_GLOBAL_STRING(IsSystemKey);
     if (p->Has(IsSystemKey)) {
-      parameters._isSystem = TRI_ObjectToBoolean(p->Get(IsSystemKey));
+      TRI_ASSERT(parameters.isSystem() == TRI_ObjectToBoolean(p->Get(IsSystemKey)));
     }
 
-    TRI_GET_GLOBAL_STRING(IsVolatileKey);
-    if (p->Has(IsVolatileKey)) {
-#ifdef TRI_HAVE_ANONYMOUS_MMAP
-      parameters._isVolatile = TRI_ObjectToBoolean(p->Get(IsVolatileKey));
-#else
-      TRI_FreeCollectionInfoOptions(&parameters);
-      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections are not supported on this platform");
-#endif
-    }
-
-    if (parameters._isVolatile && parameters._waitForSync) {
-      // the combination of waitForSync and isVolatile makes no sense
-      TRI_FreeCollectionInfoOptions(&parameters);
-      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
-    }
     
     TRI_GET_GLOBAL_STRING(IdKey);
     if (p->Has(IdKey)) {
@@ -1651,33 +1659,21 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
 
     if (p->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
-      parameters._indexBuckets
-        = static_cast<uint32_t>(TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("indexBuckets")), true));
-      if (parameters._indexBuckets < 1 ||
-          parameters._indexBuckets > 1024) {
-        TRI_FreeCollectionInfoOptions(&parameters);
-        TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");
-      }
+      TRI_ASSERT(parameters.indexBuckets() == static_cast<uint32_t>(TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("indexBuckets")), true)));
     }
-  }
-  else {
-    TRI_InitCollectionInfo(vocbase, &parameters, name.c_str(), collectionType, effectiveSize, nullptr);
   }
 
 
   if (ServerState::instance()->isCoordinator()) {
     CreateCollectionCoordinator(args, collectionType, vocbase->_name, parameters, vocbase);
-    TRI_FreeCollectionInfoOptions(&parameters);
-
     return;
   }
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
-                                                                    &parameters,
+                                                                    parameters,
                                                                     cid, 
                                                                     true);
 
-  TRI_FreeCollectionInfoOptions(&parameters);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");

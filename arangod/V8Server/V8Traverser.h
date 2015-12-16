@@ -48,7 +48,7 @@ struct EdgeInfo {
   TRI_doc_mptr_copy_t mptr;
 
   EdgeInfo (
-    TRI_voc_cid_t& pcid,
+    TRI_voc_cid_t pcid,
     TRI_doc_mptr_copy_t& pmptr
   ) : cid(pcid), mptr(pmptr) { }
 };
