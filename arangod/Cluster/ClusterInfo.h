@@ -837,14 +837,14 @@ namespace triagens {
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_col_info_t getCollectionProperties (CollectionInfo const&);
+        VocbaseCollectionInfo getCollectionProperties (CollectionInfo const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_col_info_t getCollectionProperties (DatabaseID const&,
-                                                CollectionID const&);
+        VocbaseCollectionInfo getCollectionProperties (DatabaseID const&,
+                                                       CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about all collections
@@ -925,7 +925,7 @@ namespace triagens {
 
         int setCollectionPropertiesCoordinator (std::string const& databaseName,
                                                 std::string const& collectionID,
-                                                TRI_col_info_t const*);
+                                                VocbaseCollectionInfo const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set collection status in coordinator

@@ -798,29 +798,8 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& collection) {
-  TRI_col_info_t info;
- 
-  info._version      = TRI_COL_VERSION; 
-  info._type         = collection.type();
-  info._cid          = collection.id();
-  info._revision     = 0; // TODO
-  info._maximalSize  = collection.journalSize();
-  info._initialCount = -1;
-
-  const std::string name = collection.name();
-  memset(info._name, 0, sizeof(info._name));
-  memcpy(info._name, name.c_str(), name.size());
-  
-  info._keyOptions   = collection.keyOptions();
-
-  info._deleted      = collection.deleted();
-  info._doCompact    = collection.doCompact();
-  info._isSystem     = collection.isSystem();
-  info._isVolatile   = collection.isVolatile();
-  info._waitForSync  = collection.waitForSync();
-  info._indexBuckets = collection.indexBuckets();
-
+triagens::arango::VocbaseCollectionInfo ClusterInfo::getCollectionProperties (CollectionInfo const& collection) {
+  triagens::arango::VocbaseCollectionInfo info(collection);
   return info;
 }
 
@@ -828,8 +807,8 @@ TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& colle
 /// @brief get properties of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_col_info_t ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
-                                                     CollectionID const& collectionID) {
+VocbaseCollectionInfo ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
+                                                            CollectionID const& collectionID) {
   shared_ptr<CollectionInfo> ci = getCollection(databaseID, collectionID);
 
   return getCollectionProperties(*ci);
@@ -1439,7 +1418,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
 
 int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
                                                      string const& collectionID,
-                                                     TRI_col_info_t const* info) {
+                                                     VocbaseCollectionInfo const* info) {
   AgencyComm ac;
   AgencyCommResult res;
 
@@ -1482,10 +1461,10 @@ int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
     TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync");
     TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "indexBuckets");
 
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_doCompact));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_maximalSize));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->_waitForSync));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->_indexBuckets));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->doCompact()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->maximalSize()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->waitForSync()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->indexBuckets()));
 
     res.clear();
     res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
