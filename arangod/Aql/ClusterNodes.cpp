@@ -133,7 +133,7 @@ void ScatterNode::toJsonHelper (triagens::basics::Json& nodes,
         
 double ScatterNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies[0]->getCost(nrItems);
-  std::shared_ptr<std::vector<std::string>> shardIds = _collection->shardIds();
+  auto shardIds = _collection->shardIds();
   size_t nrShards = shardIds->size();
   return depCost + nrItems * nrShards;
 }
