@@ -1256,16 +1256,6 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
     fromIncluded = StringUtils::boolean(header);
   }
  
-  if (! fromIncluded && 
-      _requireFromPresent && 
-      fromTick > 0) {
-    errorMsg = "required tick value '" + StringUtils::itoa(fromTick) + 
-               "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +
-               ". It may be required to do a full resync and increase the number of historic logfiles on the master.";
-
-    return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
-  }
-
   // fetch the tick from where we need to start scanning later
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
 
@@ -1275,8 +1265,21 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-
+  
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
+  
+  if (! fromIncluded && 
+      _requireFromPresent && 
+      fromTick > 0) {
+    errorMsg = "required tick value '" + StringUtils::itoa(fromTick) + 
+               "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +
+               ". Last tick available on master is " + StringUtils::itoa(readTick) + 
+               ". It may be required to do a full resync and increase the number of historic logfiles on the master.";
+
+    return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+  }
+
+
   startTick = readTick;
   if (startTick == 0) {
     startTick = toTick;
@@ -1457,6 +1460,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     errorMsg = "required tick value '" + StringUtils::itoa(fetchTick) + 
                "' is not present (anymore?) on master at " + string(_masterInfo._endpoint) +
+               ". Last tick available on master is " + StringUtils::itoa(tick) + 
                ". It may be required to do a full resync and increase the number of historic logfiles on the master.";
   }
 
