@@ -35,13 +35,11 @@ exports.createQuery = require('org/arangodb/foxx/query').createQuery;
 exports.toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema;
 
 const manager = require('org/arangodb/foxx/manager');
-const deprecated = require('org/arangodb/deprecated');
 
 exports.getExports = function (path) {
   return manager.requireApp('/' + path.replace(/(^\/+|\/+$)/, ''));
 };
 exports.requireApp = function (path) {
-  deprecated('3.0', 'Foxx.requireApp has been renamed to Foxx.getExports.');
   return exports.getExports(path);
 };
 

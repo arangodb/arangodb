@@ -265,7 +265,6 @@ _.extend(Model.prototype, {
 });
 
 Model.toJSONSchema = function (id) {
-  deprecated('3.0', 'Model.toJSONSchema(id) is deprecated, use Foxx.toJSONSchema(id, Model) instead');
   return toJSONSchema(id, this);
 };
 

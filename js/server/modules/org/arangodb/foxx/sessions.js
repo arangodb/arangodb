@@ -170,10 +170,6 @@ class Sessions {
     }
 
     if (opts.type) {
-      deprecated('3.0', (
-        'The Foxx session option "type" is deprecated.'
-        + ' Use the options "cookie" and/or "header" instead.'
-      ));
       if (opts.type === 'cookie') {
         delete opts.header;
         opts.cookie = opts.cookie || true;
@@ -217,10 +213,6 @@ class Sessions {
       }
     }
     if (opts.jwt) {
-      deprecated('3.0',
-        'The Foxx session option "jwt" is deprecated.'
-        + ' Please use the session-jwt app instead.'
-      );
       if (opts.jwt === true) {
         opts.jwt = {};
       } else if (typeof opts.jwt === 'string') {
@@ -255,10 +247,6 @@ class Sessions {
 
     if (!opts.sessionStorage) {
       if (opts.sessionStorageApp) {
-        deprecated('3.0',
-          'The Foxx session option "sessionStorageApp" has been renamed to "sessionStorage".'
-          + ' Use the option "sessionStorage" instead.'
-        );
         opts.sessionStorage = opts.sessionStorageApp;
       } else {
         opts.sessionStorage = '/_system/sessions';
