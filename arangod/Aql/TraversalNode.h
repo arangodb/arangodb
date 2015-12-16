@@ -43,51 +43,28 @@ namespace triagens {
     class SimpleTraverserExpression : public triagens::arango::traverser::TraverserExpression {
 
       public:
-        triagens::aql::AstNode*        toEvaluate;
+
+        triagens::aql::AstNode*        compareToNode;
+
         triagens::aql::Expression*     expression;
       
         SimpleTraverserExpression (bool isEdgeAccess,
                                    triagens::aql::AstNodeType comparisonType,
                                    triagens::aql::AstNode const* varAccess,
-                                   triagens::aql::AstNode* toEvaluate)
+                                   triagens::aql::AstNode* compareToNode)
         : triagens::arango::traverser::TraverserExpression(isEdgeAccess,
-                                                             comparisonType,
-                                                             varAccess),
-            toEvaluate(toEvaluate),
-            expression(nullptr) {
+                                                           comparisonType,
+                                                           varAccess),
+          compareToNode(compareToNode),
+          expression(nullptr) {
         }
 
-        SimpleTraverserExpression (triagens::aql::Ast* ast, triagens::basics::Json j)
-          : triagens::arango::traverser::TraverserExpression(j.json()),
-            toEvaluate(nullptr),
-            expression(nullptr) {
+        SimpleTraverserExpression (triagens::aql::Ast* ast, triagens::basics::Json j);
 
-              toEvaluate = new AstNode(ast, j.get("toEvaluate"));
-        }
-
-        ~SimpleTraverserExpression () {
-          if (expression != nullptr) {
-            delete expression;
-          }
-        }
+        ~SimpleTraverserExpression ();
 
         void toJson (triagens::basics::Json& json,
-                     TRI_memory_zone_t* zone) const {
-          auto op = triagens::aql::AstNode::Operators.find(comparisonType);
-          
-          if (op == triagens::aql::AstNode::Operators.end()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid operator for simpleTraverserExpression");
-          }
-          std::string const operatorStr = op->second;
-
-          json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
-              ("comparisonTypeStr", triagens::basics::Json(operatorStr))
-              ("comparisonType", triagens::basics::Json(static_cast<int32_t>(comparisonType)))
-              ("varAccess", varAccess->toJson(zone, true))
-              ("toEvaluate", toEvaluate->toJson(zone, true))
-              ("compareTo", toEvaluate->toJson(zone, true));
-          
-        }
+                     TRI_memory_zone_t* zone) const;
     };
 
 
@@ -392,7 +369,7 @@ namespace triagens {
                                     size_t indexAccess,
                                     AstNodeType comparisonType,
                                     AstNode const* varAccess,
-                                    AstNode* compareTo);
+                                    AstNode* compareToNode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Returns a regerence to the simple traverser expressions
