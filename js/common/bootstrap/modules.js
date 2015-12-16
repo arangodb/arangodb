@@ -629,12 +629,6 @@ Module._extensions['.json'] = function(module, filename) {
 };
 
 
-Module._extensions['.coffee'] = function(module, filename) {
-  var content = fs.readFileSync(filename, 'utf8');
-  var cs = require('coffee-script');
-  module._compile(cs.compile(stripBOM(content), {bare: true}), filename);
-};
-
 // backwards compatibility
 Module.Module = Module;
 

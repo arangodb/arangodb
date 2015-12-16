@@ -122,12 +122,6 @@
 * GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
 
-#### CoffeeScript
-
-* Project Home: http://coffeescript.org
-* GIUTHUB: https://github.com/jashkenas/coffeescript
-* License: [MT-style License](https://github.com/jashkenas/coffeescript/blob/master/LICENSE)
-
 #### expect.js
 
 * GITHUB: https://github.com/Automattic/expect.js
