@@ -425,6 +425,29 @@ function multiCollectionGraphSuite () {
       cleanup();
     },
 
+    testNoBindParameterDoubleFor: function () {
+      /* this test is intended to trigger the clone functionality. */
+      var query = "FOR t IN " + vn +
+        " FOR s IN " + vn2 + 
+        " FOR x, e, p IN OUTBOUND t " + en + " RETURN {vertex: x, path: p}";
+      var result = db._query(query).toArray();
+      var plans = AQL_EXPLAIN(query, { }, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+
+    testNoBindParameterSingleFor: function () {
+      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " + en + " SORT x RETURN x";
+      var result = db._query(query).toArray();
+      var plans = AQL_EXPLAIN(query, { }, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+
     testNoBindParameter: function () {
       var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
       var result = db._query(query).toArray();
@@ -1692,11 +1715,11 @@ function brokenGraphSuite () {
 
 }
 
-jsunity.run(namedGraphSuite);
-jsunity.run(multiCollectionGraphSuite);
-jsunity.run(potentialErrorsSuite);
-jsunity.run(complexInternaSuite);
-jsunity.run(complexFilteringSuite);
-jsunity.run(brokenGraphSuite);
+// jsunity.run(namedGraphSuite);
+ jsunity.run(multiCollectionGraphSuite);
+// jsunity.run(potentialErrorsSuite);
+// jsunity.run(complexInternaSuite);
+//jsunity.run(complexFilteringSuite);
+//jsunity.run(brokenGraphSuite);
 
 return jsunity.done();
