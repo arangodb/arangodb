@@ -68,6 +68,7 @@ v2.8.0 (XXXX-XX-XX)
   - restored deprecated `type`, `jwt` and `sessionStorageApp` options
     in Controller#activateSessions
 
+* Fixed a deadlock problem in the cluster
 
 v2.8.0-beta1 (2015-12-06)
 -------------------------
