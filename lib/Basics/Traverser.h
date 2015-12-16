@@ -1348,6 +1348,7 @@ namespace triagens {
           vertexIdentifier v;
           bool isValid = _getVertex(_enumeratedPath.edges.back(), _enumeratedPath.vertices.back(), _enumeratedPath.vertices.size(), v);
           _enumeratedPath.vertices.push_back(v);
+          TRI_ASSERT(_enumeratedPath.vertices.size() == _enumeratedPath.edges.size() + 1);
           if (! isValid) {
             prune();
             return next();
