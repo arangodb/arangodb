@@ -153,8 +153,8 @@ std::vector<std::string> Collection::shardKeys () const {
   
   std::string id;
   if (triagens::arango::ServerState::instance()->isDBServer() && 
-      documentCollection()->_info._planId > 0) {
-    id = std::to_string(documentCollection()->_info._planId);
+      documentCollection()->_info.planId() > 0) {
+    id = std::to_string(documentCollection()->_info.planId());
   }
   else {
     id = name;
@@ -329,7 +329,7 @@ void Collection::fillIndexesDBServer () const {
 
   // lookup collection in agency by plan id  
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), triagens::basics::StringUtils::itoa(document->_info._planId));
+  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), triagens::basics::StringUtils::itoa(document->_info.planId()));
   if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
                                   "collection not found '%s' in database '%s'",
