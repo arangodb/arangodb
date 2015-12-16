@@ -1,4 +1,5 @@
-arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement( { <span class="hljs-string">"query"</span>: <span class="hljs-string">"FOR i IN [ @one, @two ] RETURN i * 2"</span> } );
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement( {
+........&gt; <span class="hljs-string">"query"</span>: <span class="hljs-string">"FOR i IN [ @one, @two ] RETURN i * 2"</span> } );
 arangosh&gt; stmt.bind(<span class="hljs-string">"one"</span>, <span class="hljs-number">1</span>);
 arangosh&gt; stmt.bind(<span class="hljs-string">"two"</span>, <span class="hljs-number">2</span>);
 arangosh&gt; c = stmt.execute();

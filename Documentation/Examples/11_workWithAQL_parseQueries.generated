@@ -1,4 +1,5 @@
-arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(<span class="hljs-string">"FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(
+........&gt; <span class="hljs-string">"FOR doc IN @@collection FILTER doc.foo == @bar RETURN doc"</span>);
 arangosh&gt; stmt.parse();
 { 
   <span class="hljs-string">"bindVars"</span> : [ 

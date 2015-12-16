@@ -1,4 +1,6 @@
-arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(<span class="hljs-string">"FOR doc IN @@collection FILTER doc.user == @user RETURN doc"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(
+........&gt; <span class="hljs-string">`FOR doc IN @@collection FILTER doc.user == @user RETURN doc`</span>
+........&gt; );
 arangosh&gt; stmt.bind({ <span class="hljs-string">"@collection"</span> : <span class="hljs-string">"_users"</span>, <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span> });
 arangosh&gt; stmt.explain();
 { 
@@ -28,7 +30,7 @@ arangosh&gt; stmt.explain();
         <span class="hljs-string">"indexes"</span> : [ 
           { 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"537528"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"585436"</span>, 
             <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
             <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
             <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
@@ -108,7 +110,7 @@ arangosh&gt; stmt.explain();
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
-    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">24</span>, 
+    <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">25</span>, 
     <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
   } 

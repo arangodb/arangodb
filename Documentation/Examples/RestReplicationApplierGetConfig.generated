@@ -21,5 +21,6 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
   <span class="hljs-string">"connectionRetryWaitTime"</span> : <span class="hljs-number">15</span>, 
   <span class="hljs-string">"initialSyncMaxWaitTime"</span> : <span class="hljs-number">300</span>, 
   <span class="hljs-string">"idleMinWaitTime"</span> : <span class="hljs-number">0.5</span>, 
-  <span class="hljs-string">"idleMaxWaitTime"</span> : <span class="hljs-number">2.5</span> 
+  <span class="hljs-string">"idleMaxWaitTime"</span> : <span class="hljs-number">2.5</span>, 
+  <span class="hljs-string">"autoResyncRetries"</span> : <span class="hljs-number">2</span> 
 }

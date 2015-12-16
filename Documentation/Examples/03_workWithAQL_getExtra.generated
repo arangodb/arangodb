@@ -1,4 +1,7 @@
-arangosh&gt; db._query(<span class="hljs-string">"FOR i IN 1..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } INTO mycollection"</span>).getExtra();
+arangosh&gt; db._query(<span class="hljs-string">`FOR i IN 1..100
+........&gt;             INSERT { _key: CONCAT('test', TO_STRING(i)) }
+........&gt;                INTO mycollection`</span>
+........&gt; ).getExtra();
 { 
   <span class="hljs-string">"stats"</span> : { 
     <span class="hljs-string">"writesExecuted"</span> : <span class="hljs-number">100</span>, 

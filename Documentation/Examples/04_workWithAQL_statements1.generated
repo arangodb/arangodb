@@ -1,2 +1,3 @@
-arangosh&gt; stmt = db._createStatement( { <span class="hljs-string">"query"</span>: <span class="hljs-string">"FOR i IN [ 1, 2 ] RETURN i * 2"</span> } );
+arangosh&gt; stmt = db._createStatement( {
+........&gt; <span class="hljs-string">"query"</span>: <span class="hljs-string">"FOR i IN [ 1, 2 ] RETURN i * 2"</span> } );
 [object ArangoStatement]

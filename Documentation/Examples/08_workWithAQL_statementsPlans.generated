@@ -1,4 +1,7 @@
-arangosh&gt; <span class="hljs-keyword">var</span> formatPlan = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">plan</span>) </span>{ <span class="hljs-keyword">return</span> { estimatedCost: plan.estimatedCost, nodes: plan.nodes.map(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">node</span>) </span>{ <span class="hljs-keyword">return</span> node.type; }) }; };
+arangosh&gt; <span class="hljs-keyword">var</span> formatPlan = <span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">plan</span>) </span>{
+........&gt;    <span class="hljs-keyword">return</span> { estimatedCost: plan.estimatedCost,
+........&gt;        nodes: plan.nodes.map(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">node</span>) </span>{
+........&gt; <span class="hljs-keyword">return</span> node.type; }) }; };
 arangosh&gt; formatPlan(stmt.explain().plan);
 { 
   <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
