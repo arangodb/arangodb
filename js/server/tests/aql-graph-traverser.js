@@ -1555,11 +1555,11 @@ function brokenGraphSuite () {
 
 }
 
-// jsunity.run(namedGraphSuite);
- jsunity.run(multiCollectionGraphSuite);
-// jsunity.run(potentialErrorsSuite);
-// jsunity.run(complexInternaSuite);
-//jsunity.run(complexFilteringSuite);
-//jsunity.run(brokenGraphSuite);
+jsunity.run(namedGraphSuite);
+jsunity.run(multiCollectionGraphSuite);
+jsunity.run(potentialErrorsSuite);
+jsunity.run(complexInternaSuite);
+jsunity.run(complexFilteringSuite);
+jsunity.run(brokenGraphSuite);
 
 return jsunity.done();
