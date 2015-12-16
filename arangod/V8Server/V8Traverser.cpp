@@ -969,7 +969,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
         }
         auto search = std::find(edges.begin(), edges.end(), e);
         if (search != edges.end()) {
-          edges.push_back(e);
+          // edges.push_back(e);
           // The edge is now included twice. Go on with the next
           _getEdge(startVertex, edges, last, eColIdx, dir);
           return;
@@ -1018,7 +1018,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
         }
         auto search = std::find(edges.begin(), edges.end(), e);
         if (search != edges.end()) {
-          edges.push_back(e);
+          // edges.push_back(e);
           // The edge is now included twice. Go on with the next
           _getEdge(startVertex, edges, last, eColIdx, dir);
           return;
