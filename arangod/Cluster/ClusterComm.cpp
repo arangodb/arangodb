@@ -170,7 +170,7 @@ ClusterCommResult const ClusterComm::asyncRequest (
                 CoordTransactionID const            coordTransactionID,
                 std::string const&                  destination,
                 triagens::rest::HttpRequest::HttpRequestType  reqtype,
-                std::string const                   path,
+                std::string const&                  path,
                 std::shared_ptr<std::string const>  body,
                 std::unique_ptr<std::map<string, string>>&
                                                     headerFields,
@@ -387,11 +387,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest (
       //   std::cout << h.first << ":" << h.second << std::endl;
       // }
       // std::cout << std::endl;
-      std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
-        new triagens::httpclient::SimpleHttpClient(
-                                connection->_connection,
-                                endTime - currentTime, false)
-      );
+      auto client = std::make_unique<triagens::httpclient::SimpleHttpClient>(connection->_connection, endTime - currentTime, false);
       client->keepConnectionOnDestruction(true);
 
       headersCopy["Authorization"] = ServerState::instance()->getAuthentication();
@@ -802,10 +798,7 @@ void ClusterComm::asyncAnswer (string& coordinatorHeader,
   LOG_DEBUG("asyncAnswer: sending PUT request to DB server '%s'",
             coordinatorID.c_str());
 
-  std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
-    new triagens::httpclient::SimpleHttpClient(
-                             connection->_connection, 3600.0, false)
-  );
+  auto client = std::make_unique<triagens::httpclient::SimpleHttpClient>(connection->_connection, 3600.0, false);
   client->keepConnectionOnDestruction(true);
 
   // We add this result to the operation struct without acquiring
@@ -1098,12 +1091,7 @@ void ClusterCommThread::run () {
                       .c_str(), op->result.serverID.c_str());
               }
 
-              std::unique_ptr<triagens::httpclient::SimpleHttpClient> client(
-                new triagens::httpclient::SimpleHttpClient(
-                                      connection->_connection,
-                                      op->endTime-currentTime, false)
-              );
-
+              auto client = std::make_unique<triagens::httpclient::SimpleHttpClient>(connection->_connection, op->endTime-currentTime, false);
               client->keepConnectionOnDestruction(true);
 
               // We add this result to the operation struct without acquiring

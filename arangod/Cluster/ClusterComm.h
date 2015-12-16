@@ -271,7 +271,7 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
                 CoordTransactionID const             coordTransactionID,
                 std::string const&                   destination,
                 rest::HttpRequest::HttpRequestType   reqtype,
-                std::string const                    path,
+                std::string const&                   path,
                 std::shared_ptr<std::string const>   body,
                 std::unique_ptr<std::map<std::string, std::string>>&
                                                      headerFields,
