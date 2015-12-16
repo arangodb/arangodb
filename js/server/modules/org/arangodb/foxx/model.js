@@ -32,7 +32,6 @@ const joi = require('joi');
 const is = require('org/arangodb/is');
 const toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema;
 const extend = require('org/arangodb/extend').extend;
-const deprecated = require('org/arangodb/deprecated');
 const EventEmitter = require('events').EventEmitter;
 const metadataSchema = {
   _id: joi.string().optional(),
