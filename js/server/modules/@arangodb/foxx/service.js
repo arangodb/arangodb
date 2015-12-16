@@ -25,8 +25,16 @@ class AppContext {
     });
   }
 
-  foxxFilename(filename) {
+  fileName(filename) {
     return fs.safeJoin(this._prefix, filename);
+  }
+
+  file(filename, encoding) {
+    return fs.readFileSync(this.fileName(filename), encoding);
+  }
+
+  foxxFilename(filename) {
+    return this.fileName(filename);
   }
 
   path(name) {

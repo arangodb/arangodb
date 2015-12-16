@@ -132,7 +132,7 @@ controller.allRoutes
 
 controller.apiDocumentation('/api', {
   swaggerJson(req, res) {
-    var filename = applicationContext.foxxFilename('api-docs.json');
+    var filename = applicationContext.fileName('api-docs.json');
     res.sendFile(filename, {lastModified: true});
   }
 });
