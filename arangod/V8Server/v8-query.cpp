@@ -1473,7 +1473,7 @@ static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& ar
 
   trx.lockRead();
   // get last tick
-  string const rid = StringUtils::itoa(document->_info._revision);
+  string const rid = StringUtils::itoa(document->_info.revision());
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);

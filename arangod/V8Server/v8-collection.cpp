@@ -32,6 +32,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Storage/Options.h"
@@ -900,7 +901,7 @@ static void ReplaceVocbaseCol (bool useCollection,
 
   if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->_info._planId);
+    const string cidString = StringUtils::itoa(document->_info.planId());
 
     TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
 
@@ -1392,7 +1393,7 @@ static void UpdateVocbaseCol (bool useCollection,
 
   if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->_info._planId);
+    const string cidString = StringUtils::itoa(document->_info.planId());
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
       TRI_FreeJson(document->getShaper()->memoryZone(), old);  // PROTECTED by trx here
@@ -2438,76 +2439,66 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
 
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
-    TRI_col_info_t info = ClusterInfo::instance()->getCollectionProperties(databaseName, StringUtils::itoa(collection->_cid));
+    triagens::arango::VocbaseCollectionInfo info = ClusterInfo::instance()->getCollectionProperties(databaseName, StringUtils::itoa(collection->_cid));
 
     if (0 < args.Length()) {
       v8::Handle<v8::Value> par = args[0];
 
       if (par->IsObject()) {
+        VPackBuilder builder;
+        builder.openObject();
+        int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+        if (res != TRI_ERROR_NO_ERROR) {
+          TRI_V8_THROW_EXCEPTION(res);
+        }
+        builder.close();
+        VPackSlice const slice = builder.slice();
+        if (slice.hasKey("journalSize")) {
+          VPackSlice maxSizeSlice = slice.get("journalSize");
+          TRI_voc_size_t maximalSize = maxSizeSlice.getNumericValue<TRI_voc_size_t>();
+          if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+            TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize too small");
+          }
+        }
+        if (info.isVolatile() != triagens::basics::VelocyPackHelper::getBooleanValue(slice, "isVolatile", info.isVolatile())) {
+          TRI_V8_THROW_EXCEPTION_PARAMETER("isVolatile option cannot be changed at runtime");
+        }
+        if (info.isVolatile() && info.waitForSync()) {
+          TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
+        }
+        uint32_t tmp = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", 2 /*Just for validation, this default Value passes*/);
+        if (tmp == 0 || tmp > 1024) {
+          TRI_V8_THROW_EXCEPTION_PARAMETER("indexBucket must be a two-power between 1 and 1024");
+        }
+        info.update(slice, false, collection->_vocbase);
+
+        // TODO FIXME temporary ASSERTIONS
         v8::Handle<v8::Object> po = par->ToObject();
 
         // extract doCompact flag
         TRI_GET_GLOBAL_STRING(DoCompactKey);
         if (po->Has(DoCompactKey)) {
-          info._doCompact = TRI_ObjectToBoolean(po->Get(DoCompactKey));
+          TRI_ASSERT(info.doCompact() == TRI_ObjectToBoolean(po->Get(DoCompactKey)));
         }
 
         // extract sync flag
         TRI_GET_GLOBAL_STRING(WaitForSyncKey);
         if (po->Has(WaitForSyncKey)) {
-          info._waitForSync = TRI_ObjectToBoolean(po->Get(WaitForSyncKey));
+          TRI_ASSERT(info.waitForSync() == TRI_ObjectToBoolean(po->Get(WaitForSyncKey)));
         }
 
         // extract the journal size
         TRI_GET_GLOBAL_STRING(JournalSizeKey);
         if (po->Has(JournalSizeKey)) {
-          info._maximalSize = (TRI_voc_size_t) TRI_ObjectToUInt64(po->Get(JournalSizeKey), false);
-
-          if (info._maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-            if (info._keyOptions != nullptr) {
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
-            }
-            TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize too small");
-          }
+          auto maximalSize = (TRI_voc_size_t) TRI_ObjectToUInt64(po->Get(JournalSizeKey), false);
+          TRI_ASSERT(info.maximalSize() == maximalSize);
         }
 
-        TRI_GET_GLOBAL_STRING(IsVolatileKey);
-        if (po->Has(IsVolatileKey)) {
-          if (TRI_ObjectToBoolean(po->Get(IsVolatileKey)) != info._isVolatile) {
-            if (info._keyOptions != nullptr) {
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
-            }
-            TRI_V8_THROW_EXCEPTION_PARAMETER("isVolatile option cannot be changed at runtime");
-          }
-        }
-
-        if (info._isVolatile && info._waitForSync) {
-          if (info._keyOptions != nullptr) {
-            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
-          }
-          TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
-        }
-
-        if (po->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
-          uint32_t tmp = static_cast<uint32_t>(TRI_ObjectToUInt64(
-                                 po->Get(TRI_V8_ASCII_STRING("indexBuckets")),
-                                 false));
-          if (tmp < 1 || tmp > 1024) {
-            if (info._keyOptions != nullptr) {
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
-            }
-            TRI_V8_THROW_EXCEPTION_PARAMETER("indexBucket must be a two-power between 1 and 1024");
-          }
-          info._indexBuckets = tmp;
-        }
       }
 
       int res = ClusterInfo::instance()->setCollectionPropertiesCoordinator(databaseName, StringUtils::itoa(collection->_cid), &info);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        if (info._keyOptions != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
-        }
         TRI_V8_THROW_EXCEPTION(res);
       }
     }
@@ -2521,13 +2512,13 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     TRI_GET_GLOBAL_STRING(IsVolatileKey);
     TRI_GET_GLOBAL_STRING(JournalSizeKey);
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-    result->Set(DoCompactKey,   v8::Boolean::New(isolate, info._doCompact));
-    result->Set(IsSystemKey,    v8::Boolean::New(isolate, info._isSystem));
-    result->Set(IsVolatileKey,  v8::Boolean::New(isolate, info._isVolatile));
-    result->Set(JournalSizeKey, v8::Number::New (isolate, info._maximalSize));
-    result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info._waitForSync));
+    result->Set(DoCompactKey,   v8::Boolean::New(isolate, info.doCompact()));
+    result->Set(IsSystemKey,    v8::Boolean::New(isolate, info.isSystem()));
+    result->Set(IsVolatileKey,  v8::Boolean::New(isolate, info.isVolatile()));
+    result->Set(JournalSizeKey, v8::Number::New (isolate, info.maximalSize()));
+    result->Set(WaitForSyncKey, v8::Boolean::New(isolate, info.waitForSync()));
     result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-                v8::Number::New(isolate, info._indexBuckets));
+                v8::Number::New(isolate, info.indexBuckets()));
 
     shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
@@ -2537,11 +2528,11 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     }
     result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
     result->Set(TRI_V8_ASCII_STRING("numberOfShards"), v8::Number::New(isolate, (*c).numberOfShards()));
-
-    if (info._keyOptions != nullptr) {
+    auto keyOpts = info.keyOptions();
+    if (keyOpts->size() > 0) {
       TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-      result->Set(KeyOptionsKey, TRI_ObjectJson(isolate, info._keyOptions)->ToObject());
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
+      VPackSlice const slice(keyOpts->data());
+      result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, slice)->ToObject());
     }
 
     TRI_V8_RETURN(result);
@@ -2561,75 +2552,48 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     v8::Handle<v8::Value> par = args[0];
 
     if (par->IsObject()) {
-      v8::Handle<v8::Object> po = par->ToObject();
 
-      // get the old values
-      TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-      TRI_voc_size_t maximalSize = base->_info._maximalSize;
-      bool doCompact     = base->_info._doCompact;
-      bool waitForSync   = base->_info._waitForSync;
-      uint32_t indexBuckets = base->_info._indexBuckets;
-
-      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
-
-      // extract doCompact flag
-      TRI_GET_GLOBAL_STRING(DoCompactKey);
-      if (po->Has(DoCompactKey)) {
-        doCompact = TRI_ObjectToBoolean(po->Get(DoCompactKey));
+      VPackBuilder builder;
+      builder.openObject();
+      int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_V8_THROW_EXCEPTION(res);
       }
+      builder.close();
 
-      // extract sync flag
-      TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-      if (po->Has(WaitForSyncKey)) {
-        waitForSync = TRI_ObjectToBoolean(po->Get(WaitForSyncKey));
-      }
+      VPackSlice const slice = builder.slice();
 
-      // extract the journal size
-      TRI_GET_GLOBAL_STRING(JournalSizeKey);
-      if (po->Has(JournalSizeKey)) {
-        maximalSize = (TRI_voc_size_t) TRI_ObjectToUInt64(po->Get(JournalSizeKey), false);
+      {
+        // only work under the lock
+        TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+        triagens::basics::ScopeGuard guard{
+          []() -> void { },
+          [&document]() -> void {
+            TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+          }
+        };
 
-        if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+        if (base->_info.isVolatile() && triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", base->_info.waitForSync())) {
           ReleaseCollection(collection);
-          TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize too small");
+          // the combination of waitForSync and isVolatile makes no sense
+          TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
         }
-      }
 
-      TRI_GET_GLOBAL_STRING(IsVolatileKey);
-      if (po->Has(IsVolatileKey)) {
-        if (TRI_ObjectToBoolean(po->Get(IsVolatileKey)) != base->_info._isVolatile) {
-          ReleaseCollection(collection);
+        if (base->_info.isVolatile() != triagens::basics::VelocyPackHelper::getBooleanValue(slice, "isVolatile", base->_info.isVolatile())) {
           TRI_V8_THROW_EXCEPTION_PARAMETER("isVolatile option cannot be changed at runtime");
         }
-      }
 
-      if (base->_info._isVolatile && waitForSync) {
-        // the combination of waitForSync and isVolatile makes no sense
-        ReleaseCollection(collection);
-        TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
-      }
-
-      if (po->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
-        indexBuckets = static_cast<uint32_t>(TRI_ObjectToUInt64(
-                         po->Get(TRI_V8_ASCII_STRING("indexBuckets")), true));
-        if (indexBuckets == 0 || indexBuckets > 1024) {
-          ReleaseCollection(collection);
-          TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");
+        uint32_t tmp = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", 2 /*Just for validation, this default Value passes*/);
+        if (tmp == 0 || tmp > 1024) {
+            ReleaseCollection(collection);
+          TRI_V8_THROW_EXCEPTION_PARAMETER("indexBucket must be a two-power between 1 and 1024");
         }
-      }
 
-      // update collection
-      TRI_col_info_t newParameters;
-
-      newParameters._doCompact   = doCompact;
-      newParameters._maximalSize = maximalSize;
-      newParameters._waitForSync = waitForSync;
-      newParameters._indexBuckets = indexBuckets;
+      } // Leave the scope and free the JOURNAL lock
 
       // try to write new parameter to file
       bool doSync = base->_vocbase->_settings.forceSyncProperties;
-      int res = TRI_UpdateCollectionInfo(base->_vocbase, base, &newParameters, doSync);
+      res = TRI_UpdateCollectionInfo(base->_vocbase, base, slice, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ReleaseCollection(collection);
@@ -2642,7 +2606,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
       res = TRI_ERROR_NO_ERROR;
 
       try {
-        triagens::wal::ChangeCollectionMarker marker(base->_vocbase->_id, base->_info._cid, JsonHelper::toString(json));
+        triagens::wal::ChangeCollectionMarker marker(base->_vocbase->_id, base->_info.id(), JsonHelper::toString(json));
         triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
         if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -2672,12 +2636,12 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
   TRI_GET_GLOBAL_STRING(IsSystemKey);
   TRI_GET_GLOBAL_STRING(IsVolatileKey);
   TRI_GET_GLOBAL_STRING(JournalSizeKey);
-  result->Set(DoCompactKey,   v8::Boolean::New(isolate, base->_info._doCompact));
-  result->Set(IsSystemKey,    v8::Boolean::New(isolate, base->_info._isSystem));
-  result->Set(IsVolatileKey,  v8::Boolean::New(isolate, base->_info._isVolatile));
-  result->Set(JournalSizeKey, v8::Number::New( isolate, base->_info._maximalSize));
+  result->Set(DoCompactKey,   v8::Boolean::New(isolate, base->_info.doCompact()));
+  result->Set(IsSystemKey,    v8::Boolean::New(isolate, base->_info.isSystem()));
+  result->Set(IsVolatileKey,  v8::Boolean::New(isolate, base->_info.isVolatile()));
+  result->Set(JournalSizeKey, v8::Number::New( isolate, base->_info.maximalSize()));
   result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
-              v8::Number::New(isolate, document->_info._indexBuckets));
+              v8::Number::New(isolate, document->_info.indexBuckets()));
 
   TRI_json_t* keyOptions = document->_keyGenerator->toJson(TRI_UNKNOWN_MEM_ZONE);
 
@@ -2691,7 +2655,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     result->Set(KeyOptionsKey, v8::Array::New(isolate));
   }
   TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-  result->Set(WaitForSyncKey, v8::Boolean::New(isolate, base->_info._waitForSync));
+  result->Set(WaitForSyncKey, v8::Boolean::New(isolate, base->_info.waitForSync()));
 
   ReleaseCollection(collection);
   TRI_V8_RETURN(result);
@@ -2943,7 +2907,7 @@ static int GetRevision (TRI_vocbase_col_t* collection,
 
   // READ-LOCK start
   trx.lockRead();
-  rid = collection->_collection->_info._revision;
+  rid = collection->_collection->_info.revision();
   trx.finish(res);
   // READ-LOCK end
 
@@ -3928,20 +3892,29 @@ static void JS_VersionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_RETURN(v8::Number::New(isolate, (int) TRI_COL_VERSION));
   }
   // fallthru intentional
-
-  TRI_col_info_t info;
-
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-  int res = TRI_LoadCollectionInfo(collection->_path, &info, false);
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  try {
+    VocbaseCollectionInfo info = VocbaseCollectionInfo::fromFile(
+      collection->_path,
+      collection->_vocbase,
+      collection->_name,
+      false
+    );
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    // TODO ? TRI_FreeCollectionInfoOptions(&info);
 
-  TRI_FreeCollectionInfoOptions(&info);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot fetch collection info");
+    TRI_V8_RETURN(v8::Number::New(isolate, (int) info.version()));
   }
-
-  TRI_V8_RETURN(v8::Number::New(isolate, (int) info._version));
+  catch (triagens::basics::Exception const& e) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    // TODO ? TRI_FreeCollectionInfoOptions(&info);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(e.code(), "cannot fetch collection info");
+  }
+  catch (...) {
+    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    // TODO ? TRI_FreeCollectionInfoOptions(&info);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot fetch collection info");
+  }
   TRI_V8_TRY_CATCH_END
 }
 
