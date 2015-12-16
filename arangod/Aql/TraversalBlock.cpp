@@ -364,21 +364,6 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
           _traverser->setStartVertex(v);
         }
       }
-      else if (input.has("vertex")) {
-        // This is used whenever the input is the result of another traversal.
-        Json vertexJson = input.get("vertex");
-        if (vertexJson.has(TRI_VOC_ATTRIBUTE_ID) ) {
-          Json _idJson = vertexJson.get(TRI_VOC_ATTRIBUTE_ID);
-          if (_idJson.isString()) {
-            _vertexId = JsonHelper::getStringValue(_idJson.json(), "");
-            VertexId v = triagens::arango::traverser::IdStringToVertexId (
-              _resolver,
-              _vertexId
-            );
-            _traverser->setStartVertex(v);
-          }
-        }
-      }
     }
     else if (in._type == AqlValue::DOCVEC) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
