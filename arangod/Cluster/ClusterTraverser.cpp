@@ -181,7 +181,14 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
       if (_traverser->_vertices.find(toId) == _traverser->_vertices.end()) {
         verticesToFetch.emplace(toId);
       }
-      _traverser->_edges.emplace(edgeId, edge.copy().steal());
+      std::unique_ptr<TRI_json_t> copy(edge.copy().steal());
+      if (copy != nullptr) {
+        if (_traverser->_edges.emplace(edgeId, copy.get()).second) {
+          // if insertion was successful, hand over the ownership
+          copy.release();
+        }
+        // else we have a duplicate and we need to free the copy again
+      }
     }
 
     std::vector<TraverserExpression*> expVertices;

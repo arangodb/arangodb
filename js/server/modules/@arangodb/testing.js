@@ -518,6 +518,20 @@ function readImportantLogLines(logPath) {
 }
 
 function analyzeCoreDump(instanceInfo, options, storeArangodPath, pid) {
+/* 
+ * We assume the system has core files in /var/tmp/, and we have a gdb.
+ * you can do this at runtime doing:
+ *
+ * echo 1 > /proc/sys/kernel/core_uses_pid
+ * echo /var/tmp/core-%e-%p-%t > /proc/sys/kernel/core_pattern
+ *
+ * or at system startup by altering /etc/sysctl.d/corepattern.conf : 
+ * # We want core files to be located in a central location
+ * # and know the PID plus the process name for later use.
+ * kernel.core_uses_pid = 1
+ * kernel.core_pattern =  /var/tmp/core-%e-%p-%t
+ */
+
   var command;
   command  = '(';
   command += "printf 'bt full\\n thread apply all bt\\n';";

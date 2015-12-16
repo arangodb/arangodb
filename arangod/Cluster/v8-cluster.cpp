@@ -843,8 +843,7 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
   }
   result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
 
-  std::shared_ptr<std::unordered_map<ShardID, std::vector<ServerID>>> shardMap
-      = ci->shardIds();
+  auto shardMap = ci->shardIds();
   v8::Handle<v8::Object> shardIds = v8::Object::New(isolate);
   for (auto const& p : *shardMap) {
     v8::Handle<v8::Array> list = v8::Array::New(isolate, (int) p.second.size());

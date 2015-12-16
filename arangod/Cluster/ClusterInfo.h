@@ -72,15 +72,15 @@ namespace triagens {
 
         CollectionInfo ();
 
-        CollectionInfo (struct TRI_json_t*);
+        explicit CollectionInfo (struct TRI_json_t*);
 
         CollectionInfo (CollectionInfo const&);
 
-        CollectionInfo (CollectionInfo&);
+        CollectionInfo (CollectionInfo&&);
 
         CollectionInfo& operator= (CollectionInfo const&);
         
-        CollectionInfo& operator= (CollectionInfo&);
+        CollectionInfo& operator= (CollectionInfo&&);
 
         ~CollectionInfo ();
 

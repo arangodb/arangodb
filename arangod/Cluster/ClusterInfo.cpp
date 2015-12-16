@@ -149,7 +149,7 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
 /// @brief move constructs a collection info object from another
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfo::CollectionInfo (CollectionInfo& other) 
+CollectionInfo::CollectionInfo (CollectionInfo&& other) 
     : _json(other._json) {
   other._json = nullptr;
 }
@@ -173,7 +173,7 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
 /// @brief move assigns a collection info object from another one
 ////////////////////////////////////////////////////////////////////////////////
 
-CollectionInfo& CollectionInfo::operator= (CollectionInfo& other) {
+CollectionInfo& CollectionInfo::operator= (CollectionInfo&& other) {
   if (this == &other) {
     return *this;
   }
