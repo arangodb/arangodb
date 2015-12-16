@@ -255,9 +255,9 @@ static void FreeOperations (TRI_transaction_t* trx) {
     }
 
     if (mustRollback) {
-      document->_info._revision = trxCollection->_originalRevision;
+      document->_info.setRevision(trxCollection->_originalRevision, true);
     }
-    else if (! document->_info._isVolatile && ! isSingleOperation) {
+    else if (! document->_info.isVolatile() && ! isSingleOperation) {
       // only count logfileEntries if the collection is durable
       document->_uncollectedLogfileEntries += trxCollection->_operations->size();
     }
@@ -529,12 +529,12 @@ static int UseCollections (TRI_transaction_t* trx,
 
       if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
           TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-          ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info._name)) {
+          ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info.namec_str())) {
         return TRI_ERROR_ARANGO_READ_ONLY;
       }
 
       // store the waitForSync property
-      trxCollection->_waitForSync = trxCollection->_collection->_collection->_info._waitForSync;
+      trxCollection->_waitForSync = trxCollection->_collection->_collection->_info.waitForSync();
     }
 
     TRI_ASSERT(trxCollection->_collection != nullptr);
@@ -552,7 +552,7 @@ static int UseCollections (TRI_transaction_t* trx,
 
     if (trxCollection->_accessType == TRI_TRANSACTION_WRITE && trxCollection->_originalRevision == 0) {
       // store original revision at transaction start
-      trxCollection->_originalRevision = trxCollection->_collection->_collection->_info._revision;
+      trxCollection->_originalRevision = trxCollection->_collection->_collection->_info.revision();
     }
 
     bool shouldLock = HasHint(trx, TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
@@ -1098,14 +1098,14 @@ int TRI_AddOperationTransaction (TRI_transaction_t* trx,
   bool const isSingleOperationTransaction = IsSingleOperationTransaction(trx);
 
   // upgrade the info for the transaction
-  if (waitForSync || operation.document->_info._waitForSync) {
+  if (waitForSync || operation.document->_info.waitForSync()) {
     trx->_waitForSync = true;
   }
 
   // default is false
   waitForSync = false;
   if (isSingleOperationTransaction) {
-    waitForSync |= operation.document->_info._waitForSync;
+    waitForSync |= operation.document->_info.waitForSync();
   }
   
 
@@ -1241,7 +1241,7 @@ int TRI_AddOperationTransaction (TRI_transaction_t* trx,
     // operation is directly executed
     operation.handle();
      
-    triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase, document->_info._name);
+    triagens::aql::QueryCache::instance()->invalidate(trx->_vocbase, document->_info.namec_str());
 
     ++document->_uncollectedLogfileEntries;
 
@@ -1268,7 +1268,7 @@ int TRI_AddOperationTransaction (TRI_transaction_t* trx,
   }
   else {
     // operation is buffered and might be rolled back
-    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, document->_info._cid, TRI_TRANSACTION_WRITE);
+    TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx, document->_info.id(), TRI_TRANSACTION_WRITE);
     if (trxCollection->_operations == nullptr) {
       trxCollection->_operations = new std::vector<triagens::wal::DocumentOperation*>;
       trx->_hasOperations = true;

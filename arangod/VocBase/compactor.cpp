@@ -796,7 +796,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   size_t const n = TRI_LengthVector(compactions);
   TRI_ASSERT(n > 0);
   
-  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), document->_vocbase, document->_info._cid);
+  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), document->_vocbase, document->_info.id());
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
@@ -810,7 +810,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   }
 
   LOG_TRACE("compactify called for collection '%llu' for %d datafiles of total size %llu",
-            (unsigned long long) document->_info._cid,
+            (unsigned long long) document->_info.id(),
             (int) n,
             (unsigned long long) initial._targetSize);
 
@@ -1024,7 +1024,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   uint64_t const numDocuments = document->size();
 
   // get maximum size of result file
-  uint64_t maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) document->_info._maximalSize;
+  uint64_t maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) document->_info.maximalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
@@ -1476,7 +1476,7 @@ void TRI_CompactorVocBase (void* data) {
         }
 
         bool worked    = false;
-        bool doCompact = document->_info._doCompact;
+        bool doCompact = document->_info.doCompact();
 
         // for document collection, compactify datafiles
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {

@@ -1198,7 +1198,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
   bool ignoreMarkers;
 
   LOG_TRACE("dumping collection %llu, tick range %llu - %llu",
-            (unsigned long long) document->_info._cid,
+            (unsigned long long) document->_info.id(),
             (unsigned long long) dataMin,
             (unsigned long long) dataMax);
 
