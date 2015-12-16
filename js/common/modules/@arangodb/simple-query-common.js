@@ -131,7 +131,7 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
       this._extra.hasOwnProperty("warnings")) {
     for (var j = 0; j < this._extra.warnings.length; j++) {
       text += ", WARNING: " + this._extra.warnings[j].code +
-        " - " + this._extra.warnings[j].message
+        " - " + this._extra.warnings[j].message;
     }
   }
   text += "])";
