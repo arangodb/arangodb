@@ -132,11 +132,6 @@
 * GITHUB: https://github.com/3rd-Eden/extendible
 * License: [MIT License](https://github.com/bigpipe/extendible/blob/master/README.md)
 
-#### Foxx Generator
-
-* GITHUB: https://github.com/moonglum/foxx_generator
-* License: [Apache 2 License](https://github.com/moonglum/foxx_generator/blob/master/LICENSE)
-
 #### highlight.js
 
 * Project Home: https://highlightjs.org
