@@ -315,7 +315,7 @@ function namedGraphSuite () {
         startId: vertex.A
       };
       // No result A->B->C->F->E->B (->C) is already used!
-      result = db._query(query, bindVars).toArray();
+      var result = db._query(query, bindVars).toArray();
       assertEqual(result.length, 0);
 
       query = "FOR x IN 2 ANY @startId GRAPH @graph SORT x._id ASC RETURN x._id";

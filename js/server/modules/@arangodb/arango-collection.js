@@ -265,6 +265,7 @@ function getEdges (collection, vertex, direction) {
     var shards = cluster.shardList(dbName, collection.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
+    var body;
 
     if (vertex !== null &&
         typeof vertex === "object" &&
@@ -283,7 +284,7 @@ function getEdges (collection, vertex, direction) {
           }
         }
       });
-      var body = JSON.stringify(idList);
+      body = JSON.stringify(idList);
       shards.forEach(function (shard) {
         var url = "/_api/edges/" + encodeURIComponent(shard) +
                   "?direction=" + encodeURIComponent(direction);
@@ -318,7 +319,7 @@ function getEdges (collection, vertex, direction) {
     var edges = [ ];
 
     for (i = 0; i < results.length; ++i) {
-      var body = JSON.parse(results[i].body);
+      body = JSON.parse(results[i].body);
 
       edges = edges.concat(body.edges);
     }
