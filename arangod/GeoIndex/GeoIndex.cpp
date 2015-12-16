@@ -2158,7 +2158,7 @@ typedef struct {
 
 bool hpotcompare(hpot a, hpot b)
 {
-    if(a.dist<b.dist) return true;
+    if(a.dist>b.dist) return true;
     else return false;
 }
 
@@ -2169,7 +2169,7 @@ typedef struct {
 
 bool hslotcompare(hslot a, hslot b)
 {
-    if(a.snmd<b.snmd) return true;
+    if(a.snmd>b.snmd) return true;
     else return false;
 }
 
@@ -2193,7 +2193,6 @@ GeoFix makedist(GeoPot * pot, GeoDetailedPoint * gd)
             d1=gd->fixdist[i]-pot->maxdist[i];
         else d1=0;
         if(d1>dist) dist=d1;
-printf("makedist %d %u %u %u\n",i,dist,gd->fixdist[i],pot->maxdist[i]);
     }
     return dist;
 }
@@ -2242,22 +2241,17 @@ GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count)
     if(gr==NULL) return NULL;
     while(gr->pointsct<count)
     {
-printf("pots %10.8f points %10.8f\n",gcr->potsnmd,gcr->slotsnmd);
         if(gcr->potsnmd < gcr->slotsnmd*1.000001)
         {
 // smash top pot - if there is one 
             if(gcr->potheap.size()==0) break; // that's all there is
-printf("potheapsiz1 is %ld\n",gcr->potheap.size()); // that's all there is
             pot=*((gcr->Ix)->pots+(gcr->potheap.front().pot));
 // anyway remove top from heap
-printf("potheapsiz2 is %ld\n",gcr->potheap.size()); // that's all there is
             std::pop_heap(gcr->potheap.begin(),
                    gcr->potheap.end(),hpotcompare);
             gcr->potheap.pop_back();
-printf("potheapsiz3 is %ld\n",gcr->potheap.size()); // that's all there is
             if(pot.LorLeaf==0)
             {
-printf("Leaf pot\n");
 // leaf pot - put all the points into the points heap
                 for(i=0;i<pot.RorPoints;i++)
                 {
@@ -2277,7 +2271,6 @@ printf("Leaf pot\n");
             }
             else
             {
-printf("Non-leaf pot\n");
                 hp.pot=pot.LorLeaf;
                 hp.dist = makedist((gcr->Ix)->pots+pot.LorLeaf,&(gcr->gd));
                 gcr->potheap.push_back(hp);
@@ -2313,6 +2306,9 @@ printf("Non-leaf pot\n");
             gr->snmd[gr->pointsct]=tsnmd;
             gr->pointsct++;
             gcr->slotsnmd=5.0;
+            std::pop_heap(gcr->slotheap.begin(),
+                   gcr->slotheap.end(),hslotcompare);
+            gcr->slotheap.pop_back();
             if(gcr->slotheap.size()!=0)
             {
                 slox=gcr->slotheap.front().slot;

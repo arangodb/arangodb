@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
 /// @brief geo index
 ///
 /// @file
@@ -123,6 +123,17 @@ int GCMASS (GeoCoordinates * gc, int ct, int hash) {
         j=j*7;
         j=j%123456791;
     }
+if(hash!=j)
+{
+    for(i=0;i<(int) gc->length;i++)
+    {
+        printf("long %14.9f",gc->coordinates[i].longitude);
+        printf(" lat %14.9f",gc->coordinates[i].latitude);
+        printf(" dat %4d",(int)((char *)gc->coordinates[i].data-ix));
+        printf(" dist %12.1f \n",gc->distances[i]);
+    }
+    printf("Correct hash is %d\n",j);
+}
     GeoIndex_CoordinatesFree(gc);
 
     return hash == j ? 1 : 0;
@@ -265,6 +276,51 @@ BOOST_FIXTURE_TEST_SUITE(GeoIndexTest, GeoIndexSetup)
 /*   3 is Auckland  -36.916667 +174.783333         */
 /*   4 is Jo'burg   -26.166667  +28.033333         */
 
+/***********************************/
+/* 1000-1100 first tests on cursor  */
+BOOST_AUTO_TEST_CASE (tst_geo1000) {
+  gi=GeoIndex_new();
+  la=41.23456789;
+  lo=39.87654321;
+  for(j=1;j<50;j++)
+  {
+      gcp.latitude = la;
+      gcp.longitude= lo;
+      gcp.data     = &ix[j];
+      r = GeoIndex_insert(gi,&gcp);
+      icheck(1000,0,r);
+      la+=19.5396157761;
+      if(la>90.0) la-=180.0;
+      lo+=17.2329155421;
+      if(lo>180) lo-=360.0;
+  }
+  gcp.latitude = 0.0;
+  gcp.longitude= 25.5;
+  gcr = GeoIndex_NewCursor(gi,&gcp);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1001,list1,5, 87399654);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1002,list1,5, 97583446);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1003,list1,5, 30565728);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1004,list1,5, 77530526);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1005,list1,5, 38005425);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1006,list1,5, 106050772);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1007,list1,5, 51101201);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1008,list1,5, 83277910);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1009,list1,5, 53245966);
+  list1 = GeoIndex_ReadCursor(gcr,5);
+  gcmass(1010,list1,4, 86589238);
+
+  MyFree(gi);
+}
+/***************************************/
 BOOST_AUTO_TEST_CASE (tst_geo1) {
   gcp1.latitude  =   51.5;
   gcp1.longitude =   -0.166666;
@@ -1286,6 +1342,7 @@ BOOST_AUTO_TEST_CASE (tst_geo900) {
 
   MyFree(gi);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
