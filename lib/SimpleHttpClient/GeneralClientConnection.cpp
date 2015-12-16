@@ -103,7 +103,7 @@ bool GeneralClientConnection::connect () {
     return false;
   }
 
-  _isConnected = connectSocket();
+  connectSocket();
 
   if (! _isConnected) {
     return false;

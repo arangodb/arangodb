@@ -1,1 +1,1 @@
-arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/users"</span>).reload();
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/users"</span>).reload();

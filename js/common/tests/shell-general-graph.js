@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var db = arangodb.db;
-var graph = require("org/arangodb/general-graph");
+var graph = require("@arangodb/general-graph");
 var ERRORS = arangodb.errors;
 
 var _ = require("underscore");
@@ -87,6 +87,9 @@ function GeneralGraphCreationSuite() {
     },
 
     tearDown: function() {
+      db._drop("UnitTestsGraphRenamed1");
+      db._drop("UnitTestsGraphRenamed2");
+      db._drop("UnitTestsGraphRenamed3");
       db._drop(ec1);
       db._drop(ec2);
       db._drop(ec3);
@@ -104,6 +107,89 @@ function GeneralGraphCreationSuite() {
         graph._drop(gN2, true);
       } catch(ignore) {
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rename
+////////////////////////////////////////////////////////////////////////////////
+    
+    test_collectionRenameEdge: function() {
+      var g = graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      var doc = db._graphs.document(gN1);
+      assertEqual(1, doc.edgeDefinitions.length);
+      assertEqual(rn1, doc.edgeDefinitions[0].collection);
+      assertEqual(2, doc.edgeDefinitions[0].from.length);
+      assertEqual([ vn1, vn2 ], doc.edgeDefinitions[0].from.sort());
+      assertEqual(2, doc.edgeDefinitions[0].to.length);
+      assertEqual([ vn3, vn4 ], doc.edgeDefinitions[0].to.sort());
+      assertEqual([ ], doc.orphanCollections);
+
+      db._collection(rn1).rename("UnitTestsGraphRenamed1");
+      
+      doc = db._graphs.document(gN1);
+      assertEqual(1, doc.edgeDefinitions.length);
+      assertEqual("UnitTestsGraphRenamed1", doc.edgeDefinitions[0].collection);
+      assertEqual(2, doc.edgeDefinitions[0].from.length);
+      assertEqual([ vn1, vn2 ], doc.edgeDefinitions[0].from.sort());
+      assertEqual(2, doc.edgeDefinitions[0].to.length);
+      assertEqual([ vn3, vn4 ], doc.edgeDefinitions[0].to.sort());
+      assertEqual([ ], doc.orphanCollections);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rename
+////////////////////////////////////////////////////////////////////////////////
+    
+    test_collectionRenameVertex: function() {
+      var g = graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      db._collection(vn1).rename("UnitTestsGraphRenamed1");
+      
+      var doc = db._graphs.document(gN1);
+      assertEqual(1, doc.edgeDefinitions.length);
+      assertEqual(rn1, doc.edgeDefinitions[0].collection);
+      assertEqual(2, doc.edgeDefinitions[0].from.length);
+      assertEqual([ "UnitTestsGraphRenamed1", vn2 ].sort(), doc.edgeDefinitions[0].from.sort());
+      assertEqual(2, doc.edgeDefinitions[0].to.length);
+      assertEqual([ vn3, vn4 ], doc.edgeDefinitions[0].to.sort());
+      assertEqual([ ], doc.orphanCollections);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rename
+////////////////////////////////////////////////////////////////////////////////
+    
+    test_collectionRenameVertices: function() {
+      var g = graph._create(
+        gN1,
+        graph._edgeDefinitions(
+          graph._relation(rn1, [vn2, vn1], [vn4, vn3])
+        )
+      );
+
+      db._collection(rn1).rename("UnitTestsGraphRenamed1");
+      db._collection(vn1).rename("UnitTestsGraphRenamed2");
+      db._collection(vn4).rename("UnitTestsGraphRenamed3");
+      
+      var doc = db._graphs.document(gN1);
+      assertEqual(1, doc.edgeDefinitions.length);
+      assertEqual("UnitTestsGraphRenamed1", doc.edgeDefinitions[0].collection);
+      assertEqual(2, doc.edgeDefinitions[0].from.length);
+      assertEqual([ "UnitTestsGraphRenamed2", vn2 ].sort(), doc.edgeDefinitions[0].from.sort());
+      assertEqual(2, doc.edgeDefinitions[0].to.length);
+      assertEqual([ vn3, "UnitTestsGraphRenamed3" ].sort(), doc.edgeDefinitions[0].to.sort());
+      assertEqual([ ], doc.orphanCollections);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

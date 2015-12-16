@@ -29,8 +29,7 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
 #define ARANGOD_AQL_OPTIMIZER_RULES 1
 
-#include <Basics/Common.h>
-
+#include "Basics/Common.h"
 #include "Aql/Optimizer.h"
 
 namespace triagens {
@@ -39,6 +38,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a SORT operation for IN right-hand side operands
+////////////////////////////////////////////////////////////////////////////////
+
+    int sortInValuesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove redundant sorts

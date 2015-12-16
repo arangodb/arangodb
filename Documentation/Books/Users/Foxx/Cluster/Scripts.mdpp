@@ -12,7 +12,7 @@ Also you have to give the amount of shards (9 in this example):
 
 ```
 var console = require("console");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var db = arangodb.db;
 
 var texts = applicationContext.collectionName("texts");
@@ -43,7 +43,7 @@ unix>foxx-manager uninstall /example teardown=false
 The teardown script just has to check if the collection is not yet dropped:
 
 ```
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var db = arangodb.db;
 
 var texts = applicationContext.collectionName("texts");

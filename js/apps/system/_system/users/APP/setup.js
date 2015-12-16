@@ -1,6 +1,6 @@
 /*global applicationContext */
 'use strict';
-var db = require('org/arangodb').db;
+var db = require('@arangodb').db;
 var usersName = applicationContext.collectionName('users');
 
 if (db._collection(usersName) === null) {

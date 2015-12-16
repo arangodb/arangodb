@@ -1,6 +1,16 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL query optimizer rule "sort-in-values"
+
+  This rule pre-sorts the right-hand side operand of the `IN` and `NOT IN`
+  operators so the operation can use a binary search with logarithmic complexity
+  instead of a linear search. The rule is applied when the right-hand side
+  operand of an `IN` or `NOT IN` operator in a filter condition is a variable that 
+  is defined in a different loop/scope than the operator itself. Additionally,
+  the filter condition must consist of solely the `IN` or `NOT IN` operation 
+  in order to avoid any side-effects. 
+
 * changed collection status terminology in web interface for collections for 
   which an unload request has been issued from `in the process of being unloaded`
   to `will be unloaded`.

@@ -98,7 +98,7 @@ db._executeTransaction({
     write: "c1"
   },
   action: function () {
-    var db = require("org/arangodb").db;
+    var db = require("@arangodb").db;
 
     // write into c1 (announced)
     db.c1.insert({ foo: "bar" });
@@ -120,7 +120,7 @@ db._executeTransaction({
     write: "c2"
   },
   action: function () {
-    var db = require("org/arangodb").db;
+    var db = require("@arangodb").db;
 
     // write into c2 (announced)
     db.c2.insert({ bar: "baz" });

@@ -91,7 +91,7 @@ function hasOwnProperty(obj, prop) {
 
 function createRequire(module) {
   function require(path) {
-    return module.require(path);
+    return module.require(path.replace(/^org\/arangodb/, '@arangodb'));
   }
 
   require.resolve = function(request) {
@@ -453,7 +453,8 @@ Module._load = function(request, parent, isMain) {
   }
 
   cache[filename] = module;
-  LOADING.push({cache, filename});
+  var loading = {cache, filename};
+  LOADING.push(loading);
 
   var hadException = true;
 
@@ -468,7 +469,8 @@ Module._load = function(request, parent, isMain) {
     if (hadException) {
       delete cache[filename];
     }
-    var i = LOADING.indexOf(filename);
+    
+    var i = LOADING.indexOf(loading);
     if (i !== -1) {
       LOADING.splice(i, 1);
     }
@@ -513,6 +515,7 @@ Module.prototype.load = function(filename) {
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
   Module._extensions[extension](this, filename);
+
   this.loaded = true;
 };
 
@@ -628,7 +631,7 @@ Module._extensions['.json'] = function(module, filename) {
 
 
 Module._extensions['.coffee'] = function(module, filename) {
-  require('org/arangodb/deprecated')(
+  require('@arangodb/deprecated')(
     '2.9',
     'CoffeeScript support is deprecated,'
     + ' please pre-compile CoffeeScript modules to JavaScript using external build tools.'

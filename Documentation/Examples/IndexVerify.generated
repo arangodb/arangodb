@@ -1,4 +1,4 @@
-arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/aql/explainer"</span>).explain;
+arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/aql/explainer"</span>).explain;
 arangosh&gt; db.example.ensureSkiplist(<span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span>);
 { 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/602397127"</span>, 

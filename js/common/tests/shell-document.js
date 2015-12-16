@@ -29,12 +29,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 var internal = require("internal");
 var wait = internal.wait;
-var testHelper = require("org/arangodb/test-helper").Helper;
+var testHelper = require("@arangodb/test-helper").Helper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods

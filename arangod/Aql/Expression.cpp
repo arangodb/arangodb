@@ -108,7 +108,7 @@ static void RegisterWarning (triagens::aql::Ast const* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 Expression::Expression (Ast* ast,
-                        AstNode const* node)
+                        AstNode* node)
   : _ast(ast),
     _executor(_ast->query()->executor()),
     _node(node),
@@ -325,7 +325,7 @@ bool Expression::findInArray (AqlValue const& left,
  
   size_t const n = right.arraySize();
 
-  if (n > 3 && node->getMember(1)->isSorted()) {
+  if (n > 3 && (node->getBoolValue() || node->getMember(1)->isSorted())) {
     // node values are sorted. can use binary search
     size_t l = 0;
     size_t r = n - 1;
@@ -493,6 +493,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               std::vector<Variable const*> const& vars,
                                               std::vector<RegisterId> const& regs,
                                               bool doCopy) {
+
   switch (node->type) {
     case NODE_TYPE_ATTRIBUTE_ACCESS:
       return executeSimpleExpressionAttributeAccess(node, trx, argv, startPos, vars, regs);
@@ -570,55 +571,6 @@ bool Expression::isConstant () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this gives you ("variable.access", "Reference")
-/// call isAttributeAccess in advance to ensure no exceptions.
-////////////////////////////////////////////////////////////////////////////////
-
-std::pair<std::string, std::string> Expression::getAttributeAccess () {
-  if (_type == UNPROCESSED) {
-    analyzeExpression();
-  }
-
-  if (_type != SIMPLE && 
-      _type != ATTRIBUTE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getMultipleAttributes works only on simple expressions or attribute accesses!");
-  }
-
-  auto expNode = _node;
-  std::vector<std::string> attributeVector;
-
-  if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getMultipleAttributes works only on simple expressions or attribute accesses(2)!");
-  }
-
-  while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeVector.emplace_back(std::string(expNode->getStringValue(), expNode->getStringLength()));
-    expNode = expNode->getMember(0);
-  }
-  
-  std::string attributeVectorStr;
-  for (auto oneAttr = attributeVector.rbegin();
-       oneAttr != attributeVector.rend();
-       ++oneAttr) {
-    if (! attributeVectorStr.empty()) {
-      attributeVectorStr.push_back('.');
-    }
-    attributeVectorStr += *oneAttr;
-  }
-
-  if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getMultipleAttributes works only on simple expressions or attribute accesses(3)!");
-  }
-
-  auto variable = static_cast<Variable*>(expNode->getData());
-
-  return std::make_pair(variable->name, attributeVectorStr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify an expression
 /// note that currently stringification is only supported for certain node types
 ////////////////////////////////////////////////////////////////////////////////
@@ -659,7 +611,6 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess (AstNode const* node
   result.destroy();
   return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS

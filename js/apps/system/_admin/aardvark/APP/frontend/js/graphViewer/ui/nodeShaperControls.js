@@ -1,5 +1,5 @@
 /*global $, _, d3*/
-/*global document*/
+/*global document, Storage, localStorage, window*/
 /*global NodeShaper, modalDialogHelper, uiComponentsHelper*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -70,6 +70,26 @@ function NodeShaperControls(list, shaper) {
     });
   };
 
+  this.applyLocalStorage = function(obj) {
+    if (Storage !== "undefined") {
+      try {
+        var toStore = JSON.parse(localStorage.getItem('graphSettings'));
+        var graphName = (window.location.hash).split("/")[1];
+
+        _.each(obj, function(value, key) {
+          if (key !== undefined) {
+            toStore[graphName].viewer.nodeShaper[key] = value;
+          }
+        });
+
+        localStorage.setItem('graphSettings', JSON.stringify(toStore));
+      }
+      catch (e) {
+        console.log(e);
+      }
+    }
+  };
+
   this.addControlOpticShapeCircle = function() {
     var prefix = "control_node_circle",
       idprefix = prefix + "_";
@@ -127,9 +147,11 @@ function NodeShaperControls(list, shaper) {
           id: "key"
         }], function () {
           var key = $("#" + idprefix + "key").attr("value");
-          shaper.changeTo({
+          var shaperObj = {
             label: key
-          });
+          };
+          self.applyLocalStorage(shaperObj);
+          shaper.changeTo(shaperObj);
         }
       );
     });
@@ -253,17 +275,18 @@ function NodeShaperControls(list, shaper) {
           if (selected === idprefix + "samecolour") {
             colourkey = key;
           }
-          shaper.changeTo({
+          var shaperObj = {
             label: key,
             color: {
               type: "attribute",
               key: colourkey
             }
-          });
+          };
+          self.applyLocalStorage(shaperObj);
+          shaper.changeTo(shaperObj);
           if (colourDiv === undefined) {
             colourDiv = self.createColourMappingList();
           }
-
         }
       );
     });
@@ -319,13 +342,18 @@ function NodeShaperControls(list, shaper) {
           if (selected === idprefix + "samecolour") {
             colours = labels;
           }
-          shaper.changeTo({
+
+          var shaperObj = {
             label: labels,
             color: {
               type: "attribute",
               key: colours
             }
-          });
+          };
+
+          self.applyLocalStorage(shaperObj);
+
+          shaper.changeTo(shaperObj);
           if (colourDiv === undefined) {
             colourDiv = self.createColourMappingList();
           }

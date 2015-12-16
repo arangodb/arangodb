@@ -245,12 +245,33 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
             }
           }
         }
-
-        return true;
       }
+      else {
+        std::unordered_set<AstNode const*, AstNodeValueHash, AstNodeValueEqual> values(
+          512, 
+          AstNodeValueHash(), 
+          AstNodeValueEqual()
+        );
+
+        for (size_t i = 0; i < n2; ++i) {
+          values.emplace(other.valueNode->getMemberUnchecked(i));
+        }
+
+        for (size_t i = 0; i < n1; ++i) {
+          auto node = valueNode->getMemberUnchecked(i);
+          if (values.find(node) == values.end()) {
+            return false;
+          }
+        }
+      }
+
+      return true;
     }
+
+    return false;
   }
-  else if (isExpanded && 
+
+  if (isExpanded && 
            other.isExpanded &&
            operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
            other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
@@ -258,6 +279,7 @@ bool ConditionPart::isCoveredBy (ConditionPart const& other) const {
     if (CompareAstNodes(other.valueNode, valueNode, false) == 0) {
       return true;
     }
+
     return false;
   }
 
@@ -607,8 +629,8 @@ void Condition::normalize () {
 /// @brief removes condition parts from another
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode const* Condition::removeIndexCondition (Variable const* variable,
-                                                AstNode const* other) {
+AstNode* Condition::removeIndexCondition (Variable const* variable,
+                                          AstNode* other) {
   if (_root == nullptr || other == nullptr) {
     return _root;
   } 

@@ -13,8 +13,8 @@ var toArgv = require("internal").toArgv;
 var statusExternal = require("internal").statusExternal;
 
 var yaml = require("js-yaml");
-var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
-var PortFinder = require("org/arangodb/cluster").PortFinder;
+var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
+var PortFinder = require("@arangodb/cluster").PortFinder;
 
 var documentationSourceDirs = [
   fs.join(fs.makeAbsolute(''), "Documentation/Examples/setup-arangosh.js"),

@@ -17,10 +17,10 @@ of `null`.
 
 !SECTION Accessing Skiplist Indexes from the Shell
 
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock ensureUniqueSkiplist
 
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
+<!-- js/server/modules/@arangodb/arango-collection.js-->
 @startDocuBlock ensureSkiplist
 
 !SUBSECTION Query by example using a skiplist index

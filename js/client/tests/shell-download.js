@@ -30,7 +30,7 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var fs = require("fs");
 
 // -----------------------------------------------------------------------------

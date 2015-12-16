@@ -19126,7 +19126,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var self = this;
       // Creating the console.
       var internal = require("internal");
-      var client = require("org/arangodb/arangosh");
+      var client = require("@arangodb/arangosh");
       var header = 'Welcome to arangosh. Copyright (c) ArangoDB GmbH\n';
       window.jqconsole = $('#replShell').jqconsole(header, 'JSH> ', "...>");
       this.executeJs(internal.print(client.HELP));

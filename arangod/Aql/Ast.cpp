@@ -799,6 +799,9 @@ AstNode* Ast::createNodeBinaryOperator (AstNodeType type,
   node->addMember(lhs);
   node->addMember(rhs);
 
+  // initialize sortedness information (currently used for the IN operator only)
+  node->setBoolValue(false);
+
   return node;
 }
 
@@ -1935,6 +1938,19 @@ AstNode* Ast::clone (AstNode const* node) {
            type == NODE_TYPE_EXPANSION) {
     copy->setIntValue(node->getIntValue(true));
   }
+  else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+           type == NODE_TYPE_OPERATOR_BINARY_NIN) {
+    // copy sortedness information
+    copy->setBoolValue(node->getBoolValue());
+  }
+  else if (type == NODE_TYPE_ARRAY) {
+    if (node->isSorted()) {
+      copy->setFlag(DETERMINED_SORTED, VALUE_SORTED);
+    }
+    else {
+      copy->setFlag(DETERMINED_SORTED);
+    }
+  }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {
       case VALUE_TYPE_NULL:
@@ -2428,13 +2444,15 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   }
 
   if (! lhsIsConst) {
-    if (rhs->numMembers() >= 10 &&
+    if (rhs->numMembers() >= 8 &&
         (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
          node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
       // if the IN list contains a considerable amount of items, we will sort
       // it, so we can find elements quicker later using a binary search
       // note that sorting will also set a flag for the node
       rhs->sort();
+      // set sortedness for IN/NIN operator node
+      node->setBoolValue(false);
     }
 
     return node;

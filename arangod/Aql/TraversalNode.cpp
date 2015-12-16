@@ -44,6 +44,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _edgeOutVariable(nullptr),
     _pathOutVariable(nullptr),
     _graphObj(nullptr),
+    _CalculationNodeId(0),
     _condition(nullptr)
 {
   TRI_ASSERT(_vocbase != nullptr);
@@ -59,7 +60,9 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       auto eColName = graph->getMember(i)->getStringValue();
       auto eColType = resolver->getCollectionTypeCluster(eColName);
       if (eColType != TRI_COL_TYPE_EDGE) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+        std::string msg("collection type invalid; Expecting Collection type 'Edge Collection'. Collection name: ");
+        msg += eColName;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, msg);
       }
       _graphJson.add(triagens::basics::Json(eColName));
       _edgeColls.push_back(eColName);
@@ -173,26 +176,12 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _minDepth(minDepth),
     _maxDepth(maxDepth),
     _direction(direction),
-    _condition(nullptr)
-{
+    _CalculationNodeId(0),
+   _condition(nullptr) {
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
   }
 }
-
-int TraversalNode::checkIsOutVariable(size_t variableId) {
-  if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
-    return 0;
-  }
-  if (_edgeOutVariable != nullptr && _edgeOutVariable->id == variableId) {
-    return 1;
-  }
-  if (_pathOutVariable != nullptr && _pathOutVariable->id == variableId) {
-    return 2;
-  }
-  return -1;
-}
-
 
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                               triagens::basics::Json const& base)
@@ -213,13 +202,13 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       _direction = TRI_EDGE_ANY;
       break;
     case 1:
-      _direction = TRI_EDGE_OUT;
-      break;
-    case 2:
       _direction = TRI_EDGE_IN;
       break;
+    case 2:
+      _direction = TRI_EDGE_OUT;
+      break;
     default:
-      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "unsupported 'direction'");
       break;
   }
 
@@ -228,17 +217,54 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _inVariable = varFromJson(plan->getAst(), base, "inVariable");
   }
   else {
-    triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", _vertexId);  
+    _vertexId = triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", "");  
+    if (_vertexId.size() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "start vertex mustn't be empty.");
+    }
   }
 
-  TRI_json_t const* condition = JsonHelper::checkAndGetObjectValue(base.json(), "condition");
+  if (base.has("condition")) {
+    TRI_json_t const* condition = JsonHelper::checkAndGetObjectValue(base.json(), "condition");
 
-  if (condition != nullptr) {
-    triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition, triagens::basics::Json::NOFREE);
-    _condition = Condition::fromJson(plan, conditionJson);
+    if (condition != nullptr) {
+      triagens::basics::Json conditionJson(TRI_UNKNOWN_MEM_ZONE, condition, triagens::basics::Json::NOFREE);
+      _condition = Condition::fromJson(plan, conditionJson);
+    }
+  }
+
+  std::string graphName;
+  if (base.has("graph") && (base.get("graph").isString())) {
+    graphName = JsonHelper::checkAndGetStringValue(base.json(), "graph");
+    if (base.has("graphDefinition")) {
+      _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
+
+      auto eColls = _graphObj->edgeCollections();
+      for (const auto& n: eColls) {
+        _edgeColls.push_back(n);
+      }
+    }
+    else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "missing graphDefinition.");
+    }
   }
   else {
-    _condition = nullptr;
+    
+    _graphJson = base.get("graph").copy(); 
+    if (!_graphJson.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array.");
+    }
+    size_t edgeCollectionCount = _graphJson.size();
+    // List of edge collection names
+    for (size_t i = 0; i < edgeCollectionCount; ++i) {
+      auto at = _graphJson.at(i);
+      if (!at.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array of strings.");
+      }
+      _edgeColls.push_back(at.json()->_value._string.data);
+    }
+    if (_edgeColls.size() == 0) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be a non empty array of strings.");
+    }
   }
 
   // Out variables
@@ -251,6 +277,19 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   if (base.has("pathOutVariable")) {
     _pathOutVariable = varFromJson(plan->getAst(), base, "pathOutVariable");
   }
+}
+
+int TraversalNode::checkIsOutVariable (size_t variableId) const {
+  if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
+    return 0;
+  }
+  if (_edgeOutVariable != nullptr && _edgeOutVariable->id == variableId) {
+    return 1;
+  }
+  if (_pathOutVariable != nullptr && _pathOutVariable->id == variableId) {
+    return 2;
+  }
+  return -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,13 +338,13 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
     json("pathOutVariable", pathOutVariable()->toJson());
   }
 
-  if (_expressions.size() > 0) {
+  if (! _expressions.empty()) {
     triagens::basics::Json expressionObject = triagens::basics::Json(triagens::basics::Json::Object,
                                                                      _expressions.size());
-    for (auto const & map : _expressions) {
+    for (auto const& map : _expressions) {
       triagens::basics::Json expressionArray = triagens::basics::Json(triagens::basics::Json::Array,
                                                                       map.second.size());
-      for (auto const & x : map.second) {
+      for (auto const& x : map.second) {
         triagens::basics::Json exp(zone, triagens::basics::Json::Object);
         auto tmp = dynamic_cast<SimpleTraverserExpression*>(x);
         if (tmp != nullptr) {
@@ -392,24 +431,24 @@ void TraversalNode::setCondition(triagens::aql::Condition* condition){
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 
-  for (auto oneVar : varsUsedByCondition) {
-    if ((_vertexOutVariable != nullptr && oneVar->id !=  _vertexOutVariable->id) &&
-        (_edgeOutVariable   != nullptr && oneVar->id !=  _edgeOutVariable->id) &&
-        (_pathOutVariable   != nullptr && oneVar->id !=  _pathOutVariable->id) &&
-        (_inVariable        != nullptr && oneVar->id !=  _inVariable->id)) {
+  for (auto const& oneVar : varsUsedByCondition) {
+    if ((_vertexOutVariable != nullptr && oneVar->id != _vertexOutVariable->id) &&
+        (_edgeOutVariable   != nullptr && oneVar->id != _edgeOutVariable->id) &&
+        (_pathOutVariable   != nullptr && oneVar->id != _pathOutVariable->id) &&
+        (_inVariable        != nullptr && oneVar->id != _inVariable->id)) {
 
-      _conditionVariables.push_back(oneVar);
+      _conditionVariables.emplace_back(oneVar);
     }
   }
 
   _condition = condition;
 }
 
-void TraversalNode::storeSimpleExpression(bool isEdgeAccess,
-                                          size_t indexAccess,
-                                          AstNodeType comparisonType,
-                                          AstNode const* varAccess,
-                                          AstNode const* compareTo) {
+void TraversalNode::storeSimpleExpression (bool isEdgeAccess,
+                                           size_t indexAccess,
+                                           AstNodeType comparisonType,
+                                           AstNode const* varAccess,
+                                           AstNode* compareTo) {
   auto it = _expressions.find(indexAccess);
 
   if (it == _expressions.end()) {

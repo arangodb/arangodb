@@ -43,18 +43,17 @@ namespace triagens {
     class SimpleTraverserExpression : public triagens::arango::traverser::TraverserExpression {
 
       public:
-        triagens::aql::AstNode const*  toEvaluate;
+        triagens::aql::AstNode*        toEvaluate;
         triagens::aql::Expression*     expression;
       
-        SimpleTraverserExpression (
-          bool isEdgeAccess,
-          triagens::aql::AstNodeType comparisonType,
-          triagens::aql::AstNode const* varAccess,
-          triagens::aql::AstNode const* ptoEvaluate
-        ) : triagens::arango::traverser::TraverserExpression(isEdgeAccess,
+        SimpleTraverserExpression (bool isEdgeAccess,
+                                   triagens::aql::AstNodeType comparisonType,
+                                   triagens::aql::AstNode const* varAccess,
+                                   triagens::aql::AstNode* toEvaluate)
+        : triagens::arango::traverser::TraverserExpression(isEdgeAccess,
                                                              comparisonType,
                                                              varAccess),
-            toEvaluate(ptoEvaluate),
+            toEvaluate(toEvaluate),
             expression(nullptr) {
         }
 
@@ -193,7 +192,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void getVariablesUsedHere (std::unordered_set<Variable const*>& result) const override final {
-          for (auto condVar : _conditionVariables) {
+          for (auto const& condVar : _conditionVariables) {
             result.emplace(condVar);
           }
           if (usesInVariable()) {
@@ -354,13 +353,13 @@ namespace triagens {
 /// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
 ////////////////////////////////////////////////////////////////////////////////
 
-        int checkIsOutVariable(size_t variableId);
+        int checkIsOutVariable (size_t variableId) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether an access is inside the specified range
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isInRange(uint64_t thisIndex, bool isEdge) {
+        bool isInRange (uint64_t thisIndex, bool isEdge) const {
           if (isEdge) {
             return (thisIndex < _maxDepth);
           }
@@ -371,7 +370,7 @@ namespace triagens {
 /// @brief check whecher min..max actualy span a range
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isRangeValid() {
+        bool isRangeValid() const {
           return _maxDepth >= _minDepth;
         }
 
@@ -379,11 +378,11 @@ namespace triagens {
 /// @brief Remember a simple comparator filter
 ////////////////////////////////////////////////////////////////////////////////
 
-        void storeSimpleExpression(bool isEdgeAccess,
-                                   size_t indexAccess,
-                                   AstNodeType comparisonType,
-                                   AstNode const* varAccess,
-                                   AstNode const* compareTo);
+        void storeSimpleExpression (bool isEdgeAccess,
+                                    size_t indexAccess,
+                                    AstNodeType comparisonType,
+                                    AstNode const* varAccess,
+                                    AstNode* compareTo);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Returns a regerence to the simple traverser expressions
@@ -464,7 +463,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::string> _edgeColls;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our graph...

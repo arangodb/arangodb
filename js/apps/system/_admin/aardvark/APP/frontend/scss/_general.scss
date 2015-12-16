@@ -17,6 +17,38 @@
   padding-top: 13px;
 }
 
+.arangoFrame {
+  background-color: rgba(0, 0, 0, .5);
+  bottom: 0;
+  display: none;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 77777;
+
+  .outerDiv {
+    min-height: 100%;
+    padding: 40px;
+    z-index: 88888;
+  }
+
+  .innerDiv {
+    z-index: 99999;
+  }
+
+  .fa-times {
+    color: $c-white;
+    float: right;
+    font-size: 12pt;
+  }
+
+  .fa-times:hover {
+    color: $c-c2grey;
+    cursor: pointer;
+  }
+}
+
 //still in use???
 .container {
   margin-left: 20px;

@@ -2,9 +2,9 @@
 const _ = require('underscore');
 const joi = require('joi');
 const internal = require('internal');
-const arangodb = require('org/arangodb');
+const arangodb = require('@arangodb');
 const db = arangodb.db;
-const Foxx = require('org/arangodb/foxx');
+const Foxx = require('@arangodb/foxx');
 const errors = require('./errors');
 
 function getCollection() {
@@ -29,14 +29,15 @@ function generateSessionId() {
 
 function createSession(sessionData, userData) {
   const sid = generateSessionId();
-  let session = new Session({
+  const session = new Session({
     _key: sid,
     uid: (userData && userData._id) || null,
     sessionData: sessionData || {},
     userData: userData || {},
     lastAccess: Date.now()
   });
-  getCollection().save(session.attributes);
+  const meta = getCollection().save(session.attributes);
+  session.set(meta);
   return session;
 }
 

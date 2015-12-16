@@ -51,13 +51,13 @@ method obsoletes the specialized index-specific methods *ensureHashIndex*,
 !SECTION Database Methods
 
 !SUBSECTION Fetching an index by handle
-<!-- js/server/modules/org/arangodb/arango-database.js -->
+<!-- js/server/modules/@arangodb/arango-database.js -->
 @startDocuBlock IndexHandle
 
 !SUBSECTION Dropping an index
-<!-- js/server/modules/org/arangodb/arango-database.js -->
+<!-- js/server/modules/@arangodb/arango-database.js -->
 @startDocuBlock dropIndex
 
 !SUBSECTION Revalidating whether an index is used
-<!-- js/server/modules/org/arangodb/arango-database.js -->
+<!-- js/server/modules/@arangodb/arango-database.js -->
 @startDocuBlock IndexVerify

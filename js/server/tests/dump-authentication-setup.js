@@ -30,7 +30,7 @@
 
 (function () {
   'use strict';
-  var db = require("org/arangodb").db;
+  var db = require("@arangodb").db;
   var i, c;
 
   try {
@@ -41,11 +41,11 @@
   db._createDatabase("UnitTestsDumpSrc");
 
   // create user in _system database
-  require("org/arangodb/users").save("foobaruser", "foobarpasswd", true);
+  require("@arangodb/users").save("foobaruser", "foobarpasswd", true);
   db._useDatabase("UnitTestsDumpSrc");
 
   // create user in target database
-  require("org/arangodb/users").save("foobaruser", "foobarpasswd", true);
+  require("@arangodb/users").save("foobaruser", "foobarpasswd", true);
 
   var endpoint = arango.getEndpoint();
 

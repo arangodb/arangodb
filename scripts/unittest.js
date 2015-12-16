@@ -3,7 +3,7 @@
 
 var yaml = require("js-yaml");
 
-var UnitTest = require("org/arangodb/testing");
+var UnitTest = require("@arangodb/testing");
 
 var internalMembers = UnitTest.internalMembers;
 var fs = require("fs");

@@ -29,11 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var internal = require("internal");
 var errors = internal.errors;
-var helper = require("org/arangodb/aql-helper");
-var cluster = require("org/arangodb/cluster");
+var helper = require("@arangodb/aql-helper");
+var cluster = require("@arangodb/cluster");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults;
 var assertQueryError = helper.assertQueryError;
@@ -97,9 +97,12 @@ function ahuacatlQueryEdgesTestSuite () {
 
     testEdgesAny : function () {
       var queries = [
+        "FOR e IN EDGES('UnitTestsAhuacatlEdge', @start, 'any') SORT e.what RETURN e.what",
         "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'any') SORT e.what RETURN e.what",
         "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'any')) SORT e.what RETURN e.what",
-        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'any'))) SORT e.what RETURN e.what"
+        "FOR e IN NOOPT(EDGES('UnitTestsAhuacatlEdge', @start, 'any')) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'any'))) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES('UnitTestsAhuacatlEdge', @start, 'any'))) SORT e.what RETURN e.what"
       ];
      
       queries.forEach(function (q) {
@@ -130,8 +133,11 @@ function ahuacatlQueryEdgesTestSuite () {
     testEdgesIn : function () {
       var queries = [
         "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'inbound') SORT e.what RETURN e.what",
+        "FOR e IN EDGES('UnitTestsAhuacatlEdge', @start, 'inbound') SORT e.what RETURN e.what",
         "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'inbound')) SORT e.what RETURN e.what",
-        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'inbound'))) SORT e.what RETURN e.what"
+        "FOR e IN NOOPT(EDGES('UnitTestsAhuacatlEdge', @start, 'inbound')) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'inbound'))) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES('UnitTestsAhuacatlEdge', @start, 'inbound'))) SORT e.what RETURN e.what"
       ];
      
       queries.forEach(function (q) {
@@ -162,8 +168,11 @@ function ahuacatlQueryEdgesTestSuite () {
     testEdgesOut : function () {
       var queries = [
         "FOR e IN EDGES(UnitTestsAhuacatlEdge, @start, 'outbound') SORT e.what RETURN e.what",
+        "FOR e IN EDGES('UnitTestsAhuacatlEdge', @start, 'outbound') SORT e.what RETURN e.what",
         "FOR e IN NOOPT(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound')) SORT e.what RETURN e.what",
-        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound'))) SORT e.what RETURN e.what"
+        "FOR e IN NOOPT(EDGES('UnitTestsAhuacatlEdge', @start, 'outbound')) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES(UnitTestsAhuacatlEdge, @start, 'outbound'))) SORT e.what RETURN e.what",
+        "FOR e IN NOOPT(V8(EDGES('UnitTestsAhuacatlEdge', @start, 'outbound'))) SORT e.what RETURN e.what"
       ];
      
       queries.forEach(function (q) {
@@ -1036,7 +1045,7 @@ function ahuacatlQueryShortestPathTestSuite () {
   var vertexCollection;
   var edgeCollection;
 
-  var aqlfunctions = require("org/arangodb/aql/functions");
+  var aqlfunctions = require("@arangodb/aql/functions");
 
   return {
 
@@ -1314,7 +1323,7 @@ function ahuacatlQueryTraversalFilterTestSuite () {
   var vertexCollection;
   var edgeCollection;
       
-  var aqlfunctions = require("org/arangodb/aql/functions");
+  var aqlfunctions = require("@arangodb/aql/functions");
 
   return {
 

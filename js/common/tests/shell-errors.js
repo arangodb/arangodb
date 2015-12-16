@@ -29,8 +29,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
-var ArangoError = require("org/arangodb").ArangoError;
+var arangodb = require("@arangodb");
+var ArangoError = require("@arangodb").ArangoError;
 var ERRORS = arangodb.errors;
 
 // -----------------------------------------------------------------------------

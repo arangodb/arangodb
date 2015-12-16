@@ -94,11 +94,17 @@ div.gv-background {
   @extend %clickable;
 }
 
+div.gv-colour-list:hover {
+  opacity: 1;
+}
+
 div.gv-colour-list {
   border-radius: 3px;
   max-height: 350px;
-  max-width: 130px;
-  overflow-x: none !important;
+  max-width: 300px;
+  min-width: 190px;
+  opacity: .1;
+  overflow-x: hidden !important;
   overflow-y: auto;
   position: absolute;
   right: 8px;

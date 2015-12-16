@@ -41,7 +41,7 @@ var jsunity = require("jsunity"),
 
 function measurementSuite() {
   'use strict';
-  var Graph = require("org/arangodb/general-graph"),
+  var Graph = require("@arangodb/general-graph"),
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
@@ -214,7 +214,7 @@ function measurementSuite() {
 
 function geodesicSuite() {
   'use strict';
-  var Graph = require("org/arangodb/general-graph"),
+  var Graph = require("@arangodb/general-graph"),
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",
@@ -382,7 +382,7 @@ function geodesicSuite() {
 
 function normalizedSuite() {
   'use strict';
-  var Graph = require("org/arangodb/general-graph"),
+  var Graph = require("@arangodb/general-graph"),
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
     edge = "UnitTestsCollectionEdge",

@@ -78,14 +78,14 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* GlobalContextMethods::CodeReloadRouting 
-  = "require(\"org/arangodb/actions\").reloadRouting()";
+  = "require(\"@arangodb/actions\").reloadRouting();"; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload AQL functions
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* GlobalContextMethods::CodeReloadAql
-  = "try { require(\"org/arangodb/aql\").reload(); } catch (err) { }";
+  = "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collect garbage
@@ -107,7 +107,7 @@ char const* GlobalContextMethods::CodeBootstrapCoordinator
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* GlobalContextMethods::CodeWarmupExports 
-  = "require(\"org/arangodb/actions\").warmupExports()";
+  = "require(\"@arangodb/actions\").warmupExports()";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we'll store deprecated config option values in here
@@ -180,7 +180,7 @@ namespace {
 /// @brief adds a global method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
+bool ApplicationV8::V8Context::addGlobalContextMethod (std::string const& method) {
   GlobalContextMethods::MethodType type = GlobalContextMethods::getType(method);
 
   if (type == GlobalContextMethods::TYPE_UNKNOWN) {
@@ -189,8 +189,8 @@ bool ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 
   MUTEX_LOCKER(_globalMethodsLock);
 
-  for (size_t i = 0; i < _globalMethods.size(); ++i) {
-    if (_globalMethods[i] == type) {
+  for (auto& it : _globalMethods) {
+    if (it == type) {
       // action is already registered. no need to register it again
       return true;
     }
@@ -205,8 +205,9 @@ bool ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 /// @brief executes all global methods
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
-  vector<GlobalContextMethods::MethodType> copy;
+  std::vector<GlobalContextMethods::MethodType> copy;
 
   try {
     // we need to copy the vector of functions so we do not need to hold the
@@ -215,8 +216,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
     // registers a context method
 
     MUTEX_LOCKER(_globalMethodsLock);
-    copy = _globalMethods;
-    _globalMethods.clear();
+    copy.swap(_globalMethods);
   }
   catch (...) {
     // if we failed, we shouldn't have modified _globalMethods yet, so we can
@@ -229,7 +229,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
     // all functions are hard-coded, static const char*s
     TRI_ASSERT(func != nullptr);
 
-    LOG_DEBUG("executing global context methods '%s' for context %d", func, (int) _id);
+    LOG_DEBUG("executing global context method '%s' for context %d", func, (int) _id);
 
     TRI_GET_GLOBALS();
     bool allowUseDatabase = v8g->_allowUseDatabase;
@@ -354,7 +354,7 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 
 ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
                                                        bool allowUseDatabase,
-						       ssize_t forceContext) {
+                                                       ssize_t forceContext) {
   v8::Isolate* isolate = nullptr;
   V8Context* context   = nullptr;
 
@@ -364,33 +364,33 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
 
     while (! _stopping) {
       {
-	CONDITION_LOCKER(guard, _contextCondition);
+        CONDITION_LOCKER(guard, _contextCondition);
 
-	for (auto iter = _freeContexts.begin();  iter != _freeContexts.end();  ++iter) {
-	  if ((*iter)->_id == id) {
-	    context = *iter;
-	    _freeContexts.erase(iter);
-	    _busyContexts.emplace(context);
-	    break;
-	  }
-	}
+        for (auto iter = _freeContexts.begin();  iter != _freeContexts.end();  ++iter) {
+          if ((*iter)->_id == id) {
+            context = *iter;
+            _freeContexts.erase(iter);
+            _busyContexts.emplace(context);
+            break;
+          }
+        }
 
-	if (context != nullptr) {
-	  break;
-	}
+        if (context != nullptr) {
+          break;
+        }
 
-	for (auto iter = _dirtyContexts.begin();  iter != _dirtyContexts.end();  ++iter) {
-	  if ((*iter)->_id == id) {
-	    context = *iter;
-	    _dirtyContexts.erase(iter);
-	    _busyContexts.emplace(context);
-	    break;
-	  }
-	}
+        for (auto iter = _dirtyContexts.begin();  iter != _dirtyContexts.end();  ++iter) {
+          if ((*iter)->_id == id) {
+            context = *iter;
+            _dirtyContexts.erase(iter);
+            _busyContexts.emplace(context);
+            break;
+          }
+        }
 
-	if (context != nullptr) {
-	  break;
-	}
+        if (context != nullptr) {
+          break;
+        }
       }
 
       LOG_DEBUG("waiting for V8 context %d to become available", (int) id);
@@ -530,7 +530,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     }
 
     // run global context methods
-    if (runGlobal) {      
+    if (runGlobal) {
       TRI_ASSERT(context->_locker->IsLocked(isolate));
       TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
@@ -591,19 +591,19 @@ void ApplicationV8::exitContext (V8Context* context) {
 /// @brief adds a global context function to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::addGlobalContextMethod (string const& method) {
+bool ApplicationV8::addGlobalContextMethod (std::string const& method) {
   bool result = true;
   size_t nrInstances = _nrInstances;
 
-  try {
-    for (size_t i = 0; i < nrInstances; ++i) {
+  for (size_t i = 0; i < nrInstances; ++i) {
+    try {
       if (! _contexts[i]->addGlobalContextMethod(method)) {
         result = false;
       }
     }
-  }
-  catch (...) {
-    result = false;
+    catch (...) {
+      result = false;
+    }
   }
 
   return result;
@@ -1181,6 +1181,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
   int pickedContextNr = -1; // index of context with lowest GC stamp, -1 means "none"
 
+
   for (int i = 0; i < n; ++i) {
     // check if there's actually anything to clean up in the context
     if (_freeContexts[i]->_numExecutions == 0 && ! _freeContexts[i]->_hasActiveExternals) {
@@ -1193,6 +1194,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
       pickedContextNr = i;
     }
   }
+  
   // we now have the context to clean up in pickedContextNr
 
   if (pickedContextNr == -1) {

@@ -29,8 +29,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var FoxxRepository = require("org/arangodb/foxx/repository").Repository,
-  Model = require("org/arangodb/foxx/model").Model;
+var FoxxRepository = require("@arangodb/foxx/repository").Repository,
+  Model = require("@arangodb/foxx/model").Model;
 
 describe('Repository', function () {
   'use strict';

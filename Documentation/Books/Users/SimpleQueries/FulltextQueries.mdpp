@@ -11,7 +11,7 @@ fulltext index.
 When a fulltext index exists, it can be queried using a fulltext query.
 
 !SUBSECTION Fulltext
-<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionFulltext
 
 !SUBSECTION Fulltext Syntax:

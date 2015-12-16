@@ -47,7 +47,7 @@
   // -----------------------------------------------------------------------------
   // --SECTION--                                                     global values
   // -----------------------------------------------------------------------------
-  var Communication = require("org/arangodb/cluster/agency-communication");
+  var Communication = require("@arangodb/cluster/agency-communication");
   var comm;
   var dummy;
   var ips;

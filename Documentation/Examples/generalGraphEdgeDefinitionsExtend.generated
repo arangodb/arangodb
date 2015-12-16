@@ -1,4 +1,4 @@
-arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"org/arangodb/general-graph"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/general-graph"</span>);
 arangosh&gt; directed_relation = graph_module._relation(<span class="hljs-string">"lives_in"</span>, <span class="hljs-string">"user"</span>, <span class="hljs-string">"city"</span>);
 { 
   <span class="hljs-string">"collection"</span> : <span class="hljs-string">"lives_in"</span>, 

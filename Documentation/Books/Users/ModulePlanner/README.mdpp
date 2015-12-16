@@ -21,37 +21,37 @@ are also used during the planning to find free network ports.
 Here are the details of the functionality:
 
 !SUBSECTION Require
-<!-- js/server/modules/org/arangodb/cluster/planner.js -->
+<!-- js/server/modules/@arangodb/cluster/planner.js -->
 @startDocuBlock JSF_Cluster_Planner_Constructor
 
 !SUBSECTION Get Plan
-<!-- js/server/modules/org/arangodb/cluster/planner.js -->
+<!-- js/server/modules/@arangodb/cluster/planner.js -->
 @startDocuBlock JSF_Planner_prototype_getPlan
 
 !SUBSECTION Require
-<!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
+<!-- js/server/modules/@arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Cluster_Kickstarter_Constructor
 
 !SUBSECTION Launch
-<!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
+<!-- js/server/modules/@arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_launch
 
 !SUBSECTION Check Cluster Health
 @startDocuBlock JSF_Kickstarter_prototype_isHealthy
 
 !SUBSECTION Shutdown
-<!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
+<!-- js/server/modules/@arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_shutdown
 
 !SUBSECTION Relaunch
-<!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
+<!-- js/server/modules/@arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_relaunch
 
 !SUBSECTION Upgrade
-<!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
+<!-- js/server/modules/@arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_upgrade
 
 !SUBSECTION Cleanup
-<!-- js/server/modules/org/arangodb/cluster/kickstarter.js -->
+<!-- js/server/modules/@arangodb/cluster/kickstarter.js -->
 @startDocuBlock JSF_Kickstarter_prototype_cleanup
 

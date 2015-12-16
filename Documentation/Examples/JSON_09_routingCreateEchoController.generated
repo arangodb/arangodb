@@ -1,7 +1,7 @@
 arangosh&gt; db._routing.save({ 
 ........&gt;  url: <span class="hljs-string">"/hello/echo"</span>,
 ........&gt;  action: { 
-........&gt;    controller: <span class="hljs-string">"org/arangodb/actions/echoController"</span> 
+........&gt;    controller: <span class="hljs-string">"@arangodb/actions/echoController"</span> 
 ........&gt;  } 
 ........&gt; });
 { 

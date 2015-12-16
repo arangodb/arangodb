@@ -130,7 +130,7 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 /// Any direction
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesAny}
-///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var Graph = require("@arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
 ///     var v2 = g.addVertex(2);
@@ -154,7 +154,7 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 /// In edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesIn}
-///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var Graph = require("@arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
 ///     var v2 = g.addVertex(2);
@@ -178,7 +178,7 @@ HttpHandler::status_t RestEdgesHandler::execute () {
 /// Out edges
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEdgesReadEdgesOut}
-///     var Graph = require("org/arangodb/graph-blueprint").Graph;
+///     var Graph = require("@arangodb/graph-blueprint").Graph;
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex(1);
 ///     var v2 = g.addVertex(2);

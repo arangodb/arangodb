@@ -652,9 +652,9 @@ static uint64_t FastHashJsonRecursive (uint64_t hash,
       }
     }
   }
+
   return hash;   // never reached
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document, using fasthash64.

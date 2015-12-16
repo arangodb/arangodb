@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arango = require("org/arangodb").arango;
+var arango = require("@arangodb").arango;
 var db = require("internal").db;
-var users = require("org/arangodb/users");
+var users = require("@arangodb/users");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              authentication tests

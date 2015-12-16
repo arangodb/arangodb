@@ -90,6 +90,46 @@ else:
 fi
 
 dnl ----------------------------------------------------------------------------
+dnl check for special OS like MacOS X or FreeBSD
+dnl ----------------------------------------------------------------------------
+
+tr_DARWIN="no"
+tr_FREEBSD="no"
+tr_ARM="no"
+
+case $target in
+  *-apple-darwin*)
+    tr_DARWIN="yes"
+    ;;
+
+  *-*-freebsd*)
+    tr_FREEBSD="yes"
+    ;;
+
+  armv7l-*-linux-gnueabihf)
+    CXXFLAGS="${CXXFLAGS} -O0"
+    tr_ARM="yes"
+    tr_ARM7="yes"
+    ;;
+
+  armv6l-*-linux-gnueabihf)
+    dnl ----------------------------------------------------------------------------
+    dnl special flags for Arm V6 (pi)
+    dnl ----------------------------------------------------------------------------
+    CPPFLAGS="${CPPFLAGS} -O0 -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
+    CXXFLAGS="${CXXFLAGS} -O0"
+    tr_ARM="yes"
+    tr_ARM6="yes"
+    ;;
+esac
+
+AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
+AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
+AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
+AM_CONDITIONAL(ENABLE_ARMV6, test "x$tr_ARM6" = xyes)
+AM_CONDITIONAL(ENABLE_ARMV7, test "x$tr_ARM7" = xyes)
+
+dnl ----------------------------------------------------------------------------
 dnl checks for compiler and basic settings
 dnl ----------------------------------------------------------------------------
 
@@ -103,8 +143,8 @@ case $target in
     enable_static="yes"
     enable_shared="no"
 
-    list_cc="[gcc-4 gcc-3 gcc cc]"
-    list_cxx="[g++-4 g++-3 g++ cxx]"
+    list_cc="[gcc-5 gcc-4 gcc-3 gcc cc]"
+    list_cxx="[g++-5 g++-4 g++-3 g++ cxx]"
 
     ;;
 
@@ -128,43 +168,6 @@ AC_PROG_RANLIB
 AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
 AX_CXX_CHECK_UNORDERED_MAP_EMPLACE
 
-dnl ----------------------------------------------------------------------------
-dnl check for special OS like MacOS X or FreeBSD
-dnl ----------------------------------------------------------------------------
-
-tr_DARWIN="no"
-tr_FREEBSD="no"
-tr_ARM="no"
-
-case $target in
-  *-apple-darwin*)
-    tr_DARWIN="yes"
-    ;;
-
-  *-*-freebsd*)
-    tr_FREEBSD="yes"
-    ;;
-
-  armv7l-*-linux-gnueabihf)
-    tr_ARM="yes"
-    tr_ARM7="yes"
-    ;;
-
-  armv6l-*-linux-gnueabihf)
-    dnl ----------------------------------------------------------------------------
-    dnl special flags for Arm V6 (pi)
-    dnl ----------------------------------------------------------------------------
-    CPPFLAGS="${CPPFLAGS} -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
-    tr_ARM="yes"
-    tr_ARM6="yes"
-    ;;
-esac
-
-AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
-AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
-AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
-AM_CONDITIONAL(ENABLE_ARMV6, test "x$tr_ARM6" = xyes)
-AM_CONDITIONAL(ENABLE_ARMV7, test "x$tr_ARM7" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl bits

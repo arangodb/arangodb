@@ -173,7 +173,7 @@ The pattern is defined by the Model given in the file `models/FirstCollection.js
 ```js
 (function () {
   'use strict';
-  var Foxx = require('org/arangodb/foxx'),
+  var Foxx = require('@arangodb/foxx'),
   Joi = require('joi'),
   Model;
 
@@ -377,7 +377,7 @@ GET http://localhost:8529/_db/_system/firstApp/firstCollection/byName/:name
 ```
 
 ```js
-var db = require('org/arangodb').db;
+var db = require('@arangodb').db;
 var searchQuery = 'FOR x IN @@collection FILTER x.name == @name RETURN x';
 
 /** Search a FirstCollection by name

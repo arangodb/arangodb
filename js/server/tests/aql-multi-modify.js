@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for multi-modify operations
@@ -29,9 +29,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 var jsunity = require("jsunity");
-var helper = require("org/arangodb/aql-helper");
+var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,6 +108,16 @@ function ahuacatlMultiModifySuite () {
       assertEqual(1, c1.count());
       assertTrue(c1.exists("1"));
       assertEqual(2009, c3.count());
+
+      // check that 'readCompleteInput' option is set
+      var nodes = AQL_EXPLAIN(q, { "@cn": cn1, "@e": cn3 }).plan.nodes, found = false;
+      nodes.forEach(function(node) {
+        if (node.type === 'RemoveNode') {
+          assertTrue(node.modificationFlags.readCompleteInput);
+          found = true;
+        }
+      });
+      assertTrue(found);
     },
     
     testTraversalAfterModification : function () {
@@ -279,6 +289,26 @@ function ahuacatlMultiModifySuite () {
       AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
       var q = "FOR i IN 1..2010 INSERT { value: i } INTO @@cn REMOVE { _key: CONCAT('test', i) } INTO @@cn";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, {"@cn": cn1 });
+    },
+
+    testMultiRemoveLoopSameCollectionWithRead : function () {
+      AQL_EXECUTE("FOR i IN 1..2010 INSERT { _key: CONCAT('test', i) } INTO @@cn", { "@cn" : cn1 });
+      var q = "FOR doc IN @@cn1 INSERT { _key: doc._key } INTO @@cn2 REMOVE doc IN @@cn1";
+      var actual = AQL_EXECUTE(q, { "@cn1": cn1, "@cn2": cn2 });
+      assertEqual([ ], actual.json);
+      assertEqual(4020, actual.stats.writesExecuted);
+      assertEqual(0, c1.count());
+      assertEqual(2010, c2.count());
+
+      // check that 'readCompleteInput' option is set
+      var nodes = AQL_EXPLAIN(q, { "@cn1": cn1, "@cn2": cn2 }).plan.nodes, found = false;
+      nodes.forEach(function(node) {
+        if (node.type === 'RemoveNode') {
+          assertTrue(node.modificationFlags.readCompleteInput);
+          found = true;
+        }
+      });
+      assertTrue(found);
     },
 
     testMultiRemoveLoopOtherCollection : function () {

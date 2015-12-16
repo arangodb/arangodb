@@ -29,11 +29,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var arangodb = require("org/arangodb");
+var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
-var users = require("org/arangodb/users");
+var users = require("@arangodb/users");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            users management tests

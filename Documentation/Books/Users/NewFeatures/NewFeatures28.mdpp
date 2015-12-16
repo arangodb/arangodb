@@ -132,6 +132,38 @@ FOR doc IN collection FILTER doc.value1 == 42 || doc.value2 == 23 RETURN doc
 FOR doc IN collection FILTER doc.value1 < 42 || doc.value2 > 23 RETURN doc
 ```
 
+The new optimizer rule "sort-in-values" can now pre-sort the right-hand side operand 
+of `IN` and `NOT IN` operators so the operation can use a binary search with logarithmic 
+complexity instead of a linear search. The rule will be applied when the right-hand side
+operand of an `IN` or `NOT IN` operator in a filter condition is a variable that is defined 
+in a different loop/scope than the operator itself. Additionally, the filter condition must 
+consist of solely the `IN` or `NOT IN` operation in order to avoid any side-effects. 
+
+The rule will kick in for a queries such as the following:
+
+```
+LET values = /* some runtime expression here */
+FOR doc IN collection
+  FILTER doc.value IN values
+  RETURN doc
+```
+
+It will not be applied for the followig queries, because the right-hand side operand of the
+`IN` is either not a variable, or because the FILTER condition may have side effects:
+
+```
+FOR doc IN collection
+  FILTER doc.value IN /* some runtime expression here */
+  RETURN doc
+```
+
+```
+LET values = /* some runtime expression here */
+FOR doc IN collection
+  FILTER FUNCTION(doc.values) == 23 && doc.value IN values
+  RETURN doc
+```
+
 
 !SUBSECTION AQL functions added
 

@@ -16,7 +16,7 @@
 
     hashPassword = mockuire('../auth', {
       applicationContext: {configuration: cfg},
-      'org/arangodb/crypto': crypto
+      '@arangodb/crypto': crypto
     }).hashPassword;
 
     beforeEach(function () {

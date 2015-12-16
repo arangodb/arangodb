@@ -686,6 +686,34 @@ function ensureIndexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ invalid field
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashExpandedInvalid : function () {
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a[0]" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ invalid field
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureHashExpandedInvalidSub : function () {
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a[0].value" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: ensure w/ multiple expanded fields
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -719,6 +747,34 @@ function ensureIndexSuite() {
     testEnsureSkiplistExpandedMixed2 : function () {
       var idx = collection.ensureIndex({ type: "skiplist", fields: [ "a", "b[*]" ] });
       assertEqual([ "a", "b[*]" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ invalid field
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistExpandedInvalid : function () {
+      try {
+        collection.ensureIndex({ type: "skiplist", fields: [ "a[0]" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure w/ invalid field
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureSkiplistExpandedInvalidSub : function () {
+      try {
+        collection.ensureIndex({ type: "skiplist", fields: [ "a[0].value" ] });
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED.code, err.errorNum);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -30,7 +30,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
-var ArangoError = require("org/arangodb").ArangoError; 
+var ArangoError = require("@arangodb").ArangoError; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

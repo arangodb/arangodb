@@ -1757,7 +1757,7 @@ static const size_t completionCountCutoff = 100;
  */
 int InputBuffer::completeLine(PromptBase& pi) {
     linenoiseCompletions lc;
-    char c = 0;
+    char32_t c = 0;
 
     // completionCallback() expects a parsable entity, so find the previous break character and
     // extract a copy to parse.  we also handle the case where tab is hit while not at end-of-line.
@@ -1791,8 +1791,8 @@ int InputBuffer::completeLine(PromptBase& pi) {
         bool keepGoing = true;
         while (keepGoing) {
             for (size_t j = 0; j < lc.completionStrings.size() - 1; ++j) {
-                char c1 = lc.completionStrings[j][longestCommonPrefix];
-                char c2 = lc.completionStrings[j + 1][longestCommonPrefix];
+                char32_t c1 = lc.completionStrings[j][longestCommonPrefix];
+                char32_t c2 = lc.completionStrings[j + 1][longestCommonPrefix];
                 if ((0 == c1) || (0 == c2) || (c1 != c2)) {
                     keepGoing = false;
                     break;
@@ -1835,7 +1835,7 @@ int InputBuffer::completeLine(PromptBase& pi) {
     do {
         c = linenoiseReadChar();
         c = cleanupCtrl(c);
-    } while (c == static_cast<char>(-1));
+    } while (c == static_cast<char32_t>(-1));
 
     // if any character other than tab, pass it to the main loop
     if (c != ctrlChar('I')) {
@@ -1859,7 +1859,7 @@ int InputBuffer::completeLine(PromptBase& pi) {
             do {
                 c = linenoiseReadChar();
                 c = cleanupCtrl(c);
-            } while (c == static_cast<char>(-1));
+            } while (c == static_cast<char32_t>(-1));
         }
         switch (c) {
             case 'n':
@@ -1915,7 +1915,7 @@ int InputBuffer::completeLine(PromptBase& pi) {
                     do {
                         c = linenoiseReadChar();
                         c = cleanupCtrl(c);
-                    } while (c == static_cast<char>(-1));
+                    } while (c == static_cast<char32_t>(-1));
                 }
                 switch (c) {
                     case ' ':
@@ -2273,7 +2273,11 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
 }
 
 static bool isCharacterAlphanumeric(char32_t testChar) {
-    return (iswalnum(testChar) != 0 ? true : false);
+#ifdef _WIN32
+    return (iswalnum((wint_t) testChar) != 0 ? true : false);
+#else
+	return (iswalnum(testChar) != 0 ? true : false);
+#endif
 }
 
 #ifndef _WIN32
@@ -2642,7 +2646,7 @@ int InputBuffer::getInputLine(PromptBase& pi) {
                 if (pos > 0 && len > 1) {
                     historyRecallMostRecent = false;
                     size_t leftCharPos = (pos == len) ? pos - 2 : pos - 1;
-                    char aux = buf32[leftCharPos];
+                    char32_t aux = buf32[leftCharPos];
                     buf32[leftCharPos] = buf32[leftCharPos + 1];
                     buf32[leftCharPos + 1] = aux;
                     if (pos != len)

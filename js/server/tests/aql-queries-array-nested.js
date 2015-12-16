@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-var db = require("org/arangodb").db;
+var db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -295,10 +295,72 @@ function nestedArrayIndexSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function nestedArrayInArraySuite () {
+  var cn1 = "UnitTestsArray1";
+  var cn2 = "UnitTestsArray2";
+  var c1;
+  var c2;
+
+  var indexUsed = function (query, bindVars) {
+    var plan = AQL_EXPLAIN(query, bindVars || {}).plan;
+    var nodeTypes = plan.nodes.map(function(node) {
+      return node.type;
+    });
+    return (nodeTypes.indexOf("IndexNode") !== -1);
+  };
+
+  return {
+
+    setUp : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+      c1 = db._create(cn1);
+      c2 = db._create(cn2);
+    },
+
+    tearDown : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+    },
+
+    testIndexUsage : function () {
+      c1.insert({ value: "foobar" });
+      c1.insert({ value: "baz" });
+
+      c2.insert({ values: [ "foo", "bar", "bark" ] });
+      c2.insert({ values: [ "bart", "qux", "foobar", "foobar", "foobar" ] });
+      c2.insert({ values: [ "baz", "foobar", "foobar", "bart" ] });
+      c2.insert({ values: "troet" });
+      var query = "FOR doc1 IN @@c1 FOR doc2 IN @@c2 FILTER doc1.value IN doc2.values RETURN doc1.value";
+
+      var expected = [
+        "foobar", 
+        "foobar",
+        "baz"
+      ];
+      var result = AQL_EXECUTE(query, { "@c1" : cn1, "@c2" : cn2 });
+      assertEqual(expected.sort(), result.json.sort());
+      assertEqual(0, result.warnings.length);
+      
+      c2.ensureIndex({ type: "hash", fields: [ "values[*]" ] });
+      result = AQL_EXECUTE(query, { "@c1" : cn1, "@c2" : cn2 });
+      assertEqual(expected.sort(), result.json.sort());
+      assertEqual(0, result.warnings.length);
+      assertTrue(indexUsed(query, { "@c1": cn1, "@c2" : cn2 }));
+    }
+  };
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(nestedArrayIndexSuite);
+jsunity.run(nestedArrayInArraySuite);
 
 return jsunity.done();
 

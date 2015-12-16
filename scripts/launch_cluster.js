@@ -12,8 +12,8 @@ function main (argv) {
     runInfoName = argv[2];
     print("Using runInfo name:", runInfoName);
   }
-  var Planner = require("org/arangodb/cluster").Planner;
-  var Kickstarter = require("org/arangodb/cluster").Kickstarter;
+  var Planner = require("@arangodb/cluster").Planner;
+  var Kickstarter = require("@arangodb/cluster").Kickstarter;
   var p = new Planner(options);
   var k = new Kickstarter(p.getPlan());
   var r = k.launch();
