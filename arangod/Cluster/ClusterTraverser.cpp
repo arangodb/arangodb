@@ -220,7 +220,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
     _traverser->_iteratorCache.emplace(stack);
     auto search = std::find(result.begin(), result.end(), next);
     if (search != result.end()) {
-      result.push_back(next);
+      // result.push_back(next);
       // The edge is now included twice. Go on with the next
       operator()(startVertex, result, last, eColIdx, unused);
       return;
@@ -245,7 +245,7 @@ void ClusterTraverser::EdgeGetter::operator() (std::string const& startVertex,
       tmp.pop();
       auto search = std::find(result.begin(), result.end(), next);
       if (search != result.end()) {
-        result.push_back(next);
+        // result.push_back(next);
         // The edge is now included twice. Go on with the next
         operator()(startVertex, result, last, eColIdx, unused);
         return;

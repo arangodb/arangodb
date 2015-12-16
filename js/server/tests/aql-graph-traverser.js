@@ -318,15 +318,31 @@ function namedGraphSuite () {
       var result = db._query(query, bindVars).toArray();
       assertEqual(result.length, 0);
 
-      query = "FOR x IN 2 ANY @startId GRAPH @graph SORT x._id ASC RETURN x._id";
+      query = "FOR x, e, p IN 2 ANY @startId GRAPH @graph SORT x._id ASC RETURN {v: x._id, edges: p.edges, vertices: p.vertices}";
       result = db._query(query, bindVars).toArray();
 
       // result: A->B->C
       // result: A->B<-E
       // Invalid result: A->B<-A
       assertEqual(result.length, 2);
-      assertEqual(result[0], vertex.C);
-      assertEqual(result[1], vertex.E);
+      assertEqual(result[0].v, vertex.C);
+      assertEqual(result[0].edges.length, 2);
+      assertEqual(result[0].edges[0]._id, edge.AB);
+      assertEqual(result[0].edges[1]._id, edge.BC);
+
+      assertEqual(result[0].vertices.length, 3);
+      assertEqual(result[0].vertices[0]._id, vertex.A);
+      assertEqual(result[0].vertices[1]._id, vertex.B);
+      assertEqual(result[0].vertices[2]._id, vertex.C);
+      assertEqual(result[1].v, vertex.E);
+      assertEqual(result[1].edges.length, 2);
+      assertEqual(result[1].edges[0]._id, edge.AB);
+      assertEqual(result[1].edges[1]._id, edge.EB);
+
+      assertEqual(result[1].vertices.length, 3);
+      assertEqual(result[1].vertices[0]._id, vertex.A);
+      assertEqual(result[1].vertices[1]._id, vertex.B);
+      assertEqual(result[1].vertices[2]._id, vertex.E);
 
       query = `FOR x IN 1 ANY @startId GRAPH @graph
                FOR y IN 1 ANY x GRAPH @graph
