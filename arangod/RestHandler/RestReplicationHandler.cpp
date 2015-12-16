@@ -3944,12 +3944,12 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", defaults._verbose);
   config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", defaults._requireFromPresent);
   config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", defaults._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
   config._autoResyncRetries       = static_cast<uint64_t>(JsonHelper::getNumericValue<uint64_t>(json.get(), "autoResyncRetries", defaults._autoResyncRetries));
-  
+
   TRI_json_t* restriction = JsonHelper::getObjectElement(json.get(), "restrictCollections");
 
   if (TRI_IsArrayJson(restriction)) {
@@ -4688,12 +4688,12 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._verbose                 = JsonHelper::getBooleanValue(json.get(), "verbose", config._verbose);
   config._requireFromPresent      = JsonHelper::getBooleanValue(json.get(), "requireFromPresent", config._requireFromPresent);
   config._restrictType            = JsonHelper::getStringValue(json.get(), "restrictType", config._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * JsonHelper::getNumericValue<double>(json.get(), "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
   config._autoResyncRetries       = static_cast<uint64_t>(JsonHelper::getNumericValue<uint64_t>(json.get(), "autoResyncRetries", config._autoResyncRetries));
-
+  
   value = JsonHelper::getObjectElement(json.get(), "restrictCollections");
 
   if (TRI_IsArrayJson(value)) {

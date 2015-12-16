@@ -94,7 +94,7 @@ static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
 
 static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t const* config,
                                       bool includePassword) {
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 16);
 
   if (json == nullptr) {
     return nullptr;
@@ -211,22 +211,22 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "connectionRetryWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_connectionRetryWaitTime / (1000 * 1000)));
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_connectionRetryWaitTime / (1000.0 * 1000.0)));
   
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "initialSyncMaxWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_initialSyncMaxWaitTime / (1000 * 1000)));
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_initialSyncMaxWaitTime / (1000.0 * 1000.0)));
   
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "idleMinWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMinWaitTime / (1000 * 1000)));
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMinWaitTime / (1000.0 * 1000.0)));
   
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "idleMaxWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMaxWaitTime / (1000 * 1000)));
+                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMaxWaitTime / (1000.0 * 1000.0)));
   
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
@@ -414,25 +414,25 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   value = TRI_LookupObjectJson(json.get(), "connectionRetryWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_connectionRetryWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_connectionRetryWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "initialSyncMaxWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_initialSyncMaxWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_initialSyncMaxWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "idleMinWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_idleMinWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_idleMinWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "idleMaxWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "autoResyncRetries");
