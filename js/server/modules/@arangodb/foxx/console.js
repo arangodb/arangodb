@@ -66,35 +66,6 @@ function nativeLogger(level, levelNum, mount) {
   };
 }
 
-const NATIVE_LOG_LEVELS = ['debug', 'info', 'warn', 'error'];
-
-function nativeLogger(level, levelNum, mount) {
-  let logLevel = String(level).toLowerCase();
-  if (logLevel === 'trace' && levelNum === -200) {
-    logLevel = 'info'; // require('console').trace also uses INFO level
-  }
-  if (NATIVE_LOG_LEVELS.indexOf(logLevel) !== -1) {
-    if (logLevel === 'warn') {
-      logLevel = 'warning'; // require('console').warn uses WARNING level
-    }
-    return function (message) {
-      arangoConsole._log(logLevel, `${mount} ${message}`);
-    };
-  }
-  if (levelNum >= 200) {
-    logLevel = 'error';
-  } else if (levelNum >= 100) {
-    logLevel = 'warn';
-  } else if (levelNum <= -100) {
-    logLevel = 'debug';
-  } else {
-    logLevel = 'info';
-  }
-  return function (message) {
-    arangoConsole._log(logLevel, `(${level}) ${mount} ${message}`);
-  };
-}
-
 function ConsoleLogs(console) {
   this._console = console;
   this.defaultMaxAge = 2 * 60 * 60 * 1000;
