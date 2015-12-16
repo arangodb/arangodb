@@ -161,6 +161,8 @@ namespace triagens {
       _numberErrors(0),
       _numberUpdated(0),
       _numberIgnored(0),
+      _rowsRead(0),
+      _rowOffset(0),
       _onDuplicateAction("error"),
       _collectionName(),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),

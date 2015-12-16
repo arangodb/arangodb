@@ -322,8 +322,6 @@ int main (int argc, char* argv[]) {
       client.setLocationRewriter(nullptr, &RewriteLocation);
       client.setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-      std::string const versionString = client.getServerVersion();
-
       if (! connection->isConnected()) {
         cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
             << "', database: '" << BaseClient.databaseName() << "', username: '" << BaseClient.username() << "'" << endl;
@@ -456,7 +454,7 @@ int main (int argc, char* argv[]) {
           cout << "updated/replaced: " << ih.getNumberUpdated() << endl;
           cout << "ignored:          " << ih.getNumberIgnored() << endl;
 
-          if (TypeImport == "csv" || TypeImport == "csv") {
+          if (TypeImport == "csv" || TypeImport == "tsv") {
             cout << "lines read:       " << ih.getReadLines() << endl;
           }
 
