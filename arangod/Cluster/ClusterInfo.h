@@ -76,11 +76,11 @@ namespace triagens {
 
         CollectionInfo (CollectionInfo const&);
 
-        CollectionInfo (CollectionInfo&);
+        CollectionInfo (CollectionInfo&&);
 
         CollectionInfo& operator= (CollectionInfo const&);
         
-        CollectionInfo& operator= (CollectionInfo&);
+        CollectionInfo& operator= (CollectionInfo&&);
 
         ~CollectionInfo ();
 

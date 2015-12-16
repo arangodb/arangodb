@@ -159,8 +159,7 @@ bool shardKeysChanged (std::string const& dbname,
   TRI_InitNullJson(&nullJson);
 
   ClusterInfo* ci = ClusterInfo::instance();
-  std::shared_ptr<CollectionInfo> const& c
-      = ci->getCollection(dbname, collname);
+  std::shared_ptr<CollectionInfo> c = ci->getCollection(dbname, collname);
   const std::vector<std::string>& shardKeys = c->shardKeys();
 
   for (size_t i = 0; i < shardKeys.size(); ++i) {

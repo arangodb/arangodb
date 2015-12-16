@@ -67,6 +67,10 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   for (auto& map : *_expressions) {
     for (size_t i = 0; i < map.second.size(); ++i) {
       SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
+                                     std::string("invalid expression map"));
+      }
       auto e = std::make_unique<Expression>(ast, it->toEvaluate);
       _hasV8Expression |= e->isV8();
       std::unordered_set<Variable const*> inVars;
