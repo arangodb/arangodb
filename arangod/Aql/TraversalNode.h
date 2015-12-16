@@ -57,6 +57,14 @@ namespace triagens {
             expression(nullptr) {
         }
 
+        SimpleTraverserExpression (triagens::aql::Ast* ast, triagens::basics::Json j)
+          : triagens::arango::traverser::TraverserExpression(j.json()),
+            toEvaluate(nullptr),
+            expression(nullptr) {
+
+              toEvaluate = new AstNode(ast, j.get("toEvaluate"));
+        }
+
         ~SimpleTraverserExpression () {
           if (expression != nullptr) {
             delete expression;
@@ -73,11 +81,13 @@ namespace triagens {
           std::string const operatorStr = op->second;
 
           json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
-              ("comparisonType", triagens::basics::Json(operatorStr))
+              ("comparisonTypeStr", triagens::basics::Json(operatorStr))
+              ("comparisonType", triagens::basics::Json(static_cast<int32_t>(comparisonType)))
               ("varAccess", varAccess->toJson(zone, true))
+              ("toEvaluate", toEvaluate->toJson(zone, true))
               ("compareTo", toEvaluate->toJson(zone, true));
+          
         }
-
     };
 
 
@@ -490,6 +500,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief store a simple comparator filter
+/// one vector of TraverserExpressions per matchdepth (size_t)
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<size_t, std::vector<triagens::arango::traverser::TraverserExpression*>> _expressions;

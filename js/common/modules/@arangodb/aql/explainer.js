@@ -574,7 +574,7 @@ function processQuery (query, explain) {
           }
           rc += "[" + value(indexNo) + "] -> ";
           rc += buildExpression(item.varAccess);
-          rc += " " + item.comparisonType + " ";
+          rc += " " + item.comparisonTypeStr + " ";
           rc += buildExpression(item.compareTo);
         }
       }

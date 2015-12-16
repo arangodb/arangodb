@@ -248,7 +248,6 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     }
   }
   else {
-    
     _graphJson = base.get("graph").copy(); 
     if (!_graphJson.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array.");
@@ -264,6 +263,54 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     }
     if (_edgeColls.size() == 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be a non empty array of strings.");
+    }
+  }
+
+  if (base.has("simpleExpressions")) {
+    auto simpleExpSet = base.get("simpleExpressions");
+    
+    if (!simpleExpSet.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be an array.");
+    }
+    size_t nExpressionSets = simpleExpSet.members();
+    // List of edge collection names
+    for (size_t i = 0; i < nExpressionSets; i += 2) {
+      auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&simpleExpSet.json()->_value._objects, i));
+
+      if (! TRI_IsStringJson(key)) {
+        // no string, should not happen
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: key wrong.");
+      }
+
+      std::string const k(key->_value._string.data, key->_value._string.length - 1);
+
+      auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&simpleExpSet.json()->_value._objects, i + 1));
+
+      if (value == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: value wrong.");
+      }
+
+      Json oneExpressionSetJson(TRI_UNKNOWN_MEM_ZONE, value);
+      size_t oneSetLength = oneExpressionSetJson.size();
+      if (oneSetLength == 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions one expression set has to be an array.");
+      }
+      
+      std::vector<triagens::arango::traverser::TraverserExpression*> oneExpressionSet;
+      oneExpressionSet.reserve(oneSetLength);
+      size_t n = std::stoull(k);
+      _expressions.emplace(n, oneExpressionSet);
+      auto it = _expressions.find(n);
+
+      for (size_t j = 0; j < oneSetLength; j++) {
+        auto sx = oneExpressionSetJson.at(j);
+        std::unique_ptr<SimpleTraverserExpression> oneX(new SimpleTraverserExpression(plan->getAst(), sx));
+        it->second.emplace_back(oneX.get());
+        oneX.release();
+      }
+    }
+    if (_expressions.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be non empty.");
     }
   }
 
