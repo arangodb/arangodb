@@ -655,7 +655,7 @@ int InitialSyncer::handleCollectionDump (triagens::arango::Transaction* trx,
     url += "&serverId=" + _localServerIdString;
     url += "&chunkSize=" + StringUtils::itoa(chunkSize);
   
-    std::string const typeString = (trxCollection->_collection->_collection->_info._type == TRI_COL_TYPE_EDGE ? "edge" : "document");
+    std::string const typeString = (trxCollection->_collection->_collection->_info.type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
     // send request
     string const progress = "fetching master collection dump for collection '" + collectionName +
@@ -1007,7 +1007,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
   auto shaper = trx.documentCollection()->getShaper();
           
-  bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdge = (trx.documentCollection()->_info.type() == TRI_COL_TYPE_EDGE);
    
   string progress = "collecting local keys for collection '" + collectionName + "'";
   setProgress(progress);
@@ -1501,24 +1501,11 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 int InitialSyncer::changeCollection (TRI_vocbase_col_t* col,
                                      TRI_json_t const* json) {
 
-  bool waitForSync      = JsonHelper::getBooleanValue(json, "waitForSync", false);
-  bool doCompact        = JsonHelper::getBooleanValue(json, "doCompact", true);
-  int maximalSize       = JsonHelper::getNumericValue<int>(json, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-  uint32_t indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
-
   try {
+    std::shared_ptr<VPackBuilder> tmp = triagens::basics::JsonHelper::toVelocyPack(json);
     triagens::arango::CollectionGuard guard(_vocbase, col->_cid);
-
-    TRI_col_info_t parameters;
-
-    // only need to set these three properties as the others cannot be updated on the fly
-    parameters._doCompact    = doCompact;
-    parameters._maximalSize  = maximalSize;
-    parameters._waitForSync  = waitForSync;
-    parameters._indexBuckets = indexBuckets;
-
     bool doSync = _vocbase->_settings.forceSyncProperties;
-    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters, doSync);
+    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, tmp->slice(), doSync);
   }
   catch (triagens::basics::Exception const& ex) {
     return ex.code();

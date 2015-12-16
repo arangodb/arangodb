@@ -241,7 +241,7 @@ int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
 
         if (type == REPLICATION_MARKER_EDGE) {
           // edge
-          if (document->_info._type != TRI_COL_TYPE_EDGE) {
+          if (document->_info.type() != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -270,7 +270,7 @@ int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
         }
         else {
           // document
-          if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->_info.type() != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -379,28 +379,35 @@ int Syncer::createCollection (TRI_json_t const* json,
     keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::getObjectElement(json, "keyOptions"));
   }
 
-  TRI_col_info_t params;
-  TRI_InitCollectionInfo(_vocbase,
-                         &params,
-                         name.c_str(),
-                         type,
-                         (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-                         keyOptions);
+  std::shared_ptr<VPackBuilder> opts = JsonHelper::toVelocyPack(keyOptions);
 
   if (keyOptions != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact    = JsonHelper::getBooleanValue(json, "doCompact", true);
-  params._waitForSync  = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile   = JsonHelper::getBooleanValue(json, "isVolatile", false);
-  params._isSystem     = (name[0] == '_');
-  params._planId       = 0;
-  params._indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", (uint32_t) TRI_DEFAULT_INDEX_BUCKETS);
+  // TODO FIXME
+  std::shared_ptr<VPackBuilder> builder = triagens::basics::JsonHelper::toVelocyPack(json);
+
+  VocbaseCollectionInfo params(_vocbase,
+                               name.c_str(),
+                               builder->slice());
+  /*
+                        type, 
+                        (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
+                        opts);
+  */
+  TRI_ASSERT(params.doCompact() == JsonHelper::getBooleanValue(json, "doCompact", true));
+  TRI_ASSERT(params.waitForSync() == JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync));
+  TRI_ASSERT(params.isVolatile() == JsonHelper::getBooleanValue(json, "isVolatile", false));
+  TRI_ASSERT(params.isSystem() == (name[0] == '_'));
+  TRI_ASSERT(params.indexBuckets() == JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", (uint32_t) TRI_DEFAULT_INDEX_BUCKETS));
 
   TRI_voc_cid_t planId = JsonHelper::stringUInt64(json, "planId");
   if (planId > 0) {
-    params._planId = planId;
+    TRI_ASSERT(params.planId() == planId);
+  }
+  else {
+    TRI_ASSERT(params.planId() == 0);
   }
 
   // wait for "old" collection to be dropped
