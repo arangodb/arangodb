@@ -513,7 +513,7 @@ TRI_shape_aid_t VocShaper::findOrCreateAttributeByName (char const* name) {
   TRI_document_collection_t* document = _collection;
 
   try {
-    triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info._cid, aid, std::string(name));
+    triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info.id(), aid, std::string(name));
 
     // lock the index and check that the element is still missing
     {
@@ -609,7 +609,7 @@ TRI_shape_t const* VocShaper::findShape (TRI_shape_t* shape,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::ShapeMarker marker(document->_vocbase->_id, document->_info._cid, shape);
+    triagens::wal::ShapeMarker marker(document->_vocbase->_id, document->_info.id(), shape);
 
     // lock the index and check the element is still missing
     MUTEX_LOCKER(_shapeCreateLock);
@@ -826,14 +826,14 @@ int VocShaper::insertShape (TRI_df_marker_t const* marker,
   }
 
   if (warnIfDuplicate && f != nullptr) {
-    char const* name = _collection->_info._name;
+    std::string name = _collection->_info.name();
     bool const isIdentical = EqualElementShape(nullptr, f, l); 
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG_TRACE("found duplicate shape markers for id %llu in collection '%s' in shape dictionary", (unsigned long long) l->_sid, name);
+      LOG_TRACE("found duplicate shape markers for id %llu in collection '%s' in shape dictionary", (unsigned long long) l->_sid, name.c_str());
     }
     else {
-      LOG_ERROR("found heterogenous shape markers for id %llu in collection '%s' in shape dictionary", (unsigned long long) l->_sid, name);
+      LOG_ERROR("found heterogenous shape markers for id %llu in collection '%s' in shape dictionary", (unsigned long long) l->_sid, name.c_str());
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -846,15 +846,15 @@ int VocShaper::insertShape (TRI_df_marker_t const* marker,
   }
 
   if (warnIfDuplicate && f != nullptr) {
-    char const* name = _collection->_info._name;
+    std::string name = _collection->_info.name();
     bool const isIdentical = EqualElementShape(nullptr, f, l); 
 
     if (isIdentical) {
       // duplicate shape, but with identical content. simply ignore it
-      LOG_TRACE("found duplicate shape markers for id %llu in collection '%s' in shape ids table", (unsigned long long) l->_sid, name);
+      LOG_TRACE("found duplicate shape markers for id %llu in collection '%s' in shape ids table", (unsigned long long) l->_sid, name.c_str());
     }
     else {
-      LOG_ERROR("found heterogenous shape markers for id %llu in collection '%s' in shape ids table", (unsigned long long) l->_sid, name);
+      LOG_ERROR("found heterogenous shape markers for id %llu in collection '%s' in shape ids table", (unsigned long long) l->_sid, name.c_str());
 #ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
 #endif
@@ -903,15 +903,15 @@ int VocShaper::insertAttribute (TRI_df_marker_t const* marker,
   }
 
   if (warnIfDuplicate && found != nullptr) {
-    char const* cname = _collection->_info._name;
+    std::string cname = _collection->_info.name();
     bool const isIdentical = (TRI_EqualString(name, GetAttributeName(found)) && aid == GetAttributeId(found));
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name, cname);
+      LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name, cname.c_str());
     }
     else {
-      LOG_ERROR("found heterogenous attribute name '%s' in collection '%s'", name, cname);
+      LOG_ERROR("found heterogenous attribute name '%s' in collection '%s'", name, cname.c_str());
     }
   }
 
@@ -921,15 +921,15 @@ int VocShaper::insertAttribute (TRI_df_marker_t const* marker,
   }
 
   if (warnIfDuplicate && found != nullptr) {
-    char const* cname = _collection->_info._name;
+    std::string cname = _collection->_info.name();
     bool const isIdentical = TRI_EqualString(name, GetAttributeName(found));
 
     if (isIdentical) {
       // duplicate attribute, but with identical content. simply ignore it
-      LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
+      LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname.c_str());
     }
     else {
-      LOG_ERROR("found heterogenous attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
+      LOG_ERROR("found heterogenous attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname.c_str());
     }
   }
 
