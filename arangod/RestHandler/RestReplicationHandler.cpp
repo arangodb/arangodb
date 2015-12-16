@@ -4349,7 +4349,7 @@ void RestReplicationHandler::handleCommandServerId () {
 ///   requested by the slave, or when the replication is started and no tick value
 ///   can be found.
 ///
-/// - *autoResyncRetries*: umber of resynchronization retries that will be performed 
+/// - *autoResyncRetries*: number of resynchronization retries that will be performed 
 ///   in a row when automatic resynchronization is enabled and kicks in. Setting this 
 ///   to *0* will effectively disable *autoResync*. Setting it to some other value 
 ///   will limit the number of retries that are performed. This helps preventing endless 
