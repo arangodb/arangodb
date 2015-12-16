@@ -104,7 +104,7 @@ CollectionKeys::~CollectionKeys () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create (TRI_voc_tick_t maxTick) {
-  triagens::wal::LogfileManager::instance()->waitForCollectorQueue(_document->_info._cid, 30.0);
+  triagens::wal::LogfileManager::instance()->waitForCollectorQueue(_document->_info.id(), 30.0);
 
   // try to acquire the exclusive lock on the compaction
   while (! TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {

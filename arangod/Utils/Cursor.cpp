@@ -318,7 +318,7 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
 
     // _id, _key, _rev
     char const* key = TRI_EXTRACT_MARKER_KEY(marker);
-    std::string id(_ex->_resolver.getCollectionName(_ex->_document->_info._cid));
+    std::string id(_ex->_resolver.getCollectionName(_ex->_document->_info.id()));
     id.push_back('/');
     id.append(key);
 

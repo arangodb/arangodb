@@ -621,7 +621,7 @@ namespace triagens {
             return false;
           }
     
-          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, document->_info._cid, type);
+          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(_trx, document->_info.id(), type);
           return isLocked(trxCollection, type);
         }
 
