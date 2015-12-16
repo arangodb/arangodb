@@ -432,8 +432,7 @@ int Syncer::createCollection (TRI_json_t const* json,
     TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
   }
 
-  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, true);
-  TRI_FreeCollectionInfoOptions(&params);
+  col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
   if (col == nullptr) {
     return TRI_errno();

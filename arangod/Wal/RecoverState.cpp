@@ -52,7 +52,7 @@ using namespace triagens::wal;
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool IsVolatile (TRI_transaction_collection_t const* trxCollection) {
-  return trxCollection->_collection->_collection->_info._isVolatile;
+  return trxCollection->_collection->_collection->_info.isVolatile();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -933,42 +933,21 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
       
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(collection_change_marker_t);
-      TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
-
-      if (! TRI_IsObjectJson(json)) {
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        }
+      std::shared_ptr<VPackBuilder> parsedProperties;
+      try {
+        parsedProperties = VPackParser::fromJson(properties);
+      }
+      catch (...) {
         LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
         ++state->errorCount;
         return state->canContinue();
       }
-      
-      TRI_json_t const* value;
-      
-      TRI_col_info_t parameters;
-      parameters._doCompact = true;
-      parameters._waitForSync = vocbase->_settings.defaultWaitForSync;
-      parameters._maximalSize = vocbase->_settings.defaultMaximalSize; 
 
-      value = TRI_LookupObjectJson(json, "doCompact");
-      if (TRI_IsBooleanJson(value)) {
-        parameters._doCompact = value->_value._boolean;
-      }
+      VPackSlice const slice = parsedProperties->slice();
       
-      value = TRI_LookupObjectJson(json, "waitForSync");
-      if (TRI_IsBooleanJson(value)) {
-        parameters._waitForSync = value->_value._boolean;
-      }
-      
-      value = TRI_LookupObjectJson(json, "maximalSize");
-      if (TRI_IsNumberJson(value)) {
-        parameters._maximalSize = static_cast<TRI_voc_size_t>(value->_value._number);
-      }
-      
-      int res = TRI_UpdateCollectionInfo(vocbase, document, &parameters, vocbase->_settings.forceSyncProperties);
+      int res = TRI_UpdateCollectionInfo(vocbase, document, slice, vocbase->_settings.forceSyncProperties);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("cannot change collection properties for collection %llu in database %llu: %s", 
@@ -978,6 +957,11 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         ++state->errorCount;
         return state->canContinue();
       }
+
+      // TODO REMOVE Assertions
+      TRI_ASSERT(document->_info.doCompact() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true));
+      TRI_ASSERT(document->_info.waitForSync() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", vocbase->_settings.defaultWaitForSync));
+      TRI_ASSERT(document->_info.maximalSize() == triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize", vocbase->_settings.defaultMaximalSize));
       break;
     }
 
@@ -1103,12 +1087,19 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
 
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(collection_create_marker_t);
-      TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
-        
-      if (! TRI_IsObjectJson(json)) {
-        if (json != nullptr) {
-          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-        }
+      std::shared_ptr<VPackBuilder> builder;
+      try {
+        builder = VPackParser::fromJson(properties);
+      }
+      catch (...) {
+        LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
+                    (unsigned long long) collectionId, 
+                    (unsigned long long) databaseId);
+        ++state->errorCount;
+        return state->canContinue();
+      }
+      VPackSlice slice = builder->slice();
+      if (! slice.isObject()) {
         LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
@@ -1117,10 +1108,12 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
 
       // check if there is another collection with the same name as the one that we attempt to create
-      TRI_json_t const* name = TRI_LookupObjectJson(json, "name");
+      VPackSlice const nameSlice = slice.get("name");
+      std::string name = "";
 
-      if (TRI_IsStringJson(name)) {
-        collection = TRI_LookupCollectionByNameVocBase(vocbase, name->_value._string.data);
+      if (nameSlice.isString()) {
+        name = nameSlice.copyString();
+        collection = TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
         
         if (collection != nullptr) { // && ! TRI_IsSystemNameCollection(name->_value._string.data)) {
           // if yes, delete it
@@ -1133,12 +1126,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
 
       
-      TRI_col_info_t info;
-      memset(&info, 0, sizeof(TRI_col_info_t));
+      // TODO second attribute is the name. it might be undefined if there is
+      // no name attribute in the slice
+      triagens::arango::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
 
-      TRI_FromJsonCollectionInfo(&info, json);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      
       WaitForDeletion(vocbase, collectionId, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   
       if (state->willBeDropped(collectionId)) {
@@ -1146,16 +1137,14 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         // the sync properties to false temporarily
         bool oldSync = vocbase->_settings.forceSyncProperties;
         vocbase->_settings.forceSyncProperties = false;
-        collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
+        collection = TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
         vocbase->_settings.forceSyncProperties = oldSync;
 
       }
       else {
         // collection will be kept
-        collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
+        collection = TRI_CreateCollectionVocBase(vocbase, info, collectionId, false);
       }
-
-      TRI_FreeCollectionInfoOptions(&info);
 
       if (collection == nullptr) {
         LOG_WARNING("cannot create collection %llu in database %llu: %s", 
@@ -1461,7 +1450,7 @@ int RecoverState::fillIndexes () {
     // activate secondary indexes
     document->useSecondaryIndexes(true);
 
-    triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), collection->_vocbase, document->_info._cid);
+    triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), collection->_vocbase, document->_info.id());
     
     int res = TRI_FillIndexesDocumentCollection(&trx, collection, document);
 

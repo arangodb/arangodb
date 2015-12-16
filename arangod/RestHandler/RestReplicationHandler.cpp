@@ -1787,16 +1787,6 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
   VocbaseCollectionInfo params (_vocbase,
                                 name.c_str(),
                                 slice);
-  /*
-  TRI_InitCollectionInfo(_vocbase,
-                         &params,
-                         name.c_str(),
-                         slice,
-                         type,
-                         triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-                         // static_cast<TRI_voc_size_t>(triagens::basics::VelocyPackHelper::getNumericValue<int64_t>(slice, "maximalSize", static_cast<int64_t>(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE)),
-                         keyOptions);
-  */
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(params.doCompact() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true));
   TRI_ASSERT(params.waitForSync() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", _vocbase->_settings.defaultWaitForSync));
@@ -1845,8 +1835,7 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
     }
   }
 
-  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, true);
-  TRI_FreeCollectionInfoOptions(&params);
+  col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
   if (col == nullptr) {
     return TRI_errno();

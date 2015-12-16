@@ -742,7 +742,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
     return TRI_ERROR_LOCK_TIMEOUT;
   }
   
-  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), document->_vocbase, document->_info._cid);
+  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), document->_vocbase, document->_info.id());
   trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
   trx.addHint(TRI_TRANSACTION_HINT_TRY_LOCK, true);
@@ -754,7 +754,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
     TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
     LOG_TRACE("wal collector couldn't acquire write lock for collection '%llu': %s", 
-              (unsigned long long) document->_info._cid,
+              (unsigned long long) document->_info.id(),
               TRI_errno_string(res));
 
     return res;
@@ -762,7 +762,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
   try {
     // now we have the write lock on the collection
-    LOG_TRACE("wal collector processing operations for collection '%s'", document->_info._name);
+    LOG_TRACE("wal collector processing operations for collection '%s'", document->_info.namec_str());
 
     TRI_ASSERT(! cache->operations->empty());
 
@@ -857,7 +857,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
 
     // finally update all datafile statistics
-    LOG_TRACE("updating datafile statistics for collection '%s'", document->_info._name);
+    LOG_TRACE("updating datafile statistics for collection '%s'", document->_info.namec_str());
     updateDatafileStatistics(document, cache);
         
     document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
@@ -880,7 +880,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 
   LOG_TRACE("wal collector processed operations for collection '%s' with status: %s",
-            document->_info._name,
+            document->_info.namec_str(),
             TRI_errno_string(res));
 
   return res;
@@ -1037,7 +1037,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   TRI_ASSERT(document != nullptr);
 
   LOG_TRACE("collector transferring markers for '%s', totalOperationsCount: %llu",
-            document->_info._name,
+            document->_info.namec_str(),
             (unsigned long long) totalOperationsCount);
 
   CollectorCache* cache = new CollectorCache(collectionId,
@@ -1457,7 +1457,7 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
   // start with configured journal size
-  TRI_voc_size_t targetSize = document->_info._maximalSize;
+  TRI_voc_size_t targetSize = document->_info.maximalSize();
       
   // make sure that the document fits
   while (targetSize - 256 < size && targetSize < 512 * 1024 * 1024) { // TODO: remove magic number
