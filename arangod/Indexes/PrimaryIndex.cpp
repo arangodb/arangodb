@@ -124,7 +124,7 @@ PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection)
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info._indexBuckets;
+    indexBuckets = collection->_info.indexBuckets();
   }
 
   _primaryIndex = new TRI_PrimaryIndex_t(HashKey,
@@ -501,13 +501,13 @@ IndexIterator* PrimaryIndex::createIterator (triagens::arango::Transaction* trx,
       TRI_ASSERT(cid != 0);
       TRI_ASSERT(key != nullptr);
 
-      if (! context->isCluster() && cid != _collection->_info._cid) {
+      if (! context->isCluster() && cid != _collection->_info.id()) {
         // only continue lookup if the id value is syntactically correct and
         // refers to "our" collection, using local collection id
         continue;
       }
 
-      if (context->isCluster() && cid != _collection->_info._planId) {
+      if (context->isCluster() && cid != _collection->_info.planId()) {
         // only continue lookup if the id value is syntactically correct and
         // refers to "our" collection, using cluster collection id
         continue;

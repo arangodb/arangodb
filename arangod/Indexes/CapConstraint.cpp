@@ -142,7 +142,7 @@ int CapConstraint::initialize (triagens::arango::Transaction* trx) {
   }
   else {
     TRI_vocbase_t* vocbase = _collection->_vocbase;
-    TRI_voc_cid_t cid = _collection->_info._cid;
+    TRI_voc_cid_t cid = _collection->_info.id();
 
     triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), vocbase, cid);
     trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);

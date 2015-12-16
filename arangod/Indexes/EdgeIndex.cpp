@@ -413,7 +413,7 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    _numBuckets = static_cast<size_t>(collection->_info._indexBuckets);
+    _numBuckets = static_cast<size_t>(collection->_info.indexBuckets());
   }
 
   auto context = [this] () -> std::string {

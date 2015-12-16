@@ -290,7 +290,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info._indexBuckets;
+    indexBuckets = collection->_info.indexBuckets();
   }
     
   std::unique_ptr<HashElementFunc> func(new HashElementFunc(_paths.size()));

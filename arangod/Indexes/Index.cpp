@@ -378,7 +378,7 @@ std::string Index::context () const {
   result << "index { id: " << id() 
          << ", type: " << typeName() 
          << ", collection: " << _collection->_vocbase->_name 
-         << "/" <<  _collection->_info._name
+         << "/" <<  _collection->_info.name()
          << ", unique: " <<  (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
