@@ -1,4 +1,4 @@
-v2.8.0 (XXXX-XX-XX)
+v2.8.0-beta2 (2015-12-16)
 -------------------
 
 * added AQL query optimizer rule "sort-in-values"

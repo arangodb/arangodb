@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
-const deprecated = require('org/arangodb/deprecated');
 const Foxx = require('org/arangodb/foxx');
 const crypto = require('org/arangodb/crypto');
 const paramSchema = joi.string().optional().description('Foxx session ID');

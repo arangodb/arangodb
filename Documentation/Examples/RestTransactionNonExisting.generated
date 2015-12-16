@@ -13,10 +13,10 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 { 
   <span class="hljs-string">"exception"</span> : <span class="hljs-string">"[ArangoError 1203: collection not found]"</span>, 
   <span class="hljs-string">"stacktrace"</span> : [ 
-    <span class="hljs-string">"[ArangoError 1203: collection not found]"</span>, 
-    <span class="hljs-string">"  at Error (native)"</span>, 
-    <span class="hljs-string">"  at post_api_transaction (js/actions/api-transaction.js:268:16)"</span>, 
-    <span class="hljs-string">"  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)"</span> 
+    <span class="hljs-string">"Error: collection not found"</span>, 
+    <span class="hljs-string">"    at Error (native)"</span>, 
+    <span class="hljs-string">"    at post_api_transaction (js/actions/api-transaction.js:268:16)"</span>, 
+    <span class="hljs-string">"    at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)"</span> 
   ], 
   <span class="hljs-string">"message"</span> : <span class="hljs-string">"collection not found"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
