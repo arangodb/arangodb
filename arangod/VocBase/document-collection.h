@@ -768,7 +768,7 @@ static inline char const* TRI_EXTRACT_MARKER_KEY (TRI_doc_mptr_copy_t const* mpt
 
 TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t*,
                                                          char const*,
-                                                         TRI_col_info_t*,
+                                                         triagens::arango::VocbaseCollectionInfo&,
                                                          TRI_voc_cid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
