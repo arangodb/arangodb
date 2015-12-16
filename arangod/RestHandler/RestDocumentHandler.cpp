@@ -337,7 +337,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  if (trx.documentCollection()->_info._type != TRI_COL_TYPE_DOCUMENT) {
+  if (trx.documentCollection()->_info.type() != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
@@ -799,7 +799,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   res = trx.read(ids);
 
-  TRI_col_type_e type = trx.documentCollection()->_info._type;
+  TRI_col_type_e type = trx.documentCollection()->_info.type();
 
   res = trx.finish(res);
 
@@ -1455,7 +1455,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_ASSERT(document != nullptr);
   auto shaper = document->getShaper();  // PROTECTED by trx here
 
-  string const&& cidString = StringUtils::itoa(document->_info._planId);
+  string const&& cidString = StringUtils::itoa(document->_info.planId());
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);

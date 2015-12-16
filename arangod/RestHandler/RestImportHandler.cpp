@@ -799,7 +799,7 @@ bool RestImportHandler::createFromJson (string const& type) {
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  bool const isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
 
@@ -1331,7 +1331,7 @@ bool RestImportHandler::createFromKeyValueList () {
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  bool const isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
 

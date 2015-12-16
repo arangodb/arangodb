@@ -223,7 +223,7 @@ namespace triagens {
             statusCode = rest::HttpResponse::ACCEPTED;
           }
 
-          TRI_col_type_e type = trx.documentCollection()->_info._type;
+          TRI_col_type_e type = trx.documentCollection()->_info.type();
           generate20x(statusCode, trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid, type);  // PROTECTED by trx here
         }
 
@@ -244,7 +244,7 @@ namespace triagens {
             statusCode = rest::HttpResponse::ACCEPTED;
           }
 
-          TRI_col_type_e type = trx.documentCollection()->_info._type;
+          TRI_col_type_e type = trx.documentCollection()->_info.type();
           generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid, type);
         }
 

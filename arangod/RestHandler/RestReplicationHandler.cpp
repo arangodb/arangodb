@@ -1784,24 +1784,25 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
     return TRI_ERROR_NO_ERROR;
   }
 
-  VPackSlice const keyOptions = slice.get("keyOptions");
-
-  TRI_col_info_t params;
+  VocbaseCollectionInfo params (_vocbase,
+                                name.c_str(),
+                                slice);
+  /*
   TRI_InitCollectionInfo(_vocbase,
                          &params,
                          name.c_str(),
+                         slice,
                          type,
                          triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
                          // static_cast<TRI_voc_size_t>(triagens::basics::VelocyPackHelper::getNumericValue<int64_t>(slice, "maximalSize", static_cast<int64_t>(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE)),
                          keyOptions);
-
-  params._doCompact    = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true);
-  params._waitForSync  = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile   = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "isVolatile", false);
-  params._isSystem     = (name[0] == '_');
-  params._indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
-  params._planId       = 0;
-
+  */
+  /* Temporary ASSERTS to prove correctness of new constructor */
+  TRI_ASSERT(params.doCompact() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true));
+  TRI_ASSERT(params.waitForSync() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", _vocbase->_settings.defaultWaitForSync));
+  TRI_ASSERT(params.isVolatile() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "isVolatile", false));
+  TRI_ASSERT(params.isSystem() == (name[0] == '_'));
+  TRI_ASSERT(params.indexBuckets() == triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS));
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
   if (planIdSlice.isNumber()) {
@@ -1813,7 +1814,10 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
   }
   
   if (planId > 0) {
-    params._planId = planId;
+    TRI_ASSERT(params.planId() == planId);
+  }
+  else {
+    TRI_ASSERT(params.planId() == 0);
   }
 
   if (cid > 0) {
@@ -2297,7 +2301,7 @@ int RestReplicationHandler::processRestoreIndexes (VPackSlice const& collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, document->_info._cid);
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, document->_info.id());
 
     int res = trx.begin();
 
@@ -2454,7 +2458,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
 
         if (type == REPLICATION_MARKER_EDGE) {
           // edge
-          if (document->_info._type != TRI_COL_TYPE_EDGE) {
+          if (document->_info.type() != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
             errorMsg = "expecting edge collection, got document collection";
           }
@@ -2485,7 +2489,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
         }
         else {
           // document
-          if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->_info.type() != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
             errorMsg = std::string(TRI_errno_string(res)) + ": expecting document collection, got edge collection";
           }

@@ -240,7 +240,7 @@ bool RestEdgeHandler::createDocument () {
 
     TRI_document_collection_t* document = trx.documentCollection();
 
-    if (document->_info._type != TRI_COL_TYPE_EDGE) {
+    if (document->_info.type() != TRI_COL_TYPE_EDGE) {
       // check if we are inserting with the EDGE handler into a non-EDGE collection
       generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       return false;
