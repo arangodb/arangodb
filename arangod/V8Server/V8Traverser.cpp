@@ -951,7 +951,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
           return;
         }
         EdgeInfo e(
-          _edgeCols.at(eColIdx)->_info._cid,
+          _edgeCols.at(eColIdx)->_info.id(),
           tmp.back()
         );
         VertexId other;
@@ -993,7 +993,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
           return;
         }
         EdgeInfo e(
-          _edgeCols.at(eColIdx)->_info._cid,
+          _edgeCols.at(eColIdx)->_info.id(),
           tmp.back()
         );
         VertexId other;
