@@ -167,10 +167,10 @@
 /// @brief files
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
-#define TRI_DIR_SEPARATOR_STR               "/"
+#define TRI_DIR_SEPARATOR_CHAR          '/'
+#define TRI_DIR_SEPARATOR_STR           "/"
 
-#define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_CLOEXEC                   O_CLOEXEC        
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
@@ -326,10 +326,10 @@
 /// @brief files
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
-#define TRI_DIR_SEPARATOR_STR               "/"
+#define TRI_DIR_SEPARATOR_CHAR          '/'
+#define TRI_DIR_SEPARATOR_STR           "/"
 
-#define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_CLOEXEC                   O_CLOEXEC
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
@@ -501,10 +501,10 @@
 /// @brief files
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
-#define TRI_DIR_SEPARATOR_STR               "/"
+#define TRI_DIR_SEPARATOR_CHAR          '/'
+#define TRI_DIR_SEPARATOR_STR           "/"
 
-#define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_CLOEXEC                   O_CLOEXEC
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
@@ -734,7 +734,7 @@ typedef unsigned char bool;
 #define S_IRGRP _S_IREAD
 #define S_IWGRP _S_IWRITE
 
-#define TRI_O_CLOEXEC 
+#define TRI_O_CLOEXEC                   0 
 
 #define O_RDONLY                        _O_RDONLY
 #define TRI_CHDIR                       _chdir
