@@ -152,6 +152,8 @@ retry:
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally
         if (_applier->wait(_configuration._connectionRetryWaitTime)) {
+          setProgress("fetching master state information failed. will retry now. retries left: " + 
+                      std::to_string(_configuration._maxConnectRetries - connectRetries));
           continue;
         }
 
@@ -431,6 +433,10 @@ bool ContinuousSyncer::excludeCollection (std::string const& masterName) const {
     return true;
   }
   else if (_restrictType == RESTRICT_EXCLUDE && found) {
+    return true;
+  }
+
+  if (TRI_ExcludeCollectionReplication(masterName.c_str(), true)) {
     return true;
   }
 
@@ -756,6 +762,7 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
 int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
   string const name = JsonHelper::getStringValue(collectionJson, "name", "");
+  char const* cname = getCName(json);
 
   if (name.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -763,6 +770,10 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
 
   TRI_voc_cid_t cid = getCid(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == nullptr && cname != nullptr) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+  }
 
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -788,7 +799,15 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
   uint32_t indexBuckets = JsonHelper::getNumericValue<uint32_t>(collectionJson, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
 
   TRI_voc_cid_t cid = getCid(json);
+  char const* cname = getCName(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
+
+  if (col == nullptr && cname != nullptr) {
+    col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+    if (col != nullptr) {
+      cid = col->_cid;
+    }
+  }
 
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -974,13 +993,12 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 
         return res;
       }
-      else {
-        ignoreCount--;
-        LOG_WARNING("ignoring replication error for database '%s': %s",
-                    _applier->databaseName(),
-                    errorMsg.c_str());
-        errorMsg = "";
-      }
+      
+      ignoreCount--;
+      LOG_WARNING("ignoring replication error for database '%s': %s",
+                  _applier->databaseName(),
+                  errorMsg.c_str());
+      errorMsg = "";
     }
     
     // update tick value
@@ -1007,6 +1025,8 @@ int ContinuousSyncer::applyLog (SimpleHttpResult* response,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::runContinuousSync (string& errorMsg) {
+  static uint64_t const MinWaitTime = 300 * 1000;       // 0.30 seconds
+  static uint64_t const MaxWaitTime = 60 * 1000 * 1000; // 60 seconds
   uint64_t connectRetries = 0;
   uint64_t inactiveCycles = 0;
 
@@ -1079,6 +1099,7 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
   while (true) {
     bool worked;
     bool masterActive = false;
+    errorMsg = "";
 
     // fetchTick is passed by reference!
     int res = followMasterLog(errorMsg, fetchTick, fromTick, _configuration._ignoreErrors, worked, masterActive);
@@ -1090,6 +1111,9 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       // master error. try again after a sleep period
       if (_configuration._connectionRetryWaitTime > 0) {
         sleepTime = _configuration._connectionRetryWaitTime;
+        if (sleepTime < MinWaitTime) {
+          sleepTime = MinWaitTime;
+        }
       }
       else {
         // default to prevent spinning too busy here
@@ -1134,6 +1158,9 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
       }
       else {
         sleepTime = _configuration._idleMinWaitTime;
+        if (sleepTime < MinWaitTime) {
+          sleepTime = MinWaitTime; // hard-coded minimum wait time
+        }
 
         if (_configuration._adaptivePolling) {
           inactiveCycles++;
@@ -1150,6 +1177,10 @@ int ContinuousSyncer::runContinuousSync (string& errorMsg) {
           if (sleepTime > _configuration._idleMaxWaitTime) {
             sleepTime = _configuration._idleMaxWaitTime;
           }
+        }
+        
+        if (sleepTime > MaxWaitTime) {
+          sleepTime = MaxWaitTime; // hard-coded maximum wait time
         }
       }
     }
@@ -1200,7 +1231,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
                                                               0));
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1209,7 +1240,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
 
@@ -1239,7 +1270,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
 
   if (! found) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                 ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1255,7 +1286,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
   std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.begin()));
 
   if (! TRI_IsArrayJson(json.get())) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                 ": invalid response type for initial data. expecting array";
     
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1265,7 +1296,7 @@ int ContinuousSyncer::fetchMasterState (string& errorMsg,
     auto id = static_cast<TRI_json_t const*>(TRI_AtVector(&(json.get()->_value._objects), i));
 
     if (! TRI_IsStringJson(id)) {
-      errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+      errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                   ": invalid response type for initial data. expecting array of ids";
     
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -1349,7 +1380,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   );
 
   if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                ": " + _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
@@ -1358,7 +1389,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
 
@@ -1414,7 +1445,7 @@ int ContinuousSyncer::followMasterLog (string& errorMsg,
 
   if (! found) {
     res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    errorMsg = "got invalid response from master at " + string(_masterInfo._endpoint) +
+    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
                 ": required header is missing";
   }
 

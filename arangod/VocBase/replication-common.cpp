@@ -96,6 +96,7 @@ bool TRI_ExcludeCollectionReplication (char const* name,
       TRI_EqualString(name, "_apps") ||
       TRI_EqualString(name, "_configuration") ||
       TRI_EqualString(name, "_cluster_kickstarter_plans") ||
+      TRI_EqualString(name, "_foxxlog") ||
       TRI_EqualString(name, "_jobs") ||
       TRI_EqualString(name, "_queues") ||
       TRI_EqualString(name, "_sessions")) {
