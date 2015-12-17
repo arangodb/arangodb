@@ -1038,27 +1038,26 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 // Only temporary until merge with Max
-VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other) {
-  _version      = TRI_COL_VERSION; 
-  _type         = other.type();
-  _cid          = other.id();
-  _revision     = 0; // TODO
-  _maximalSize  = other.journalSize();
-  _initialCount = -1;
-
+VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other)
+: _version(TRI_COL_VERSION),
+  _type(other.type()),
+  _revision(0), // TODO
+  _cid(other.id()),
+  _planId(0), // TODO
+  _maximalSize(other.journalSize()),
+  _initialCount(-1),
+  _indexBuckets(other.indexBuckets()),
+  _isSystem(other.isSystem()),
+  _deleted(other.deleted()),
+  _doCompact(other.doCompact()),
+  _isVolatile(other.isVolatile()),
+  _waitForSync(other.waitForSync()) {
   const std::string name = other.name();
   memset(_name, 0, sizeof(_name));
   memcpy(_name, name.c_str(), name.size());
 
   // TODO!
   // _keyOptions.reset(other.keyOptions()->get());
-
-  _deleted      = other.deleted();
-  _doCompact    = other.doCompact();
-  _isSystem     = other.isSystem();
-  _isVolatile   = other.isVolatile();
-  _waitForSync  = other.waitForSync();
-  _indexBuckets = other.indexBuckets();
 }
 
 
@@ -1072,6 +1071,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _revision(0),
   _cid(0),
   _planId(0),
+  _maximalSize(vocbase->_settings.defaultMaximalSize),
   _initialCount(-1),
   _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
   _keyOptions(nullptr),
@@ -1105,6 +1105,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _revision(0),
   _cid(0),
   _planId(0),
+  _maximalSize(vocbase->_settings.defaultMaximalSize),
   _initialCount(-1),
   _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
   _keyOptions(nullptr),
@@ -1114,56 +1115,61 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _isVolatile(false),
   _waitForSync(vocbase->_settings.defaultWaitForSync) {
 
-  // TODO what if both are present?
-  TRI_voc_size_t maximalSize;
-  if (options.hasKey("journalSize")) {
-    maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(options, "journalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-  }
-  else {
-    maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(options, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-  }
+  if (!options.isNone() && options.isObject() ) {
+    // TODO what if both are present?
+    TRI_voc_size_t maximalSize;
+    if (options.hasKey("journalSize")) {
+      maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(options, "journalSize", vocbase->_settings.defaultMaximalSize);
+    }
+    else {
+      maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(options, "maximalSize", vocbase->_settings.defaultMaximalSize);
+    }
 
-  _doCompact    = triagens::basics::VelocyPackHelper::getBooleanValue(options, "doCompact", true);
-  _waitForSync  = triagens::basics::VelocyPackHelper::getBooleanValue(options, "waitForSync", vocbase->_settings.defaultWaitForSync);
-  _isVolatile   = triagens::basics::VelocyPackHelper::getBooleanValue(options, "isVolatile", false);
-  _isSystem     = (name[0] == '_');
-  _indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
-  // TODO
-  // CHECK data type
-  _type = static_cast<TRI_col_type_e>(triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "type", _type));
-  
-  VPackSlice const planIdSlice = options.get("planId");
-  TRI_voc_cid_t planId = 0;
-  if (planIdSlice.isNumber()) {
-    planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+    _maximalSize = static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
+    if (_maximalSize == 0 && maximalSize != 0) {
+      _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
+    }
+
+    _doCompact    = triagens::basics::VelocyPackHelper::getBooleanValue(options, "doCompact", true);
+    _waitForSync  = triagens::basics::VelocyPackHelper::getBooleanValue(options, "waitForSync", vocbase->_settings.defaultWaitForSync);
+    _isVolatile   = triagens::basics::VelocyPackHelper::getBooleanValue(options, "isVolatile", false);
+    _isSystem     = (name[0] == '_');
+    _indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+    // TODO
+    // CHECK data type
+    _type = static_cast<TRI_col_type_e>(triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "type", _type));
+    
+    VPackSlice const planIdSlice = options.get("planId");
+    TRI_voc_cid_t planId = 0;
+    if (planIdSlice.isNumber()) {
+      planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+    }
+    else if (planIdSlice.isString()) {
+      std::string tmp = planIdSlice.copyString();
+      planId = static_cast<TRI_voc_cid_t>(TRI_UInt64String2(tmp.c_str(), tmp.length()));
+    }
+
+    if (planId > 0) {
+      _planId = planId;
+    }
+    try {
+      if (options.hasKey("keyOptions")) {
+        VPackSlice const slice = options.get("keyOptions");
+        VPackBuilder builder;
+        builder.add(slice);
+        _keyOptions = builder.steal();
+      }
+    }
+    catch (...) {
+      // Unparseable
+      // We keep a nullptr
+    }
+
   }
-  else if (planIdSlice.isString()) {
-    std::string tmp = planIdSlice.copyString();
-    planId = static_cast<TRI_voc_cid_t>(TRI_UInt64String2(tmp.c_str(), tmp.length()));
-  }
-  
-  if (planId > 0) {
-    _planId = planId;
-  }
+    
  
-  _maximalSize = static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
-  if (_maximalSize == 0 && maximalSize != 0) {
-    _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
-  }
   memset(_name, 0, sizeof(_name));
   TRI_CopyString(_name, name, sizeof(_name) - 1);
-  try {
-    if (options.hasKey("keyOptions")) {
-      VPackSlice const slice = options.get("keyOptions");
-      VPackBuilder builder;
-      builder.add(slice);
-      _keyOptions = builder.steal();
-    }
-  }
-  catch (...) {
-    // Unparseable
-    // We keep a nullptr
-  }
 }
 
 VocbaseCollectionInfo::~VocbaseCollectionInfo () {
