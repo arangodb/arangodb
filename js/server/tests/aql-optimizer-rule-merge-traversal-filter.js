@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var isEqual = helper.isEqual;
+var _ = require("underscore");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -41,7 +42,10 @@ function optimizerRuleTestSuite () {
   // various choices to control the optimizer: 
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
-  var graphName = "myGraph";
+  var graphName = "myUnittestGraph";
+  var ruleName = "merge-traversal-filter";
+  var opts = _.clone(paramEnabled);
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +54,10 @@ function optimizerRuleTestSuite () {
 
     setUp : function () {
       var graph_module = require("org/arangodb/general-graph");
+      opts.allPlans = true;
+      opts.verbosePlans = true;
 
+      try { graph_module._drop(graphName, true); } catch (x) {};
 
       var graph = graph_module._create(graphName, [
         graph_module._relation("edges", "circles", ["circles"])]);
@@ -72,8 +79,6 @@ function optimizerRuleTestSuite () {
       graph.edges.save("circles/B", "circles/E", {theFalse: false, theTruth: true, "label": 'blub'});
       graph.edges.save("circles/C", "circles/F", {theFalse: false, theTruth: true, "label": 'schubi'});
       graph.edges.save("circles/C", "circles/G", {theFalse: false, theTruth: true, "label": 'doo'});
-
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,11 +97,11 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       var queries = [ 
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' LET localScopeVar = NOOPT(true) FILTER p.edges[0].theTruth == localScopeVar return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[-1].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[*].theTruth == true or p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[RAND()].theFalse == false return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[p.edges.length - 1].theFalse == false return {v:v,e:e,p:p}"
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' LET localScopeVar = NOOPT(true) FILTER p.edges[0].theTruth == localScopeVar return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[-1].theTruth == true return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[*].theTruth == true or p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[RAND()].theFalse == false return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[p.edges.length - 1].theFalse == false return {v:v,e:e,p:p}"
       ];
 
       queries.forEach(function(query) {
@@ -111,11 +116,11 @@ function optimizerRuleTestSuite () {
 
     testRuleHasEffect : function () {
       var queries = [ 
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[2].theTruth == true return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[2].theTruth == true AND    p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].theTruth == true return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[2].theTruth == true AND    p.edges[1].label == 'bar' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
       ];
 
       queries.forEach(function(query) {
@@ -130,12 +135,12 @@ function optimizerRuleTestSuite () {
 
     testResults : function () {
       var queries = [ 
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[0].theTruth == true FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].theTruth == true FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[0].theTruth == true FILTER p.edges[0].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[1].theTruth == true FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}",
       ];
 
       queries.forEach(function(query) {
@@ -149,6 +154,12 @@ function optimizerRuleTestSuite () {
         assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query);
         assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
 
+        var plans = AQL_EXPLAIN(query, {}, opts).plans;
+        plans.forEach(function(plan) {
+          var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+          assertEqual(jsonResult, resultDisabled, query);
+        });
+
       });
     },
 
@@ -160,9 +171,9 @@ function optimizerRuleTestSuite () {
     testNoResults : function () {
       var queries = [ 
          // sure shot: 5 < 7
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[7].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[7].label == 'foo' return {v:v,e:e,p:p}",
         // indexed access starts with 0 - this is also forbidden since it will look for the 6th!
-        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[5].label == 'foo' return {v:v,e:e,p:p}",
+        "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH '" + graphName + "' FILTER p.edges[5].label == 'foo' return {v:v,e:e,p:p}",
         // "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' AND p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
       ];
 
