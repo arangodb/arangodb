@@ -1106,7 +1106,22 @@ static int RunClusterDump (string& errorMsg) {
       // First we have to go through all the shards, what are they?
       TRI_json_t const* shards = JsonHelper::getObjectElement(parameters,
                                                              "shards");
-      map<string, string> shardTab = JsonHelper::stringObject(shards);
+      map<string, string> shardTab;  // map from shardId to servers
+      size_t const n = TRI_LengthVectorJson(shards);
+
+      for (size_t i = 0; i < n; i += 2) {
+        auto k = static_cast<TRI_json_t const*>
+            (TRI_AtVector(&shards->_value._objects, i));
+        auto v = static_cast<TRI_json_t const*>
+            (TRI_AtVector(&shards->_value._objects, i+1));
+
+        if (JsonHelper::isString(k) && JsonHelper::isArray(v)) {
+          std::string const key = std::string(k->_value._string.data,
+                                              k->_value._string.length - 1);
+          std::vector<std::string> servers = JsonHelper::stringArray(v);
+          shardTab.emplace(key, servers[0]);
+        }
+      }
       // This is now a map from shardIDs to DBservers
 
       // Now set up the output file:
