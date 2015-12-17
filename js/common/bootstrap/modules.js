@@ -91,7 +91,7 @@ function hasOwnProperty(obj, prop) {
 
 function createRequire(module) {
   function require(path) {
-    return module.require(path);
+    return module.require(path.replace(/^@arangodb/, 'org/arangodb'));
   }
 
   require.resolve = function(request) {
