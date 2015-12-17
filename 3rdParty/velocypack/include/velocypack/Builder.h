@@ -251,6 +251,7 @@ class Builder {
   std::shared_ptr<Buffer<uint8_t>> steal() {
     std::shared_ptr<Buffer<uint8_t>> res = std::move(_buffer);
     _buffer.reset(new Buffer<uint8_t>());
+    _pos = 0;
     return res;
   }
 
@@ -297,6 +298,8 @@ class Builder {
     }
     return _pos;
   }
+
+  bool isEmpty() const throw() { return _pos == 0; }
 
   bool isClosed() const throw() { return _stack.empty(); }
 
