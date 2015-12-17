@@ -1099,9 +1099,17 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              char const* name,
+                                             VPackSlice const& options) 
+: VocbaseCollectionInfo(vocbase, name, TRI_COL_TYPE_DOCUMENT, options) {
+
+}
+
+VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
+                                             char const* name,
+                                             TRI_col_type_e type,
                                              VPackSlice const& options)
 : _version(TRI_COL_VERSION),
-  _type(TRI_COL_TYPE_DOCUMENT),
+  _type(type),
   _revision(0),
   _cid(0),
   _planId(0),
