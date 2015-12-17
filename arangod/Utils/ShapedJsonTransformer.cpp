@@ -34,12 +34,10 @@
 using Json = triagens::basics::Json;
 using CollectionNameResolver = triagens::arango::CollectionNameResolver;
 
-Json TRI_ExpandShapedJson (
-  VocShaper* shaper,
-  CollectionNameResolver const* resolver,
-  TRI_voc_cid_t const& cid,
-  TRI_df_marker_t const* marker
-) {
+Json TRI_ExpandShapedJson (VocShaper* shaper,
+                           CollectionNameResolver const* resolver,
+                           TRI_voc_cid_t const& cid,
+                           TRI_df_marker_t const* marker) {
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
   Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
@@ -73,12 +71,10 @@ Json TRI_ExpandShapedJson (
   return json;
 }
 
-Json TRI_ExpandShapedJson (
-  VocShaper* shaper,
-  CollectionNameResolver const* resolver,
-  TRI_voc_cid_t const& cid,
-  TRI_doc_mptr_t const* mptr
-) {
+Json TRI_ExpandShapedJson (VocShaper* shaper,
+                           CollectionNameResolver const* resolver,
+                           TRI_voc_cid_t const& cid,
+                           TRI_doc_mptr_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
   return TRI_ExpandShapedJson(shaper, resolver, cid, marker);
 }
