@@ -1605,9 +1605,6 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
 #endif
   }
-  else {
-    infoSlice = builder.slice();
-  }
 
   VocbaseCollectionInfo parameters(vocbase, name.c_str(), infoSlice);
 

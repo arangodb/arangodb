@@ -1216,8 +1216,8 @@ static int DropCollection (TRI_vocbase_t* vocbase,
       
     bool doSync = (vocbase->_settings.forceSyncProperties &&
                    ! triagens::wal::LogfileManager::instance()->isInRecovery());
-    VPackBuilder builder;
-    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, builder.slice(), doSync);
+    VPackSlice slice;
+    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, slice, doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
