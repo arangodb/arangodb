@@ -801,7 +801,7 @@ int TRI_AppendStringStringBuffer (TRI_string_buffer_t * self, char const * str) 
 /// @brief appends characters
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendString2StringBuffer (TRI_string_buffer_t * self, char const * str, size_t len) {
+int TRI_AppendString2StringBuffer (TRI_string_buffer_t* self, char const* str, size_t len) {
   return AppendString(self, str, len);
 }
 
