@@ -1579,7 +1579,6 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
 
 
   VPackBuilder builder;
-  builder.openObject();
   VPackSlice infoSlice;
   if (2 <= args.Length()) {
     if (! args[1]->IsObject()) {
@@ -1590,7 +1589,6 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-    builder.close();
     infoSlice = builder.slice();
 
     if (infoSlice.hasKey("journalSize")) {
@@ -1608,7 +1606,6 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
 #endif
   }
   else {
-    builder.close();
     infoSlice = builder.slice();
   }
 
