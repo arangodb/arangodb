@@ -91,7 +91,7 @@ function hasOwnProperty(obj, prop) {
 
 function createRequire(module) {
   function require(path) {
-    return module.require(path.replace(/^@arangodb/, 'org/arangodb'));
+    return module.require(path);
   }
 
   require.resolve = function(request) {
@@ -406,6 +406,7 @@ function isGlobalModule(filename) {
 //    Then have it load  the file contents before returning its exports
 //    object.
 Module._load = function(request, parent, isMain) {
+  request = request.replace(/^@arangodb/, 'org/arangodb');
 
   var filename = request;
   var dbModule = false;
