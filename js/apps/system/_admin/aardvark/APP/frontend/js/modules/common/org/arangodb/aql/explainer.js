@@ -458,6 +458,10 @@ function processQuery (query, explain) {
         return value(JSON.stringify(node.value));
       case "object":
         if (node.hasOwnProperty("subNodes")) {
+          if (node.subNodes.length > 20) {
+            // print only the first 20 values from the object
+            return "{ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + ", ... }";
+          }
           return "{ " + node.subNodes.map(buildExpression).join(", ") + " }";
         }
         return "{ }";
