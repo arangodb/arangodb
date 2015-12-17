@@ -5,10 +5,10 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
 
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
-  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.2"</span>, 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"2.7.3"</span>, 
   <span class="hljs-string">"details"</span> : { 
     <span class="hljs-string">"architecture"</span> : <span class="hljs-string">"64bit"</span>, 
-    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2015-12-01 14:17:59"</span>, 
+    <span class="hljs-string">"build-date"</span> : <span class="hljs-string">"2015-12-17 08:33:06"</span>, 
     <span class="hljs-string">"configure"</span> : <span class="hljs-string">"'./configure' '--enable-maintainer-mode' 'CPPFLAGS=-I/usr/local/include' 'LDFLAGS=-L/usr/local/lib'"</span>, 
     <span class="hljs-string">"env"</span> : <span class="hljs-string">"CPPFLAGS='-I/usr/local/include' LDFLAGS='-L/usr/local/lib'"</span>, 
     <span class="hljs-string">"fd-client-event-handler"</span> : <span class="hljs-string">"poll"</span>, 
@@ -17,8 +17,8 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
     <span class="hljs-string">"libev-version"</span> : <span class="hljs-string">"4.11"</span>, 
     <span class="hljs-string">"maintainer-mode"</span> : <span class="hljs-string">"true"</span>, 
     <span class="hljs-string">"openssl-version"</span> : <span class="hljs-string">"OpenSSL 1.0.2d 9 Jul 2015"</span>, 
-    <span class="hljs-string">"repository-version"</span> : <span class="hljs-string">"heads/2.7-0-g1113b60638d90790b902bfc34bdd76deacacd022-dirty"</span>, 
-    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"2.7.2"</span>, 
+    <span class="hljs-string">"repository-version"</span> : <span class="hljs-string">"heads/2.7-0-ga7eb707459e7f1b09ddb4ab4bfa9885e171be0c6-dirty"</span>, 
+    <span class="hljs-string">"server-version"</span> : <span class="hljs-string">"2.7.3"</span>, 
     <span class="hljs-string">"sizeof int"</span> : <span class="hljs-string">"4"</span>, 
     <span class="hljs-string">"sizeof void*"</span> : <span class="hljs-string">"8"</span>, 
     <span class="hljs-string">"tcmalloc"</span> : <span class="hljs-string">"false"</span>, 

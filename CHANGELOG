@@ -1,4 +1,4 @@
-v2.7.3 (XXXX-XX-XX)
+v2.7.3 (2015-12-17)
 -------------------
 
 * fixed disappearing of documents for collections transferred via `sync` or

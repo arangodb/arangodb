@@ -9,35 +9,35 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL_TREE(
       { 
         <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
         <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1763838543"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1762488430"</span>, 
         <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
         <span class="hljs-string">"connnection"</span> : [ 
           { 
             <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
             <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1763641935"</span>, 
+            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1762291822"</span>, 
             <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
             <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
             <span class="hljs-string">"connnection"</span> : [ 
               { 
                 <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
                 <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-                <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1764231759"</span>, 
+                <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1762881646"</span>, 
                 <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
                 <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
               }, 
               { 
                 <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
                 <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
-                <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1764428367"</span>, 
+                <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1763078254"</span>, 
                 <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
                 <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span>, 
                 <span class="hljs-string">"connnection"</span> : [ 
                   { 
                     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
                     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-                    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1764231759"</span>, 
+                    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1762881646"</span>, 
                     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
                     <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
                   } 
@@ -48,14 +48,14 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL_TREE(
           { 
             <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
             <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span>, 
-            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1764428367"</span>, 
+            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1763078254"</span>, 
             <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
             <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span>, 
             <span class="hljs-string">"connnection"</span> : [ 
               { 
                 <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
                 <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-                <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1764231759"</span>, 
+                <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1762881646"</span>, 
                 <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
                 <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
               } 
@@ -64,7 +64,7 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_TRAVERSAL_TREE(
           { 
             <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
             <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span>, 
-            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1764231759"</span>, 
+            <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1762881646"</span>, 
             <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
             <span class="hljs-string">"population"</span> : <span class="hljs-number">80000</span> 
           } 
