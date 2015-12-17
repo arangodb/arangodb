@@ -2337,8 +2337,12 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // check if we can generate the key generator
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> buffer = parameters.keyOptions();
-  VPackSlice const slice(buffer->data());
-  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+
+  std::unique_ptr<TRI_json_t> json;
+  if (buffer != nullptr) {
+    VPackSlice const slice(buffer->data());
+    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  }
   KeyGenerator* keyGenerator = KeyGenerator::factory(json.get());
 
   if (keyGenerator == nullptr) {
