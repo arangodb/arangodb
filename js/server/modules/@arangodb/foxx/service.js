@@ -31,6 +31,7 @@ const _ = require('lodash');
 const internal = require('internal');
 const assert = require('assert');
 const Module = require('module');
+const semver = require('semver');
 const path = require('path');
 const fs = require('fs');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
@@ -215,6 +216,16 @@ class FoxxService {
     this.main[$_MODULE_CONTEXT].console = foxxConsole;
     this.main.require.cache = this.requireCache;
     this.main.context = new FoxxContext(this);
+
+    let range = this.manifest.engines && this.manifest.engines.arangodb;
+    this.legacy = range ? semver.gtr('3.0.0', range) : false;
+    if (this.legacy) {
+      console.debug(
+        `Running ${data.mount} in 2.x compatibility mode (requested version ${range} pre-dates 3.0.0)`
+      );
+      this.main[$_MODULE_CONTEXT].applicationContext = this.main.context;
+      this.main.context.foxxFilename = this.main.context.fileName;
+    }
   }
 
   applyConfiguration(config) {
