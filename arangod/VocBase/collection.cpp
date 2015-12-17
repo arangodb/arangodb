@@ -1038,27 +1038,25 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 // -----------------------------------------------------------------------------
 
 // Only temporary until merge with Max
-VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other) {
-  _version      = TRI_COL_VERSION; 
-  _type         = other.type();
-  _cid          = other.id();
-  _revision     = 0; // TODO
-  _maximalSize  = other.journalSize();
-  _initialCount = -1;
-
+VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other)
+: _version(TRI_COL_VERSION),
+  _type(other.type()),
+  _cid(other.id()),
+  _revision(0), // TODO
+  _maximalSize(other.journalSize()),
+  _initialCount(-1),
+  _deleted(other.deleted()),
+  _doCompact(other.doCompact()),
+  _isSystem(other.isSystem()),
+  _isVolatile(other.isVolatile()),
+  _waitForSync(other.waitForSync()),
+  _indexBuckets(other.indexBuckets()) {
   const std::string name = other.name();
   memset(_name, 0, sizeof(_name));
   memcpy(_name, name.c_str(), name.size());
 
   // TODO!
   // _keyOptions.reset(other.keyOptions()->get());
-
-  _deleted      = other.deleted();
-  _doCompact    = other.doCompact();
-  _isSystem     = other.isSystem();
-  _isVolatile   = other.isVolatile();
-  _waitForSync  = other.waitForSync();
-  _indexBuckets = other.indexBuckets();
 }
 
 
@@ -1072,6 +1070,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _revision(0),
   _cid(0),
   _planId(0),
+  _maximalSize(vocbase->_settings.defaultMaximalSize),
   _initialCount(-1),
   _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
   _keyOptions(nullptr),
@@ -1105,6 +1104,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _revision(0),
   _cid(0),
   _planId(0),
+  _maximalSize(vocbase->_settings.defaultMaximalSize),
   _initialCount(-1),
   _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
   _keyOptions(nullptr),
@@ -1114,7 +1114,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _isVolatile(false),
   _waitForSync(vocbase->_settings.defaultWaitForSync) {
 
-  if (options.isObject() ) {
+  if (!options.isNone() && options.isObject() ) {
     // TODO what if both are present?
     TRI_voc_size_t maximalSize;
     if (options.hasKey("journalSize")) {
