@@ -1095,8 +1095,8 @@ int TRI_CopyToJson (TRI_memory_zone_t* zone,
       }
 
       for (size_t i = 0;  i < n;  ++i) {
-        TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&src->_value._objects, i));
-        TRI_json_t* w = static_cast<TRI_json_t*>(TRI_AtVector(&dst->_value._objects, i));
+        auto const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&src->_value._objects, i));
+        auto* w = static_cast<TRI_json_t*>(TRI_AtVector(&dst->_value._objects, i));
 
         res = TRI_CopyToJson(zone, w, v);
 
