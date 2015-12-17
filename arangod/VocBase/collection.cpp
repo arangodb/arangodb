@@ -1041,16 +1041,17 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other)
 : _version(TRI_COL_VERSION),
   _type(other.type()),
-  _cid(other.id()),
   _revision(0), // TODO
+  _cid(other.id()),
+  _planId(0), // TODO
   _maximalSize(other.journalSize()),
   _initialCount(-1),
+  _indexBuckets(other.indexBuckets()),
+  _isSystem(other.isSystem()),
   _deleted(other.deleted()),
   _doCompact(other.doCompact()),
-  _isSystem(other.isSystem()),
   _isVolatile(other.isVolatile()),
-  _waitForSync(other.waitForSync()),
-  _indexBuckets(other.indexBuckets()) {
+  _waitForSync(other.waitForSync()) {
   const std::string name = other.name();
   memset(_name, 0, sizeof(_name));
   memcpy(_name, name.c_str(), name.size());
