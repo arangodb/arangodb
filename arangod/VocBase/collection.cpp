@@ -1050,8 +1050,8 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other) {
   memset(_name, 0, sizeof(_name));
   memcpy(_name, name.c_str(), name.size());
 
-  // TODO!!!!
-  // _keyOptions   = other.keyOptions();
+  // TODO!
+  // _keyOptions.reset(other.keyOptions()->get());
 
   _deleted      = other.deleted();
   _doCompact    = other.doCompact();
@@ -1101,7 +1101,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
                                              char const* name,
                                              VPackSlice const& options)
 : _version(TRI_COL_VERSION),
-  _type(static_cast<TRI_col_type_e>(0)),
+  _type(TRI_COL_TYPE_DOCUMENT),
   _revision(0),
   _cid(0),
   _planId(0),
@@ -1129,6 +1129,8 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _isSystem     = (name[0] == '_');
   _indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
   // TODO
+  // CHECK data type
+  _type = static_cast<TRI_col_type_e>(triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "type", _type));
   
   VPackSlice const planIdSlice = options.get("planId");
   TRI_voc_cid_t planId = 0;
