@@ -444,6 +444,29 @@ function multiCollectionGraphSuite () {
       });
     },
 
+    testNoBindParameterSingleForFilter: function () {
+      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " + en + " FILTER p.vertices[1]._key == s._key SORT x RETURN x";
+      var result = db._query(query).toArray();
+      assertEqual(result.length, 0);
+      var plans = AQL_EXPLAIN(query, { }, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult.length, 0);
+      });
+    },
+
+    testNoBindParameterSingleForFilter: function () {
+      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " + en + " FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x RETURN x";
+      var result = db._query(query).toArray();
+      assertEqual(result.length, 0);
+      var plans = AQL_EXPLAIN(query, { }, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult.length, 0);
+      });
+    },
+
+
     testNoBindParameter: function () {
       var query = "FOR x, e, p IN OUTBOUND '" + vertex.B + "' " + en + " RETURN {vertex: x, path: p}";
       var result = db._query(query).toArray();
@@ -734,6 +757,94 @@ function multiCollectionGraphSuite () {
       assertEqual(result[3], vertex.D);
       assertEqual(result[4], vertex.E);
       assertEqual(result[5], vertex.F);
+      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+
+  };
+}
+
+
+
+
+function multiEdgeCollectionGraphSuite () {
+
+  /***********************************************************************
+   * Graph under test:
+   *
+   *         B<----+       <- B & C via edge collection A
+   *               |
+   *         D<----A----<C
+   *               |
+   *               +----<E <- D & E via edge colltion B
+   *
+   ***********************************************************************/
+
+  var g;
+  const gn = "UnitTestGraph";
+  const vn2 = "UnitTestVertexCollection2";
+  const en2 = "UnitTestEdgeCollection2";
+  var ruleName = "merge-traversal-filter";
+  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var opts = _.clone(paramEnabled);
+
+  // We always use the same query, the result should be identical.
+  var validateResult = function (result) {
+  };
+
+  return {
+
+    setUp: function() {
+      opts.allPlans = true;
+      opts.verbosePlans = true;
+      cleanup();
+      try {
+        gm._drop(gn);
+      } catch (e) {
+        // It is expected that this graph does not exist.
+      }
+
+      vc  = db._create(vn, {numberOfShards: 4});
+      ec  = db._createEdgeCollection(en,  {numberOfShards: 4});
+      ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
+
+      g = gm._create(gn, [gm._relation(en, vn, vn), gm._relation(en2, vn, vn)]);
+
+      vertex.A = vc.save({_key: "A"})._id;
+      vertex.B = vc.save({_key: "B"})._id;
+      vertex.C = vc.save({_key: "C"})._id;
+      vertex.D = vc.save({_key: "D"})._id;
+      vertex.E = vc.save({_key: "E"})._id;
+
+      edge.AB = ec.save(vertex.A, vertex.B, {})._id;
+      edge.CA = ec.save(vertex.C, vertex.A, {})._id;
+      edge.AD = ec2.save(vertex.A, vertex.D, {})._id;
+      edge.EA = ec2.save(vertex.E, vertex.A, {})._id;
+    },
+
+    tearDown: function() {
+      gm._drop(gn);
+      db._drop(vn);
+      db._drop(en);
+      db._drop(en2);
+      cleanup();
+    },
+
+    testTwoVertexCollectionsInOutbound: function () {
+      /* this test is intended to trigger the clone functionality. */
+      expectResult = ['B', 'C', 'D', 'E'];
+      var query = "FOR x IN ANY @startId GRAPH @graph SORT x._id RETURN x._key";
+      var bindVars = {
+        graph: gn,
+        startId: vertex.A
+      };
+
+      var result = db._query(query, bindVars).toArray();
+
+      assertEqual(result, expectResult, query);
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function(plan) {
         var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
@@ -1557,6 +1668,7 @@ function brokenGraphSuite () {
 
 jsunity.run(namedGraphSuite);
 jsunity.run(multiCollectionGraphSuite);
+jsunity.run(multiEdgeCollectionGraphSuite);
 jsunity.run(potentialErrorsSuite);
 jsunity.run(complexInternaSuite);
 jsunity.run(complexFilteringSuite);
