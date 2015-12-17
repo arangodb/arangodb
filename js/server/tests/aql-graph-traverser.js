@@ -449,7 +449,8 @@ function multiCollectionGraphSuite () {
     },
 
     testNoBindParameterSingleForFilter: function () {
-      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " + en + " FILTER p.vertices[1]._key == s._key SORT x RETURN x";
+      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " +
+        en + " FILTER p.vertices[1]._key == s._key SORT x RETURN x";
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
@@ -459,8 +460,9 @@ function multiCollectionGraphSuite () {
       });
     },
 
-    testNoBindParameterSingleForFilter: function () {
-      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " + en + " FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x RETURN x";
+    testNoBindParameterV8Function: function () {
+      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " +
+        en + " FILTER p.vertices[1]._key == NOOPT(V8(RAND())) SORT x RETURN x";
       var result = db._query(query).toArray();
       assertEqual(result.length, 0);
       var plans = AQL_EXPLAIN(query, { }, opts).plans;
@@ -843,15 +845,10 @@ function multiEdgeCollectionGraphSuite () {
 
   var g;
   const gn = "UnitTestGraph";
-  const vn2 = "UnitTestVertexCollection2";
   const en2 = "UnitTestEdgeCollection2";
   var ruleName = "merge-traversal-filter";
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var opts = _.clone(paramEnabled);
-
-  // We always use the same query, the result should be identical.
-  var validateResult = function (result) {
-  };
 
   return {
 
@@ -867,7 +864,7 @@ function multiEdgeCollectionGraphSuite () {
 
       vc  = db._create(vn, {numberOfShards: 4});
       ec  = db._createEdgeCollection(en,  {numberOfShards: 4});
-      ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
+      var ec2 = db._createEdgeCollection(en2, {numberOfShards: 4});
 
       g = gm._create(gn, [gm._relation(en, vn, vn), gm._relation(en2, vn, vn)]);
 
@@ -893,7 +890,7 @@ function multiEdgeCollectionGraphSuite () {
 
     testTwoVertexCollectionsInOutbound: function () {
       /* this test is intended to trigger the clone functionality. */
-      expectResult = ['B', 'C', 'D', 'E'];
+      var expectResult = ['B', 'C', 'D', 'E'];
       var query = "FOR x IN ANY @startId GRAPH @graph SORT x._id RETURN x._key";
       var bindVars = {
         graph: gn,

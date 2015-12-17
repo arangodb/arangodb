@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -43,7 +43,6 @@ function optimizerRuleTestSuite () {
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   var graphName = "myUnittestGraph";
-  var ruleName = "merge-traversal-filter";
   var opts = _.clone(paramEnabled);
 
   return {
@@ -57,7 +56,7 @@ function optimizerRuleTestSuite () {
       opts.allPlans = true;
       opts.verbosePlans = true;
 
-      try { graph_module._drop(graphName, true); } catch (x) {};
+      try { graph_module._drop(graphName, true); } catch (x) {}
 
       var graph = graph_module._create(graphName, [
         graph_module._relation("edges", "circles", ["circles"])]);
