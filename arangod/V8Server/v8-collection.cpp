@@ -2559,12 +2559,11 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     if (par->IsObject()) {
 
       VPackBuilder builder;
-      builder.openObject();
       int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_V8_THROW_EXCEPTION(res);
       }
-      builder.close();
 
       VPackSlice const slice = builder.slice();
 

@@ -1606,7 +1606,7 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
 #endif
   }
 
-  VocbaseCollectionInfo parameters(vocbase, name.c_str(), infoSlice);
+  VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType, infoSlice);
 
   if (parameters.isVolatile() && parameters.waitForSync()) {
     // the combination of waitForSync and isVolatile makes no sense

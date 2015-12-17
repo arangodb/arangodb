@@ -227,6 +227,11 @@ namespace triagens {
                                char const*,
                                VPackSlice const&);
 
+        VocbaseCollectionInfo (TRI_vocbase_t*,
+                               char const*,
+                               TRI_col_type_e,
+                               VPackSlice const&);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates a new VocbaseCollectionInfo from the json content of a file
 /// This function throws if the file cannot be parsed.

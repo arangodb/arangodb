@@ -1066,20 +1066,20 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
                                               TRI_col_type_e type,
                                               TRI_voc_size_t maximalSize,
                                               VPackSlice const& keyOptions)
-: _version(TRI_COL_VERSION),
-  _type(type),
-  _revision(0),
-  _cid(0),
-  _planId(0),
-  _maximalSize(vocbase->_settings.defaultMaximalSize),
-  _initialCount(-1),
-  _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
-  _keyOptions(nullptr),
-  _isSystem(false),
-  _deleted(false),
-  _doCompact(true),
-  _isVolatile(false),
-  _waitForSync(vocbase->_settings.defaultWaitForSync) {
+  : _version(TRI_COL_VERSION),
+    _type(type),
+    _revision(0),
+    _cid(0),
+    _planId(0),
+    _maximalSize(vocbase->_settings.defaultMaximalSize),
+    _initialCount(-1),
+    _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
+    _keyOptions(nullptr),
+    _isSystem(false),
+    _deleted(false),
+    _doCompact(true),
+    _isVolatile(false),
+    _waitForSync(vocbase->_settings.defaultWaitForSync) {
 
   _maximalSize = static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
   if (_maximalSize == 0 && maximalSize != 0) {
@@ -1100,21 +1100,29 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
 
 VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
                                               char const* name,
+                                              VPackSlice const& options) 
+  : VocbaseCollectionInfo(vocbase, name, TRI_COL_TYPE_DOCUMENT, options) {
+
+}
+
+VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
+                                              char const* name,
+                                              TRI_col_type_e type,
                                               VPackSlice const& options)
-: _version(TRI_COL_VERSION),
-  _type(TRI_COL_TYPE_DOCUMENT),
-  _revision(0),
-  _cid(0),
-  _planId(0),
-  _maximalSize(vocbase->_settings.defaultMaximalSize),
-  _initialCount(-1),
-  _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
-  _keyOptions(nullptr),
-  _isSystem(false),
-  _deleted(false),
-  _doCompact(true),
-  _isVolatile(false),
-  _waitForSync(vocbase->_settings.defaultWaitForSync) {
+  : _version(TRI_COL_VERSION),
+    _type(type),
+    _revision(0),
+    _cid(0),
+    _planId(0),
+    _maximalSize(vocbase->_settings.defaultMaximalSize),
+    _initialCount(-1),
+    _indexBuckets(TRI_DEFAULT_INDEX_BUCKETS),
+    _keyOptions(nullptr),
+    _isSystem(false),
+    _deleted(false),
+    _doCompact(true),
+    _isVolatile(false),
+    _waitForSync(vocbase->_settings.defaultWaitForSync) {
 
   memset(_name, 0, sizeof(_name));
 
