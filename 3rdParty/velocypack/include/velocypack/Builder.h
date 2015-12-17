@@ -289,7 +289,12 @@ class Builder {
   }
 
   // Return a Slice of the result:
-  Slice slice() const { return Slice(start(), options); }
+  Slice slice() const { 
+    if (isEmpty()) { 
+      return Slice();
+    }
+    return Slice(start(), options); 
+  }
 
   // Compute the actual size here, but only when sealed
   ValueLength size() const {

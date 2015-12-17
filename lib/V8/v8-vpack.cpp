@@ -54,6 +54,7 @@ static v8::Handle<v8::Value> ObjectVPackString (v8::Isolate* isolate, VPackSlice
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectVPackObject (v8::Isolate* isolate, VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
   
   if (object.IsEmpty()) {
@@ -78,6 +79,7 @@ static v8::Handle<v8::Value> ObjectVPackObject (v8::Isolate* isolate, VPackSlice
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> ObjectVPackArray (v8::Isolate* isolate, VPackSlice const& slice) {
+  TRI_ASSERT(slice.isArray());
   v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(slice.length()));
   
   if (object.IsEmpty()) {
