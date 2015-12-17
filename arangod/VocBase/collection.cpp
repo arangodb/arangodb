@@ -1061,11 +1061,11 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other)
 }
 
 
-VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
-                                             char const* name,
-                                             TRI_col_type_e type,
-                                             TRI_voc_size_t maximalSize,
-                                             VPackSlice const& keyOptions)
+VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
+                                              char const* name,
+                                              TRI_col_type_e type,
+                                              TRI_voc_size_t maximalSize,
+                                              VPackSlice const& keyOptions)
 : _version(TRI_COL_VERSION),
   _type(type),
   _revision(0),
@@ -1080,6 +1080,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _doCompact(true),
   _isVolatile(false),
   _waitForSync(vocbase->_settings.defaultWaitForSync) {
+
   _maximalSize = static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
   if (_maximalSize == 0 && maximalSize != 0) {
     _maximalSize = static_cast<TRI_voc_size_t>(PageSize);
@@ -1097,9 +1098,9 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   }
 }
 
-VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
-                                             char const* name,
-                                             VPackSlice const& options)
+VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
+                                              char const* name,
+                                              VPackSlice const& options)
 : _version(TRI_COL_VERSION),
   _type(TRI_COL_TYPE_DOCUMENT),
   _revision(0),
@@ -1114,6 +1115,8 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
   _doCompact(true),
   _isVolatile(false),
   _waitForSync(vocbase->_settings.defaultWaitForSync) {
+
+  memset(_name, 0, sizeof(_name));
 
   if (!options.isNone() && options.isObject() ) {
     // TODO what if both are present?
@@ -1138,6 +1141,17 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
     // TODO
     // CHECK data type
     _type = static_cast<TRI_col_type_e>(triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "type", _type));
+
+    std::string cname = triagens::basics::VelocyPackHelper::getStringValue(options, "name", "");
+    if (! cname.empty()) {
+      TRI_CopyString(_name, cname.c_str(), sizeof(_name) - 1);
+    }
+    
+    std::string cidString = triagens::basics::VelocyPackHelper::getStringValue(options, "cid", "");
+    if (! cidString.empty()) {
+      // note: this may throw
+      _cid = std::stoull(cidString);
+    }
     
     VPackSlice const planIdSlice = options.get("planId");
     TRI_voc_cid_t planId = 0;
@@ -1164,12 +1178,11 @@ VocbaseCollectionInfo::VocbaseCollectionInfo(TRI_vocbase_t* vocbase,
       // Unparseable
       // We keep a nullptr
     }
-
   }
-    
- 
-  memset(_name, 0, sizeof(_name));
-  TRI_CopyString(_name, name, sizeof(_name) - 1);
+
+  if (*_name == '\0') {
+    TRI_CopyString(_name, name, sizeof(_name) - 1);
+  }
 }
 
 VocbaseCollectionInfo::~VocbaseCollectionInfo () {
@@ -1194,8 +1207,8 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile (char const* path,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  std::string filePath (filename, strlen(filename));
-  std::shared_ptr<VPackBuilder> content = triagens::basics::VelocyPackHelper::velocyPackFromFile (filePath);
+  std::string filePath(filename, strlen(filename));
+  std::shared_ptr<VPackBuilder> content = triagens::basics::VelocyPackHelper::velocyPackFromFile(filePath);
   VPackSlice const slice = content->slice();
   if (! slice.isObject()) {
     LOG_ERROR("cannot open '%s', collection parameters are not readable", filename);

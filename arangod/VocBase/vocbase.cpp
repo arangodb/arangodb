@@ -849,10 +849,10 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       int res = TRI_ERROR_NO_ERROR;
 
       try {
-        triagens::arango::VocbaseCollectionInfo info = triagens::arango::VocbaseCollectionInfo::fromFile (file.c_str(),
-                                                                                                          vocbase,
-                                                                                                          "", // Name is unused
-                                                                                                          true);
+        triagens::arango::VocbaseCollectionInfo info = triagens::arango::VocbaseCollectionInfo::fromFile(file.c_str(),
+                                                                                                         vocbase,
+                                                                                                         "", // Name is unused
+                                                                                                         true);
         TRI_UpdateTickServer(info.id());
 
         if (info.deleted()) {

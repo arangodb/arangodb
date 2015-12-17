@@ -234,6 +234,7 @@ namespace triagens {
 /// You must hold the @ref TRI_READ_LOCK_STATUS_VOCBASE_COL when calling this
 /// function.
 ////////////////////////////////////////////////////////////////////////////////
+
         static VocbaseCollectionInfo fromFile (char const*,
                                                TRI_vocbase_t*,
                                                char const*,

@@ -574,6 +574,8 @@ static int OpenDatabases (TRI_server_t* server,
       break;
     }
 
+    LOG_DEBUG("database parameters: %s", triagens::basics::JsonHelper::toString(json).c_str());
+
     TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
 
     deletedJson = TRI_LookupObjectJson(json, "deleted");
