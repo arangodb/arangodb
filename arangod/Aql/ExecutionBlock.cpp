@@ -30,20 +30,6 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/json-utilities.h"
-/*
-#include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Traverser.h"
-#include "Cluster/ClusterMethods.h"
-#include "Dispatcher/DispatcherThread.h"
-#include "Indexes/EdgeIndex.h"
-#include "Indexes/HashIndex.h"
-#include "Utils/ShapedJsonTransformer.h"
-#include "V8/v8-globals.h"
-#include "VocBase/edge-collection.h"
-#include "VocBase/vocbase.h"
-*/
 
 using namespace std;
 using namespace triagens::basics;

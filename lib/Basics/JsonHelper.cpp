@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/JsonHelper.h"
-
 #include "Basics/conversions.h"
 #include "Basics/string-buffer.h"
 
@@ -226,7 +225,7 @@ std::string JsonHelper::toString (TRI_json_t const* json) {
     return "";
   }
 
-  string out(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
+  std::string out(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
   TRI_DestroyStringBuffer(&buffer);
 
   return out;
@@ -252,7 +251,7 @@ TRI_json_t* JsonHelper::getObjectElement (TRI_json_t const* json,
 std::string JsonHelper::getStringValue (TRI_json_t const* json,
                                         std::string const& defaultValue) {
   if (isString(json)) {
-    return string(json->_value._string.data, json->_value._string.length - 1);
+    return std::string(json->_value._string.data, json->_value._string.length - 1);
   }
   return defaultValue;
 }
@@ -267,7 +266,7 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
   TRI_json_t const* sub = getObjectElement(json, name);
 
   if (isString(sub)) {
-    return string(sub->_value._string.data, sub->_value._string.length - 1);
+    return std::string(sub->_value._string.data, sub->_value._string.length - 1);
   }
   return defaultValue;
 }
@@ -320,7 +319,7 @@ std::string JsonHelper::checkAndGetStringValue (TRI_json_t const* json,
       + "' was not found or is not a string.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
-  return string(sub->_value._string.data, sub->_value._string.length - 1);
+  return std::string(sub->_value._string.data, sub->_value._string.length - 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -378,7 +377,6 @@ std::ostream& operator<< (std::ostream& stream,
   stream << json.toString();
   return stream;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the JSON contents to an output stream

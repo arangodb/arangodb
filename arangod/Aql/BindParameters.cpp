@@ -174,7 +174,8 @@ void BindParameters::StripCollectionNames (TRI_json_t* keys,
       auto s = key->_value._string.data;
       auto p = strchr(s, '/');
 
-      if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
+      if (p != nullptr && 
+          strncmp(s, collectionName, p - s) == 0) {
         size_t pos = static_cast<size_t>(p - s);
         // key begins with collection name + '/', now strip it in place for further comparisons
         memmove(s, p + 1, key->_value._string.length - 2 - pos);

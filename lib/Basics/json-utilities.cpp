@@ -244,14 +244,18 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
     case TRI_JSON_STRING_REFERENCE: {
       // same for STRING and STRING_REFERENCE
       int res;
+      size_t const nl = lhs->_value._string.length - 1;   
+      size_t const nr = rhs->_value._string.length - 1;   
       if (useUTF8) {
         res = TRI_compare_utf8(lhs->_value._string.data,
-                               lhs->_value._string.length - 1, 
+                               nl,
                                rhs->_value._string.data,
-                               rhs->_value._string.length - 1);
+                               nr);
       }
       else {
-        res = strcmp(lhs->_value._string.data, rhs->_value._string.data);
+        // beware of strings containing NUL bytes
+        size_t len = nl < nr ? nl : nr;
+        res = memcmp(lhs->_value._string.data, rhs->_value._string.data, len);
       }
       if (res < 0) {
         return -1;
@@ -259,7 +263,12 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
       else if (res > 0) {
         return 1;
       }
-      return 0;
+      // res == 0
+      if (nl == nr) {
+        return 0;
+      }
+      // res == 0, but different string lengths
+      return nl < nr ? -1 : 1;
     }
 
     case TRI_JSON_ARRAY: {

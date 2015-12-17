@@ -1012,7 +1012,7 @@ AstNode* Ast::createNodeValueString (char const* value,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (*value == '\0') {
+  if (length == 0) {
     // performance optimization:
     // return a pointer to the singleton empty string node
     // note: these nodes are never registered nor freed

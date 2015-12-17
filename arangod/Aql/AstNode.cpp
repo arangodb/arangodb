@@ -1257,7 +1257,7 @@ AstNode* AstNode::castToBool (Ast* ast) {
       case VALUE_TYPE_DOUBLE:
         return ast->createNodeValueBool(value.value._double != 0.0);
       case VALUE_TYPE_STRING:
-        return ast->createNodeValueBool(*(value.value._string) != '\0');
+        return ast->createNodeValueBool(value.length > 0);
       default: {
       }
     }
@@ -2194,7 +2194,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
     auto member = getMember(0);
     member->stringify(buffer, verbose, failIfLong);
     buffer->appendChar('.');
-    buffer->appendText(getStringValue());
+    buffer->appendText(getStringValue(), getStringLength());
     return;
   }
 
@@ -2209,7 +2209,7 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
   if (type == NODE_TYPE_PARAMETER) {
     // not used by V8
     buffer->appendChar('@');
-    buffer->appendText(getStringValue());
+    buffer->appendText(getStringValue(), getStringLength());
     return;
   }
     

@@ -485,6 +485,102 @@ function AttributesSuite () {
       assertEqual("foo\u0001bar\u0000baz", result[0].abc);
       assertEqual("\u0000test\u0000test", result[0].def);
       assertEqual("abc\u0000", result[0]["123"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test values containing NULL bytes
+////////////////////////////////////////////////////////////////////////////////
+
+    testNullBytesValues : function () {
+      var docs = [
+        { value: "\u0000zero\u0000", _key: "first" },
+        { value: "\u0000\r\nnew line", _key: "second" },
+        { value: "\u0000zero", _key: "third" },
+        { value: "0\r\nxxx", _key: "fourth" }
+      ];
+
+      docs.forEach(function(doc) {
+        c.insert(doc);
+      });
+
+      // test return value of document()
+      docs.forEach(function(doc) {
+        var d = c.document(doc._key);
+        assertEqual(doc.value, d.value);
+      });
+
+      // test return value of AQL, using literals
+      docs.forEach(function(doc) {
+        var result = db._query("FOR doc IN @@collection FILTER doc.value == " + 
+                               JSON.stringify(doc.value) + " RETURN doc", { 
+          "@collection" : c.name()
+        }).toArray();
+
+        assertEqual(1, result.length, doc);
+        assertEqual(doc.value, result[0].value);
+        assertEqual(doc._key, result[0]._key);
+      });
+
+      // test return value of AQL, using bind parameters
+      docs.forEach(function(doc) {
+        var result = db._query("FOR doc IN @@collection FILTER doc.value == @value RETURN doc", { 
+          "@collection" : c.name(),
+          value: doc.value 
+        }).toArray();
+
+        assertEqual(1, result.length, doc);
+        assertEqual(doc.value, result[0].value);
+        assertEqual(doc._key, result[0]._key);
+      });
+
+      // test return value of AQL
+      var result;
+      result = db._query("FOR doc IN @@collection FILTER SUBSTRING(doc.value, 0, 5) == @value RETURN doc._key", { 
+        "@collection" : c.name(),
+        value: "\u0000zero" 
+      }).toArray().sort();
+
+      assertEqual(2, result.length);
+      assertEqual([ "first", "third" ], result);
+
+      result = db._query("FOR doc IN @@collection FILTER SUBSTRING(doc.value, 0, 6) == @value RETURN doc._key", { 
+        "@collection" : c.name(),
+        value: "\u0000zero\u0000" 
+      }).toArray();
+
+      assertEqual(1, result.length);
+      assertEqual([ "first" ], result);
+
+      result = db._query("FOR doc IN @@collection FILTER SUBSTRING(doc.value, 0, 1) == " + 
+                         JSON.stringify("\0") + " RETURN doc._key", { 
+        "@collection" : c.name()
+      }).toArray().sort();
+
+      assertEqual(3, result.length);
+      assertEqual([ "first", "second", "third" ], result);
+
+      result = db._query("FOR doc IN @@collection FILTER SUBSTRING(doc.value, 0, 1) == @value RETURN doc._key", { 
+        "@collection" : c.name(),
+        value: "\0",
+      }).toArray().sort();
+
+      assertEqual(3, result.length);
+      assertEqual([ "first", "second", "third" ], result);
+
+      result = db._query("FOR doc IN @@collection FILTER LIKE(doc.value, '\u0000%') SORT doc._key RETURN doc._key", { 
+        "@collection" : c.name()
+      }).toArray().sort();
+
+      assertEqual(3, result.length);
+      assertEqual([ "first", "second", "third" ], result);
+      
+      result = db._query("FOR doc IN @@collection FILTER V8(LIKE(doc.value, '\u0000%')) " + 
+                         "SORT doc._key RETURN doc._key", { 
+        "@collection" : c.name()
+      }).toArray().sort();
+
+      assertEqual(3, result.length);
+      assertEqual([ "first", "second", "third" ], result);
     }
 
   };

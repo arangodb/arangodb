@@ -1134,12 +1134,13 @@ static int RunClusterDump (string& errorMsg) {
       // First we have to go through all the shards, what are they?
       VPackSlice const shards = parameters.get("shards");
 
-      // Iterate over the Map of shardId to server
+      // Iterate over the Map of shardId to server list
       for (auto const it : VPackObjectIterator(shards)) {
         TRI_ASSERT(it.key.isString());
-        TRI_ASSERT(it.value.isString());
+        TRI_ASSERT(it.value.isArray());
+        TRI_ASSERT(it.value[0].isString());
         std::string shardName = it.key.copyString();
-        std::string DBserver = it.value.copyString();
+        std::string DBserver = it.value[0].copyString();
 
         if (Progress) {
           cout << "# Dumping shard '" << shardName << "' from DBserver '"

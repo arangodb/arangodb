@@ -695,7 +695,7 @@ bool Utf8Helper::matches (RegexMatcher* matcher,
                           bool& error) {
 
   TRI_ASSERT(value != nullptr);
-  UnicodeString v = UnicodeString::fromUTF8(value);
+  UnicodeString v = UnicodeString::fromUTF8(StringPiece(value, valueLength));
 
   matcher->reset(v);
 
