@@ -515,7 +515,6 @@ Module.prototype.load = function(filename) {
   var extension = path.extname(filename) || '.js';
   if (!Module._extensions[extension]) extension = '.js';
   Module._extensions[extension](this, filename);
-
   this.loaded = true;
 };
 
@@ -629,17 +628,6 @@ Module._extensions['.json'] = function(module, filename) {
   }
 };
 
-
-Module._extensions['.coffee'] = function(module, filename) {
-  require('@arangodb/deprecated')(
-    '2.9',
-    'CoffeeScript support is deprecated,'
-    + ' please pre-compile CoffeeScript modules to JavaScript using external build tools.'
-  );
-  var content = fs.readFileSync(filename, 'utf8');
-  var cs = require('coffee-script');
-  module._compile(cs.compile(stripBOM(content), {bare: true}), filename);
-};
 
 // backwards compatibility
 Module.Module = Module;

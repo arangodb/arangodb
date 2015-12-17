@@ -20,15 +20,14 @@ module.exports = function(hljs) {
       hljs.APOS_STRING_MODE,
       hljs.C_NUMBER_MODE,
       {
-        className: 'preprocessor',
+        className: 'meta',
         begin: '#', end: '$'
       },
       {
-        className: 'shader',
+        className: 'class',
         beginKeywords: 'surface displacement light volume imager', end: '\\('
       },
       {
-        className: 'shading',
         beginKeywords: 'illuminate illuminance gather', end: '\\('
       }
     ]

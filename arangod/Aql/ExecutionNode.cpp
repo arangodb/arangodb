@@ -338,7 +338,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   len = jsonvarsUsedLater.size();
   _varsUsedLater.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    std::unique_ptr<Variable> oneVarUsedLater(new Variable(jsonvarsUsedLater.at(i)));
+    auto oneVarUsedLater = std::make_unique<Variable>(jsonvarsUsedLater.at(i));
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
 
     if (oneVariable == nullptr) {
@@ -357,7 +357,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   len = jsonvarsValidList.size();
   _varsValid.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    std::unique_ptr<Variable> oneVarValid(new Variable(jsonvarsValidList.at(i)));
+    auto oneVarValid = std::make_unique<Variable>(jsonvarsValidList.at(i));
     Variable* oneVariable = allVars->getVariable(oneVarValid->id);
 
     if (oneVariable == nullptr) {
@@ -736,7 +736,7 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 
 void ExecutionNode::planRegisters (ExecutionNode* super) {
   // The super is only for the case of subqueries.
-  shared_ptr<RegisterPlan> v;
+  std::shared_ptr<RegisterPlan> v;
 
   if (super == nullptr) {
     v.reset(new RegisterPlan());
@@ -797,7 +797,7 @@ void ExecutionNode::RegisterPlan::clear () {
 }
 
 ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* otherPlan, ExecutionPlan* plan) {
-  std::unique_ptr<RegisterPlan> other(new RegisterPlan());
+  auto other = std::make_unique<RegisterPlan>();
 
   other->nrRegsHere  = nrRegsHere;
   other->nrRegs      = nrRegs;

@@ -27,7 +27,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const deprecated = require('@arangodb/deprecated');
 const RequestContext = require('@arangodb/foxx/request_context');
 const BaseMiddleware = require('@arangodb/foxx/base_middleware').BaseMiddleware;
 const _ = require('underscore');
@@ -340,7 +339,6 @@ class Controller {
   }
 
   addInjector(name, factory) {
-    deprecated('2.9', '"addInjector" is deprecated, use regular variables instead');
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {
@@ -365,7 +363,6 @@ class Controller {
       this.allRoutes, this.models, newRoute, route, this.rootElement, constraints, this.extensions
     );
     var summary;
-    var undocumentedBody;
 
     this.routingInfo.routes.push(newRoute);
 
@@ -381,10 +378,10 @@ class Controller {
 
     if (method === 'post' || method === 'put' || method === 'patch') {
       const Model = require('@arangodb/foxx').Model;
-      undocumentedBody = class UndocumentedBody extends Model {};
+      let UndocumentedBody = Model.extend({});
       requestContext.bodyParam('undocumented body', {
         description: 'Undocumented body param',
-        type: undocumentedBody,
+        type: UndocumentedBody,
         allowInvalid: true
       });
     }
@@ -567,7 +564,6 @@ class Controller {
   }
 
   del(route, callback) {
-    deprecated('2.9', '"del" is deprecated, use "delete" instead');
     return this.delete(route, callback);
   }
 
@@ -857,7 +853,7 @@ class Controller {
 ///   // Will only be invoked if the request has parameter value and it is less or equal 5.
 /// }).myParam(5);
 /// ```
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

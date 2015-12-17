@@ -318,8 +318,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   AqlItemBlock* example =_gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
-  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend,
-        static_cast<triagens::aql::RegisterId>(nrRegs)));  
+  auto res = std::make_unique<AqlItemBlock>(toSend, static_cast<triagens::aql::RegisterId>(nrRegs));  
   // automatically deleted if things go wrong
     
   for (RegisterId i = 0; i < nrRegs; i++) {
@@ -1379,7 +1378,7 @@ RemoteBlock::~RemoteBlock () {
 /// @brief local helper to send a request
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommResult* RemoteBlock::sendRequest (
+std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest (
           triagens::rest::HttpRequest::HttpRequestType type,
           std::string const& urlPart,
           std::string const& body) const {
@@ -1463,10 +1462,10 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
   std::string bodyString(body.toString());
 
-  std::unique_ptr<ClusterCommResult> res;
-  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                        "/_api/aql/initializeCursor/",
-                        bodyString));
+  std::unique_ptr<ClusterCommResult> res
+      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                    "/_api/aql/initializeCursor/",
+                    bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1494,10 +1493,10 @@ int RemoteBlock::shutdown (int errorCode) {
 
   // For every call we simply forward via HTTP
 
-  std::unique_ptr<ClusterCommResult> res;
-  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                        "/_api/aql/shutdown/",
-                        string("{\"code\":" + std::to_string(errorCode) + "}")));
+  std::unique_ptr<ClusterCommResult> res
+      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                    "/_api/aql/shutdown/",
+                    string("{\"code\":" + std::to_string(errorCode) + "}"));
   if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
     // artificially ignore error in case query was not found during shutdown
     return TRI_ERROR_NO_ERROR;
@@ -1546,10 +1545,10 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
       ("atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());
 
-  std::unique_ptr<ClusterCommResult> res;
-  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                        "/_api/aql/getSome/",
-                        bodyString));
+  std::unique_ptr<ClusterCommResult> res
+      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                    "/_api/aql/getSome/",
+                    bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1585,10 +1584,10 @@ size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
       ("atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());
 
-  std::unique_ptr<ClusterCommResult> res;
-  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                        "/_api/aql/skipSome/",
-                        bodyString));
+  std::unique_ptr<ClusterCommResult> res
+      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                    "/_api/aql/skipSome/",
+                    bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1613,10 +1612,10 @@ size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
 bool RemoteBlock::hasMore () {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res;
-  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
-                        "/_api/aql/hasMore/",
-                        string()));
+  std::unique_ptr<ClusterCommResult> res
+      = sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
+                    "/_api/aql/hasMore/",
+                    string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1639,10 +1638,10 @@ bool RemoteBlock::hasMore () {
 int64_t RemoteBlock::count () const {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res;
-  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
-                        "/_api/aql/count/",
-                        string()));
+  std::unique_ptr<ClusterCommResult> res
+      = sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
+                    "/_api/aql/count/",
+                    string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1666,10 +1665,10 @@ int64_t RemoteBlock::count () const {
 int64_t RemoteBlock::remaining () {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res;
-  res.reset(sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
-                        "/_api/aql/remaining/",
-                        string()));
+  std::unique_ptr<ClusterCommResult> res
+      = sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
+                    "/_api/aql/remaining/",
+                    string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be

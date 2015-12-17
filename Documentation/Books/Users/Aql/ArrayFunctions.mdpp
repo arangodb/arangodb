@@ -11,19 +11,19 @@ AQL supports the following functions to operate on array values:
   are added as they are. The function will recurse into sub-arrays up to a depth of
   *depth*. *depth* has a default value of 1.
 
-*Examples*
+  *Examples*
   
       FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ])
 
-  will produce:
+    will produce:
 
       [ 1, 2, 3, 4, 5, 6, 7, 8, [ 9, 10 ] ]
 
-  To fully flatten the array, use a *depth* of 2:
+    To fully flatten the array, use a *depth* of 2:
       
       FLATTEN([ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ], 2)
 
-  This will produce:
+    This will produce:
       
       [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 
@@ -99,27 +99,27 @@ AQL supports the following functions to operate on array values:
   If *start* is negative, it can be used to indicate positions from the end of the
   array.
 
-*Examples*
+  *Examples*
 
       SLICE([ 1, 2, 3, 4, 5 ], 0, 1)
       
-  will return *[ 1 ]*
+    will return *[ 1 ]*
   
       SLICE([ 1, 2, 3, 4, 5 ], 1, 2)
       
-  will return *[ 2, 3 ]*
+    will return *[ 2, 3 ]*
   
       SLICE([ 1, 2, 3, 4, 5 ], 3) 
   
-  will return *[ 4, 5 ]*
+    will return *[ 4, 5 ]*
   
       SLICE([ 1, 2, 3, 4, 5 ], 1, -1) 
       
-  will return *[ 2, 3, 4 ]*
+    will return *[ 2, 3, 4 ]*
   
       SLICE([ 1, 2, 3, 4, 5 ], 0, -2)
       
-  will return *[ 1, 2, 3 ]*
+    will return *[ 1, 2, 3 ]*
 
 - *UNIQUE(array)*: Returns all unique elements in *array*. To determine
   uniqueness, the function will use the comparison order.
@@ -132,18 +132,18 @@ AQL supports the following functions to operate on array values:
   Note: No duplicates will be removed. In order to remove duplicates, please use either
   *UNION_DISTINCT* function or apply the *UNIQUE* on the result of *union*.
 
-*Examples*
+  *Examples*
 
       RETURN UNION(
         [ 1, 2, 3 ],
         [ 1, 2 ]
       )
 
-  will produce:
+    will produce:
 
       [ [ 1, 2, 3, 1, 2 ] ]
 
-  with duplicate removal:
+    with duplicate removal:
 
       RETURN UNIQUE(
         UNION(
@@ -152,7 +152,7 @@ AQL supports the following functions to operate on array values:
         )
       )
   
-  will produce:
+    will produce:
 
       [ [ 1, 2, 3 ] ]
 

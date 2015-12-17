@@ -1,9 +1,9 @@
 /**
  * @depend util/core.js
  */
-"use strict";
+(function (sinonGlobal) {
+    "use strict";
 
-(function (sinon) {
     function makeApi(sinon) {
 
         function timesInWords(count) {
@@ -24,20 +24,26 @@
     }
 
     function loadDependencies(require, exports, module) {
-        var sinon = require("./util/core");
-        module.exports = makeApi(sinon);
+        var core = require("./util/core");
+        module.exports = makeApi(core);
     }
 
-    var isNode = typeof module !== "undefined" && module.exports && typeof require == "function";
+    var isNode = typeof module !== "undefined" && module.exports && typeof require === "function";
     var isAMD = typeof define === "function" && typeof define.amd === "object" && define.amd;
 
     if (isAMD) {
         define(loadDependencies);
-    } else if (isNode) {
-        loadDependencies(require, module.exports, module);
-    } else if (!sinon) {
         return;
-    } else {
-        makeApi(sinon);
     }
-}(typeof sinon == "object" && sinon || null));
+
+    if (isNode) {
+        loadDependencies(require, module.exports, module);
+        return;
+    }
+
+    if (sinonGlobal) {
+        makeApi(sinonGlobal);
+    }
+}(
+    typeof sinon === "object" && sinon // eslint-disable-line no-undef
+));

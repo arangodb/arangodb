@@ -28,6 +28,215 @@ describe ArangoDB do
     end
 
 ################################################################################
+## applier
+################################################################################
+    
+    context "dealing with the applier" do
+
+      before do
+        ArangoDB.put(api + "/applier-stop", :body => "")
+        ArangoDB.delete(api + "/applier-state", :body => "")
+      end
+
+      after do
+        ArangoDB.put(api + "/applier-stop", :body => "")
+        ArangoDB.delete(api + "/applier-state", :body => "")
+      end
+
+################################################################################
+## start
+################################################################################
+
+      it "starts the applier" do
+        cmd = api + "/applier-start"
+        doc = ArangoDB.log_put("#{prefix}-applier-start", cmd, :body => "")
+        doc.code.should eq(400) # because configuration is invalid
+      end
+
+################################################################################
+## stop
+################################################################################
+
+      it "stops the applier" do
+        cmd = api + "/applier-stop"
+        doc = ArangoDB.log_put("#{prefix}-applier-start", cmd, :body => "")
+        doc.code.should eq(200)
+      end
+
+################################################################################
+## properties
+################################################################################
+
+      it "fetches the applier config" do
+        cmd = api + "/applier-config"
+        doc = ArangoDB.log_get("#{prefix}-applier-config", cmd, :body => "")
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all["requestTimeout"].should be_kind_of(Numeric)
+        all["connectTimeout"].should be_kind_of(Numeric)
+        all["ignoreErrors"].should be_kind_of(Integer)
+        all["maxConnectRetries"].should be_kind_of(Integer)
+        all["sslProtocol"].should be_kind_of(Integer)
+        all["chunkSize"].should be_kind_of(Integer)
+        all.should have_key("autoStart")
+        all.should have_key("adaptivePolling")
+        all.should have_key("autoResync")
+        all.should have_key("includeSystem")
+        all.should have_key("requireFromPresent")
+        all.should have_key("verbose")
+        all["restrictType"].should be_kind_of(String)
+        all["connectionRetryWaitTime"].should be_kind_of(Numeric)
+        all["initialSyncMaxWaitTime"].should be_kind_of(Numeric)
+        all["idleMinWaitTime"].should be_kind_of(Numeric)
+        all["idleMaxWaitTime"].should be_kind_of(Numeric)
+      end
+
+################################################################################
+## set and fetch properties
+################################################################################
+
+      it "sets and re-fetches the applier config" do
+        cmd = api + "/applier-config"
+        body = '{ "endpoint" : "tcp://127.0.0.1:9999", "database" : "foo", "ignoreErrors" : 5, "requestTimeout" : 32.2, "connectTimeout" : 51.1, "maxConnectRetries" : 12345, "chunkSize" : 143423232, "autoStart" : true, "adaptivePolling" : false, "autoResync" : true, "includeSystem" : true, "requireFromPresent" : true, "verbose" : true, "connectionRetryWaitTime" : 22.12, "initialSyncMaxWaitTime" : 12.21, "idleMinWaitTime" : 1.4, "idleMaxWaitTime" : 7.3 }'
+        doc = ArangoDB.log_put("#{prefix}-applier-config", cmd, :body => body)
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all["endpoint"].should eq("tcp://127.0.0.1:9999")
+        all["database"].should eq("foo")
+        all["requestTimeout"].should eq(32.2)
+        all["connectTimeout"].should eq(51.1)
+        all["ignoreErrors"].should eq(5)
+        all["maxConnectRetries"].should eq(12345)
+        all["sslProtocol"].should eq(0)
+        all["chunkSize"].should eq(143423232)
+        all["autoStart"].should eq(true)
+        all["adaptivePolling"].should eq(false)
+        all["autoResync"].should eq(true)
+        all["includeSystem"].should eq(true)
+        all["requireFromPresent"].should eq(true)
+        all["verbose"].should eq(true)
+        all["connectionRetryWaitTime"].should eq(22.12)
+        all["initialSyncMaxWaitTime"].should eq(12.21)
+        all["idleMinWaitTime"].should eq(1.4)
+        all["idleMaxWaitTime"].should eq(7.3)
+        
+        # refetch same data
+        doc = ArangoDB.log_get("#{prefix}-applier-config", cmd, :body => "")
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all["endpoint"].should eq("tcp://127.0.0.1:9999")
+        all["database"].should eq("foo")
+        all["requestTimeout"].should eq(32.2)
+        all["connectTimeout"].should eq(51.1)
+        all["ignoreErrors"].should eq(5)
+        all["maxConnectRetries"].should eq(12345)
+        all["sslProtocol"].should eq(0)
+        all["chunkSize"].should eq(143423232)
+        all["autoStart"].should eq(true)
+        all["adaptivePolling"].should eq(false)
+        all["autoResync"].should eq(true)
+        all["includeSystem"].should eq(true)
+        all["requireFromPresent"].should eq(true)
+        all["verbose"].should eq(true)
+        all["connectionRetryWaitTime"].should eq(22.12)
+        all["initialSyncMaxWaitTime"].should eq(12.21)
+        all["idleMinWaitTime"].should eq(1.4)
+        all["idleMaxWaitTime"].should eq(7.3)
+        
+
+        body = '{ "endpoint" : "ssl://127.0.0.1:12345", "database" : "bar", "ignoreErrors" : 2, "requestTimeout" : 12.5, "connectTimeout" : 26.3, "maxConnectRetries" : 12, "chunkSize" : 1234567, "autoStart" : false, "adaptivePolling" : true, "autoResync" : false, "includeSystem" : false, "requireFromPresent" : false, "verbose" : false, "connectionRetryWaitTime" : 2.5, "initialSyncMaxWaitTime" : 4.3, "idleMinWaitTime" : 0.22, "idleMaxWaitTime" : 3.5 }'
+        doc = ArangoDB.log_put("#{prefix}-applier-config", cmd, :body => body)
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all["endpoint"].should eq("ssl://127.0.0.1:12345")
+        all["database"].should eq("bar")
+        all["requestTimeout"].should eq(12.5)
+        all["connectTimeout"].should eq(26.3)
+        all["ignoreErrors"].should eq(2)
+        all["maxConnectRetries"].should eq(12)
+        all["sslProtocol"].should eq(0)
+        all["chunkSize"].should eq(1234567)
+        all["autoStart"].should eq(false)
+        all["adaptivePolling"].should eq(true)
+        all["autoResync"].should eq(false)
+        all["includeSystem"].should eq(false)
+        all["requireFromPresent"].should eq(false)
+        all["verbose"].should eq(false)
+        all["connectionRetryWaitTime"].should eq(2.5)
+        all["initialSyncMaxWaitTime"].should eq(4.3)
+        all["idleMinWaitTime"].should eq(0.22)
+        all["idleMaxWaitTime"].should eq(3.5)
+
+        # refetch same data
+        doc = ArangoDB.log_get("#{prefix}-applier-config", cmd, :body => "")
+        
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all["endpoint"].should eq("ssl://127.0.0.1:12345")
+        all["database"].should eq("bar")
+        all["requestTimeout"].should eq(12.5)
+        all["connectTimeout"].should eq(26.3)
+        all["ignoreErrors"].should eq(2)
+        all["maxConnectRetries"].should eq(12)
+        all["sslProtocol"].should eq(0)
+        all["chunkSize"].should eq(1234567)
+        all["autoStart"].should eq(false)
+        all["adaptivePolling"].should eq(true)
+        all["autoResync"].should eq(false)
+        all["includeSystem"].should eq(false)
+        all["requireFromPresent"].should eq(false)
+        all["verbose"].should eq(false)
+        all["connectionRetryWaitTime"].should eq(2.5)
+        all["initialSyncMaxWaitTime"].should eq(4.3)
+        all["idleMinWaitTime"].should eq(0.22)
+        all["idleMaxWaitTime"].should eq(3.5)
+      end
+
+################################################################################
+## state
+################################################################################
+
+      it "checks the state" do
+        # fetch state
+        cmd = api + "/applier-state"
+        doc = ArangoDB.log_get("#{prefix}-applier-state", cmd, :body => "")
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('state')
+        all.should have_key('server')
+
+        state = all['state']
+        state['running'].should eq(false)
+        state.should have_key("lastAppliedContinuousTick")
+        state.should have_key("lastProcessedContinuousTick")
+        state.should have_key("lastAvailableContinuousTick")
+        state.should have_key("safeResumeTick")
+
+        state.should have_key("progress")
+        progress = state['progress']
+        progress.should have_key("time")
+        progress['time'].should match(/^(\d+-\d+-\d+T\d+:\d+:\d+Z)?$/)
+        progress.should have_key("failedConnects")
+
+        state.should have_key("totalRequests")
+        state.should have_key("totalFailedConnects")
+        state.should have_key("totalEvents")
+        state.should have_key("totalOperationsExcluded")
+        
+        state.should have_key("lastError")
+        lastError = state["lastError"]
+        lastError.should have_key("errorNum")
+        state.should have_key("time")
+        state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
+      end
+    end
+
+################################################################################
 ## logger
 ################################################################################
 
@@ -345,7 +554,6 @@ describe ArangoDB do
       before do
         ArangoDB.drop_collection("UnitTestsReplication")
         ArangoDB.drop_collection("UnitTestsReplication2")
-
       end
 
       after do

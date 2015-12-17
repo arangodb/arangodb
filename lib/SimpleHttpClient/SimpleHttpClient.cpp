@@ -157,7 +157,7 @@ namespace triagens {
           break;
         }
         
-        if (! _retryMessage.empty()) {
+        if (! _retryMessage.empty() && (_maxRetries - tries) > 0) {
           LOG_WARNING("%s - retries left: %d", _retryMessage.c_str(), (int) (_maxRetries - tries));
         }
 

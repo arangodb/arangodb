@@ -105,9 +105,12 @@ class Buffer {
     return std::string(reinterpret_cast<char const*>(_buffer), _pos);
   }
 
-  void clear() { reset(); }
+  void reset() { 
+    _pos = 0;
+  }
 
-  void reset() {
+  void clear() {
+    reset();
     if (_buffer != _local) {
       delete[] _buffer;
       _buffer = _local;
@@ -117,7 +120,6 @@ class Buffer {
       memset(_buffer, 0xa5, _alloc);
 #endif
     }
-    _pos = 0;
   }
 
   inline void push_back(char c) {

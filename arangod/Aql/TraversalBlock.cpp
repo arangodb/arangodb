@@ -67,7 +67,11 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   for (auto& map : *_expressions) {
     for (size_t i = 0; i < map.second.size(); ++i) {
       SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      std::unique_ptr<Expression> e(new Expression(ast, it->toEvaluate));
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
+                                     std::string("invalid expression map"));
+      }
+      auto e = std::make_unique<Expression>(ast, it->compareToNode);
       _hasV8Expression |= e->isV8();
       std::unordered_set<Variable const*> inVars;
       e->variables(inVars);
@@ -303,7 +307,7 @@ bool TraversalBlock::morePaths (size_t hint) {
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   // This is only save as long as _vertices is still build
-  return _vertices.size() > 0;
+  return !_vertices.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,7 +328,7 @@ size_t TraversalBlock::skipPaths (size_t hint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TraversalBlock::initializePaths (AqlItemBlock const* items) {
-  if (_vertices.size() > 0) {
+  if (!_vertices.empty()) {
     // No Initialisation required.
     return;
   }
@@ -358,21 +362,6 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
             _vertexId
           );
           _traverser->setStartVertex(v);
-        }
-      }
-      else if (input.has("vertex")) {
-        // This is used whenever the input is the result of another traversal.
-        Json vertexJson = input.get("vertex");
-        if (vertexJson.has(TRI_VOC_ATTRIBUTE_ID) ) {
-          Json _idJson = vertexJson.get(TRI_VOC_ATTRIBUTE_ID);
-          if (_idJson.isString()) {
-            _vertexId = JsonHelper::getStringValue(_idJson.json(), "");
-            VertexId v = triagens::arango::traverser::IdStringToVertexId (
-              _resolver,
-              _vertexId
-            );
-            _traverser->setStartVertex(v);
-          }
         }
       }
     }
@@ -439,7 +428,6 @@ AqlItemBlock* TraversalBlock::getSome (size_t, // atLeast,
   RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
   std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
-  // std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, nrRegs));
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
   

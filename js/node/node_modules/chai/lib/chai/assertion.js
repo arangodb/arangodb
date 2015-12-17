@@ -88,8 +88,8 @@ module.exports = function (_chai, util) {
    *
    * @name assert
    * @param {Philosophical} expression to be tested
-   * @param {String or Function} message or function that returns message to display if expression fails
-   * @param {String or Function} negatedMessage or function that returns negatedMessage to display if negated expression fails
+   * @param {String|Function} message or function that returns message to display if expression fails
+   * @param {String|Function} negatedMessage or function that returns negatedMessage to display if negated expression fails
    * @param {Mixed} expected value (remember to check for negation)
    * @param {Mixed} actual (optional) will default to `this.obj`
    * @param {Boolean} showDiff (optional) when set to `true`, assert will display a diff in addition to the message if expression fails

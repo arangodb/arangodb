@@ -483,7 +483,7 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
-  std::unique_ptr<AqlItemBlock> stripped(new AqlItemBlock(n, 1));
+  auto stripped = std::make_unique<AqlItemBlock>(n, 1);
 
   for (size_t i = 0; i < n; i++) {
     auto a = res->getValueReference(i, registerId);

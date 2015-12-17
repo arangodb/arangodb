@@ -672,6 +672,7 @@ static int ProcessInputDirectory (std::string& errorMsg) {
       std::string const cname = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
       std::string const cid   = triagens::basics::VelocyPackHelper::getStringValue(parameters, "cid", "");
       int type = triagens::basics::VelocyPackHelper::getNumericValue<int>(parameters, "type", 2);
+    
       std::string const collectionType(type == 2 ? "document" : "edge");
 
       if (ImportStructure) {
@@ -710,7 +711,7 @@ static int ProcessInputDirectory (std::string& errorMsg) {
             cout << "# Loading data into " << collectionType << " collection '" << cname << "'..." << endl;
           }
 
-          int fd = TRI_OPEN(datafile.c_str(), O_RDONLY);
+          int fd = TRI_OPEN(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
           if (fd < 0) {
             errorMsg = "cannot open collection data file '" + datafile + "'";

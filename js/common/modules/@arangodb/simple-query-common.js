@@ -125,7 +125,16 @@ GeneralArrayCursor.prototype.execute = function () {
 GeneralArrayCursor.prototype._PRINT = function (context) {
   var text;
 
-  text = "GeneralArrayCursor([.. " + this._documents.length + " docs .., cached: " + String(this._cached) + "])";
+  text = "GeneralArrayCursor([.. " + this._documents.length + " docs .., cached: " + String(this._cached);
+
+  if (this.hasOwnProperty("_extra") &&
+      this._extra.hasOwnProperty("warnings")) {
+    for (var j = 0; j < this._extra.warnings.length; j++) {
+      text += ", WARNING: " + this._extra.warnings[j].code +
+        " - " + this._extra.warnings[j].message;
+    }
+  }
+  text += "])";
 
   if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";

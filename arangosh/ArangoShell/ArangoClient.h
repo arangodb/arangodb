@@ -31,7 +31,6 @@
 #define ARANGODB_ARANGO_SHELL_ARANGO_CLIENT_H 1
 
 #include "Basics/Common.h"
-
 #include "Rest/Endpoint.h"
 
 // -----------------------------------------------------------------------------
@@ -126,7 +125,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ArangoClient (char const* appName);
+        explicit ArangoClient (char const* appName);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -203,19 +202,19 @@ namespace triagens {
 /// @brief print a string and a newline to stderr, necessary for Windows
 ////////////////////////////////////////////////////////////////////////////////
 
-        void printErrLine (const std::string&);
+        void printErrLine (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print a string and a newline to stdout, necessary for Windows
 ////////////////////////////////////////////////////////////////////////////////
 
-        void printLine (const std::string&, bool forceNewLine = false);
+        void printLine (std::string const&, bool forceNewLine = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print a string to stdout, without a newline, necessary for Windows
 ////////////////////////////////////////////////////////////////////////////////
 
-        void printContinuous (const std::string&);
+        void printContinuous (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts pager
@@ -233,7 +232,7 @@ namespace triagens {
 /// @brief print to pager
 ////////////////////////////////////////////////////////////////////////////////
 
-        void internalPrint (const std::string& str);
+        void internalPrint (std::string const& str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open log
@@ -269,9 +268,9 @@ namespace triagens {
 /// @brief log output, with prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-        void log (const std::string& format,
-		  const std::string& prompt,
-		  const std::string& str);
+        void log (std::string const& format,
+                  std::string const& prompt,
+                  std::string const& str);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush log
@@ -280,13 +279,13 @@ namespace triagens {
         void flushLog ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an new endpoint
+/// @brief creates a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
         void createEndpoint ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an new endpoint
+/// @brief creates a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
         void createEndpoint (std::string const&);
@@ -421,7 +420,7 @@ namespace triagens {
 /// @brief prints a line
 ////////////////////////////////////////////////////////////////////////////////
 
-        void _printLine (const std::string &s);
+        void _printLine (std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

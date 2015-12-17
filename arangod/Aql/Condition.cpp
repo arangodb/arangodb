@@ -337,7 +337,7 @@ Condition::~Condition () {
         
 Condition* Condition::fromJson (ExecutionPlan* plan,
                                 triagens::basics::Json const& json) {
-  std::unique_ptr<Condition> condition(new Condition(plan->getAst()));
+  auto condition = std::make_unique<Condition>(plan->getAst());
 
   if (json.isObject() && json.members() != 0) {
     // note: the AST is responsible for freeing the AstNode later!
@@ -356,7 +356,7 @@ Condition* Condition::fromJson (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 Condition* Condition::clone () const {
-  std::unique_ptr<Condition> copy(new Condition(_ast));
+  auto copy = std::make_unique<Condition>(_ast);
 
   if (_root != nullptr) {
     copy->_root = _root->clone(_ast); 
@@ -846,7 +846,7 @@ bool Condition::sortOrs (Variable const* variable,
           result.first == variable &&
           (operand->type != NODE_TYPE_OPERATOR_BINARY_IN || rhs->isArray())) {
         // create the condition data struct on the heap
-        std::unique_ptr<ConditionData> data(new ConditionData(sub, usedIndexes[i])); 
+        auto data = std::make_unique<ConditionData>(sub, usedIndexes[i]); 
         // push it into an owning vector
         conditionData.emplace_back(data.get());
         // vector is now responsible for data
@@ -864,7 +864,7 @@ bool Condition::sortOrs (Variable const* variable,
           rhs->isAttributeAccessForVariable(result) &&
           result.first == variable) { 
         // create the condition data struct on the heap
-        std::unique_ptr<ConditionData> data(new ConditionData(sub, usedIndexes[i])); 
+        auto data = std::make_unique<ConditionData>(sub, usedIndexes[i]); 
         // push it into an owning vector
         conditionData.emplace_back(data.get());
         // vector is now responsible for data

@@ -19,43 +19,28 @@ module.exports = function(hljs) {
       ),
       {
         className: 'keyword',
-        begin: '\\s*\\.end\\s[a-zA-Z0-9]*',
-        relevance: 1
+        variants: [
+          {begin: '\\s*\\.end\\s[a-zA-Z0-9]*'},
+          {begin: '^[ ]*\\.[a-zA-Z]*', relevance: 0},
+          {begin: '\\s:[a-zA-Z_0-9]*', relevance: 0},
+          {begin: '\\s(' + smali_keywords.join('|') + ')'}
+        ]
       },
       {
-        className: 'keyword',
-        begin: '^[ ]*\\.[a-zA-Z]*',
-        relevance: 0
-      },
-      {
-        className: 'keyword',
-        begin: '\\s:[a-zA-Z_0-9]*',
-        relevance: 0
-      },
-      {
-        className: 'keyword',
-        begin: '\\s('+smali_keywords.join('|')+')',
-        relevance: 1
-      },
-      {
-        className: 'keyword',
-        begin: '\\[',
-        relevance: 0
-      },
-      {
-        className: 'instruction',
-        begin: '\\s('+smali_instr_low_prio.join('|')+')\\s',
-        relevance: 1
-      },
-      {
-        className: 'instruction',
-        begin: '\\s('+smali_instr_low_prio.join('|')+')((\\-|/)[a-zA-Z0-9]+)+\\s',
-        relevance: 10
-      },
-      {
-        className: 'instruction',
-        begin: '\\s('+smali_instr_high_prio.join('|')+')((\\-|/)[a-zA-Z0-9]+)*\\s',
-        relevance: 10
+        className: 'built_in',
+        variants : [
+          {
+            begin: '\\s('+smali_instr_low_prio.join('|')+')\\s'
+          },
+          {
+            begin: '\\s('+smali_instr_low_prio.join('|')+')((\\-|/)[a-zA-Z0-9]+)+\\s',
+            relevance: 10
+          },
+          {
+            begin: '\\s('+smali_instr_high_prio.join('|')+')((\\-|/)[a-zA-Z0-9]+)*\\s',
+            relevance: 10
+          },
+        ]
       },
       {
         className: 'class',
@@ -63,19 +48,7 @@ module.exports = function(hljs) {
         relevance: 0
       },
       {
-        className: 'function',
-        begin: '( |->)[^(\n ;"]*\\(',
-        relevance: 0
-      },
-      {
-        className: 'function',
-        begin: '\\)',
-        relevance: 0
-      },
-      {
-        className: 'variable',
         begin: '[vp][0-9]+',
-        relevance: 0
       }
     ]
   };

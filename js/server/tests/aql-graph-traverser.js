@@ -300,11 +300,64 @@ function namedGraphSuite () {
       assertEqual(result.length, 2);
       assertEqual(result[0], vertex.F);
       assertEqual(result[1], vertex.D);
+
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function(plan) {
         var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
         assertEqual(jsonResult, result, query);
       });
+    },
+
+    testUniqueEdgesOnPath : function () {
+      var query = "FOR x IN 6 OUTBOUND @startId GRAPH @graph RETURN x._id";
+      var bindVars = {
+        graph: gn,
+        startId: vertex.A
+      };
+      // No result A->B->C->F->E->B (->C) is already used!
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 0);
+
+      query = "FOR x, e, p IN 2 ANY @startId GRAPH @graph SORT x._id ASC " + 
+              "RETURN {v: x._id, edges: p.edges, vertices: p.vertices}";
+      result = db._query(query, bindVars).toArray();
+
+      // result: A->B->C
+      // result: A->B<-E
+      // Invalid result: A->B<-A
+      assertEqual(result.length, 2);
+      assertEqual(result[0].v, vertex.C);
+      assertEqual(result[0].edges.length, 2);
+      assertEqual(result[0].edges[0]._id, edge.AB);
+      assertEqual(result[0].edges[1]._id, edge.BC);
+
+      assertEqual(result[0].vertices.length, 3);
+      assertEqual(result[0].vertices[0]._id, vertex.A);
+      assertEqual(result[0].vertices[1]._id, vertex.B);
+      assertEqual(result[0].vertices[2]._id, vertex.C);
+      assertEqual(result[1].v, vertex.E);
+      assertEqual(result[1].edges.length, 2);
+      assertEqual(result[1].edges[0]._id, edge.AB);
+      assertEqual(result[1].edges[1]._id, edge.EB);
+
+      assertEqual(result[1].vertices.length, 3);
+      assertEqual(result[1].vertices[0]._id, vertex.A);
+      assertEqual(result[1].vertices[1]._id, vertex.B);
+      assertEqual(result[1].vertices[2]._id, vertex.E);
+
+      query = `FOR x IN 1 ANY @startId GRAPH @graph
+               FOR y IN 1 ANY x GRAPH @graph
+               SORT y._id ASC RETURN y._id`;
+      result = db._query(query, bindVars).toArray();
+
+      // result: A->B<-A
+      // result: A->B->C
+      // result: A->B<-E
+      // The second traversal resets the path
+      assertEqual(result.length, 3);
+      assertEqual(result[0], vertex.A);
+      assertEqual(result[1], vertex.C);
+      assertEqual(result[2], vertex.E);
     }
   };
 }
@@ -366,6 +419,29 @@ function multiCollectionGraphSuite () {
       db._drop(vn2);
       db._drop(en2);
       cleanup();
+    },
+
+    testNoBindParameterDoubleFor: function () {
+      /* this test is intended to trigger the clone functionality. */
+      var query = "FOR t IN " + vn +
+        " FOR s IN " + vn2 + 
+        " FOR x, e, p IN OUTBOUND t " + en + " RETURN {vertex: x, path: p}";
+      var result = db._query(query).toArray();
+      var plans = AQL_EXPLAIN(query, { }, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult, result, query);
+      });
+    },
+
+    testNoBindParameterSingleFor: function () {
+      var query = "FOR s IN " + vn + " SORT s FOR x, e, p IN OUTBOUND s " + en + " SORT x RETURN x";
+      var result = db._query(query).toArray();
+      var plans = AQL_EXPLAIN(query, { }, opts).plans;
+      plans.forEach(function(plan) {
+        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
+        assertEqual(jsonResult, result, query);
+      });
     },
 
     testNoBindParameter: function () {

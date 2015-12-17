@@ -1048,6 +1048,25 @@ AgencyCommResult AgencyComm::setValue (std::string const& key,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets a value in the backend
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::setValue (std::string const& key,
+                                       arangodb::velocypack::Slice const json,
+                                       double ttl) {
+  AgencyCommResult result;
+
+  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+      _globalConnectionOptions._requestTimeout,
+      result,
+      buildUrl(key) + ttlParam(ttl, true),
+      "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
+      false);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a key exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1139,6 +1158,30 @@ AgencyCommResult AgencyComm::casValue (std::string const& key,
                    buildUrl(key) + "?prevExist="
                      + (prevExist ? "true" : "false") + ttlParam(ttl, false),
                    "value=" + triagens::basics::StringUtils::urlEncode(triagens::basics::JsonHelper::toString(json)),
+                   false);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compares and swaps a single value in the backend
+/// the CAS condition is whether or not a previous value existed for the key
+/// velocypack variant
+////////////////////////////////////////////////////////////////////////////////
+
+AgencyCommResult AgencyComm::casValue (std::string const& key,
+                                       arangodb::velocypack::Slice const json,
+                                       bool prevExist,
+                                       double ttl,
+                                       double timeout) {
+  AgencyCommResult result;
+
+  sendWithFailover(triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                   timeout == 0.0 ? _globalConnectionOptions._requestTimeout : timeout,
+                   result,
+                   buildUrl(key) + "?prevExist="
+                     + (prevExist ? "true" : "false") + ttlParam(ttl, false),
+                   "value=" + triagens::basics::StringUtils::urlEncode(json.toJson()),
                    false);
 
   return result;

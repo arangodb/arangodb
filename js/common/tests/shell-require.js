@@ -98,23 +98,6 @@ function RequireTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test coffee script execution
-////////////////////////////////////////////////////////////////////////////////
-
-    testRequireCoffeeScript() {
-      var test = createTestPackage();
-      var script = test.require('./coffee-test');
-
-      assertTrue(script.hasOwnProperty('coffeeSquare'));
-      assertEqual('function', typeof script.coffeeSquare);
-      assertEqual(49, script.coffeeSquare(7));
-
-      assertTrue(script.hasOwnProperty('coffeeValue'));
-      assertEqual('string', typeof script.coffeeValue);
-      assertEqual('test', script.coffeeValue);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test package loading
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -57,4 +57,5 @@ void TRI_InitV8indexArangoDB (v8::Isolate* isolate,
 
 void TRI_InitV8indexCollection (v8::Isolate* isolate,
                                 v8::Handle<v8::ObjectTemplate> rt);
+
 #endif

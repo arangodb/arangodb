@@ -24,8 +24,7 @@ module.exports = function(hljs) {
     relevance: 0,
     contains: [
       {
-        className: 'function_name', begin: FUNCTION_NAME_RE,
-        relevance: 0
+        begin: FUNCTION_NAME_RE, relevance: 0
       },
       {
         begin: '\\(', end: '\\)', endsWithParent: true,
@@ -36,18 +35,15 @@ module.exports = function(hljs) {
     ]
   };
   var TUPLE = {
-    className: 'tuple',
     begin: '{', end: '}',
     relevance: 0
     // "contains" defined later
   };
   var VAR1 = {
-    className: 'variable',
     begin: '\\b_([A-Z][A-Za-z0-9_]*)?',
     relevance: 0
   };
   var VAR2 = {
-    className: 'variable',
     begin: '[A-Z][a-zA-Z0-9_]*',
     relevance: 0
   };
@@ -57,7 +53,6 @@ module.exports = function(hljs) {
     returnBegin: true,
     contains: [
       {
-        className: 'record_name',
         begin: '#' + hljs.UNDERSCORE_IDENT_RE,
         relevance: 0
       },
@@ -128,7 +123,6 @@ module.exports = function(hljs) {
       },
       COMMENT,
       {
-        className: 'pp',
         begin: '^-', end: '\\.',
         relevance: 0,
         excludeEnd: true,

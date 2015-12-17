@@ -639,7 +639,9 @@ bool RestDocumentHandler::getDocumentCoordinator (
                               bool generateBody) {
   string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  std::unique_ptr<std::map<std::string, std::string>> headers
+      (new std::map<std::string, std::string>
+           (triagens::arango::getForwardableRequestHeaders(_request)));
   map<string, string> resultHeaders;
   string resultBody;
 
@@ -1625,7 +1627,9 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
                               bool isPatch,
                               VPackSlice const& document) {
   string const& dbname = _request->databaseName();
-  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  std::unique_ptr<std::map<std::string, std::string>> headers
+      (new std::map<std::string, std::string>
+         (triagens::arango::getForwardableRequestHeaders(_request)));
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
   string resultBody;
@@ -1877,7 +1881,9 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
                               bool waitForSync) {
   string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  std::unique_ptr<std::map<std::string, std::string>> headers 
+      (new std::map<std::string, std::string>
+           (triagens::arango::getForwardableRequestHeaders(_request)));
   map<string, string> resultHeaders;
   string resultBody;
 

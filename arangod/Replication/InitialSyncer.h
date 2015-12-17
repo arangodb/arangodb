@@ -71,8 +71,7 @@ namespace triagens {
           PHASE_NONE,
           PHASE_INIT,
           PHASE_VALIDATE,
-          PHASE_DROP,
-          PHASE_CREATE,
+          PHASE_DROP_CREATE,
           PHASE_DUMP
         }
         sync_phase_e;
@@ -129,10 +128,8 @@ namespace triagens {
               return "init";
             case PHASE_VALIDATE:
               return "validate";
-            case PHASE_DROP:
-              return "drop";
-            case PHASE_CREATE:
-              return "create";
+            case PHASE_DROP_CREATE:
+              return "drop-create";
             case PHASE_DUMP:
               return "dump";
             case PHASE_NONE: 

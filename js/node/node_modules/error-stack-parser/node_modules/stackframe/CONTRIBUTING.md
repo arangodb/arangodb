@@ -22,7 +22,7 @@ Want to be listed as a *Contributor*? Make a pull request with:
 * Run `npm install` from the project directory
 
 ## Testing
-* (Local) Run `make test`. Make sure [Karma Local Config](karma.conf.js) has the browsers you want.
-* (Any browser, remotely) If you have a [Sauce Labs](https://saucelabs.com) account, you can run `make ci`.
+* (Local) Run `gulp test`. Make sure [Karma Local Config](karma.conf.js) has the browsers you want.
+* (Any browser, remotely) If you have a [Sauce Labs](https://saucelabs.com) account, you can run `gulp test-ci`.
  Make sure the target browser is enabled in [Karma CI Config](karma.conf.ci.js).
  Otherwise, Travis will run all browsers if you submit a Pull Request. 

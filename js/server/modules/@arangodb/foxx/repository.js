@@ -37,7 +37,7 @@ const EVENTS = [
   'afterSave', 'afterCreate', 'afterUpdate', 'afterRemove'
 ];
 
-class Repository extends EventEmitter {
+function Repository(collection, opts) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_initializer
@@ -85,9 +85,6 @@ class Repository extends EventEmitter {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-
-constructor(collection, opts) {
-  super();
 
   this.options = opts || {};
 
@@ -157,6 +154,9 @@ constructor(collection, opts) {
 // --SECTION--                                                           Methods
 // -----------------------------------------------------------------------------
 
+Repository.prototype = Object.create(EventEmitter.prototype);
+_.extend(Repository.prototype, {
+
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                                 Adding Entries
 // -----------------------------------------------------------------------------
@@ -196,7 +196,7 @@ constructor(collection, opts) {
     this.emit('afterCreate', model);
     model.emit('afterCreate');
     return model;
-  }
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                                Finding Entries
@@ -222,7 +222,7 @@ constructor(collection, opts) {
   byId(id) {
     var data = this.collection.document(id);
     return new this.model(data);
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_byExample
@@ -243,7 +243,7 @@ constructor(collection, opts) {
     return _.map(rawDocuments, function (rawDocument) {
       return new this.model(rawDocument);
     }, this);
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_firstExample
@@ -262,7 +262,7 @@ constructor(collection, opts) {
   firstExample(example) {
     var rawDocument = this.collection.firstExample(example);
     return rawDocument ? new this.model(rawDocument) : null;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_all
@@ -302,7 +302,7 @@ constructor(collection, opts) {
     return _.map(rawDocuments.toArray(), function (rawDocument) {
       return new this.model(rawDocument);
     }, this);
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_any
@@ -323,7 +323,7 @@ constructor(collection, opts) {
       return null;
     }
     return new this.model(data);
-  }
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Removing Entries
@@ -351,7 +351,7 @@ constructor(collection, opts) {
     this.emit('afterRemove', model);
     model.emit('afterRemove');
     return result;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeById
@@ -370,7 +370,7 @@ constructor(collection, opts) {
 ////////////////////////////////////////////////////////////////////////////////
   removeById(id) {
     return this.collection.remove(id);
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeByExample
@@ -387,7 +387,7 @@ constructor(collection, opts) {
 ////////////////////////////////////////////////////////////////////////////////
   removeByExample(example) {
     return this.collection.removeByExample(example);
-  }
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                              Replacing Entries
@@ -415,7 +415,7 @@ constructor(collection, opts) {
       id_and_rev = this.collection.replace(id, data);
     model.set(id_and_rev);
     return model;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceById
@@ -441,7 +441,7 @@ constructor(collection, opts) {
       return data;
     }
     return this.collection.replace(id, data);
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceByExample
@@ -459,7 +459,7 @@ constructor(collection, opts) {
 ////////////////////////////////////////////////////////////////////////////////
   replaceByExample(example, data) {
     return this.collection.replaceByExample(example, data);
-  }
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Updating Entries
@@ -494,7 +494,7 @@ constructor(collection, opts) {
     this.emit('afterUpdate', model, data);
     model.emit('afterUpdate', data);
     return model;
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateById
@@ -520,7 +520,7 @@ constructor(collection, opts) {
       return data;
     }
     return this.collection.update(id, data);
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateByExample
@@ -538,7 +538,7 @@ constructor(collection, opts) {
 ////////////////////////////////////////////////////////////////////////////////
   updateByExample(example, data) {
     return this.collection.updateByExample(example, data);
-  }
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_exists
@@ -555,7 +555,7 @@ constructor(collection, opts) {
 ////////////////////////////////////////////////////////////////////////////////
   exists(id) {
     return this.collection.exists(id);
-  }
+  },
 
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Counting Entries
@@ -577,7 +577,7 @@ constructor(collection, opts) {
   count() {
     return this.collection.count();
   }
-}
+});
 
 var indexPrototypes = {
   skiplist: {

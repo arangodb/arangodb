@@ -48,6 +48,8 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 
+#include "velocypack/Builder.h"
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -867,7 +869,8 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
     std::string const dbname(collection->_dbName);
     // TODO: someone might rename the collection while we're reading its name...
     std::string const collname(collection->_name);
-    shared_ptr<CollectionInfo> const& c = ClusterInfo::instance()->getCollection(dbname, collname);
+    shared_ptr<CollectionInfo> c 
+        = ClusterInfo::instance()->getCollection(dbname, collname);
 
     if (c->empty()) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -944,7 +947,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 
   bool allowUserKeys = true;
   uint64_t numberOfShards = 1;
-  vector<string> shardKeys;
+  std::vector<std::string> shardKeys;
 
   // default shard key
   shardKeys.push_back("_key");
@@ -1039,13 +1042,17 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     CollectionNameResolver resolver(vocbase);
     TRI_voc_cid_t otherCid 
       = resolver.getCollectionIdCluster(distributeShardsLike);
-    shared_ptr<CollectionInfo> collInfo = ci->getCollection(databaseName,
-                               triagens::basics::StringUtils::itoa(otherCid));
+    std::string otherCidString = triagens::basics::StringUtils::itoa(otherCid);
+    std::shared_ptr<CollectionInfo> collInfo = ci->getCollection(databaseName,
+                                                       otherCidString);
     auto shards = collInfo->shardIds();
-    for (auto it = shards.begin(); it != shards.end(); ++it) {
-      dbServers.push_back(it->second);
+    auto shardList = ci->getShardList(otherCidString);
+    for (auto const& s : *shardList) {
+      auto it = shards->find(s);
+      if (it != shards->end()) {
+        dbServers.push_back(it->second[0]);
+      }
     }
-    // FIXME: need to sort shards numerically and not alphabetically
   }
 
   // now create the shards
@@ -1060,78 +1067,81 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     shards.insert(std::make_pair(shardId, serverId));
   }
 
-  // now create the JSON for the collection
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+  // now create the VelocyPack for the collection
+  arangodb::velocypack::Builder velocy;
+  using arangodb::velocypack::Value;
+  using arangodb::velocypack::ValueType;
+  using arangodb::velocypack::ObjectBuilder;
+  using arangodb::velocypack::ArrayBuilder;
 
-  if (json == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  {
+    ObjectBuilder ob(&velocy);
+    velocy("id",           Value(cid))
+          ("name",         Value(name))
+          ("type",         Value((int) collectionType))
+          ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
+          ("deleted",      Value(parameters.deleted()))
+          ("doCompact",    Value(parameters.doCompact()))
+          ("isSystem",     Value(parameters.isSystem()))
+          ("isVolatile",   Value(parameters.isVolatile()))
+          ("waitForSync",  Value(parameters.waitForSync()))
+          ("journalSize",  Value(parameters.maximalSize()))
+          ("indexBuckets", Value(parameters.indexBuckets()))
+          ("keyOptions",   Value(ValueType::Object))
+              ("type",          Value("traditional"))
+              ("allowUserKeys", Value(allowUserKeys))
+           .close();
+
+    {
+      ArrayBuilder ab(&velocy, "shardKeys");
+      for (auto const& sk : shardKeys) {
+        velocy(Value(sk));
+      }
+    }
+
+    { 
+      ObjectBuilder ob(&velocy, "shards");
+      for (auto const& p : shards) {
+        ArrayBuilder ab(&velocy, p.first);
+        velocy(Value(p.second));
+      }
+    }
+
+    {
+      ArrayBuilder ab(&velocy, "indexes");
+
+      // create a dummy primary index
+      TRI_document_collection_t* doc = nullptr;
+      std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex
+          (new triagens::arango::PrimaryIndex(doc));
+
+      auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+      triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+
+      if (collectionType == TRI_COL_TYPE_EDGE) {
+        // create a dummy edge index
+        auto edgeIndex = std::make_unique<triagens::arango::EdgeIndex>(id, nullptr);
+
+        idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+        triagens::basics::JsonHelper::toVelocyPack(idxJson.json(), velocy);
+      }
+    }
   }
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters.deleted()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters.doCompact()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem",    TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters.isSystem()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters.isVolatile()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters.waitForSync()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters.maximalSize()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters.indexBuckets()));
-
-  TRI_json_t* keyOptions = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-  if (keyOptions != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional", strlen("traditional")));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
-
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", keyOptions);
-  }
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shardKeys", JsonHelper::stringArray(TRI_UNKNOWN_MEM_ZONE, shardKeys));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shards", JsonHelper::stringObject(TRI_UNKNOWN_MEM_ZONE, shards));
-
-  TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-  if (indexes == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  // create a dummy primary index
-  TRI_document_collection_t* doc = nullptr;
-  std::unique_ptr<triagens::arango::PrimaryIndex> primaryIndex(new triagens::arango::PrimaryIndex(doc));
-
-  auto idxJson = primaryIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-
-  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
-
-  if (collectionType == TRI_COL_TYPE_EDGE) {
-    // create a dummy edge index
-    std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(id, nullptr));
-
-    auto idxJson = edgeIndex->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-
-    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
-  }
-
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "indexes", indexes);
 
   string errorMsg;
   int myerrno = ci->createCollectionCoordinator(databaseName,
                                                 cid,
                                                 numberOfShards,
-                                                json,
+                                                velocy.slice(),
                                                 errorMsg,
                                                 240.0);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   if (myerrno != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
   ci->loadPlannedCollections();
 
-  shared_ptr<CollectionInfo> const& c = ci->getCollection(databaseName, cid);
+  std::shared_ptr<CollectionInfo> c = ci->getCollection(databaseName, cid);
   TRI_vocbase_col_t* newcoll = CoordinatorCollection(vocbase, *c);
   TRI_V8_RETURN(WrapCollection(isolate, newcoll));
 }

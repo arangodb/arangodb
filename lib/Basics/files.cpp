@@ -297,36 +297,6 @@ static char* LocateConfigDirectoryEnv (void) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets close-on-exit for a socket
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
-
-bool TRI_SetCloseOnExitFile (int fileDescriptor) {
-  return true;
-}
-
-#else
-
-bool TRI_SetCloseOnExitFile (int fileDescriptor) {
-  long flags = fcntl(fileDescriptor, F_GETFD, 0);
-
-  if (flags < 0) {
-    return false;
-  }
-
-  flags = fcntl(fileDescriptor, F_SETFD, flags | FD_CLOEXEC);
-
-  if (flags < 0) {
-    return false;
-  }
-
-  return true;
-}
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
 ///
 /// Will return a negative error number on error, typically -1
@@ -1019,7 +989,7 @@ int TRI_WriteFile (const char* filename, const char* data, size_t length) {
   int fd;
   bool result;
 
-  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1070,7 +1040,7 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
   TRI_string_buffer_t result;
   int fd;
 
-  fd = TRI_OPEN(filename, O_RDONLY);
+  fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1206,7 +1176,7 @@ int TRI_CreateLockFile (char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
   if (fd == -1) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1232,7 +1202,7 @@ int TRI_CreateLockFile (char const* filename) {
   TRI_CLOSE(fd);
 
   // try to open pid file
-  fd = TRI_OPEN(filename, O_RDONLY);
+  fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1298,7 +1268,7 @@ int TRI_VerifyLockFile (char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_OPEN(filename, O_RDONLY);
+  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     return TRI_ERROR_NO_ERROR;
@@ -1337,7 +1307,7 @@ int TRI_VerifyLockFile (char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  fd = TRI_OPEN(filename, O_RDONLY);
+  fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     return TRI_ERROR_NO_ERROR;
@@ -1403,7 +1373,7 @@ int TRI_DestroyLockFile (char const* filename) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  int fd = TRI_OPEN(filename, O_RDWR);
+  int fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
     // TODO: what happens if the file does not exist?

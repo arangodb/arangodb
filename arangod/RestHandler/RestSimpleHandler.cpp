@@ -561,7 +561,7 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
 
           for (auto const& it : VPackArrayIterator(postFilter)) {
             if (it.isObject()) {
-              std::unique_ptr<traverser::TraverserExpression> expression(new traverser::TraverserExpression(it));
+              auto expression = std::make_unique<traverser::TraverserExpression>(it);
               expressions.emplace_back(expression.get());
               expression.release();
             }

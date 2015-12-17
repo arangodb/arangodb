@@ -1006,7 +1006,7 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
     totalSize += (*it)->size();
   }
 
-  std::unique_ptr<Json> json(new Json(Json::Array, totalSize));
+  auto json = std::make_unique<Json>(Json::Array, totalSize);
 
   for (auto it = src.begin(); it != src.end(); ++it) {
     auto current = (*it);
@@ -1048,7 +1048,7 @@ AqlValue AqlValue::CreateFromBlocks (triagens::arango::AqlTransaction* trx,
     totalSize += (*it)->size();
   }
 
-  std::unique_ptr<Json> json(new Json(Json::Array, totalSize));
+  auto json = std::make_unique<Json>(Json::Array, totalSize);
 
   for (auto it = src.begin(); it != src.end(); ++it) {
     auto current = (*it);

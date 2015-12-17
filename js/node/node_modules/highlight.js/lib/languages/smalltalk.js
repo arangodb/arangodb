@@ -1,7 +1,7 @@
 module.exports = function(hljs) {
   var VAR_IDENT_RE = '[a-z][a-zA-Z0-9_]*';
   var CHAR = {
-    className: 'char',
+    className: 'string',
     begin: '\\$.{1}'
   };
   var SYMBOL = {
@@ -15,12 +15,11 @@ module.exports = function(hljs) {
       hljs.COMMENT('"', '"'),
       hljs.APOS_STRING_MODE,
       {
-        className: 'class',
+        className: 'type',
         begin: '\\b[A-Z][A-Za-z0-9_]*',
         relevance: 0
       },
       {
-        className: 'method',
         begin: VAR_IDENT_RE + ':',
         relevance: 0
       },
@@ -28,7 +27,6 @@ module.exports = function(hljs) {
       SYMBOL,
       CHAR,
       {
-        className: 'localvars',
         // This looks more complicated than needed to avoid combinatorial
         // explosion under V8. It effectively means `| var1 var2 ... |` with
         // whitespace adjacent to `|` being optional.
@@ -38,7 +36,6 @@ module.exports = function(hljs) {
         contains: [{begin: '(\\|[ ]*)?' + VAR_IDENT_RE}]
       },
       {
-        className: 'array',
         begin: '\\#\\(', end: '\\)',
         contains: [
           hljs.APOS_STRING_MODE,

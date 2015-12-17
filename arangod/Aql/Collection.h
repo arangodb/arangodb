@@ -148,7 +148,7 @@ namespace triagens {
 /// @brief returns the shard ids of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::vector<std::string> shardIds () const;
+      std::shared_ptr<std::vector<std::string>> shardIds () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the shard keys of a collection

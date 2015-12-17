@@ -93,6 +93,10 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
 
 ApplicationCluster::~ApplicationCluster () {
   delete _heartbeat;
+
+  // delete connection manager instance  
+  auto cm = httpclient::ConnectionManager::instance();
+  delete cm;
 }
 
 // -----------------------------------------------------------------------------
@@ -211,6 +215,9 @@ bool ApplicationCluster::prepare () {
   if (! _myAddress.empty()) {
     ServerState::instance()->setAddress(_myAddress);
   }
+  
+  // initialize ConnectionManager library
+  httpclient::ConnectionManager::initialize();
 
   // initialize ClusterComm library
   // must call initialize while still single-threaded
@@ -301,8 +308,6 @@ bool ApplicationCluster::start () {
 
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
-  // initialize ConnectionManager library
-  httpclient::ConnectionManager::initialize();
 
   // the agency about our state
   AgencyComm comm;

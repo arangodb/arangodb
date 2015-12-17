@@ -35,7 +35,7 @@
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
-const R = require('ramda');
+const _ = require('underscore');
 const fs = require('fs');
 const joi = require('joi');
 const util = require('util');
@@ -59,8 +59,7 @@ const cluster = require('@arangodb/cluster');
 const download = require('internal').download;
 const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
 const actions = require('@arangodb/actions');
-const plainServerVersion = require("@arangodb").plainServerVersion;
-const _ = require('underscore');
+const plainServerVersion = require('@arangodb').plainServerVersion;
 
 const throwDownloadError = arangodb.throwDownloadError;
 const throwFileNotFound = arangodb.throwFileNotFound;
@@ -163,8 +162,8 @@ const manifestSchema = {
     .pattern(RE_NOT_EMPTY, joi.string().required())
     .default(Object, 'empty scripts object')
   ),
-  setup: joi.string().optional(), // TODO remove in 2.8
-  teardown: joi.string().optional(), // TODO remove in 2.8
+  setup: joi.string().optional(),
+  teardown: joi.string().optional(),
   tests: (
     joi.alternatives()
     .try(
@@ -337,7 +336,7 @@ function checkManifest(filename, manifest) {
   }
 
   if (manifest.setup && manifest.setup !== manifest.scripts.setup) {
-    deprecated('2.8', (
+    deprecated('3.0', (
       `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "setup",`
       + ` use "scripts.setup" instead.`
     ));
@@ -346,7 +345,7 @@ function checkManifest(filename, manifest) {
   }
 
   if (manifest.teardown && manifest.teardown !== manifest.scripts.teardown) {
-    deprecated('2.8', (
+    deprecated('3.0', (
       `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "teardown",`
       + ` use "scripts.teardown" instead.`
     ));
@@ -355,7 +354,7 @@ function checkManifest(filename, manifest) {
   }
 
   if (manifest.assets) {
-    deprecated('2.8', (
+    deprecated('3.0', (
       `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "assets",`
       + ` use "files" and an external build tool instead.`
     ));
@@ -1573,8 +1572,8 @@ exports.install = install;
 exports.readme = readme;
 exports.runTests = runTests;
 exports.runScript = runScript;
-exports.setup = R.partial(runScript, 'setup');
-exports.teardown = R.partial(runScript, 'teardown');
+exports.setup = _.partial(runScript, 'setup');
+exports.teardown = _.partial(runScript, 'teardown');
 exports.uninstall = uninstall;
 exports.replace = replace;
 exports.upgrade = upgrade;

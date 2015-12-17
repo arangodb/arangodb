@@ -11,7 +11,7 @@ module.exports = function(hljs) {
     relevance: 0,
     contains: [
       {
-        className: 'operator', begin: /'['\.]*/
+        begin: /'['\.]*/
       }
     ]
   };
@@ -45,12 +45,11 @@ module.exports = function(hljs) {
         contains: [
           hljs.UNDERSCORE_TITLE_MODE,
           {
-              className: 'params',
-              begin: '\\(', end: '\\)'
-          },
-          {
-              className: 'params',
-              begin: '\\[', end: '\\]'
+            className: 'params',
+            variants: [
+              {begin: '\\(', end: '\\)'},
+              {begin: '\\[', end: '\\]'}
+            ]
           }
         ]
       },
@@ -64,14 +63,12 @@ module.exports = function(hljs) {
         ]
       },
       {
-        className: 'matrix',
         begin: '\\[', end: '\\]',
         contains: COMMON_CONTAINS,
         relevance: 0,
         starts: TRANSPOSE
       },
       {
-        className: 'cell',
         begin: '\\{', end: /}/,
         contains: COMMON_CONTAINS,
         relevance: 0,

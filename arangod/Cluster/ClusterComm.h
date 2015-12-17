@@ -96,7 +96,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct ClusterCommResult {
-      bool                _deleteOnDestruction;
       ClientTransactionID clientTransactionID;
       CoordTransactionID  coordTransactionID;
       OperationID         operationID;
@@ -108,35 +107,21 @@ namespace triagens {
                                    // is dropped whilst in state CL_COMM_SENDING
                                    // it is then actually dropped when it has
                                    // been sent
+      bool                invalid; // can only explicitly be set
 
       // The field result is != 0 ifs status is >= CL_COMM_SENT.
       // Note that if status is CL_COMM_TIMEOUT, then the result
       // field is a response object that only says "timeout"
-      httpclient::SimpleHttpResult* result;
+      std::shared_ptr<httpclient::SimpleHttpResult> result;
       // the field answer is != 0 if status is == CL_COMM_RECEIVED
       // answer_code is valid iff answer is != 0
-      rest::HttpRequest* answer;
+      std::shared_ptr<rest::HttpRequest> answer;
       rest::HttpResponse::HttpResponseCode answer_code;
 
       ClusterCommResult ()
-        : _deleteOnDestruction(true), 
-          dropped(false), 
-          result(nullptr), 
-          answer(nullptr),
+        : dropped(false), 
+          invalid(false),
           answer_code(rest::HttpResponse::OK) {
-      }
-
-      void doNotDeleteOnDestruction () {
-        _deleteOnDestruction = false;
-      }
-
-      virtual ~ClusterCommResult () {
-        if (_deleteOnDestruction && nullptr != result) {
-          delete result;
-        }
-        if (_deleteOnDestruction && nullptr != answer) {
-          delete answer;
-        }
       }
     };
 
@@ -177,28 +162,14 @@ namespace triagens {
 /// an operation
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ClusterCommOperation : public ClusterCommResult {
+    struct ClusterCommOperation {
+      ClusterCommResult result;
       rest::HttpRequest::HttpRequestType reqtype;
       std::string path;
       std::shared_ptr<std::string const> body;
-      std::map<std::string, std::string>* headerFields;
-      ClusterCommCallback* callback;
+      std::unique_ptr<std::map<std::string, std::string>> headerFields;
+      std::shared_ptr<ClusterCommCallback> callback;
       ClusterCommTimeout endTime;
-
-      ClusterCommOperation () 
-        : body(nullptr), 
-          headerFields(nullptr), 
-          callback(nullptr) {
-      }
-
-      virtual ~ClusterCommOperation () {
-        if (_deleteOnDestruction && nullptr != headerFields) {
-          delete headerFields;
-        }
-        if (_deleteOnDestruction && nullptr != callback) {
-          delete callback;
-        }
-      }
     };
 
 
@@ -295,22 +266,23 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
 /// @brief submit an HTTP request to a shard asynchronously.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult* asyncRequest (
+        ClusterCommResult const asyncRequest (
                 ClientTransactionID const            clientTransactionID,
                 CoordTransactionID const             coordTransactionID,
                 std::string const&                   destination,
                 rest::HttpRequest::HttpRequestType   reqtype,
-                std::string const                    path,
+                std::string const&                   path,
                 std::shared_ptr<std::string const>   body,
-                std::map<std::string, std::string>*  headerFields,
-                ClusterCommCallback*                 callback,
+                std::unique_ptr<std::map<std::string, std::string>>&
+                                                     headerFields,
+                std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout                   timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief submit a single HTTP request to a shard synchronously.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult* syncRequest (
+        std::unique_ptr<ClusterCommResult> syncRequest (
                 ClientTransactionID const&           clientTransactionID,
                 CoordTransactionID const             coordTransactionID,
                 std::string const&                   destination,
@@ -324,13 +296,13 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
 /// @brief check on the status of an operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult const* enquire (OperationID const operationID);
+        ClusterCommResult const enquire (OperationID const operationID);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for one answer matching the criteria
 ////////////////////////////////////////////////////////////////////////////////
 
-        ClusterCommResult* wait (
+        ClusterCommResult const wait (
                 ClientTransactionID const& clientTransactionID,
                 CoordTransactionID const   coordTransactionID,
                 OperationID const          operationID,

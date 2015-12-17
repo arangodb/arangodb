@@ -128,20 +128,9 @@ TRI_voc_cid_t Collection::getPlanId () const {
 /// @brief returns the shard ids of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> Collection::shardIds () const {
+std::shared_ptr<std::vector<std::string>> Collection::shardIds () const {
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
-  if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
-                                  "collection not found '%s' -> '%s'",
-                                  vocbase->_name, name.c_str());
-  }
-
-  std::vector<std::string> ids;
-  for (auto const& it : collectionInfo.get()->shardIds()) {
-    ids.emplace_back(it.first);
-  }
-  return ids;
+  return clusterInfo->getShardList(triagens::basics::StringUtils::itoa(getPlanId()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,7 +288,7 @@ void Collection::fillIndexesCoordinator () const {
         continue;
       }
 
-      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
+      auto idx = std::make_unique<triagens::aql::Index>(v);
 
       indexes.emplace_back(idx.get());
       auto p = idx.release();
@@ -387,7 +376,7 @@ void Collection::fillIndexesDBServer () const {
         }
       }
 
-      std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(v));
+      auto idx = std::make_unique<triagens::aql::Index>(v);
       // assign the found local index
       idx->setInternals(data, false);
 
@@ -414,7 +403,7 @@ void Collection::fillIndexesLocal () const {
       continue;
     }
 
-    std::unique_ptr<triagens::aql::Index> idx(new triagens::aql::Index(allIndexes[i]));
+    auto idx = std::make_unique<triagens::aql::Index>(allIndexes[i]);
     indexes.emplace_back(idx.get());
     idx.release();
   }

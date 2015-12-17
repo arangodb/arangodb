@@ -11,7 +11,7 @@ module.exports = function(hljs) {
     endsWithParent: true,
     lexemes: '[a-z/_]+',
     keywords: {
-      built_in:
+      literal:
         'on off yes no true false none blocked debug info notice warn error crit ' +
         'select break last permanent redirect kqueue rtsig epoll poll /dev/poll'
     },
@@ -27,8 +27,8 @@ module.exports = function(hljs) {
           {begin: /'/, end: /'/}
         ]
       },
+      // this swallows entire URLs to avoid detecting numbers within
       {
-        className: 'url',
         begin: '([a-z]+):/', end: '\\s', endsWithParent: true, excludeEnd: true,
         contains: [VAR]
       },
@@ -65,10 +65,21 @@ module.exports = function(hljs) {
     contains: [
       hljs.HASH_COMMENT_MODE,
       {
+        begin: hljs.UNDERSCORE_IDENT_RE + '\\s+{', returnBegin: true,
+        end: '{',
+        contains: [
+          {
+            className: 'section',
+            begin: hljs.UNDERSCORE_IDENT_RE
+          }
+        ],
+        relevance: 0
+      },
+      {
         begin: hljs.UNDERSCORE_IDENT_RE + '\\s', end: ';|{', returnBegin: true,
         contains: [
           {
-            className: 'title',
+            className: 'attribute',
             begin: hljs.UNDERSCORE_IDENT_RE,
             starts: DEFAULT
           }

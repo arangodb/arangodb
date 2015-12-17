@@ -199,7 +199,7 @@ Scopes::~Scopes () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scopes::start (ScopeType type) {
-  std::unique_ptr<Scope> scope(new Scope(type));
+  auto scope = std::make_unique<Scope>(type);
 
   _activeScopes.emplace_back(scope.get());
   scope.release();

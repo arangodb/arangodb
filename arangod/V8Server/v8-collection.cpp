@@ -248,7 +248,7 @@ static int ParseDocumentOrDocumentHandle (v8::Isolate* isolate,
 
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo* ci = ClusterInfo::instance();
-      shared_ptr<CollectionInfo> const& c = ci->getCollection(vocbase->_name, collectionName);
+      std::shared_ptr<CollectionInfo> c = ci->getCollection(vocbase->_name, collectionName);
       col = CoordinatorCollection(vocbase, *c);
 
       if (col != nullptr && col->_cid == 0) {
@@ -344,7 +344,8 @@ static void DocumentVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers;
+  std::unique_ptr<std::map<std::string, std::string>> headers
+      (new std::map<std::string, std::string>());
   map<string, string> resultHeaders;
   string resultBody;
 
@@ -554,7 +555,7 @@ static TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection
 static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster (TRI_vocbase_t* vocbase) {
   std::vector<TRI_vocbase_col_t*> result;
 
-  std::vector<shared_ptr<CollectionInfo> > const& collections
+  std::vector<shared_ptr<CollectionInfo>> const collections
       = ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
@@ -575,7 +576,7 @@ static std::vector<TRI_vocbase_col_t*> GetCollectionsCluster (TRI_vocbase_t* voc
 static std::vector<std::string> GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
   std::vector<std::string> result;
 
-  std::vector<shared_ptr<CollectionInfo> > const& collections
+  std::vector<shared_ptr<CollectionInfo>> const collections
       = ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
@@ -721,7 +722,8 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers;
+  std::unique_ptr<std::map<std::string, std::string>> headers
+      (new std::map<std::string, std::string>());
   map<string, string> resultHeaders;
   string resultBody;
 
@@ -1469,7 +1471,8 @@ static void RemoveVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
   string resultBody;
-  map<string, string> headers;
+  std::unique_ptr<std::map<std::string, std::string>> headers
+      (new std::map<std::string, std::string>());
 
   error = triagens::arango::deleteDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, headers,
@@ -2520,7 +2523,9 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
     result->Set(TRI_V8_ASCII_STRING("indexBuckets"),
                 v8::Number::New(isolate, info.indexBuckets()));
 
-    shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
+    std::shared_ptr<CollectionInfo> c 
+        = ClusterInfo::instance()->getCollection(databaseName,
+            StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
     vector<string> const sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
@@ -3667,7 +3672,7 @@ static void JS_StatusVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
-    shared_ptr<CollectionInfo> const& ci
+    shared_ptr<CollectionInfo> const ci
         = ClusterInfo::instance()->getCollection(databaseName,
                                         StringUtils::itoa(collection->_cid));
 
@@ -3835,7 +3840,7 @@ static void JS_TypeVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args) 
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
-    shared_ptr<CollectionInfo> const& ci
+    shared_ptr<CollectionInfo> const ci
         = ClusterInfo::instance()->getCollection(databaseName,
                                       StringUtils::itoa(collection->_cid));
 
@@ -4140,7 +4145,7 @@ static void JS_CollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& arg
 
   if (ServerState::instance()->isCoordinator()) {
     string const name = TRI_ObjectToString(val);
-    shared_ptr<CollectionInfo> const& ci
+    shared_ptr<CollectionInfo> const ci
         = ClusterInfo::instance()->getCollection(vocbase->_name, name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {

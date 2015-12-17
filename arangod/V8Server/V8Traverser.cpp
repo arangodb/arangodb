@@ -693,7 +693,7 @@ void TRI_RunNeighborsSearch (
 
 Json* SingleServerTraversalPath::pathToJson (Transaction* trx,
                                              CollectionNameResolver* resolver) {
-  std::unique_ptr<Json> path(new Json(Json::Object, 2));
+  auto path = std::make_unique<Json>(Json::Object, 2);
   Json vertices(Json::Array);
   for (size_t i = 0; i < _path.vertices.size(); ++i) {
     auto v = vertexToJson(trx, resolver, _path.vertices[i]);
@@ -962,6 +962,13 @@ void DepthFirstTraverser::_defInternalFunctions () {
           _getEdge(startVertex, edges, last, eColIdx, dir);
           return;
         }
+        auto search = std::find(edges.begin(), edges.end(), e);
+        if (search != edges.end()) {
+          // edges.push_back(e);
+          // The edge is now included twice. Go on with the next
+          _getEdge(startVertex, edges, last, eColIdx, dir);
+          return;
+        }
         edges.push_back(e);
       }
     };
@@ -1001,6 +1008,13 @@ void DepthFirstTraverser::_defInternalFunctions () {
         _getVertex(e, startVertex, 0, other);
         if (! vertexMatchesConditions(other, edges.size() + 1)) {
           // Retry with the next element
+          _getEdge(startVertex, edges, last, eColIdx, dir);
+          return;
+        }
+        auto search = std::find(edges.begin(), edges.end(), e);
+        if (search != edges.end()) {
+          // edges.push_back(e);
+          // The edge is now included twice. Go on with the next
           _getEdge(startVertex, edges, last, eColIdx, dir);
           return;
         }
@@ -1076,7 +1090,9 @@ TraversalPath* DepthFirstTraverser::next () {
     // Done traversing
     return nullptr;
   }
-  std::unique_ptr<SingleServerTraversalPath> p(new SingleServerTraversalPath(path));
+
+  auto p = std::make_unique<SingleServerTraversalPath>(path);
+
   if (_opts.shouldPrunePath(p.get())) {
     _enumerator->prune();
     return next();

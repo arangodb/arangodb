@@ -167,8 +167,10 @@
 /// @brief files
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
-#define TRI_DIR_SEPARATOR_STR               "/"
+#define TRI_DIR_SEPARATOR_CHAR          '/'
+#define TRI_DIR_SEPARATOR_STR           "/"
+
+#define TRI_O_CLOEXEC                   O_CLOEXEC        
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
@@ -324,14 +326,16 @@
 /// @brief files
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
-#define TRI_DIR_SEPARATOR_STR               "/"
+#define TRI_DIR_SEPARATOR_CHAR          '/'
+#define TRI_DIR_SEPARATOR_STR           "/"
+
+#define TRI_O_CLOEXEC                   O_CLOEXEC
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
-#define TRI_LSEEK                       lseek
 #define TRI_GETCWD                      getcwd
+#define TRI_LSEEK                       lseek
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
@@ -497,14 +501,16 @@
 /// @brief files
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_DIR_SEPARATOR_CHAR              '/'
-#define TRI_DIR_SEPARATOR_STR               "/"
+#define TRI_DIR_SEPARATOR_CHAR          '/'
+#define TRI_DIR_SEPARATOR_STR           "/"
+
+#define TRI_O_CLOEXEC                   O_CLOEXEC
 
 #define TRI_CHDIR                       chdir
 #define TRI_CLOSE                       close
 #define TRI_CREATE(a,b,c)               open((a), (b), (c))
-#define TRI_LSEEK                       lseek
 #define TRI_GETCWD                      getcwd
+#define TRI_LSEEK                       lseek
 #define TRI_MKDIR(a,b)                  mkdir((a), (b))
 #define TRI_OPEN(a,b)                   open((a), (b))
 #define TRI_READ                        read
@@ -727,6 +733,8 @@ typedef unsigned char bool;
 #define S_IWUSR _S_IWRITE
 #define S_IRGRP _S_IREAD
 #define S_IWGRP _S_IWRITE
+
+#define TRI_O_CLOEXEC                   0 
 
 #define O_RDONLY                        _O_RDONLY
 #define TRI_CHDIR                       _chdir

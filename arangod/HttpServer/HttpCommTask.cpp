@@ -534,7 +534,7 @@ bool HttpCommTask::processRead () {
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG_TRACE("received a 100-continue request");
 
-          std::unique_ptr<StringBuffer> buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE));
+          auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
           buffer->appendText(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
 
           _writeBuffers.push_back(buffer.get());
@@ -709,7 +709,7 @@ void HttpCommTask::sendChunk (StringBuffer* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::finishedChunked () {
-  std::unique_ptr<StringBuffer> buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE, 6));
+  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, 6);
   buffer->appendText(TRI_CHAR_LENGTH_PAIR("0\r\n\r\n"));
 
   _writeBuffers.push_back(buffer.get());
@@ -784,7 +784,7 @@ void HttpCommTask::addResponse (HttpResponse* response) {
   // }
 
   // reserve a buffer with some spare capacity
-  std::unique_ptr<StringBuffer> buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128));
+  auto buffer = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128);
 
   // write header
   response->writeHeader(buffer.get());

@@ -32,6 +32,47 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  struct SimpleTraverserExpression
+// -----------------------------------------------------------------------------
+
+SimpleTraverserExpression::SimpleTraverserExpression (triagens::aql::Ast* ast, triagens::basics::Json j)
+  : TraverserExpression(),
+    expression(nullptr)
+{  
+  isEdgeAccess = basics::JsonHelper::checkAndGetBooleanValue(j.json(), "isEdgeAccess");
+
+  comparisonType = static_cast<aql::AstNodeType>(basics::JsonHelper::checkAndGetNumericValue<uint32_t>(j.json(), "comparisonType"));
+
+  varAccess = new AstNode(ast, j.get("varAccess"));
+  compareToNode = new AstNode(ast, j.get("compareTo"));
+}
+
+SimpleTraverserExpression::~SimpleTraverserExpression () {
+  if (expression != nullptr) {
+    delete expression;
+  }
+}
+
+void SimpleTraverserExpression::toJson (triagens::basics::Json& json,
+                                        TRI_memory_zone_t* zone) const {
+  auto op = triagens::aql::AstNode::Operators.find(comparisonType);
+          
+  if (op == triagens::aql::AstNode::Operators.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid operator for simpleTraverserExpression");
+  }
+  std::string const operatorStr = op->second;
+  
+  json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
+    ("comparisonTypeStr", triagens::basics::Json(operatorStr))
+    ("comparisonType", triagens::basics::Json(static_cast<int32_t>(comparisonType)))
+    ("varAccess", varAccess->toJson(zone, true))
+    ("compareTo", compareToNode->toJson(zone, true));
+          
+}
+
 TraversalNode::TraversalNode (ExecutionPlan* plan,
                size_t id,
                TRI_vocbase_t* vocbase, 
@@ -51,7 +92,8 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(graph != nullptr);
-  std::unique_ptr<arango::CollectionNameResolver> resolver(new arango::CollectionNameResolver(vocbase));
+  auto resolver = std::make_unique<arango::CollectionNameResolver>(vocbase);
+  
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
     _graphJson = triagens::basics::Json(triagens::basics::Json::Array, edgeCollectionCount);
@@ -68,7 +110,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       _edgeColls.push_back(eColName);
     }
   } else {
-    if (_edgeColls.size() == 0) {
+    if (_edgeColls.empty()) {
       if (graph->isStringValue()) {
         std::string graphName = graph->getStringValue();
         _graphJson = triagens::basics::Json(graphName);
@@ -218,7 +260,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   }
   else {
     _vertexId = triagens::basics::JsonHelper::getStringValue(base.json(), "vertexId", "");  
-    if (_vertexId.size() == 0) {
+    if (_vertexId.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "start vertex mustn't be empty.");
     }
   }
@@ -248,7 +290,6 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     }
   }
   else {
-    
     _graphJson = base.get("graph").copy(); 
     if (!_graphJson.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be an array.");
@@ -262,8 +303,56 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       }
       _edgeColls.push_back(at.json()->_value._string.data);
     }
-    if (_edgeColls.size() == 0) {
+    if (_edgeColls.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "graph has to be a non empty array of strings.");
+    }
+  }
+
+  if (base.has("simpleExpressions")) {
+    auto simpleExpSet = base.get("simpleExpressions");
+    
+    if (!simpleExpSet.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be an array.");
+    }
+    size_t nExpressionSets = simpleExpSet.members();
+    // List of edge collection names
+    for (size_t i = 0; i < nExpressionSets; i += 2) {
+      auto key = static_cast<TRI_json_t const*>(TRI_AddressVector(&simpleExpSet.json()->_value._objects, i));
+
+      if (! TRI_IsStringJson(key)) {
+        // no string, should not happen
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: key wrong.");
+      }
+
+      std::string const k(key->_value._string.data, key->_value._string.length - 1);
+
+      auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&simpleExpSet.json()->_value._objects, i + 1));
+
+      if (value == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions object: value wrong.");
+      }
+
+      Json oneExpressionSetJson(TRI_UNKNOWN_MEM_ZONE, value);
+      size_t oneSetLength = oneExpressionSetJson.size();
+      if (oneSetLength == 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions one expression set has to be an array.");
+      }
+      
+      std::vector<triagens::arango::traverser::TraverserExpression*> oneExpressionSet;
+      oneExpressionSet.reserve(oneSetLength);
+      size_t n = std::stoull(k);
+      _expressions.emplace(n, oneExpressionSet);
+      auto it = _expressions.find(n);
+
+      for (size_t j = 0; j < oneSetLength; j++) {
+        auto sx = oneExpressionSetJson.at(j);
+        std::unique_ptr<SimpleTraverserExpression> oneX(new SimpleTraverserExpression(plan->getAst(), sx));
+        it->second.emplace_back(oneX.get());
+        oneX.release();
+      }
+    }
+    if (_expressions.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "simpleExpressions has to be non empty.");
     }
   }
 
@@ -448,7 +537,7 @@ void TraversalNode::storeSimpleExpression (bool isEdgeAccess,
                                            size_t indexAccess,
                                            AstNodeType comparisonType,
                                            AstNode const* varAccess,
-                                           AstNode* compareTo) {
+                                           AstNode* compareToNode) {
   auto it = _expressions.find(indexAccess);
 
   if (it == _expressions.end()) {
@@ -457,10 +546,7 @@ void TraversalNode::storeSimpleExpression (bool isEdgeAccess,
     it = _expressions.find(indexAccess);
   }
 
-  std::unique_ptr<SimpleTraverserExpression> e(new SimpleTraverserExpression(isEdgeAccess,
-                                                                             comparisonType,
-                                                                             varAccess,
-                                                                             compareTo));
+  auto e = std::make_unique<SimpleTraverserExpression>(isEdgeAccess, comparisonType, varAccess, compareToNode);
   it->second.push_back(e.get());
   e.release();
 }

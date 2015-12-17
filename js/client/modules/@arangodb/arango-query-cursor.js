@@ -96,6 +96,13 @@ ArangoQueryCursor.prototype.toString = function () {
 
   result += ", hasMore: " + (this.hasNext() ? "true" : "false");
 
+  if (this.data.hasOwnProperty("extra") && 
+      this.data.extra.hasOwnProperty("warnings")) {
+    for (var j = 0; j < this.data.extra.warnings.length; j++) {
+      result += ", warning: " + this.data.extra.warnings[j].code +
+        " - " + this.data.extra.warnings[j].message;
+    }
+  }
   result += "]";
 
   if (!isCaptureModeActive) {

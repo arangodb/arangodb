@@ -144,16 +144,16 @@ static ExecutionBlock* CreateBlock (ExecutionEngine* engine,
                                 static_cast<NoResultsNode const*>(en));
     }
     case ExecutionNode::SCATTER: {
-      auto&& shardIds = static_cast<ScatterNode const*>(en)->collection()->shardIds();
+      auto shardIds = static_cast<ScatterNode const*>(en)->collection()->shardIds();
       return new ScatterBlock(engine,
                               static_cast<ScatterNode const*>(en),
-                              shardIds);
+                              *shardIds);
     }
     case ExecutionNode::DISTRIBUTE: {
-      auto&& shardIds = static_cast<DistributeNode const*>(en)->collection()->shardIds();
+      auto shardIds = static_cast<DistributeNode const*>(en)->collection()->shardIds();
       return new DistributeBlock(engine,
                                  static_cast<DistributeNode const*>(en),
-                                 shardIds,
+                                 *shardIds,
                                  static_cast<DistributeNode const*>
                                  (en)->collection());
     }
@@ -556,7 +556,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     optimizerOptions.set("rules", optimizerOptionsRules);
     options.set("optimizer", optimizerOptions);
     result.set("options", options);
-    std::shared_ptr<std::string const> body(new std::string(triagens::basics::JsonHelper::toString(result.json())));
+    auto body = std::make_shared<std::string const>
+        (triagens::basics::JsonHelper::toString(result.json()));
     
     // std::cout << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get()) << "\n";
     
@@ -565,7 +566,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     std::string const url("/_db/" + triagens::basics::StringUtils::urlEncode(collection->vocbase->_name) + 
                           "/_api/aql/instantiate");
 
-    auto headers = new std::map<std::string, std::string>;
+    std::unique_ptr<std::map<std::string, std::string>> headers
+        (new std::map<std::string, std::string>());
     (*headers)["X-Arango-Nolock"] = shardId;   // Prevent locking
     auto res = cc->asyncRequest("", 
                                 coordTransactionID,
@@ -576,10 +578,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                 headers,
                                 nullptr,
                                 30.0);
-
-    if (res != nullptr) {
-      delete res;
-    }
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,29 +590,29 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                      Collection* collection) {
 
     // pick up the remote query ids
-    std::vector<std::string> shardIds = collection->shardIds();
+    auto shardIds = collection->shardIds();
 
     std::string error;
     int count = 0;
     int nrok = 0;
-    for (count = (int) shardIds.size(); count > 0; count--) {
+    for (count = (int) shardIds->size(); count > 0; count--) {
       auto res = cc->wait("", coordTransactionID, 0, "", 30.0);
 
-      if (res->status == triagens::arango::CL_COMM_RECEIVED) {
-        if (res->answer_code == triagens::rest::HttpResponse::OK ||
-            res->answer_code == triagens::rest::HttpResponse::CREATED ||
-            res->answer_code == triagens::rest::HttpResponse::ACCEPTED) {
+      if (res.status == triagens::arango::CL_COMM_RECEIVED) {
+        if (res.answer_code == triagens::rest::HttpResponse::OK ||
+            res.answer_code == triagens::rest::HttpResponse::CREATED ||
+            res.answer_code == triagens::rest::HttpResponse::ACCEPTED) {
           // query instantiated without problems
           nrok++;
 
           // pick up query id from response
-          triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res->answer->body()));
+          triagens::basics::Json response(TRI_UNKNOWN_MEM_ZONE, triagens::basics::JsonHelper::fromString(res.answer->body()));
           std::string queryId = triagens::basics::JsonHelper::getStringValue(response.json(), "queryId", "");
 
-          // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res->answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode << " SHARDID:"  << res->shardID << ", QUERYID: " << queryId << "\n";
+          // std::cout << "DB SERVER ANSWERED WITHOUT ERROR: " << res.answer->body() << ", REMOTENODEID: " << info.idOfRemoteNode << " SHARDID:"  << res.shardID << ", QUERYID: " << queryId << "\n";
           std::string theID
             = triagens::basics::StringUtils::itoa(info.idOfRemoteNode)
-            + ":" + res->shardID;
+            + ":" + res.shardID;
           if (info.part == triagens::aql::PART_MAIN) {
             queryIds.emplace(theID, queryId + "*");
           }
@@ -624,24 +622,23 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         }
         else {
           error += "DB SERVER ANSWERED WITH ERROR: ";
-          error += res->answer->body();
+          error += res.answer->body();
           error += "\n";
         }
       }
       else {
         error += std::string("Communication with shard '") + 
-          std::string(res->shardID) + 
+          std::string(res.shardID) + 
           std::string("' on cluster node '") +
-          std::string(res->serverID) +
+          std::string(res.serverID) +
           std::string("' failed : ") +
-          res->errorMessage;
+          res.errorMessage;
       }
-      delete res;
     }
 
     // std::cout << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
-    if (nrok != (int) shardIds.size()) {
+    if (nrok != (int) shardIds->size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
   }
@@ -662,7 +659,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // iterate over all shards of the collection
     size_t nr = 0;
-    for (auto& shardId : collection->shardIds()) {
+    auto shardIds = collection->shardIds();
+    for (auto const& shardId : *shardIds) {
       // inject the current shard id into the collection
       collection->setCurrentShard(shardId);
       auto jsonPlan = generatePlanForOneShard(nr++, info, connectedId, shardId, true);
@@ -691,7 +689,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     try {
-      std::unique_ptr<ExecutionEngine> engine(new ExecutionEngine(localQuery));
+      auto engine = std::make_unique<ExecutionEngine>(localQuery);
       localQuery->engine(engine.get());
 
       std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
@@ -738,9 +736,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // now we'll create a remote node for each shard and add it to the gather node
           Collection const* collection = static_cast<GatherNode const*>((*en))->collection();
 
-          auto&& shardIds = collection->shardIds();
+          auto shardIds = collection->shardIds();
 
-          for (auto const& shardId : shardIds) {
+          for (auto const& shardId : *shardIds) {
             std::string theId 
               = triagens::basics::StringUtils::itoa(remoteNode->id())
               + ":" + shardId;
@@ -932,7 +930,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
     if (isCoordinator) {
       // instantiate the engine on the coordinator
 
-      std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
+      auto inst = std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
       plan->root()->walk(inst.get());
 
 #if 0
@@ -1015,12 +1013,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
             if (res->errorMessage.length() > 0) {
               message += std::string(" : ") + res->errorMessage;
             }
-            delete res;
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                 message);
           }
-          delete res;
         }
         Transaction::_makeNolockHeaders = engine->_lockedShards;
       }
@@ -1062,7 +1058,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
                 res->errorMessage;
               LOG_WARNING("%s", msg.c_str());
             }
-            delete res;
           }
           else {
             // Remove query from registry:
@@ -1082,7 +1077,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan (QueryRegistry* queryRegis
     else {
       // instantiate the engine on a local server
       engine = new ExecutionEngine(query);
-      std::unique_ptr<Instanciator> inst(new Instanciator(engine));
+      auto inst = std::make_unique<Instanciator>(engine);
       plan->root()->walk(inst.get());
       root = inst.get()->root;
       TRI_ASSERT(root != nullptr);

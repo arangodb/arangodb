@@ -958,21 +958,21 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 
   string const& dbname = _request->databaseName();
 
-  map<string, string> headers = triagens::arango::getForwardableRequestHeaders(_request);
+  auto headers = std::make_shared<std::map<std::string, std::string>>
+      (triagens::arango::getForwardableRequestHeaders(_request));
   map<string, string> values = _request->values();
   string params;
-  map<string, string>::iterator i;
-  for (i = values.begin(); i != values.end(); ++i) {
-    if (i->first != "DBserver") {
+  for (auto const& i : values) {
+    if (i.first != "DBserver") {
       if (params.empty()) {
         params.push_back('?');
       }
       else {
         params.push_back('&');
       }
-      params.append(StringUtils::urlEncode(i->first));
+      params.append(StringUtils::urlEncode(i.first));
       params.push_back('=');
-      params.append(StringUtils::urlEncode(i->second));
+      params.append(StringUtils::urlEncode(i.second));
     }
   }
 
@@ -980,17 +980,15 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   ClusterComm* cc = ClusterComm::instance();
 
   // Send a synchronous request to that shard using ClusterComm:
-  ClusterCommResult* res;
-  res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
-                        _request->requestType(),
-                        "/_db/" + StringUtils::urlEncode(dbname) +
-                        _request->requestPath() + params,
-                        string(_request->body(),_request->bodySize()),
-                        headers, 300.0);
+  auto res = cc->syncRequest("", TRI_NewTickServer(), "server:" + DBserver,
+      _request->requestType(),
+      "/_db/" + StringUtils::urlEncode(dbname) +
+      _request->requestPath() + params,
+      string(_request->body(),_request->bodySize()),
+      *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
-    delete res;
     generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_TIMEOUT,
                   "timeout within cluster");
     return;
@@ -999,7 +997,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
     // This could be a broken connection or an Http error:
     if (res->result == nullptr || !res->result->isComplete()) {
       // there is no result
-      delete res;
       generateError(HttpResponse::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
                     "lost connection within cluster");
       return;
@@ -1019,7 +1016,6 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
-  delete res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2135,7 +2131,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   // drop an existing collection if it exists
   if (! col->empty()) {
@@ -2217,6 +2213,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
     VPackBuilder mergedBuilder = VPackCollection::merge(parameters, sliceToMerge, false);
     VPackSlice const merged = mergedBuilder.slice();
+
     int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards,
                                               merged, errorMsg, 0.0);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -2386,7 +2383,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator (
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     errorMsg = "could not find collection '" + name + "'";
@@ -2799,7 +2796,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
-  shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
+  std::shared_ptr<CollectionInfo> col = ci->getCollection(dbName, name);
 
   if (col->empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -2807,23 +2804,22 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   }
 
   // We need to distribute the documents we get over the shards:
-  map<ShardID, ServerID> shardIdsMap = col->shardIds();
-  map<string, size_t> shardTab;
-  vector<string> shardIds;
-  map<ShardID, ServerID>::iterator it;
-  map<string, size_t>::iterator it2;
-  for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
-    shardTab.insert(make_pair(it->first,shardIds.size()));
-    shardIds.push_back(it->first);
+  auto shardIdsMap = col->shardIds();
+
+  std::unordered_map<std::string, size_t> shardTab;
+  std::vector<std::string> shardIds;
+  for (auto const& p : *shardIdsMap) {
+    shardTab.emplace(p.first, shardIds.size());
+    shardIds.push_back(p.first);
   }
-  vector<StringBuffer*> bufs;
-  size_t j;
-  for (j = 0; j < shardIds.size(); j++) {
-    bufs.push_back(new StringBuffer(TRI_UNKNOWN_MEM_ZONE));
+  std::vector<StringBuffer*> bufs;
+  for (size_t j = 0; j < shardIds.size(); j++) {
+    auto b = std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
+    bufs.push_back(b.get());
+    b.release();
   }
 
-  const string invalidMsg = string("received invalid JSON data for collection ")
-                            + name;
+  std::string const invalidMsg = std::string("received invalid JSON data for collection ") + name;
 
   char const* ptr = _request->body();
   char const* end = ptr + _request->bodySize();
@@ -2868,7 +2864,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           break;
         }
         else {
-          it2 = shardTab.find(responsibleShard);
+          auto it2 = shardTab.find(responsibleShard);
           if (it2 == shardTab.end()) {
             errorMsg = "cannot find responsible shard";
             res = TRI_ERROR_INTERNAL;
@@ -2882,7 +2878,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
       else if (type == REPLICATION_MARKER_REMOVE) {
         // A remove marker, this has to be appended to all!
-        for (j = 0; j < bufs.size(); j++) {
+        for (size_t j = 0; j < bufs.size(); j++) {
           bufs[j]->appendText(ptr, pos-ptr);
           bufs[j]->appendText("\n");
         }
@@ -2904,7 +2900,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     ClusterComm* cc = ClusterComm::instance();
 
     // Send a synchronous request to that shard using ClusterComm:
-    ClusterCommResult* result;
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
     char const* value;
@@ -2917,40 +2912,39 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       }
     }
 
-    for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
-      map<string, string>* headers = new map<string, string>;
-      it2 = shardTab.find(it->first);
-      if (it2 == shardTab.end()) {
+    for (auto const& p : *shardIdsMap) {
+      auto it = shardTab.find(p.first);
+      if (it == shardTab.end()) {
         errorMsg = "cannot find shard";
         res = TRI_ERROR_INTERNAL;
       }
       else {
-        j = it2->second;
-        std::shared_ptr<std::string const> body
-            (new string(bufs[j]->c_str(), bufs[j]->length()));
-        result = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
-                               triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
-                               "/_db/" + StringUtils::urlEncode(dbName) +
-                               "/_api/replication/restore-data?collection=" +
-                               it->first + forceopt, body,
-                               headers, nullptr, 300.0);
-        delete result;
+        auto headers = std::make_unique<std::map<std::string, std::string>>();
+        size_t j = it->second;
+        auto body = make_shared<std::string const>
+            (bufs[j]->c_str(), bufs[j]->length());
+        cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
+                      triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                      "/_db/" + StringUtils::urlEncode(dbName) +
+                      "/_api/replication/restore-data?collection=" +
+                      p.first + forceopt, body,
+                      headers, nullptr, 300.0);
       }
     }
 
     // Now listen to the results:
     unsigned int count;
     unsigned int nrok = 0;
-    for (count = (int) shardIdsMap.size(); count > 0; count--) {
-      result = cc->wait( "", coordTransactionID, 0, "", 0.0);
-      if (result->status == CL_COMM_RECEIVED) {
-        if (result->answer_code == triagens::rest::HttpResponse::OK ||
-            result->answer_code == triagens::rest::HttpResponse::CREATED) {
+    for (count = (int) (*shardIdsMap).size(); count > 0; count--) {
+      auto result = cc->wait( "", coordTransactionID, 0, "", 0.0);
+      if (result.status == CL_COMM_RECEIVED) {
+        if (result.answer_code == triagens::rest::HttpResponse::OK ||
+            result.answer_code == triagens::rest::HttpResponse::CREATED) {
           VPackOptions options;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
-            parsedAnswer = result->answer->toVelocyPack(options);
+            parsedAnswer = result.answer->toVelocyPack(options);
           }
           catch (VPackException const& e) {
             // Only log this error and try the next doc
@@ -2975,12 +2969,12 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
             }
           }
         }
-        else if (result->answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
+        else if (result.answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
           VPackOptions options;
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
-            parsedAnswer = result->answer->toVelocyPack(options);
+            parsedAnswer = result.answer->toVelocyPack(options);
           }
           catch (VPackException const& e) {
             // Only log this error and try the next doc
@@ -2998,17 +2992,16 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           }
         }
       }
-      delete result;
     }
 
-    if (nrok != shardIdsMap.size()) {
+    if (nrok != shardIdsMap->size()) {
       errorMsg.append("some shard(s) produced error(s)");
       res = TRI_ERROR_INTERNAL;
     }
   }
 
   // Free all the string buffers:
-  for (j = 0; j < shardIds.size(); j++) {
+  for (size_t j = 0; j < shardIds.size(); j++) {
     delete bufs[j];
   }
 
@@ -3076,7 +3069,7 @@ void RestReplicationHandler::handleCommandCreateKeys () {
     }
 
     // initialize a container with the keys
-    std::unique_ptr<CollectionKeys> keys(new CollectionKeys(_vocbase, col->_name, id, 300.0));
+    auto keys = std::make_unique<CollectionKeys>(_vocbase, col->_name, id, 300.0);
     
     std::string const idString(std::to_string(keys->id()));
 
@@ -3917,10 +3910,10 @@ void RestReplicationHandler::handleCommandMakeSlave () {
   config._verbose                 = VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
   config._requireFromPresent      = VelocyPackHelper::getBooleanValue(body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType            = VelocyPackHelper::getStringValue(body, "restrictType", defaults._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(defaults._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(defaults._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
   config._autoResyncRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "autoResyncRetries", defaults._autoResyncRetries);
   
   VPackSlice const restriction = body.get("restrictCollections");
@@ -4299,7 +4292,7 @@ void RestReplicationHandler::handleCommandServerId () {
 ///   requested by the slave, or when the replication is started and no tick value
 ///   can be found.
 ///
-/// - *autoResyncRetries*: umber of resynchronization retries that will be performed 
+/// - *autoResyncRetries*: number of resynchronization retries that will be performed 
 ///   in a row when automatic resynchronization is enabled and kicks in. Setting this 
 ///   to *0* will effectively disable *autoResync*. Setting it to some other value 
 ///   will limit the number of retries that are performed. This helps preventing endless 
@@ -4631,10 +4624,10 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   config._verbose                 = VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
   config._requireFromPresent      = VelocyPackHelper::getBooleanValue(body, "requireFromPresent", config._requireFromPresent);
   config._restrictType            = VelocyPackHelper::getStringValue(body, "restrictType", config._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  config._idleMinWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime         = static_cast<uint64_t>(VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
+  config._connectionRetryWaitTime = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "connectionRetryWaitTime", static_cast<double>(config._connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  config._initialSyncMaxWaitTime  = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "initialSyncMaxWaitTime", static_cast<double>(config._initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  config._idleMinWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMinWaitTime", static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
+  config._idleMaxWaitTime         = static_cast<uint64_t>(1000.0 * 1000.0 * VelocyPackHelper::getNumericValue<double>(body, "idleMaxWaitTime", static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
   config._autoResyncRetries       = VelocyPackHelper::getNumericValue<uint64_t>(body, "autoResyncRetries", config._autoResyncRetries);
 
   VPackSlice const restriction = body.get("restrictCollections");

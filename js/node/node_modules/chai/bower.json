@@ -1,6 +1,5 @@
 {
   "name": "chai",
-  "version": "3.0.0",
   "description": "BDD/TDD assertion library for node.js and the browser. Test framework agnostic.",
   "license": "MIT",
   "keywords": [

@@ -203,6 +203,24 @@ TRI_voc_cid_t Syncer::getCid (TRI_json_t const* json) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the collection name from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+char const* Syncer::getCName (TRI_json_t const* json) const {
+  if (! JsonHelper::isObject(json)) {
+    return nullptr;
+  }
+
+  TRI_json_t const* cname = JsonHelper::getObjectElement(json, "cname");
+
+  if (JsonHelper::isString(cname)) {
+    return cname->_value._string.data;
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -455,6 +473,13 @@ int Syncer::dropCollection (TRI_json_t const* json,
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
   if (col == nullptr) {
+    char const* cname = getCName(json);
+    if (cname != nullptr) {
+      col = TRI_LookupCollectionByNameVocBase(_vocbase, cname);
+    }
+  }
+
+  if (col == nullptr) {
     if (reportError) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
@@ -477,9 +502,10 @@ int Syncer::createIndex (TRI_json_t const* json) {
   }
 
   TRI_voc_cid_t cid = getCid(json);
+  char const* cname = getCName(json);
 
   try {
-    CollectionGuard guard(_vocbase, cid);
+    CollectionGuard guard(_vocbase, cid, cname);
 
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -487,7 +513,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
 
     TRI_document_collection_t* document = guard.collection()->_collection;
   
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, cid);
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, guard.collection()->_cid);
 
     int res = trx.begin();
 
@@ -528,9 +554,10 @@ int Syncer::dropIndex (TRI_json_t const* json) {
   TRI_idx_iid_t const iid = StringUtils::uint64(id);
 
   TRI_voc_cid_t cid = getCid(json);
+  char const* cname = getCName(json);
 
   try {
-    CollectionGuard guard(_vocbase, cid);
+    CollectionGuard guard(_vocbase, cid, cname);
     
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

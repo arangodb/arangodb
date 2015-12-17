@@ -122,12 +122,6 @@
 * GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
 
-#### CoffeeScript
-
-* Project Home: http://coffeescript.org
-* GIUTHUB: https://github.com/jashkenas/coffeescript
-* License: [MT-style License](https://github.com/jashkenas/coffeescript/blob/master/LICENSE)
-
 #### expect.js
 
 * GITHUB: https://github.com/Automattic/expect.js
@@ -137,11 +131,6 @@
 
 * GITHUB: https://github.com/3rd-Eden/extendible
 * License: [MIT License](https://github.com/bigpipe/extendible/blob/master/README.md)
-
-#### Foxx Generator
-
-* GITHUB: https://github.com/moonglum/foxx_generator
-* License: [Apache 2 License](https://github.com/moonglum/foxx_generator/blob/master/LICENSE)
 
 #### highlight.js
 
@@ -206,12 +195,6 @@
 
 * GITHUB: https://github.com/hapijs/qs
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
-
-#### Ramda
-
-* Project Home: http://ramdajs.com
-* GITHUB: https://github.com/ramda/ramda
-* License: [MIT License](https://github.com/ramda/ramda/blob/master/LICENSE.txt)
 
 #### Sinon.JS
 

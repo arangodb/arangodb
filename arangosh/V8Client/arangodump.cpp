@@ -542,7 +542,6 @@ static int DumpCollection (int fd,
     int res = TRI_ERROR_NO_ERROR;  // just to please the compiler
     bool checkMore = false;
     bool found;
-    uint64_t tick;
 
     // TODO: fix hard-coded headers
     string header = response->getHeaderField("x-arango-replication-checkmore", found);
@@ -556,7 +555,7 @@ static int DumpCollection (int fd,
         header = response->getHeaderField("x-arango-replication-lastincluded", found);
 
         if (found) {
-          tick = StringUtils::uint64(header);
+          uint64_t tick = StringUtils::uint64(header);
 
           if (tick > fromTick) {
             fromTick = tick;
@@ -710,7 +709,8 @@ static int RunDump (string& errorMsg) {
     if (TRI_ExistsFile(fileName.c_str())) {
       TRI_UnlinkFile(fileName.c_str());
     }
-    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+    
+    fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
     if (fd < 0) {
       errorMsg = "cannot write to file '" + fileName + "'";
@@ -778,7 +778,7 @@ static int RunDump (string& errorMsg) {
       continue;
     }
 
-    if (restrictList.size() > 0 &&
+    if (! restrictList.empty() &&
         restrictList.find(name) == restrictList.end()) {
       // collection name not in list
       continue;
@@ -805,7 +805,7 @@ static int RunDump (string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -839,7 +839,7 @@ static int RunDump (string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -911,7 +911,6 @@ static int DumpShard (int fd,
     int res = TRI_ERROR_NO_ERROR;   // just to please the compiler
     bool checkMore = false;
     bool found;
-    uint64_t tick;
 
     // TODO: fix hard-coded headers
     std::string header = response->getHeaderField("x-arango-replication-checkmore", found);
@@ -925,7 +924,7 @@ static int DumpShard (int fd,
         header = response->getHeaderField("x-arango-replication-lastincluded", found);
 
         if (found) {
-          tick = StringUtils::uint64(header);
+          uint64_t tick = StringUtils::uint64(header);
 
           if (tick > fromTick) {
             fromTick = tick;
@@ -1064,7 +1063,7 @@ static int RunClusterDump (string& errorMsg) {
       continue;
     }
 
-    if (restrictList.size() > 0 &&
+    if (! restrictList.empty() &&
         restrictList.find(name) == restrictList.end()) {
       // collection name not in list
       continue;
@@ -1090,7 +1089,7 @@ static int RunClusterDump (string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+      fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -1124,7 +1123,7 @@ static int RunClusterDump (string& errorMsg) {
         TRI_UnlinkFile(fileName.c_str());
       }
 
-      int fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+      int fd = TRI_CREATE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC, S_IRUSR | S_IWUSR);
 
       if (fd < 0) {
         errorMsg = "cannot write to file '" + fileName + "'";
@@ -1139,8 +1138,9 @@ static int RunClusterDump (string& errorMsg) {
       for (auto const it : VPackObjectIterator(shards)) {
         TRI_ASSERT(it.key.isString());
         TRI_ASSERT(it.value.isString());
-        string shardName = it.key.copyString();
-        string DBserver = it.value.copyString();
+        std::string shardName = it.key.copyString();
+        std::string DBserver = it.value.copyString();
+
         if (Progress) {
           cout << "# Dumping shard '" << shardName << "' from DBserver '"
                << DBserver << "' ..." << endl;

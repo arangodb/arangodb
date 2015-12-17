@@ -147,7 +147,16 @@ CollectionInfo::CollectionInfo (CollectionInfo const& other) :
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
+/// @brief move constructs a collection info object from another
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfo::CollectionInfo (CollectionInfo&& other) 
+    : _json(other._json) {
+  other._json = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy assigns a collection info object from another one
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
@@ -157,6 +166,24 @@ CollectionInfo& CollectionInfo::operator= (CollectionInfo const& other) {
   else {
     _json = nullptr;
   }
+
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move assigns a collection info object from another one
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfo& CollectionInfo::operator= (CollectionInfo&& other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  if (_json != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
+  }
+  _json = other._json;
+  other._json = nullptr;
 
   return *this;
 }
@@ -204,7 +231,15 @@ CollectionInfoCurrent::CollectionInfoCurrent (CollectionInfoCurrent const& other
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection info object from json
+/// @brief moves a collection info current object from another
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent::CollectionInfoCurrent (CollectionInfoCurrent&& other) {
+  _jsons.swap(other._jsons);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy assigns a collection info current object from another one
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectionInfoCurrent& CollectionInfoCurrent::operator= (CollectionInfoCurrent const& other) {
@@ -214,6 +249,21 @@ CollectionInfoCurrent& CollectionInfoCurrent::operator= (CollectionInfoCurrent c
   freeAllJsons();
   _jsons = other._jsons;
   copyAllJsons();
+  return *this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a collection info object from json
+////////////////////////////////////////////////////////////////////////////////
+
+CollectionInfoCurrent& CollectionInfoCurrent::operator= (
+    CollectionInfoCurrent&& other) {
+  if (this == &other) {
+    return *this;
+  }
+  freeAllJsons();
+  _jsons.clear();
+  _jsons.swap(other._jsons);
   return *this;
 }
 
@@ -230,8 +280,7 @@ CollectionInfoCurrent::~CollectionInfoCurrent () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionInfoCurrent::freeAllJsons () {
-  map<ShardID, TRI_json_t*>::iterator it;
-  for (it = _jsons.begin(); it != _jsons.end(); ++it) {
+  for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
     if (it->second != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it->second);
     }
@@ -243,8 +292,7 @@ void CollectionInfoCurrent::freeAllJsons () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionInfoCurrent::copyAllJsons () {
-  map<ShardID, TRI_json_t*>::iterator it;
-  for (it = _jsons.begin(); it != _jsons.end(); ++it) {
+  for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
     if (nullptr != it->second) {
       it->second = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, it->second);
     }
@@ -710,19 +758,22 @@ void ClusterInfo::loadPlannedCollections () {
       // steal the json
       (*it).second._json = nullptr;
 
-      shared_ptr<CollectionInfo> collectionData (new CollectionInfo(json));
-      std::vector<std::string>* shardKeys = new std::vector<std::string>;
-      *shardKeys = collectionData->shardKeys();
-      newShardKeys.insert(
-             make_pair(collection, shared_ptr<std::vector<std::string> > (shardKeys)));
-      map<ShardID, ServerID> shardIDs = collectionData->shardIds();
-      std::vector<std::string>* shards = new std::vector<std::string>;
-      map<ShardID, ServerID>::iterator it3;
-      for (it3 = shardIDs.begin(); it3 != shardIDs.end(); ++it3) {
-        shards->push_back(it3->first);
+      auto collectionData = make_shared<CollectionInfo>(json);
+      auto shardKeys = std::make_shared<std::vector<std::string>>
+          (collectionData->shardKeys());
+      newShardKeys.insert(make_pair(collection, shardKeys));
+      auto shardIDs = collectionData->shardIds();
+      auto shards = std::make_shared<std::vector<std::string>>();
+      for (auto const& p : *shardIDs) {
+        shards->push_back(p.first);
       }
-      newShards.emplace(
-              std::make_pair(collection, shared_ptr<std::vector<std::string> >(shards)));
+      // Sort by the number in the shard ID ("s0000001" for example):
+      std::sort(shards->begin(), shards->end(),
+                [] (std::string const& a, std::string const& b) -> bool {
+                  return   std::strtol(a.c_str()+1, nullptr, 10) 
+                         < std::strtol(b.c_str()+1, nullptr, 10);
+                });
+      newShards.emplace(std::make_pair(collection, shards));
 
       // insert the collection into the existing map, insert it under its
       // ID as well as under its name, so that a lookup can be done with
@@ -758,7 +809,7 @@ void ClusterInfo::loadPlannedCollections () {
 /// If it is not found in the cache, the cache is reloaded once
 ////////////////////////////////////////////////////////////////////////////////
 
-shared_ptr<CollectionInfo> ClusterInfo::getCollection
+std::shared_ptr<CollectionInfo> ClusterInfo::getCollection
                                           (DatabaseID const& databaseID,
                                            CollectionID const& collectionID) {
   int tries = 0;
@@ -791,7 +842,7 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
     loadPlannedCollections();
   }
 
-  return shared_ptr<CollectionInfo>(new CollectionInfo());
+  return std::make_shared<CollectionInfo>();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -809,8 +860,7 @@ triagens::arango::VocbaseCollectionInfo ClusterInfo::getCollectionProperties (Co
 
 VocbaseCollectionInfo ClusterInfo::getCollectionProperties (DatabaseID const& databaseID,
                                                             CollectionID const& collectionID) {
-  shared_ptr<CollectionInfo> ci = getCollection(databaseID, collectionID);
-
+  auto ci = getCollection(databaseID, collectionID);
   return getCollectionProperties(*ci);
 }
 
@@ -818,9 +868,9 @@ VocbaseCollectionInfo ClusterInfo::getCollectionProperties (DatabaseID const& da
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<shared_ptr<CollectionInfo> > ClusterInfo::getCollections
+std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections
                          (DatabaseID const& databaseID) {
-  std::vector<shared_ptr<CollectionInfo> > result;
+  std::vector<std::shared_ptr<CollectionInfo>> result;
 
   // always reload
   loadPlannedCollections();
@@ -887,7 +937,8 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
     decltype(_currentCollections) newCollections;
     decltype(_shardIds)           newShardIds;
 
-    std::map<std::string, AgencyCommResultEntry>::iterator it = result._values.begin();
+    std::map<std::string, AgencyCommResultEntry>::iterator it
+        = result._values.begin();
 
     for (; it != result._values.end(); ++it) {
       const std::string key = (*it).first;
@@ -921,11 +972,10 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       (*it).second._json = nullptr;
 
       // check whether we already have a CollectionInfoCurrent:
-      DatabaseCollectionsCurrent::iterator it3;
-      it3 = it2->second.find(collection);
+      DatabaseCollectionsCurrent::iterator it3 = it2->second.find(collection);
       if (it3 == it2->second.end()) {
-        shared_ptr<CollectionInfoCurrent> collectionDataCurrent
-                    (new CollectionInfoCurrent(shardID, json));
+        auto collectionDataCurrent = std::make_shared<CollectionInfoCurrent>
+            (shardID, json);
         it2->second.insert(make_pair(collection, collectionDataCurrent));
         it3 = it2->second.find(collection);
       }
@@ -941,11 +991,9 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
       // ask about the current collection info.
 
       // Now take note of this shard and its responsible server:
-      std::string DBserver = triagens::basics::JsonHelper::getStringValue
-                    (json, "DBServer", "");
-      if (DBserver != "") {
-        newShardIds.insert(make_pair(shardID, DBserver));
-      }
+      auto servers = std::make_shared<std::vector<ServerID>>
+          (it3->second->servers(shardID));
+      newShardIds.insert(make_pair(shardID, servers));
     }
 
     // Now set the new value:
@@ -972,7 +1020,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 /// If it is not found in the cache, the cache is reloaded once.
 ////////////////////////////////////////////////////////////////////////////////
 
-shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
+std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
            (DatabaseID const& databaseID,
             CollectionID const& collectionID) {
   int tries = 0;
@@ -1006,7 +1054,7 @@ shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
     loadCurrentCollections(true);
   }
 
-  return shared_ptr<CollectionInfoCurrent>(new CollectionInfoCurrent());
+  return std::make_shared<CollectionInfoCurrent>();
 }
 
 
@@ -1205,30 +1253,16 @@ int ClusterInfo::dropDatabaseCoordinator (string const& name, string& errorMsg,
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 
-int ClusterInfo::createCollectionCoordinator (string const& databaseName,
-                                              string const& collectionID,
-                                              uint64_t numberOfShards,
-                                              VPackSlice const& slice,
-                                              string& errorMsg, 
-                                              double timeout) {
-  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
-  return createCollectionCoordinator(databaseName, collectionID, numberOfShards,
-         json.get(), errorMsg, timeout);
-}
- 
+int ClusterInfo::createCollectionCoordinator (
+    string const& databaseName,
+    string const& collectionID,
+    uint64_t numberOfShards,
+    VPackSlice const json,
+    string& errorMsg, 
+    double timeout) {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create collection in coordinator, the return value is an ArangoDB
-/// error code and the errorMsg is set accordingly. One possible error
-/// is a timeout, a timeout of 0.0 means no timeout.
-////////////////////////////////////////////////////////////////////////////////
+  using arangodb::velocypack::Slice;
 
-int ClusterInfo::createCollectionCoordinator (string const& databaseName,
-                                              string const& collectionID,
-                                              uint64_t numberOfShards,
-                                              TRI_json_t const* json,
-                                              string& errorMsg, 
-                                              double timeout) {
   AgencyComm ac;
 
   const double realTimeout = getTimeout(timeout);
@@ -1241,7 +1275,8 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
     READ_LOCKER(_plannedCollectionsProt.lock);
     AllCollections::const_iterator it = _plannedCollections.find(databaseName);
     if (it != _plannedCollections.end()) {
-      const std::string name = JsonHelper::getStringValue(json, "name", "");
+      Slice nameSl = json.get("name");
+      const std::string name = nameSl.isString() ? nameSl.copyString() : "";
 
       DatabaseCollections::const_iterator it2 = (*it).second.find(name);
 
@@ -1287,15 +1322,14 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
     res = ac.getValues(where, true);
     if (res.successful() && res.parse(where + "/", false)) {
       if (res._values.size() == (size_t) numberOfShards) {
-        map<string, AgencyCommResultEntry>::iterator it;
         string tmpMsg = "";
         bool tmpHaveError = false;
-        for (it = res._values.begin(); it != res._values.end(); ++it) {
-          TRI_json_t const* json = (*it).second._json;
+        for (auto const& p : res._values) {
+          TRI_json_t const* json = p.second._json;
           TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
           if (TRI_IsBooleanJson(error) && error->_value._boolean) {
             tmpHaveError = true;
-            tmpMsg += " shardID:" + it->first + ":";
+            tmpMsg += " shardID:" + p.first + ":";
             TRI_json_t const* errorMessage
                   = TRI_LookupObjectJson(json, "errorMessage");
             if (TRI_IsStringJson(errorMessage)) {
@@ -1631,7 +1665,8 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
     {
 
-      shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+      std::shared_ptr<CollectionInfo> c
+          = getCollection(databaseName, collectionID);
 
       // Note that nobody is removing this collection in the plan, since
       // we hold the write lock in the agency, therefore it does not matter
@@ -1869,7 +1904,8 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     TRI_json_t const* indexes = nullptr;
 
     {
-      shared_ptr<CollectionInfo> c = getCollection(databaseName, collectionID);
+      std::shared_ptr<CollectionInfo> c
+          = getCollection(databaseName, collectionID);
 
       READ_LOCKER(_plannedCollectionsProt.lock);
 
@@ -2332,12 +2368,14 @@ std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the server who is responsible for a shard
+/// @brief find the servers who are responsible for a shard (one leader
+/// and multiple followers)
 /// If it is not found in the cache, the cache is reloaded once, if
 /// it is still not there an empty string is returned as an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
+std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer (
+      ShardID const& shardID) {
   int tries = 0;
 
   if (! _currentCollectionsProt.isValid) {
@@ -2348,7 +2386,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
   while (true) {
     {
       READ_LOCKER(_currentCollectionsProt.lock);
-      // _shardIds is a map-type <ShardId, ServerId>
+      // _shardIds is a map-type <ShardId, std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
 
       if (it != _shardIds.end()) {
@@ -2364,7 +2402,37 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
     loadCurrentCollections(true);
   }
 
-  return ServerID("");
+  return std::make_shared<std::vector<ServerID>>();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard list of a collection, sorted numerically
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList (
+                         CollectionID const& collectionID) {
+  
+  if (! _plannedCollectionsProt.isValid) {
+    loadPlannedCollections();
+  }
+
+  int tries = 0;
+  while (true) {
+    {
+      // Get the sharding keys and the number of shards:
+      READ_LOCKER(_plannedCollectionsProt.lock);
+      // _shards is a map-type <CollectionId, shared_ptr<vector<string>>>
+      auto it = _shards.find(collectionID);
+
+      if (it != _shards.end()) {
+        return it->second;
+      }
+    }
+    if (++tries >= 2) {
+      return std::make_shared<std::vector<ShardID>>();
+    }
+    loadPlannedCollections();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2398,9 +2466,9 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   }
 
   int tries = 0;
-  shared_ptr<std::vector<std::string> > shardKeysPtr;
+  std::shared_ptr<std::vector<std::string>> shardKeysPtr;
   char const** shardKeys = nullptr;
-  shared_ptr<std::vector<ShardID> > shards;
+  std::shared_ptr<std::vector<ShardID>> shards;
   bool found = false;
 
   while (true) {

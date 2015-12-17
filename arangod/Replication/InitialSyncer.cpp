@@ -184,6 +184,7 @@ int InitialSyncer::run (string& errorMsg,
 
     return TRI_ERROR_INTERNAL;
   }
+
   int res = _vocbase->_replicationApplier->preventStart();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1563,88 +1564,76 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
     return TRI_ERROR_NO_ERROR;
   }
 
-  // drop collections locally
+  // drop and re-create collections locally
   // -------------------------------------------------------------------------------------
 
-  if (phase == PHASE_DROP) {
-    if (incremental) {
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (phase == PHASE_DROP_CREATE) {
+    if (! incremental) {
+      // first look up the collection by the cid
+      TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
-    // first look up the collection by the cid
-    TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
-
-    if (col == nullptr && ! masterName.empty()) {
-      // not found, try name next
-      col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
-    }
-
-    if (col != nullptr) {
-      bool truncate = false;
-
-      if (col->_name[0] == '_' && 
-          TRI_EqualString(col->_name, TRI_COL_NAME_USERS)) {
-        // better not throw away the _users collection. otherwise it is gone and this may be a problem if the
-        // server crashes in-between.
-        truncate = true;
+      if (col == nullptr && ! masterName.empty()) {
+        // not found, try name next
+        col = TRI_LookupCollectionByNameVocBase(_vocbase, masterName.c_str());
       }
 
-      if (truncate) {
-        // system collection
-        setProgress("truncating " + collectionMsg);
-     
-        SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+      if (col != nullptr) {
+        bool truncate = false;
 
-        int res = trx.begin();
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
- 
-          return res;
+        if (col->_name[0] == '_' && 
+            TRI_EqualString(col->_name, TRI_COL_NAME_USERS)) {
+          // better not throw away the _users collection. otherwise it is gone and this may be a problem if the
+          // server crashes in-between.
+          truncate = true;
         }
 
-        res = trx.truncate(false);
- 
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
- 
-          return res;
+        if (truncate) {
+          // system collection
+          setProgress("truncating " + collectionMsg);
+
+          SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, col->_cid);
+
+          int res = trx.begin();
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
+
+            return res;
+          }
+
+          res = trx.truncate(false);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
+
+            return res;
+          }
+
+          res = trx.commit();
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
+
+            return res;
+          }
         }
+        else {
+          // regular collection
+          setProgress("dropping " + collectionMsg);
 
-        res = trx.commit();
-        
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "unable to truncate " + collectionMsg + ": " + TRI_errno_string(res);
- 
-          return res;
-        }
-      }
-      else {
-        // regular collection
-        setProgress("dropping " + collectionMsg);
-      
-        int res = TRI_DropCollectionVocBase(_vocbase, col, true);
+          int res = TRI_DropCollectionVocBase(_vocbase, col, true);
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
+          if (res != TRI_ERROR_NO_ERROR) {
+            errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
 
-          return res;
+            return res;
+          }
         }
       }
     }
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // re-create collections locally
-  // -------------------------------------------------------------------------------------
-
-  else if (phase == PHASE_CREATE) {
+    
     TRI_vocbase_col_t* col = nullptr;
 
-    string const progress = "creating " + collectionMsg;
-    setProgress(progress.c_str());
-   
     if (incremental) { 
       col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -1655,9 +1644,14 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
 
       if (col != nullptr) {
         // collection is already present
+        string const progress = "checking/changing parameters of " + collectionMsg;
+        setProgress(progress.c_str());
         return changeCollection(col, parameters);
       }
     }
+    
+    string const progress = "creating " + collectionMsg;
+    setProgress(progress.c_str());
 
     int res = createCollection(parameters, &col);
 
@@ -1886,25 +1880,16 @@ int InitialSyncer::handleInventoryResponse (TRI_json_t const* json,
     return res;
   }
     
-  // STEP 2: drop collections locally if they are also present on the master (clean up)
-  //  ----------------------------------------------------------------------------------
+  // STEP 2: drop and re-create collections locally if they are also present on the master
+  //  ------------------------------------------------------------------------------------
 
-  res = iterateCollections(collections, incremental, errorMsg, PHASE_DROP);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // STEP 3: re-create empty collections locally
-  // ----------------------------------------------------------------------------------
-
-  res = iterateCollections(collections, incremental, errorMsg, PHASE_CREATE);
+  res = iterateCollections(collections, incremental, errorMsg, PHASE_DROP_CREATE);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
-  // STEP 4: sync collection data from master and create initial indexes
+
+  // STEP 3: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
 
   return iterateCollections(collections, incremental, errorMsg, PHASE_DUMP);
@@ -1928,6 +1913,7 @@ int InitialSyncer::iterateCollections (std::vector<std::pair<TRI_json_t const*, 
     TRI_ASSERT(parameters != nullptr);
     TRI_ASSERT(indexes != nullptr);
 
+    errorMsg = "";
     int res = handleCollection(parameters, indexes, incremental, errorMsg, phase);
 
     if (res != TRI_ERROR_NO_ERROR) {

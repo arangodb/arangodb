@@ -626,7 +626,7 @@ namespace triagens {
 
       private:
 
-        triagens::arango::ClusterCommResult* sendRequest (
+        std::unique_ptr<triagens::arango::ClusterCommResult> sendRequest (
                   rest::HttpRequest::HttpRequestType type,
                   std::string const& urlPart,
                   std::string const& body) const;

@@ -56,9 +56,9 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/client/bootstrap -name "*.js"` \
 	`find @srcdir@/js/server/bootstrap -name "*.js"` \
 	\
-	`find @srcdir@/js/common/modules/org -name "*.js"` \
-	`find @srcdir@/js/client/modules -name "*.js"` \
-	`find @srcdir@/js/server/modules -name "*.js"` \
+	`find @srcdir@/js/common/modules/@arangodb -name "*.js"` \
+	`find @srcdir@/js/client/modules/@arangodb -name "*.js"` \
+	`find @srcdir@/js/server/modules/@arangodb -name "*.js"` \
 	`find @srcdir@/js/server/tests -name "*.js" | grep -v "ranges-combined"` \
 	`find @srcdir@/js/common/tests -name "*.js"` \
 	`find @srcdir@/js/client/tests -name "*.js"` \

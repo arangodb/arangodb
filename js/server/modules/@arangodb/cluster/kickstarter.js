@@ -535,7 +535,9 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
-  console.info("Shutting down agent %s", JSON.stringify(run.pid));
+  if (cmd.extremeVerbosity) {
+    console.info("Shutting down agent %s", JSON.stringify(run.pid));
+  }
   killExternal(run.pid);
   return {"error": false, "isStartAgent": true};
 };
@@ -622,8 +624,9 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
 };
 
 cleanupActions.startAgent = function (dispatchers, cmd) {
-  console.info("Cleaning up agent...");
-
+  if (cmd.extremeVerbosity) {
+    console.info("Cleaning up agent...");
+  }
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
     dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));
@@ -637,8 +640,9 @@ cleanupActions.startAgent = function (dispatchers, cmd) {
 };
 
 cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
-  console.info("Cleaning up DBservers...");
-
+  if (cmd.extremeVerbosity) {
+    console.info("Cleaning up DBservers...");
+  }
   var dataPath = fs.makeAbsolute(cmd.dataPath);
   if (dataPath !== cmd.dataPath) {   // path was relative
     dataPath = fs.normalize(fs.join(ArangoServerState.dataPath(),cmd.dataPath));

@@ -268,25 +268,25 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   value = TRI_LookupObjectJson(json.get(), "connectionRetryWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_connectionRetryWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_connectionRetryWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "initialSyncMaxWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_initialSyncMaxWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_initialSyncMaxWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "idleMinWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_idleMinWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_idleMinWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "idleMaxWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000 * 1000);
+    config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
   }
   
   value = TRI_LookupObjectJson(json.get(), "autoResyncRetries");
@@ -584,15 +584,15 @@ void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword
   builder.add("restrictType", VPackValue(_restrictType));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
-  for (auto it : _restrictCollections) {
+  for (auto& it : _restrictCollections) {
     builder.add(VPackValue(it.first));
   }
   builder.close(); // restrictCollections
 
-  builder.add("connectionRetryWaitTime", VPackValue(static_cast<double>(_connectionRetryWaitTime) / (1000 * 1000)));
-  builder.add("initialSyncMaxWaitTime", VPackValue(static_cast<double>(_initialSyncMaxWaitTime) / (1000 * 1000)));
-  builder.add("idleMinWaitTime", VPackValue(static_cast<double>(_idleMinWaitTime) / (1000 * 1000)));
-  builder.add("idleMaxWaitTime", VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000 * 1000)));
+  builder.add("connectionRetryWaitTime", VPackValue(static_cast<double>(_connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  builder.add("initialSyncMaxWaitTime", VPackValue(static_cast<double>(_initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  builder.add("idleMinWaitTime", VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
+  builder.add("idleMaxWaitTime", VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1092,11 +1092,13 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
   
   // TODO: prevent restart of the applier with a tick after a shutdown
 
-  std::unique_ptr<triagens::arango::ContinuousSyncer> syncer(new triagens::arango::ContinuousSyncer(_server,
-                                                         _vocbase,
-                                                         &_configuration,
-                                                         initialTick,
-                                                         useTick));
+  auto syncer = std::make_unique<triagens::arango::ContinuousSyncer>(
+    _server,
+    _vocbase,
+    &_configuration,
+    initialTick,
+    useTick
+  );
 
   // reset error
   if (_state._lastError._msg != nullptr) {

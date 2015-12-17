@@ -1210,8 +1210,8 @@ static void ClientConnection_httpSendFile (const v8::FunctionCallbackInfo<v8::Va
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, body);
 
   if (tryCatch.HasCaught()) {
-      string exception = TRI_StringifyV8Exception(isolate, &tryCatch);
-      isolate->ThrowException(tryCatch.Exception());
+    //string exception = TRI_StringifyV8Exception(isolate, &tryCatch);
+    isolate->ThrowException(tryCatch.Exception());
     return;
   }
 
@@ -1929,7 +1929,9 @@ static void LocalExitFunction (int exitCode, void* data) {
 
 #endif
 
-static bool printHelo (bool useServer, bool promptError) {
+static bool PrintHelo (bool useServer) {
+  bool promptError = false;
+
   // .............................................................................
   // banner
   // .............................................................................
@@ -2063,6 +2065,7 @@ static bool printHelo (bool useServer, bool promptError) {
       BaseClient.printLine("", true);
     }
   }
+
   return promptError;
 }
 
@@ -2284,8 +2287,6 @@ class BufferAllocator : public v8::ArrayBuffer::Allocator {
 int main (int argc, char* args[]) {
   int ret = EXIT_SUCCESS;
   eRunMode runMode = eInteractive;
-  // reset the prompt error flag (will determine prompt colors)
-  bool promptError = false;
 #if _WIN32
   extern bool cygwinShell;
   if (getenv("SHELL") != nullptr) {
@@ -2368,7 +2369,7 @@ int main (int argc, char* args[]) {
   }
 
 #ifdef TRI_FORCE_ARMV6
-  const string forceARMv6 = "--noenable-armv7";
+  std::string const forceARMv6 = "--noenable-armv7";
   v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int) forceARMv6.size());
 #endif
 
@@ -2407,7 +2408,8 @@ int main (int argc, char* args[]) {
 
       InitCallbacks(isolate, useServer, runMode);
 
-      promptError = printHelo(useServer, promptError);
+      // reset the prompt error flag (will determine prompt colors)
+      bool promptError = PrintHelo(useServer);
 
       ret = WarmupEnvironment(isolate, positionals, runMode);
 

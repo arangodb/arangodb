@@ -12,9 +12,9 @@
  *
  * Copyright (c) 2012 Maximilian Antoni
  */
-"use strict";
+(function (sinonGlobal) {
+    "use strict";
 
-(function (sinon) {
     function makeApi(sinon) {
         function assertType(value, type, name) {
             var actual = sinon.typeOf(value);
@@ -42,7 +42,7 @@
                 if (expectation.hasOwnProperty(key)) {
                     var exp = expectation[key];
                     var act = actual[key];
-                    if (match.isMatcher(exp)) {
+                    if (isMatcher(exp)) {
                         if (!exp.test(act)) {
                             return false;
                         }
@@ -58,37 +58,7 @@
             return true;
         }
 
-        matcher.or = function (m2) {
-            if (!arguments.length) {
-                throw new TypeError("Matcher expected");
-            } else if (!isMatcher(m2)) {
-                m2 = match(m2);
-            }
-            var m1 = this;
-            var or = sinon.create(matcher);
-            or.test = function (actual) {
-                return m1.test(actual) || m2.test(actual);
-            };
-            or.message = m1.message + ".or(" + m2.message + ")";
-            return or;
-        };
-
-        matcher.and = function (m2) {
-            if (!arguments.length) {
-                throw new TypeError("Matcher expected");
-            } else if (!isMatcher(m2)) {
-                m2 = match(m2);
-            }
-            var m1 = this;
-            var and = sinon.create(matcher);
-            and.test = function (actual) {
-                return m1.test(actual) && m2.test(actual);
-            };
-            and.message = m1.message + ".and(" + m2.message + ")";
-            return and;
-        };
-
-        var match = function (expectation, message) {
+        function match(expectation, message) {
             var m = sinon.create(matcher);
             var type = sinon.typeOf(expectation);
             switch (type) {
@@ -113,7 +83,8 @@
                 break;
             case "number":
                 m.test = function (actual) {
-                    return expectation == actual;
+                    // we need type coercion here
+                    return expectation == actual; // eslint-disable-line eqeqeq
                 };
                 break;
             case "string":
@@ -150,6 +121,36 @@
                 m.message = "match(" + expectation + ")";
             }
             return m;
+        }
+
+        matcher.or = function (m2) {
+            if (!arguments.length) {
+                throw new TypeError("Matcher expected");
+            } else if (!isMatcher(m2)) {
+                m2 = match(m2);
+            }
+            var m1 = this;
+            var or = sinon.create(matcher);
+            or.test = function (actual) {
+                return m1.test(actual) || m2.test(actual);
+            };
+            or.message = m1.message + ".or(" + m2.message + ")";
+            return or;
+        };
+
+        matcher.and = function (m2) {
+            if (!arguments.length) {
+                throw new TypeError("Matcher expected");
+            } else if (!isMatcher(m2)) {
+                m2 = match(m2);
+            }
+            var m1 = this;
+            var and = sinon.create(matcher);
+            and.test = function (actual) {
+                return m1.test(actual) && m2.test(actual);
+            };
+            and.message = m1.message + ".and(" + m2.message + ")";
+            return and;
         };
 
         match.isMatcher = isMatcher;
@@ -233,7 +234,7 @@
         return match;
     }
 
-    var isNode = typeof module !== "undefined" && module.exports && typeof require == "function";
+    var isNode = typeof module !== "undefined" && module.exports && typeof require === "function";
     var isAMD = typeof define === "function" && typeof define.amd === "object" && define.amd;
 
     function loadDependencies(require, exports, module) {
@@ -244,11 +245,17 @@
 
     if (isAMD) {
         define(loadDependencies);
-    } else if (isNode) {
-        loadDependencies(require, module.exports, module);
-    } else if (!sinon) {
         return;
-    } else {
-        makeApi(sinon);
     }
-}(typeof sinon == "object" && sinon || null));
+
+    if (isNode) {
+        loadDependencies(require, module.exports, module);
+        return;
+    }
+
+    if (sinonGlobal) {
+        makeApi(sinonGlobal);
+    }
+}(
+    typeof sinon === "object" && sinon // eslint-disable-line no-undef
+));

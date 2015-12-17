@@ -814,9 +814,9 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
     TRI_V8_THROW_EXCEPTION_USAGE("getCollectionInfo(<database-id>, <collection-id>)");
   }
 
-  shared_ptr<CollectionInfo> ci
-        = ClusterInfo::instance()->getCollection(TRI_ObjectToString(args[0]),
-                                                 TRI_ObjectToString(args[1]));
+  std::shared_ptr<CollectionInfo> ci
+      = ClusterInfo::instance()->getCollection(TRI_ObjectToString(args[0]),
+                                               TRI_ObjectToString(args[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
@@ -843,19 +843,21 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
   }
   result->Set(TRI_V8_ASCII_STRING("shardKeys"), shardKeys);
 
-  const std::map<std::string, std::string>& sis = ci->shardIds();
+  auto shardMap = ci->shardIds();
   v8::Handle<v8::Object> shardIds = v8::Object::New(isolate);
-  std::map<std::string, std::string>::const_iterator it = sis.begin();
-  while (it != sis.end()) {
-    shardIds->Set(TRI_V8_STD_STRING((*it).first),
-                  TRI_V8_STD_STRING((*it).second));
-    ++it;
+  for (auto const& p : *shardMap) {
+    v8::Handle<v8::Array> list = v8::Array::New(isolate, (int) p.second.size());
+    uint32_t pos = 0;
+    for (auto const& s : p.second) {
+      list->Set(pos++, TRI_V8_STD_STRING(s));
+    }
+    shardIds->Set(TRI_V8_STD_STRING(p.first), list);
   }
   result->Set(TRI_V8_ASCII_STRING("shards"), shardIds);
 
-  // TODO: fill "indexes"
-  v8::Handle<v8::Array> indexes = v8::Array::New(isolate);
+  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, ci->getIndexes());
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -874,7 +876,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackIn
 
   ShardID shardID = TRI_ObjectToString(args[2]);
 
-  shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
+  std::shared_ptr<CollectionInfo> ci = ClusterInfo::instance()->getCollection(
                                            TRI_ObjectToString(args[0]),
                                            TRI_ObjectToString(args[1]));
 
@@ -885,30 +887,14 @@ static void JS_GetCollectionInfoCurrentClusterInfo (const v8::FunctionCallbackIn
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
 
-  shared_ptr<CollectionInfoCurrent> cic
+  std::shared_ptr<CollectionInfoCurrent> cic
           = ClusterInfo::instance()->getCollectionCurrent(
                                      TRI_ObjectToString(args[0]), cid);
 
   result->Set(TRI_V8_ASCII_STRING("type"), v8::Number::New(isolate, (int) ci->type()));
-  // Now the Current information, if we actually got it:
-  TRI_vocbase_col_status_e s = cic->status(shardID);
-  result->Set(TRI_V8_ASCII_STRING("status"), v8::Number::New(isolate, (int) cic->status(shardID)));
-  if (s == TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_V8_RETURN(result);
-  }
-  const string statusString = TRI_GetStatusStringCollectionVocBase(s);
-  result->Set(TRI_V8_ASCII_STRING("statusString"),TRI_V8_STD_STRING(statusString));
-  result->Set(TRI_V8_ASCII_STRING("deleted"),     v8::Boolean::New(isolate, cic->deleted(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("doCompact"),   v8::Boolean::New(isolate, cic->doCompact(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("isSystem"),    v8::Boolean::New(isolate, cic->isSystem(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("isVolatile"),  v8::Boolean::New(isolate, cic->isVolatile(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("waitForSync"), v8::Boolean::New(isolate, cic->waitForSync(shardID)));
-  result->Set(TRI_V8_ASCII_STRING("journalSize"), v8::Number::New (isolate, cic->journalSize(shardID)));
-  const std::string serverID = cic->responsibleServer(shardID);
-  result->Set(TRI_V8_ASCII_STRING("DBServer"),    TRI_V8_STD_STRING(serverID));
 
-  // TODO: fill "indexes"
-  v8::Handle<v8::Array> indexes = v8::Array::New(isolate);
+  TRI_json_t const* json = cic->getIndexes(shardID);
+  v8::Handle<v8::Value> indexes = TRI_ObjectJson(isolate, json);
   result->Set(TRI_V8_ASCII_STRING("indexes"), indexes);
 
   // Finally, report any possible error:
@@ -936,9 +922,15 @@ static void JS_GetResponsibleServerClusterInfo (const v8::FunctionCallbackInfo<v
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
 
-  std::string const result = ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(args[0]));
+  auto result = ClusterInfo::instance()->getResponsibleServer(
+                                               TRI_ObjectToString(args[0]));
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, (int) result->size());
+  uint32_t count = 0;
+  for (auto const& s : *result) {
+    list->Set(count++, TRI_V8_STD_STRING(s));
+  }
 
-  TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_RETURN(list);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1582,10 +1574,10 @@ static void JS_GetClusterAuthentication (const v8::FunctionCallbackInfo<v8::Valu
 static void PrepareClusterCommRequest (
                         const v8::FunctionCallbackInfo<v8::Value>& args,
                         triagens::rest::HttpRequest::HttpRequestType& reqType,
-                        string& destination,
-                        string& path,
-                        string& body,
-                        map<string, string>* headerFields,
+                        std::string& destination,
+                        std::string& path,
+                        std::string& body,
+                        std::map<std::string, std::string>& headerFields,
                         ClientTransactionID& clientTransactionID,
                         CoordTransactionID& coordTransactionID,
                         double& timeout) {
@@ -1639,7 +1631,7 @@ static void PrepareClusterCommRequest (
       string propstring = TRI_ObjectToString(prop);
       string valstring = TRI_ObjectToString(val);
       if (propstring != "") {
-        headerFields->insert(pair<string,string>(propstring, valstring));
+        headerFields.insert(std::make_pair(propstring, valstring));
       }
     }
   }
@@ -1682,44 +1674,44 @@ static void PrepareClusterCommRequest (
 ////////////////////////////////////////////////////////////////////////////////
 
 static void Return_PrepareClusterCommResultForJS (const v8::FunctionCallbackInfo<v8::Value>& args,
-                                                  ClusterCommResult const* res) {
+                                                  ClusterCommResult const& res) {
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
-  if (nullptr == res) {
+  if (res.invalid) {
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
     r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("out of memory"));
   } 
-  else if (res->dropped) {
+  else if (res.dropped) {
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
     r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("operation was dropped"));
   } 
   else {
     TRI_GET_GLOBAL_STRING(ClientTransactionIDKey);
     r->Set(ClientTransactionIDKey,
-           TRI_V8_STD_STRING(res->clientTransactionID));
+           TRI_V8_STD_STRING(res.clientTransactionID));
 
     // convert the ids to strings as uint64_t might be too big for JavaScript numbers
     TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    std::string id = StringUtils::itoa(res->coordTransactionID);
+    std::string id = StringUtils::itoa(res.coordTransactionID);
     r->Set(CoordTransactionIDKey, TRI_V8_STD_STRING(id));
 
-    id = StringUtils::itoa(res->operationID);
+    id = StringUtils::itoa(res.operationID);
     TRI_GET_GLOBAL_STRING(OperationIDKey);
     r->Set(OperationIDKey, TRI_V8_STD_STRING(id));
 
     TRI_GET_GLOBAL_STRING(ShardIDKey);
-    r->Set(ShardIDKey, TRI_V8_STD_STRING(res->shardID));
-    if (res->status == CL_COMM_SUBMITTED) {
+    r->Set(ShardIDKey, TRI_V8_STD_STRING(res.shardID));
+    if (res.status == CL_COMM_SUBMITTED) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("SUBMITTED"));
     }
-    else if (res->status == CL_COMM_SENDING) {
+    else if (res.status == CL_COMM_SENDING) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("SENDING"));
     }
-    else if (res->status == CL_COMM_SENT) {
+    else if (res.status == CL_COMM_SENT) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("SENT"));
       // This might be the result of a synchronous request and thus
@@ -1729,56 +1721,56 @@ static void Return_PrepareClusterCommResultForJS (const v8::FunctionCallbackInfo
 
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
-      for (auto const& i : res->result->getHeaderFields()) {
+      for (auto const& i : res.result->getHeaderFields()) {
         h->Set(TRI_V8_STD_STRING(i.first),
                TRI_V8_STD_STRING(i.second));
       }
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      triagens::basics::StringBuffer& body = res->result->getBody();
+      triagens::basics::StringBuffer& body = res.result->getBody();
       if (body.length() != 0) {
         r->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(body));
       }
     }
-    else if (res->status == CL_COMM_TIMEOUT) {
+    else if (res.status == CL_COMM_TIMEOUT) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("TIMEOUT"));
       TRI_GET_GLOBAL_STRING(TimeoutKey);
       r->Set(TimeoutKey,v8::BooleanObject::New(true));
     }
-    else if (res->status == CL_COMM_ERROR) {
+    else if (res.status == CL_COMM_ERROR) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("ERROR"));
 
-      if (res->result && res->result->isComplete()) {
+      if (res.result && res.result->isComplete()) {
         v8::Handle<v8::Object> details = v8::Object::New(isolate);
-        details->Set(TRI_V8_ASCII_STRING("code"), v8::Number::New(isolate, res->result->getHttpReturnCode()));
-        details->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_STD_STRING(res->result->getHttpReturnMessage()));
-        details->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(res->result->getBody()));
+        details->Set(TRI_V8_ASCII_STRING("code"), v8::Number::New(isolate, res.result->getHttpReturnCode()));
+        details->Set(TRI_V8_ASCII_STRING("message"), TRI_V8_STD_STRING(res.result->getHttpReturnMessage()));
+        details->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(res.result->getBody()));
 
         r->Set(TRI_V8_ASCII_STRING("details"), details);
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res->errorMessage));
+        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res.errorMessage));
       }
       else {
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res->errorMessage));
+        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res.errorMessage));
       }
     }
-    else if (res->status == CL_COMM_DROPPED) {
+    else if (res.status == CL_COMM_DROPPED) {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("DROPPED"));
       TRI_GET_GLOBAL_STRING(ErrorMessageKey);
       r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("request dropped whilst waiting for answer"));
     }
     else {   // Everything is OK
-      TRI_ASSERT(res->status == CL_COMM_RECEIVED);
+      TRI_ASSERT(res.status == CL_COMM_RECEIVED);
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
-      map<string,string> headers = res->answer->headers();
+      map<string,string> headers = res.answer->headers();
       map<string,string>::iterator i;
       for (i = headers.begin(); i != headers.end(); ++i) {
         h->Set(TRI_V8_STD_STRING(i->first),
@@ -1787,9 +1779,9 @@ static void Return_PrepareClusterCommResultForJS (const v8::FunctionCallbackInfo
       r->Set(TRI_V8_ASCII_STRING("headers"), h);
 
       // The body:
-      if (nullptr != res->answer->body()) {
+      if (nullptr != res.answer->body()) {
         r->Set(TRI_V8_ASCII_STRING("body"),
-               TRI_V8_PAIR_STRING(res->answer->body(), (int) res->answer->bodySize()));
+               TRI_V8_PAIR_STRING(res.answer->body(), (int) res.answer->bodySize()));
       }
     }
   }
@@ -1814,13 +1806,6 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   //   - coordTransactionID   (number)
   //   - timeout              (number)
 
-  // Disabled to allow communication originating in a DBserver:
-  // 31.7.2014 Max
-
-  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-  //  TRI_V8_THROW_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
-  //}
-
   ClusterComm* cc = ClusterComm::instance();
 
   if (cc == nullptr) {
@@ -1831,22 +1816,22 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   triagens::rest::HttpRequest::HttpRequestType reqType;
   string destination;
   string path;
-  shared_ptr<string> body(new string());
-  map<string, string>* headerFields = new map<string, string>;
+  auto body = make_shared<std::string>();
+  std::unique_ptr<std::map<std::string, std::string>> headerFields
+      (new std::map<std::string, std::string>());
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
-                            headerFields, clientTransactionID,
+                            *headerFields, clientTransactionID,
                             coordTransactionID, timeout);
 
-  ClusterCommResult const* res;
-
-  res = cc->asyncRequest(clientTransactionID, coordTransactionID, destination,
+  ClusterCommResult const res 
+      = cc->asyncRequest(clientTransactionID, coordTransactionID, destination,
                          reqType, path, body, headerFields, 0, timeout);
 
-  if (res == nullptr) {
+  if (res.invalid) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "couldn't queue async request");
   }
@@ -1854,7 +1839,6 @@ static void JS_AsyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   LOG_DEBUG("JS_AsyncRequest: request has been submitted");
 
   Return_PrepareClusterCommResultForJS(args, res);
-  delete res;
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1893,28 +1877,28 @@ static void JS_SyncRequest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string destination;
   string path;
   string body;
-  map<string, string>* headerFields = new map<string, string>;
+  std::unique_ptr<std::map<std::string, std::string>> headerFields
+      (new std::map<std::string, std::string>());
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
 
-  PrepareClusterCommRequest(args, reqType, destination, path, body, headerFields,
-                            clientTransactionID, coordTransactionID, timeout);
+  PrepareClusterCommRequest(args, reqType, destination, path, body,
+                            *headerFields, clientTransactionID,
+                            coordTransactionID, timeout);
 
-  ClusterCommResult const* res = cc->syncRequest(clientTransactionID, coordTransactionID, destination,
+  std::unique_ptr<ClusterCommResult> res = cc->syncRequest(clientTransactionID,
+                         coordTransactionID, destination,
                          reqType, path, body, *headerFields, timeout);
 
-  delete headerFields;
-
-  if (res == nullptr) {
+  if (res.get() == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                              "couldn't do sync request");
   }
 
   LOG_DEBUG("JS_SyncRequest: request has been done");
 
-  Return_PrepareClusterCommResultForJS(args, res);
-  delete res;
+  Return_PrepareClusterCommResultForJS(args, *res);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1946,14 +1930,11 @@ static void JS_Enquire (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   OperationID operationID = TRI_ObjectToUInt64(args[0], true);
 
-  ClusterCommResult const* res;
-
   LOG_DEBUG("JS_Enquire: calling ClusterComm::enquire()");
 
-  res = cc->enquire(operationID);
+  ClusterCommResult const res = cc->enquire(operationID);
 
   Return_PrepareClusterCommResultForJS(args, res);
-  delete res;
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2024,18 +2005,15 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
-  ClusterCommResult const* res;
-
   LOG_DEBUG("JS_Wait: calling ClusterComm::wait()");
 
-  res = cc->wait(myclientTransactionID,
-                 mycoordTransactionID,
-                 myoperationID,
-                 myshardID,
-                 mytimeout);
+  ClusterCommResult const res = cc->wait(myclientTransactionID,
+                                         mycoordTransactionID,
+                                         myoperationID,
+                                         myshardID,
+                                         mytimeout);
 
   Return_PrepareClusterCommResultForJS(args, res);
-  delete res;
   TRI_V8_TRY_CATCH_END
 }
 

@@ -1,3 +1,6 @@
+## v0.3.0
+* Add source (original stack line) to StackFrame definition
+
 ## v0.2.2
 * Add name to AMD definition
 * Better docs

@@ -534,7 +534,7 @@ QueryCacheResultEntry* QueryCache::store (TRI_vocbase_t* vocbase,
   auto const part = getPart(vocbase);
 
   // create the cache entry outside the lock
-  std::unique_ptr<QueryCacheResultEntry> entry(new QueryCacheResultEntry(hash, queryString, queryStringLength, result, collections));
+  auto entry = std::make_unique<QueryCacheResultEntry>(hash, queryString, queryStringLength, result, collections);
 
   WRITE_LOCKER(_entriesLock[part]);
 
@@ -542,7 +542,7 @@ QueryCacheResultEntry* QueryCache::store (TRI_vocbase_t* vocbase,
 
   if (it == _entries[part].end()) { 
     // create entry for the current database
-    std::unique_ptr<QueryCacheDatabaseEntry> db(new QueryCacheDatabaseEntry());
+    auto db = std::make_unique<QueryCacheDatabaseEntry>();
     it = _entries[part].emplace(vocbase, db.get()).first;
     db.release();
   }

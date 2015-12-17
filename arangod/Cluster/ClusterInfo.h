@@ -32,6 +32,7 @@
 #define ARANGODB_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
+#include <mutex>
 #include "Basics/JsonHelper.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
@@ -39,6 +40,7 @@
 #include "VocBase/collection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "velocypack/Slice.h"
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
@@ -71,11 +73,15 @@ namespace triagens {
 
         CollectionInfo ();
 
-        CollectionInfo (struct TRI_json_t*);
+        explicit CollectionInfo (struct TRI_json_t*);
 
         CollectionInfo (CollectionInfo const&);
 
+        CollectionInfo (CollectionInfo&&);
+
         CollectionInfo& operator= (CollectionInfo const&);
+        
+        CollectionInfo& operator= (CollectionInfo&&);
 
         ~CollectionInfo ();
 
@@ -262,9 +268,43 @@ namespace triagens {
 /// @brief returns the shard ids
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<std::string, std::string> shardIds () const {
-          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
-          return triagens::basics::JsonHelper::stringObject(node);
+        typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
+
+        std::shared_ptr<ShardMap> shardIds () const {
+          std::shared_ptr<ShardMap> res;
+          {
+            std::lock_guard<std::mutex> locker(_mutex);
+            res = _shardMapCache;
+          }
+          if (res.get() != nullptr) {
+            return res;
+          }
+          res.reset(new ShardMap());
+          TRI_json_t* const node 
+              = triagens::basics::JsonHelper::getObjectElement(_json, "shards");
+          if (node != nullptr && TRI_IsObjectJson(node)) {
+            size_t len = TRI_LengthVector(&node->_value._objects);
+            for (size_t i = 0; i < len; i += 2) {
+              auto key = static_cast<TRI_json_t*>(
+                  TRI_AtVector(&node->_value._objects, i));
+              auto value = static_cast<TRI_json_t*>(
+                  TRI_AtVector(&node->_value._objects, i + 1));
+              if (TRI_IsStringJson(key) && TRI_IsArrayJson(value)) {
+                ShardID shard 
+                    = triagens::basics::JsonHelper::getStringValue(key, "");
+                std::vector<ServerID> servers
+                    = triagens::basics::JsonHelper::stringArray(value);
+                if (shard != "") {
+                  (*res).insert(make_pair(shard, servers));
+                }
+              }
+            }
+          }
+          {
+            std::lock_guard<std::mutex> locker(_mutex);
+            _shardMapCache = res;
+          }
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,6 +339,12 @@ namespace triagens {
       private:
 
         TRI_json_t*                        _json;
+
+        // Only to protect the cache:
+        mutable std::mutex                 _mutex;
+
+        // Just a cache
+        mutable std::shared_ptr<ShardMap>  _shardMapCache;
     };
 
 
@@ -321,7 +367,11 @@ namespace triagens {
 
         CollectionInfoCurrent (CollectionInfoCurrent const&);
 
+        CollectionInfoCurrent (CollectionInfoCurrent&&);
+
         CollectionInfoCurrent& operator= (CollectionInfoCurrent const&);
+
+        CollectionInfoCurrent& operator= (CollectionInfoCurrent&&);
 
         ~CollectionInfoCurrent ();
 
@@ -335,186 +385,35 @@ namespace triagens {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a new shardID and JSON pair, returns true if OK and false
 /// if the shardID already exists. In the latter case nothing happens.
 /// The CollectionInfoCurrent object takes ownership of the TRI_json_t*.
 ////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
         bool add (ShardID const& shardID, TRI_json_t* json) {
-          std::map<ShardID, TRI_json_t*>::iterator it = _jsons.find(shardID);
+          auto it = _jsons.find(shardID);
           if (it == _jsons.end()) {
-            _jsons.insert(make_pair(shardID, json));
+            _jsons.insert(std::make_pair(shardID, json));
             return true;
           }
           return false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the collection id
+/// @brief returns the indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t id () const {
-          // The id will always be the same in every shard
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
+        TRI_json_t const* getIndexes (ShardID const& shardID) const {
+          auto it = _jsons.find(shardID);
           if (it != _jsons.end()) {
-            TRI_json_t* _json = it->second;
-            return triagens::basics::JsonHelper::stringUInt64(_json, "id");
+            TRI_json_t* json = it->second;
+            return triagens::basics::JsonHelper::getObjectElement(
+                json, "indexes");
           }
-          else {
-            return 0;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the collection type
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_col_type_e type () const {
-          // The type will always be the same in every shard
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
-          if (it != _jsons.end()) {
-            TRI_json_t* _json = it->second;
-            return (TRI_col_type_e) triagens::basics::JsonHelper::getNumericValue<int>
-                                      (_json, "type", (int) TRI_COL_TYPE_UNKNOWN);
-          }
-          else {
-            return TRI_COL_TYPE_UNKNOWN;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the collection status for one shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_vocbase_col_status_e status (ShardID const& shardID) const {
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
-          if (it != _jsons.end()) {
-            TRI_json_t* _json = _jsons.begin()->second;
-            return (TRI_vocbase_col_status_e) triagens::basics::JsonHelper::getNumericValue
-                               <int>
-                               (_json, "status", (int) TRI_VOC_COL_STATUS_CORRUPTED);
-          }
-          return TRI_VOC_COL_STATUS_CORRUPTED;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the collection status for all shardIDs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, TRI_vocbase_col_status_e> status () const {
-          std::map<ShardID, TRI_vocbase_col_status_e> m;
-          std::map<ShardID, TRI_json_t*>::const_iterator it;
-          TRI_vocbase_col_status_e s;
-          for (it = _jsons.begin(); it != _jsons.end(); ++it) {
-            TRI_json_t* _json = it->second;
-            s = (TRI_vocbase_col_status_e) triagens::basics::JsonHelper::getNumericValue
-                          <int>
-                          (_json, "status", (int) TRI_VOC_COL_STATUS_CORRUPTED);
-            m.insert(make_pair(it->first, s));
-          }
-          return m;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief local helper to return boolean flags
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        bool getFlag (char const* name, ShardID const& shardID) const {
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
-          if (it != _jsons.end()) {
-            TRI_json_t* _json = _jsons.begin()->second;
-            return triagens::basics::JsonHelper::getBooleanValue(_json,
-                                                                 name, false);
-          }
-          return false;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief local helper to return a map to boolean
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, bool> getFlag (char const* name ) const {
-          std::map<ShardID, bool> m;
-          std::map<ShardID, TRI_json_t*>::const_iterator it;
-          bool b;
-          for (it = _jsons.begin(); it != _jsons.end(); ++it) {
-            TRI_json_t* _json = it->second;
-            b = triagens::basics::JsonHelper::getBooleanValue(_json,
-                                                              name, false);
-            m.insert(make_pair(it->first, b));
-          }
-          return m;
-        }
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the deleted flag for a shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        bool deleted (ShardID const& shardID) const {
-          return getFlag("deleted", shardID);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the deleted flag for all shardIDs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, bool> deleted () const {
-          return getFlag("deleted");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the doCompact flag for a shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        bool doCompact (ShardID const& shardID) const {
-          return getFlag("doCompact", shardID);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the doCompact flag for all shardIDs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, bool> doCompact () const {
-          return getFlag("doCompact");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the isSystem flag for a shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isSystem (ShardID const& shardID) const {
-          return getFlag("isSystem", shardID);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the isSystem flag for all shardIDs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, bool> isSystem () const {
-          return getFlag("isSystem");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the isVolatile flag for a shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isVolatile (ShardID const& shardID) const {
-          return getFlag("isVolatile", shardID);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the isVolatile flag for all shardIDs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, bool> isVolatile () const {
-          return getFlag("isVolatile");
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -529,77 +428,8 @@ namespace triagens {
 /// @brief returns the error flag for all shardIDs
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<ShardID, bool> error () const {
+        std::unordered_map<ShardID, bool> error () const {
           return getFlag("error");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the waitForSync flag for a shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        bool waitForSync (ShardID const& shardID) const {
-          return getFlag("waitForSync", shardID);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the waitForSync flag for all shardIDs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, bool> waitForSync () const {
-          return getFlag("waitForSync");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a copy of the key options
-/// the caller is responsible for freeing it
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_json_t* keyOptions () const {
-          // The id will always be the same in every shard
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
-          if (it != _jsons.end()) {
-            TRI_json_t* _json = it->second;
-            TRI_json_t const* keyOptions
-                 = triagens::basics::JsonHelper::getObjectElement
-                                        (_json, "keyOptions");
-
-            if (keyOptions != nullptr) {
-              return TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-            }
-          }
-
-          return nullptr;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the maximal journal size for one shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_voc_size_t journalSize (ShardID const& shardID) const {
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
-          if (it != _jsons.end()) {
-            TRI_json_t* _json = _jsons.begin()->second;
-            return triagens::basics::JsonHelper::getNumericValue
-                               <TRI_voc_size_t> (_json, "journalSize", 0);
-          }
-          return 0;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the maximal journal size for all shardIDs
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<ShardID, TRI_voc_size_t> journalSize () const {
-          std::map<ShardID, TRI_voc_size_t> m;
-          std::map<ShardID, TRI_json_t*>::const_iterator it;
-          TRI_voc_size_t s;
-          for (it = _jsons.begin(); it != _jsons.end(); ++it) {
-            TRI_json_t* _json = it->second;
-            s = triagens::basics::JsonHelper::getNumericValue
-                          <TRI_voc_size_t> (_json, "journalSize", 0);
-            m.insert(make_pair(it->first, s));
-          }
-          return m;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,11 +437,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int errorNum (ShardID const& shardID) const {
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
+          auto it = _jsons.find(shardID);
           if (it != _jsons.end()) {
-            TRI_json_t* _json = _jsons.begin()->second;
-            return triagens::basics::JsonHelper::getNumericValue
-                               <int> (_json, "errorNum", 0);
+            TRI_json_t* json = it->second;
+            return triagens::basics::JsonHelper::getNumericValue<int>
+                (json, "errorNum", 0);
           }
           return 0;
         }
@@ -620,64 +450,34 @@ namespace triagens {
 /// @brief returns the errorNum for all shardIDs
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::map<ShardID, int> errorNum () const {
-          std::map<ShardID, int> m;
-          std::map<ShardID, TRI_json_t*>::const_iterator it;
+        std::unordered_map<ShardID, int> errorNum () const {
+          std::unordered_map<ShardID, int> m;
           TRI_voc_size_t s;
-          for (it = _jsons.begin(); it != _jsons.end(); ++it) {
-            TRI_json_t* _json = it->second;
-            s = triagens::basics::JsonHelper::getNumericValue
-                          <int> (_json, "errorNum", 0);
-            m.insert(make_pair(it->first, s));
+          for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
+            TRI_json_t* json = it->second;
+            s = triagens::basics::JsonHelper::getNumericValue<int>
+                (json, "errorNum", 0);
+            m.insert(std::make_pair(it->first, s));
           }
           return m;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the shard keys
+/// @brief returns the current leader and followers for a shard
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::string> shardKeys () const {
-          // The shardKeys will always be the same in every shard
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.begin();
+        std::vector<ServerID> servers (ShardID const& shardID) const {
+          std::vector<ServerID> v;
+          auto it = _jsons.find(shardID);
           if (it != _jsons.end()) {
-            TRI_json_t* _json = it->second;
-            TRI_json_t* const node
-              = triagens::basics::JsonHelper::getObjectElement
-                                  (_json, "shardKeys");
-            return triagens::basics::JsonHelper::stringArray(node);
-          }
-          else {
-            std::vector<std::string> result;
-            return result;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the shard ids that are currently in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<ShardID> shardIDs () const {
-          std::vector<ShardID> v;
-          std::map<ShardID, TRI_json_t*>::const_iterator it;
-          for (it = _jsons.begin(); it != _jsons.end(); ++it) {
-            v.push_back(it->first);
+            TRI_json_t const* json
+                = triagens::basics::JsonHelper::getObjectElement(it->second,
+                                                                 "servers");
+            if (json != nullptr) {
+              v = triagens::basics::JsonHelper::stringArray(json);
+            }
           }
           return v;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the responsible server for one shardID
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string responsibleServer (ShardID const& shardID) const {
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
-          if (it != _jsons.end()) {
-            TRI_json_t* _json = _jsons.begin()->second;
-            return triagens::basics::JsonHelper::getStringValue
-                               (_json, "DBServer", "");
-          }
-          return std::string("");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -685,18 +485,50 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string errorMessage (ShardID const& shardID) const {
-          std::map<ShardID, TRI_json_t*>::const_iterator it = _jsons.find(shardID);
+          auto it = _jsons.find(shardID);
           if (it != _jsons.end()) {
-            TRI_json_t* _json = _jsons.begin()->second;
+            TRI_json_t* json = it->second;
             return triagens::basics::JsonHelper::getStringValue
-                               (_json, "errorMessage", "");
+                               (json, "errorMessage", "");
           }
-          return std::string("");
+          return std::string();
         }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief local helper to return boolean flags
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        bool getFlag (char const* name, ShardID const& shardID) const {
+          auto it = _jsons.find(shardID);
+          if (it != _jsons.end()) {
+            TRI_json_t* json = it->second;
+            return triagens::basics::JsonHelper::getBooleanValue(json,
+                                                                 name, false);
+          }
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief local helper to return a map to boolean
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<ShardID, bool> getFlag (char const* name ) const {
+          std::unordered_map<ShardID, bool> m;
+          bool b;
+          for (auto it = _jsons.begin(); it != _jsons.end(); ++it) {
+            TRI_json_t* json = it->second;
+            b = triagens::basics::JsonHelper::getBooleanValue(json,
+                                                              name, false);
+            m.insert(std::make_pair(it->first, b));
+          }
+          return m;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -704,7 +536,7 @@ namespace triagens {
 
       private:
 
-        std::map<ShardID, TRI_json_t*> _jsons;
+        std::unordered_map<ShardID, TRI_json_t*> _jsons;
     };
 
 
@@ -720,12 +552,12 @@ namespace triagens {
       private:
 
         typedef std::unordered_map<CollectionID,
-                                   std::shared_ptr<CollectionInfo> >
+                                   std::shared_ptr<CollectionInfo>>
                 DatabaseCollections;
         typedef std::unordered_map<DatabaseID, DatabaseCollections>
                 AllCollections;
         typedef std::unordered_map<CollectionID,
-                                   std::shared_ptr<CollectionInfoCurrent> >
+                                   std::shared_ptr<CollectionInfoCurrent>>
                 DatabaseCollectionsCurrent;
         typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
                 AllCollectionsCurrent;
@@ -850,7 +682,7 @@ namespace triagens {
 /// @brief ask about all collections
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::vector<std::shared_ptr<CollectionInfo>> getCollections
+        std::vector<std::shared_ptr<CollectionInfo>> const getCollections
                                                            (DatabaseID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -895,18 +727,7 @@ namespace triagens {
         int createCollectionCoordinator (std::string const& databaseName,
                                          std::string const& collectionID,
                                          uint64_t numberOfShards,
-                                         VPackSlice const& slice,
-                                         std::string& errorMsg,
-                                         double timeout);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create collection in coordinator
-////////////////////////////////////////////////////////////////////////////////
-
-        int createCollectionCoordinator (std::string const& databaseName,
-                                         std::string const& collectionID,
-                                         uint64_t numberOfShards,
-                                         TRI_json_t const* json,
+                                         VPackSlice const json,
                                          std::string& errorMsg,
                                          double timeout);
 
@@ -1023,12 +844,22 @@ namespace triagens {
         std::string getTargetServerEndpoint (ServerID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find the server who is responsible for a shard
+/// @brief find the servers who are responsible for a shard (one leader 
+/// and possibly multiple followers).
 /// If it is not found in the cache, the cache is reloaded once, if
-/// it is still not there an empty string is returned as an error.
+/// it is still not there a pointer to an empty vector is returned as 
+/// an error.
 ////////////////////////////////////////////////////////////////////////////////
 
-        ServerID getResponsibleServer (ShardID const&);
+        std::shared_ptr<std::vector<ServerID>> getResponsibleServer (
+            ShardID const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find the shard list of a collection, sorted numerically
+////////////////////////////////////////////////////////////////////////////////
+
+        std::shared_ptr<std::vector<ShardID>> getShardList (
+                                 CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find the shard that is responsible for a document
@@ -1166,7 +997,7 @@ namespace triagens {
         std::unordered_map<CollectionID,
                            std::shared_ptr<std::vector<std::string>>>
             _shards;                    // from Plan/Collections/
-                               // (may later come from Current/Colletions/ )
+                               // (may later come from Current/Collections/ )
         std::unordered_map<CollectionID,
                            std::shared_ptr<std::vector<std::string>>>
             _shardKeys;                 // from Plan/Collections/
@@ -1175,7 +1006,7 @@ namespace triagens {
         AllCollectionsCurrent
             _currentCollections;        // from Current/Collections/
         ProtectionData _currentCollectionsProt;
-        std::unordered_map<ShardID, ServerID>
+        std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
             _shardIds;                  // from Current/Collections/
 
 ////////////////////////////////////////////////////////////////////////////////

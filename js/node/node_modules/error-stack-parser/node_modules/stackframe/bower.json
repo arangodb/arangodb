@@ -1,6 +1,5 @@
 {
     "name": "stackframe",
-    "version": "0.2.2",
     "main": "./stackframe.js",
     "homepage": "https://github.com/stacktracejs/stackframe",
     "authors": [

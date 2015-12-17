@@ -70,17 +70,21 @@ TraverserExpression::TraverserExpression (VPackSlice const& slice) {
   auto registerNode = [&](aql::AstNode const* node) -> void {
     _nodeRegister.emplace_back(node);
   };
+
   auto registerString = [&](std::string const& str) -> char const* {
-    std::unique_ptr<std::string> copy(new std::string(str.c_str(), str.size()));
+    auto copy = std::make_unique<std::string>(str.c_str(), str.size());
+
     _stringRegister.emplace_back(copy.get());
     auto p = copy.release();
     TRI_ASSERT(p != nullptr);
     TRI_ASSERT(p->c_str() != nullptr);
     return p->c_str(); // should never change its position, even if vector grows/shrinks
   };
+
   triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")), triagens::basics::Json::NOFREE);
 
   compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::VelocyPackHelper::velocyPackToJson(slice.get("compareTo")), triagens::basics::Json::NOFREE));
+
   if (compareTo->json() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid compareTo value");
   }
@@ -94,9 +98,11 @@ TraverserExpression::TraverserExpression (VPackSlice const& slice) {
 
 void TraverserExpression::toJson (triagens::basics::Json& json,
                                   TRI_memory_zone_t* zone) const {
+
   json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
       ("comparisonType", triagens::basics::Json(static_cast<int32_t>(comparisonType)))
       ("varAccess", varAccess->toJson(zone, true));
+
   if (compareTo.get() != nullptr) {
     // We have to copy compareTo. The json is greedy and steals it...
     json("compareTo", compareTo->copy());

@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var graph = require("@arangodb/general-graph");
+var cluster = require("@arangodb/cluster");
 var ERRORS = arangodb.errors;
 
 var _ = require("underscore");
@@ -114,6 +115,10 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameEdge: function() {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+        return;
+      }
+
       var g = graph._create(
         gN1,
         graph._edgeDefinitions(
@@ -147,6 +152,10 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameVertex: function() {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+        return;
+      }
+
       var g = graph._create(
         gN1,
         graph._edgeDefinitions(
@@ -171,6 +180,10 @@ function GeneralGraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
     
     test_collectionRenameVertices: function() {
+      if ((cluster && cluster.isCluster && cluster.isCluster()) || (! cluster || ! cluster.isCluster)) {
+        return;
+      }
+
       var g = graph._create(
         gN1,
         graph._edgeDefinitions(

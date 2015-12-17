@@ -887,7 +887,7 @@ static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) 
     ignoreExisting = TRI_ObjectToBoolean(args[2]);
   }
 
-  std::unique_ptr<KeySpace> ptr(new KeySpace(static_cast<uint32_t>(size)));
+  auto ptr = std::make_unique<KeySpace>(static_cast<uint32_t>(size));
 
   auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
   {

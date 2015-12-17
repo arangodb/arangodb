@@ -4108,7 +4108,7 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (triagens::ar
   auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size, iid, created);
 
   if (idx != nullptr) {
-    if (created) {
+    if (created && *created) {
       triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
@@ -4439,7 +4439,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (triagens::arango
   auto idx = CreateGeoIndexDocumentCollection(trx, document, location, std::string(), std::string(), geoJson, iid, created);
 
   if (idx != nullptr) {
-    if (created) {
+    if (created && *created) {
       triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
@@ -4469,7 +4469,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (triagens::arango
   auto idx = CreateGeoIndexDocumentCollection(trx, document, std::string(), latitude, longitude, false, iid, created);
 
   if (idx != nullptr) {
-    if (created) {
+    if (created && *created) {
       triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
@@ -4637,7 +4637,7 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (triagens::arango
   auto idx = CreateHashIndexDocumentCollection(trx, document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
-    if (created) {
+    if (created && *created) {
       triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
@@ -4802,7 +4802,7 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (triagens::ar
   auto idx = CreateSkiplistIndexDocumentCollection(trx, document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
-    if (created) {
+    if (created && *created) {
       triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
@@ -4999,7 +4999,7 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (triagens::ar
   auto idx = CreateFulltextIndexDocumentCollection(trx, document, attribute, minWordLength, iid, created);
 
   if (idx != nullptr) {
-    if (created) {
+    if (created && *created) {
       triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 

@@ -149,8 +149,7 @@ namespace triagens {
           // We have to look up the collection info:
           ClusterInfo* ci = ClusterInfo::instance();
           std::shared_ptr<CollectionInfo> cinfo
-            = ci->getCollection(DatabaseID(_vocbase->_name),
-                                name);
+            = ci->getCollection(DatabaseID(_vocbase->_name), name);
           if (cinfo->empty()) {
             return 0;
           }

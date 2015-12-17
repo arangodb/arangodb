@@ -719,7 +719,7 @@ AqlValue Expression::executeSimpleExpressionArray (AstNode const* node,
   }
 
   size_t const n = node->numMembers();
-  std::unique_ptr<Json> array(new Json(Json::Array, n));
+  auto array = std::make_unique<Json>(Json::Array, n);
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
@@ -755,7 +755,7 @@ AqlValue Expression::executeSimpleExpressionObject (AstNode const* node,
   }
 
   size_t const n = node->numMembers();
-  std::unique_ptr<Json> object(new Json(Json::Object, n));
+  auto object = std::make_unique<Json>(Json::Object, n);
 
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
@@ -1119,7 +1119,7 @@ AqlValue Expression::executeSimpleExpressionExpansion (AstNode const* node,
     // flatten value...
 
     // generate a new temporary for the flattened array
-    std::unique_ptr<Json> flattened(new Json(Json::Array));
+    auto flattened = std::make_unique<Json>(Json::Array);
 
     TRI_document_collection_t const* myCollection = nullptr;
     value = executeSimpleExpression(node->getMember(0), &myCollection, trx, argv, startPos, vars, regs, false);
@@ -1186,7 +1186,7 @@ AqlValue Expression::executeSimpleExpressionExpansion (AstNode const* node,
   }
 
   size_t const n = value.arraySize();
-  std::unique_ptr<Json> array(new Json(Json::Array, n));
+  auto array = std::make_unique<Json>(Json::Array, n);
 
   for (size_t i = 0; i < n; ++i) {
     // TODO: check why we must copy the array member. will crash without copying!

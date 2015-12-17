@@ -328,10 +328,10 @@ void ArangoClient::setupServer (ProgramOptionsDescription& description) {
 
 void ArangoClient::parse (ProgramOptions& options,
                           ProgramOptionsDescription& description,
-                          string const& example,
+                          std::string const& example,
                           int argc,
                           char* argv[],
-                          string const& initFilename) {
+                          std::string const& initFilename) {
 
   // if options are invalid, exit directly
   if (! options.parse(description, argc, argv)) {
@@ -526,7 +526,7 @@ void ArangoClient::parse (ProgramOptions& options,
 /// @brief prints a string and a newline to stderr
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::printErrLine (const string& s) {
+void ArangoClient::printErrLine (std::string const& s) {
 #ifdef _WIN32
   // no, we can use std::cerr as this doesn't support UTF-8 on Windows
   printLine(s);
@@ -539,7 +539,7 @@ void ArangoClient::printErrLine (const string& s) {
 /// @brief prints a string and a newline to stdout
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::_printLine (const string &s) {
+void ArangoClient::_printLine (std::string const& s) {
 #ifdef _WIN32
   LPWSTR wBuf = (LPWSTR) TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof WCHAR)* (s.size() + 1), true);
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (int) ((sizeof WCHAR) * (s.size() + 1)));
@@ -553,7 +553,7 @@ void ArangoClient::_printLine (const string &s) {
     pos = bufferInfo.dwCursorPosition;
 
     size_t newX = static_cast<size_t>(pos.X) + s.size();
-    size_t oldY = static_cast<size_t>(pos.Y);
+    // size_t oldY = static_cast<size_t>(pos.Y);
     if (newX >= static_cast<size_t>(bufferInfo.dwSize.X)) {
       for (size_t i = 0; i <= newX / bufferInfo.dwSize.X; ++i) {
         // insert as many newlines as we need. this prevents running out of buffer space when printing lines
@@ -586,7 +586,7 @@ void ArangoClient::_printLine (const string &s) {
 #endif
 }
 
-void ArangoClient::printLine (const string& s, bool forceNewLine) {
+void ArangoClient::printLine (std::string const& s, bool forceNewLine) {
 #if _WIN32
   if (! cygwinShell) {
     // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
@@ -614,7 +614,7 @@ void ArangoClient::printLine (const string& s, bool forceNewLine) {
 /// on Windows, we'll print the line and a newline
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::printContinuous (const string& s) {
+void ArangoClient::printContinuous (std::string const& s) {
   // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
 #ifdef _WIN32
   // On Windows, we just print the line followed by a newline
@@ -629,18 +629,8 @@ void ArangoClient::printContinuous (const string& s) {
 /// @brief starts pager
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-
 void ArangoClient::startPager () {
-  // not supported
-  if (! _usePager || _usePager) {
-    return;
-  }
-}
-
-#else
-
-void ArangoClient::startPager () {
+#ifndef _WIN32
   if (! _usePager || _outputPager == "" || _outputPager == "stdout" || _outputPager == "-") {
     _pager = stdout;
     return;
@@ -653,30 +643,21 @@ void ArangoClient::startPager () {
     _pager = stdout;
     _usePager = false;
   }
-}
-
 #endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops pager
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-
 void ArangoClient::stopPager () {
-  // not supported
-}
-
-#else
-
-void ArangoClient::stopPager () {
+#ifndef _WIN32
   if (_pager != stdout) {
     pclose(_pager);
     _pager = stdout;
   }
-}
-
 #endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief strips binary data from string
@@ -713,8 +694,7 @@ static std::string StripBinary (const char* value) {
 /// @brief prints to pager
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::internalPrint (const string & str) {
-
+void ArangoClient::internalPrint (std::string const& str) {
   if (_pager == stdout) {
 #ifdef _WIN32
 // at moment the formating is ignored in windows
@@ -816,9 +796,9 @@ void ArangoClient::log (const char* format,
 /// @brief logs output, with prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::log (const string& format,
-                        const string& prompt,
-                        const string& str) {
+void ArangoClient::log (std::string const& format,
+                        std::string const& prompt,
+                        std::string const& str) {
   if (_log) {
     string sanitised = StripBinary(str.c_str());
 
@@ -840,7 +820,7 @@ void ArangoClient::flushLog () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an new endpoint
+/// @brief creates a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::createEndpoint () {
@@ -848,10 +828,10 @@ void ArangoClient::createEndpoint () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an new endpoint
+/// @brief creates a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::createEndpoint (string const& definition) {
+void ArangoClient::createEndpoint (std::string const& definition) {
   // close previous endpoint
   if (_endpointServer != nullptr) {
     delete _endpointServer;
@@ -905,7 +885,7 @@ bool ArangoClient::prettyPrint () const {
 /// @brief gets the output pager
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ArangoClient::outputPager () const {
+std::string const& ArangoClient::outputPager () const {
   return _outputPager;
 }
 
@@ -929,7 +909,7 @@ void ArangoClient::setUsePager (bool value) {
 /// @brief gets endpoint to connect to as string
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ArangoClient::endpointString () const {
+std::string const& ArangoClient::endpointString () const {
   return _endpointString;
 }
 
@@ -937,7 +917,7 @@ string const& ArangoClient::endpointString () const {
 /// @brief sets endpoint to connect to as string
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::setEndpointString (string const& value) {
+void ArangoClient::setEndpointString (std::string const& value) {
   _endpointString = value;
 }
 
@@ -953,7 +933,7 @@ Endpoint* ArangoClient::endpointServer() const {
 /// @brief database name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ArangoClient::databaseName () const {
+std::string const& ArangoClient::databaseName () const {
   return _databaseName;
 }
 
@@ -961,7 +941,7 @@ string const& ArangoClient::databaseName () const {
 /// @brief user to send to endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ArangoClient::username () const {
+std::string const& ArangoClient::username () const {
   return _username;
 }
 
@@ -969,7 +949,7 @@ string const& ArangoClient::username () const {
 /// @brief password to send to endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ArangoClient::password () const {
+std::string const& ArangoClient::password () const {
   return _password;
 }
 
@@ -977,7 +957,7 @@ string const& ArangoClient::password () const {
 /// @brief sets database name
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::setDatabaseName (string const& databaseName) {
+void ArangoClient::setDatabaseName (std::string const& databaseName) {
   _databaseName = databaseName;
 }
 
@@ -985,7 +965,7 @@ void ArangoClient::setDatabaseName (string const& databaseName) {
 /// @brief sets username
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::setUsername (string const& username) {
+void ArangoClient::setUsername (std::string const& username) {
   _username = username;
 }
 
@@ -993,7 +973,7 @@ void ArangoClient::setUsername (string const& username) {
 /// @brief sets password
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::setPassword (string const& password) {
+void ArangoClient::setPassword (std::string const& password) {
   _password = password;
 }
 
