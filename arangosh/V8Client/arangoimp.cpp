@@ -321,6 +321,9 @@ int main (int argc, char* argv[]) {
       
       client.setLocationRewriter(nullptr, &RewriteLocation);
       client.setUserNamePassword("/", BaseClient.username(), BaseClient.password());
+  
+      // must stay here in order to establish the connection
+      std::string const versionString = client.getServerVersion();
 
       if (! connection->isConnected()) {
         cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
@@ -472,7 +475,6 @@ int main (int argc, char* argv[]) {
     }
 
   }
-
 
   TRIAGENS_REST_SHUTDOWN;
 

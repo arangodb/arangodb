@@ -1298,7 +1298,7 @@ int main (int argc, char* argv[]) {
   Client->setLocationRewriter(0, &rewriteLocation);
   Client->setUserNamePassword("/", BaseClient.username(), BaseClient.password());
 
-  const string versionString = GetArangoVersion();
+  std::string const versionString = GetArangoVersion();
 
   if (! Connection->isConnected()) {
     cerr << "Could not connect to endpoint '" << BaseClient.endpointString()
