@@ -406,6 +406,7 @@ function isGlobalModule(filename) {
 //    Then have it load  the file contents before returning its exports
 //    object.
 Module._load = function(request, parent, isMain) {
+  request = request.replace(/^@arangodb/, 'org/arangodb');
 
   var filename = request;
   var dbModule = false;
