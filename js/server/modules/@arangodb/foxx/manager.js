@@ -39,11 +39,9 @@ const util = require('util');
 const semver = require('semver');
 const utils = require('@arangodb/foxx/manager-utils');
 const store = require('@arangodb/foxx/store');
-const deprecated = require('@arangodb/deprecated');
 const FoxxService = require('@arangodb/foxx/service');
 const TemplateEngine = require('@arangodb/foxx/templateEngine').Engine;
-const routeApp = require('@arangodb/foxx/routing').routeApp;
-const exportApp = require('@arangodb/foxx/routing').exportApp;
+const routeAndExportApp = require('@arangodb/foxx/routing').routeApp;
 const formatUrl = require('url').format;
 const parseUrl = require('url').parse;
 const arangodb = require('@arangodb');
@@ -61,13 +59,18 @@ const throwDownloadError = arangodb.throwDownloadError;
 const throwFileNotFound = arangodb.throwFileNotFound;
 
 // Regular expressions for joi patterns
-const RE_FQPATH = /^\//;
 const RE_EMPTY = /^$/;
-const RE_NOT_FQPATH = /^[^\/]/;
 const RE_NOT_EMPTY = /./;
 
+const legacyManifestFields = [
+  'assets',
+  'controllers',
+  'exports',
+  'defaultDocument',
+  'isSystem'
+];
+
 const manifestSchema = {
-  // Metadata
   name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
   version: joi.string().required(),
   engines: (
@@ -75,6 +78,7 @@ const manifestSchema = {
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
   ),
+
   license: joi.string().optional(),
   description: joi.string().allow('').default(''),
   keywords: joi.array().optional(),
@@ -89,10 +93,9 @@ const manifestSchema = {
     })
   ),
 
-  // Config
   lib: joi.string().default('.'),
-  isSystem: joi.boolean().default(false),
-  rootElement: joi.boolean().default(false),
+  main: joi.string().optional(),
+
   configuration: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -109,6 +112,7 @@ const manifestSchema = {
       })
     ))
   ),
+
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -123,53 +127,18 @@ const manifestSchema = {
     ))
   ),
 
-  // Routing
-  defaultDocument: joi.string().allow('').allow(null).default('index.html'),
-  controllers: joi.alternatives().try(
-    joi.string().optional(),
-    (
-      joi.object().optional()
-      .pattern(RE_NOT_FQPATH, joi.forbidden())
-      .pattern(RE_FQPATH, joi.string().required())
-    )
-  ),
-  assets: (
-    joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, (
-      joi.object().required()
-      .keys({
-        files: (
-          joi.array().required()
-          .items(joi.string().required())
-        ),
-        contentType: joi.string().optional()
-      })
-    ))
-  ),
   files: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.alternatives().try(joi.string().required(), joi.object().required()))
   ),
 
-  // Scripts
-  exports: joi.alternatives().try(
-    joi.string().optional(),
-    (
-      joi.object().optional()
-      .pattern(RE_EMPTY, joi.forbidden())
-      .pattern(RE_NOT_EMPTY, joi.string().required())
-    )
-  ),
   scripts: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
     .default(Object, 'empty scripts object')
   ),
-  setup: joi.string().optional(),
-  teardown: joi.string().optional(),
   tests: (
     joi.alternatives()
     .try(
@@ -281,7 +250,7 @@ function refillCaches(dbname) {
 
 function routes(mount) {
   var app = lookupApp(mount);
-  return routeApp(app);
+  return routeAndExportApp(app, false).routes;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,6 +281,7 @@ function checkMountedSystemApps(dbname) {
 function checkManifest(filename, manifest) {
   const serverVersion = plainServerVersion();
   const validationErrors = [];
+  let legacy = false;
 
   Object.keys(manifestSchema).forEach(function (key) {
     let schema = manifestSchema[key];
@@ -328,45 +298,25 @@ function checkManifest(filename, manifest) {
     }
   });
 
-  if (
-    manifest.engines
-    && manifest.engines.arangodb
-    && !semver.satisfies(serverVersion, manifest.engines.arangodb)
-   ) {
-    console.warn(
-      `Manifest "${filename}" for app "${manifest.name}":`
-      + ` ArangoDB version ${serverVersion} probably not compatible`
-      + ` with expected version ${manifest.engines.arangodb}.`
-    );
-  }
-
-  if (manifest.setup && manifest.setup !== manifest.scripts.setup) {
-    deprecated('3.0', (
-      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "setup",`
-      + ` use "scripts.setup" instead.`
-    ));
-    manifest.scripts.setup = manifest.scripts.setup || manifest.setup;
-    delete manifest.setup;
-  }
-
-  if (manifest.teardown && manifest.teardown !== manifest.scripts.teardown) {
-    deprecated('3.0', (
-      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "teardown",`
-      + ` use "scripts.teardown" instead.`
-    ));
-    manifest.scripts.teardown = manifest.scripts.teardown || manifest.teardown;
-    delete manifest.teardown;
-  }
-
-  if (manifest.assets) {
-    deprecated('3.0', (
-      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "assets",`
-      + ` use "files" and an external build tool instead.`
-    ));
+  if (manifest.engines && manifest.engines.arangodb) {
+    if (semver.gtr('3.0.0', manifest.engines.arangodb)) {
+      legacy = true;
+      console.warn(
+        `Manifest "${filename}" for app "${manifest.name}":`
+        + ` Service expects version ${manifest.engines.arangodb}`
+        + ` and will run in legacy compatibility mode.`
+      );
+    } else if (!semver.satisfies(serverVersion, manifest.engines.arangodb)) {
+      console.warn(
+        `Manifest "${filename}" for app "${manifest.name}":`
+        + ` ArangoDB version ${serverVersion} probably not compatible`
+        + ` with expected version ${manifest.engines.arangodb}.`
+      );
+    }
   }
 
   Object.keys(manifest).forEach(function (key) {
-    if (!manifestSchema[key]) {
+    if (!manifestSchema[key] && (!legacy || legacyManifestFields.indexOf(key) === -1)) {
       console.warn(`Manifest "${filename}" for app "${manifest.name}": unknown attribute "${key}"`);
     }
   });
@@ -977,8 +927,7 @@ function _validateApp(appInfo) {
     _buildAppInPath(appInfo, tempPath, {});
     var tmp = new FoxxService(fakeAppConfig(tempPath));
     if (!tmp.needsConfiguration()) {
-      routeApp(tmp, true);
-      exportApp(tmp);
+      routeAndExportApp(tmp, true);
     }
   } catch (e) {
     throw e;
@@ -1021,10 +970,8 @@ function _install(appInfo, mount, options, runSetup) {
       executeAppScript('setup', lookupApp(mount));
     }
     if (!app.needsConfiguration()) {
-      // Validate Routing
-      routeApp(app, true);
-      // Validate Exports
-      exportApp(app);
+      // Validate Routing & Exports
+      routeAndExportApp(app, true);
     }
   } catch (e) {
     try {
@@ -1530,8 +1477,14 @@ function requireApp(mount) {
     [ [ 'Mount path', 'string' ] ],
     [ mount ] );
   utils.validateMount(mount, true);
-  var app = lookupApp(mount);
-  return exportApp(app);
+  var service = lookupApp(mount);
+  if (service.needsConfiguration()) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_APP_NEEDS_CONFIGURATION.code,
+      errorMessage: errors.ERROR_APP_NEEDS_CONFIGURATION.message
+    });
+  }
+  return routeAndExportApp(service, true).exports;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

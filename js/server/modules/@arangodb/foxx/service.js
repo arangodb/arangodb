@@ -47,7 +47,6 @@ const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : u
 
 class FoxxContext {
   constructor(service) {
-    this.basePath = path.resolve(service.root, service.path);
     this.service = service;
     this.argv = [];
   }
@@ -77,6 +76,10 @@ class FoxxContext {
 
   collection(name) {
     return internal.db._collection(this.collectionName(name));
+  }
+
+  get basePath() {
+    return this.service.basePath;
   }
 
   get baseUrl() {
@@ -160,7 +163,8 @@ class FoxxService {
     // mount paths always start with a slash
     this.mount = data.mount;
     this.path = data.path;
-    this.isDevelopment = data.isDevelopment || false;
+    this.basePath = path.resolve(this.root, this.path);
+    this.isDevelopment = Boolean(data.isDevelopment);
 
     this.manifest = data.manifest;
     if (!this.manifest.dependencies) {
