@@ -203,7 +203,8 @@ bool RestEdgeHandler::createDocument () {
   bool const waitForSync = extractWaitForSync();
   try { 
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    VPackOptions options;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
     if (! parseSuccess) {
       return false;
     }
@@ -345,11 +346,11 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   map<string, string> resultHeaders;
   string resultBody;
 
+  std::unique_ptr<TRI_json_t> json
+      (triagens::basics::VelocyPackHelper::velocyPackToJson(document));
   int error = triagens::arango::createEdgeOnCoordinator(
             dbname, collname, waitForSync,
-            triagens::basics::VelocyPackHelper::velocyPackToJson(document),
-            from, to,
-            responseCode, resultHeaders, resultBody);
+            json, from, to, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);

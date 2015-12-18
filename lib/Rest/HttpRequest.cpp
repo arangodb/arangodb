@@ -523,8 +523,8 @@ void HttpRequest::setHeader (char const* key,
 /// @brief gets the request body as VPackBuilder
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack (VPackOptions const& options) {
-  VPackParser parser(&options);
+std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack (VPackOptions const* options) {
+  VPackParser parser(options);
   parser.parse(body());
   return parser.steal();
 }

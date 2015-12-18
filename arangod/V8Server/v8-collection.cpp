@@ -713,11 +713,8 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
     TRI_V8_THROW_EXCEPTION(error);
   }
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
-  if (! TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[1]));
+  if (! TRI_IsObjectJson(json.get())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -730,7 +727,6 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
   error = triagens::arango::modifyDocumentOnCoordinator(
         dbname, collname, key, rev, policy, waitForSync, isPatch,
         keepNull, mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
-  // Note that the json has been freed inside!
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(error);
@@ -738,40 +734,30 @@ static void ModifyVocbaseColCoordinator (TRI_vocbase_col_t const* collection,
 
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
-  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsObjectJson(json)) {
-      if (nullptr != json) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
+    if (! TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
+    TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), "errorNum");
     if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
     string errorMessage;
-    subjson = TRI_LookupObjectJson(json, "errorMessage");
+    subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
     }
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
   }
  
   if (silent) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
     TRI_V8_RETURN_TRUE();
   }
   else {
-    v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json);
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+    v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json.get());
     TRI_V8_RETURN(ret);
   }
 }
@@ -3209,11 +3195,8 @@ static void InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
     options.waitForSync = ExtractWaitForSync(args, 2);
   }
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[0]);
-  if (! TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[0]));
+  if (! TRI_IsObjectJson(json.get())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -3225,49 +3208,37 @@ static void InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
   int error = triagens::arango::createDocumentOnCoordinator(
             dbname, collname, options.waitForSync, json, headers,
             responseCode, resultHeaders, resultBody);
-  // Note that the json has been freed inside!
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(error);
   }
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
-  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsObjectJson(json)) {
-      if (json != nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
+    if (! TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
+    TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), "errorNum");
     if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
 
     string errorMessage;
-    subjson = TRI_LookupObjectJson(json, "errorMessage");
+    subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
     }
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
   }
 
   if (options.silent) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
     TRI_V8_RETURN_TRUE();
   }
 
-  v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json);
-
-  if (json != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
+  v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json.get());
   TRI_V8_RETURN(ret);
 }
 
@@ -3479,12 +3450,9 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
   string _from = GetId(args, 0);
   string _to   = GetId(args, 1);
 
-  TRI_json_t* json = TRI_ObjectToJson(isolate, args[2]);
+  std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[2]));
 
-  if (! TRI_IsObjectJson(json)) {
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    }
+  if (! TRI_IsObjectJson(json.get())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -3510,41 +3478,34 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
   string resultBody;
 
   int error = triagens::arango::createEdgeOnCoordinator(
-            dbname, collname, options.waitForSync, json, _from.c_str(), _to.c_str(),
+            dbname, collname, options.waitForSync, json,
+            _from.c_str(), _to.c_str(),
             responseCode, resultHeaders, resultBody);
-  // Note that the json has been freed inside!
 
   if (error != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(error);
   }
   // report what the DBserver told us: this could now be 201/202 or
   // 400/404
-  json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
+  json.reset(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str()));
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (! TRI_IsObjectJson(json)) {
-      if (nullptr != json) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-      }
+    if (! TRI_IsObjectJson(json.get())) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
-    TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
+    TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), "errorNum");
     if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
     string errorMessage;
-    subjson = TRI_LookupObjectJson(json, "errorMessage");
+    subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
     }
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
   }
-  v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json);
-  if (nullptr != json) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  }
+  v8::Handle<v8::Value> ret = TRI_ObjectJson(isolate, json.get());
   TRI_V8_RETURN(ret);
 }
 

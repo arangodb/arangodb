@@ -370,7 +370,7 @@ namespace triagens {
 /// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<VPackBuilder> parseVelocyPackBody (bool&);
+        std::shared_ptr<VPackBuilder> parseVelocyPackBody (VPackOptions const*, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle, on a cluster this will parse the

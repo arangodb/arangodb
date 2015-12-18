@@ -504,7 +504,8 @@ bool RestQueryHandler::replaceProperties () {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
   if (! parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
@@ -645,7 +646,8 @@ bool RestQueryHandler::parseQuery () {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
   if (! parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;

@@ -546,7 +546,7 @@ int createDocumentOnCoordinator (
   return createDocumentOnCoordinator(dbname,
                                      collname,
                                      waitForSync,
-                                     json.get(),
+                                     json,
                                      headers,
                                      responseCode,
                                      resultHeaders,
@@ -563,7 +563,7 @@ int createDocumentOnCoordinator (
                 string const& dbname,
                 string const& collname,
                 bool waitForSync,
-                TRI_json_t* json,
+                std::unique_ptr<TRI_json_t>& json,
                 std::map<std::string, std::string> const& headers,
                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                 std::map<std::string, std::string>& resultHeaders,
@@ -578,7 +578,6 @@ int createDocumentOnCoordinator (
       = ci->getCollection(dbname, collname);
 
   if (collinfo->empty()) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -592,14 +591,14 @@ int createDocumentOnCoordinator (
   // cluster-wide unique number. Note that we only know the sharding
   // attributes a bit further down the line when we have determined
   // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY);
+  TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), TRI_VOC_ATTRIBUTE_KEY);
   bool userSpecifiedKey = false;
   string _key;
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_VOC_ATTRIBUTE_KEY,
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), TRI_VOC_ATTRIBUTE_KEY,
                          TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE,
                                                        _key.c_str(), _key.size()));
   }
@@ -610,26 +609,22 @@ int createDocumentOnCoordinator (
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard( collid, json, true, shardID,
+  int error = ci->getResponsibleShard( collid, json.get(), true, shardID,
                                        usesDefaultShardingAttributes );
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_CLUSTER_SHARD_GONE;
   }
 
   // Now perform the above mentioned check:
   if (userSpecifiedKey && ! usesDefaultShardingAttributes) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
   }
 
   if (userSpecifiedKey && ! collinfo->allowUserKeys()) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
   }
 
-  string const body = JsonHelper::toString(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  string const body = JsonHelper::toString(json.get());
 
   // Send a synchronous request to that shard using ClusterComm:
   auto res = cc->syncRequest("", TRI_NewTickServer(), "shard:" + shardID,
@@ -1370,7 +1365,7 @@ int modifyDocumentOnCoordinator (
   std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
   return modifyDocumentOnCoordinator(dbname, collname, key, rev, policy,
                                      waitForSync, isPatch, keepNull, mergeObjects,
-                                     json.get(), headers, responseCode, resultHeaders, resultBody);
+                                     json, headers, responseCode, resultHeaders, resultBody);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1387,7 +1382,7 @@ int modifyDocumentOnCoordinator (
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
                  bool mergeObjects,   // only counts for isPatch == true
-                 TRI_json_t* json,
+                 std::unique_ptr<TRI_json_t>& json,
                  std::unique_ptr<std::map<std::string, std::string>>& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  map<string, string>& resultHeaders,
@@ -1401,7 +1396,6 @@ int modifyDocumentOnCoordinator (
   std::shared_ptr<CollectionInfo> collinfo
       = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   string collid = StringUtils::itoa(collinfo->id());
@@ -1432,13 +1426,12 @@ int modifyDocumentOnCoordinator (
   ShardID shardID;
 
   int error = ci->getResponsibleShard(collid,
-                                      json,
+                                      json.get(),
                                       ! isPatch,
                                       shardID,
                                       usesDefaultShardingAttributes);
 
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return error;
   }
 
@@ -1470,8 +1463,7 @@ int modifyDocumentOnCoordinator (
   }
 
   auto body = std::make_shared<std::string const>
-      (std::string(JsonHelper::toString(json)));
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      (std::string(JsonHelper::toString(json.get())));
 
   if (! isPatch ||
       error != TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN) {
@@ -1556,7 +1548,7 @@ int createEdgeOnCoordinator (
                  string const& dbname,
                  string const& collname,
                  bool waitForSync,
-                 TRI_json_t* json,
+                 std::unique_ptr<TRI_json_t>& json,
                  char const* from,
                  char const* to,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -1571,7 +1563,6 @@ int createEdgeOnCoordinator (
   std::shared_ptr<CollectionInfo> collinfo
       = ci->getCollection(dbname, collname);
   if (collinfo->empty()) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   string collid = StringUtils::itoa(collinfo->id());
@@ -1584,14 +1575,14 @@ int createEdgeOnCoordinator (
   // cluster-wide unique number. Note that we only know the sharding
   // attributes a bit further down the line when we have determined
   // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupObjectJson(json, "_key");
+  TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), "_key");
   bool userSpecifiedKey = false;
   string _key;
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json.get(), "_key",
                          TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE,
                                                        _key.c_str(), _key.size()));
   }
@@ -1602,21 +1593,18 @@ int createEdgeOnCoordinator (
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard( collid, json, true, shardID,
+  int error = ci->getResponsibleShard( collid, json.get(), true, shardID,
                                        usesDefaultShardingAttributes );
   if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_CLUSTER_SHARD_GONE;
   }
 
   // Now perform the above mentioned check:
   if (userSpecifiedKey && !usesDefaultShardingAttributes) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
   }
 
-  string body = JsonHelper::toString(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  string body = JsonHelper::toString(json.get());
 
   // Send a synchronous request to that shard using ClusterComm:
   map<string, string> headers;

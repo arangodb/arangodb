@@ -141,7 +141,7 @@ namespace triagens {
                  std::string const& dbname,
                  std::string const& collname,
                  bool waitForSync,
-                 TRI_json_t* json,
+                 std::unique_ptr<TRI_json_t>& json,
                  std::map<std::string, std::string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::map<std::string, std::string>& resultHeaders,
@@ -266,7 +266,7 @@ namespace triagens {
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
                  bool mergeObjects,   // only counts for isPatch == true
-                 TRI_json_t* json,
+                 std::unique_ptr<TRI_json_t>& json,
                  std::unique_ptr<std::map<std::string, std::string>>& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::map<std::string, std::string>& resultHeaders,
@@ -280,7 +280,7 @@ namespace triagens {
                  std::string const& dbname,
                  std::string const& collname,
                  bool waitForSync,
-                 TRI_json_t* json,
+                 std::unique_ptr<TRI_json_t>& json,
                  char const* from,
                  char const* to,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,

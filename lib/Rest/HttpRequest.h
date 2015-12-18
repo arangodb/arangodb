@@ -522,7 +522,7 @@ namespace triagens {
 /// @brief gets the request body as VelocyPackBuilder
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<VPackBuilder> toVelocyPack (VPackOptions const&);
+        std::shared_ptr<VPackBuilder> toVelocyPack (VPackOptions const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the request body as TRI_json_t*

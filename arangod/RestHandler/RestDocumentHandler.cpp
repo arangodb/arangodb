@@ -303,7 +303,9 @@ bool RestDocumentHandler::createDocument () {
   bool const waitForSync = extractWaitForSync();
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackOptions options;
+  options.checkAttributeUniqueness = true;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
   if (! parseSuccess) {
     return false;
   }
@@ -1397,7 +1399,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   string const& key = suffix[1];
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
   if (! parseSuccess) {
     return false;
   }

@@ -1267,7 +1267,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
     options.checkAttributeUniqueness = true;
     std::shared_ptr<VPackBuilder> parsedRequest;
     try {
-      parsedRequest = _request->toVelocyPack(options);
+      parsedRequest = _request->toVelocyPack(&options);
     }
     catch (...) {
       generateError(HttpResponse::BAD,
@@ -1855,7 +1855,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   options.checkAttributeUniqueness = true;
 
   try {
-    parsedRequest = _request->toVelocyPack(options);
+    parsedRequest = _request->toVelocyPack(&options);
   }
   catch (...) {
     generateError(HttpResponse::BAD,
@@ -1927,7 +1927,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
   options.checkAttributeUniqueness = true;
 
   try {
-    parsedRequest = _request->toVelocyPack(options);
+    parsedRequest = _request->toVelocyPack(&options);
   }
   catch (...) {
     generateError(HttpResponse::BAD,
@@ -2953,7 +2953,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
-            parsedAnswer = result.answer->toVelocyPack(options);
+            parsedAnswer = result.answer->toVelocyPack(&options);
           }
           catch (VPackException const& e) {
             // Only log this error and try the next doc
@@ -2983,7 +2983,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           options.checkAttributeUniqueness = true;
           std::shared_ptr<VPackBuilder> parsedAnswer;
           try {
-            parsedAnswer = result.answer->toVelocyPack(options);
+            parsedAnswer = result.answer->toVelocyPack(&options);
           }
           catch (VPackException const& e) {
             // Only log this error and try the next doc
@@ -3288,7 +3288,8 @@ void RestReplicationHandler::handleCommandFetchKeys () {
       }
       else {
         bool success;
-        std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+        VPackOptions options;
+        std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(&options, success);
         if (! success) {
           collectionKeys->release();
           return;
@@ -3875,7 +3876,8 @@ void RestReplicationHandler::handleCommandDump () {
 
 void RestReplicationHandler::handleCommandMakeSlave () {
   bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, success);
   if (! success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -4106,7 +4108,8 @@ void RestReplicationHandler::handleCommandMakeSlave () {
 
 void RestReplicationHandler::handleCommandSync () {
   bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, success);
   if (! success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
@@ -4573,7 +4576,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
   TRI_InitConfigurationReplicationApplier(&config);
 
   bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, success);
 
   if (! success) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
