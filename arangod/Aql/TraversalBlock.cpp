@@ -71,7 +71,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
                                      std::string("invalid expression map"));
       }
-      auto e = std::make_unique<Expression>(ast, it->compareToNode);
+      std::unique_ptr<Expression> e(new Expression(ast, it->compareToNode));
       _hasV8Expression |= e->isV8();
       std::unordered_set<Variable const*> inVars;
       e->variables(inVars);

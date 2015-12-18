@@ -44,6 +44,7 @@ static uint64_t checkTraversalDepthValue (AstNode const* node) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
   }
   return static_cast<uint64_t>(v);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                  struct SimpleTraverserExpression
@@ -553,7 +554,7 @@ void TraversalNode::storeSimpleExpression (bool isEdgeAccess,
     it = _expressions.find(indexAccess);
   }
 
-  auto e = std::make_unique<SimpleTraverserExpression>(isEdgeAccess, comparisonType, varAccess, compareToNode);
+  std::unique_ptr<SimpleTraverserExpression> e(new SimpleTraverserExpression(isEdgeAccess, comparisonType, varAccess, compareToNode));
   it->second.push_back(e.get());
   e.release();
 }
