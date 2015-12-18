@@ -1566,17 +1566,10 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
   }
 
-
   PREVENT_EMBEDDED_TRANSACTION();
 
-
-
   // extract the name
-  string const name = TRI_ObjectToString(args[0]);
-
-  // extract the parameters
-  TRI_voc_cid_t cid = 0;
-
+  std::string const name = TRI_ObjectToString(args[0]);
 
   VPackBuilder builder;
   VPackSlice infoSlice;
@@ -1586,94 +1579,23 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
 
     int res = TRI_V8ToVPack(isolate, builder, args[1], false);
+
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
     infoSlice = builder.slice();
-
-    if (infoSlice.hasKey("journalSize")) {
-      VPackSlice maxSizeSlice = infoSlice.get("journalSize");
-      TRI_voc_size_t maximalSize = maxSizeSlice.getNumericValue<TRI_voc_size_t>();
-      if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-        TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize too small");
-      }
-    }
-
-#ifndef TRI_HAVE_ANONYMOUS_MMAP
-    if (infoSlice.hasKey("isVolatile")) {
-      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections are not supported on this platform");
-    }
-#endif
   }
 
   VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType, infoSlice);
-
-  if (parameters.isVolatile() && parameters.waitForSync()) {
-    // the combination of waitForSync and isVolatile makes no sense
-    TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
-  }
-
-
-  if (parameters.indexBuckets() < 1 ||
-      parameters.indexBuckets() > 1024) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");
-  }
-
-  // TODO Remove these ASSERTS
-  
-  if (2 <= args.Length()) {
-    v8::Handle<v8::Object> p = args[1]->ToObject();
-    TRI_GET_GLOBALS();
-
-    TRI_GET_GLOBAL_STRING(JournalSizeKey);
-    if (! p->Has(JournalSizeKey)) {
-      TRI_ASSERT(parameters.maximalSize() == vocbase->_settings.defaultMaximalSize);
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("planId"))) {
-      TRI_ASSERT(parameters.planId() == TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("planId")), true));
-    }
-
-    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-    if (p->Has(WaitForSyncKey)) {
-      TRI_ASSERT(parameters.waitForSync() == TRI_ObjectToBoolean(p->Get(WaitForSyncKey)));
-    }
-
-    TRI_GET_GLOBAL_STRING(DoCompactKey);
-    if (p->Has(DoCompactKey)) {
-      TRI_ASSERT(parameters.doCompact() == TRI_ObjectToBoolean(p->Get(DoCompactKey)));
-    }
-    else {
-      // default value for compaction
-      TRI_ASSERT(parameters.doCompact());
-    }
-
-    TRI_GET_GLOBAL_STRING(IsSystemKey);
-    if (p->Has(IsSystemKey)) {
-      TRI_ASSERT(parameters.isSystem() == TRI_ObjectToBoolean(p->Get(IsSystemKey)));
-    }
-
-    
-    TRI_GET_GLOBAL_STRING(IdKey);
-    if (p->Has(IdKey)) {
-      // specify collection id - used for testing only
-      cid = TRI_ObjectToUInt64(p->Get(IdKey), true);
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
-      TRI_ASSERT(parameters.indexBuckets() == static_cast<uint32_t>(TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("indexBuckets")), true)));
-    }
-  }
-
 
   if (ServerState::instance()->isCoordinator()) {
     CreateCollectionCoordinator(args, collectionType, vocbase->_name, parameters, vocbase);
     return;
   }
-
+  
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
                                                                     parameters,
-                                                                    cid, 
+                                                                    parameters.id(), 
                                                                     true);
 
 

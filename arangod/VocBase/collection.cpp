@@ -1125,8 +1125,12 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
     _waitForSync(vocbase->_settings.defaultWaitForSync) {
 
   memset(_name, 0, sizeof(_name));
+    
+  if (name != '\0') {
+    TRI_CopyString(_name, name, sizeof(_name) - 1);
+  }
 
-  if (!options.isNone() && options.isObject() ) {
+  if (options.isObject()) {
     // TODO what if both are present?
     TRI_voc_size_t maximalSize;
     if (options.hasKey("journalSize")) {
@@ -1144,7 +1148,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
     _doCompact    = triagens::basics::VelocyPackHelper::getBooleanValue(options, "doCompact", true);
     _waitForSync  = triagens::basics::VelocyPackHelper::getBooleanValue(options, "waitForSync", vocbase->_settings.defaultWaitForSync);
     _isVolatile   = triagens::basics::VelocyPackHelper::getBooleanValue(options, "isVolatile", false);
-    _isSystem     = (name[0] == '_');
     _indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     // TODO
     // CHECK data type
@@ -1160,11 +1163,26 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
       // note: this may throw
       _cid = std::stoull(cidString);
     }
+
+    if (options.hasKey("isSystem")) {
+      VPackSlice isSystemSlice = options.get("isSystem");
+      if (isSystemSlice.isBoolean()) {
+        _isSystem = isSystemSlice.getBoolean();
+      }
+    }
+  
+    if (options.hasKey("journalSize")) {
+      VPackSlice maxSizeSlice = options.get("journalSize");
+      TRI_voc_size_t maximalSize = maxSizeSlice.getNumericValue<TRI_voc_size_t>();
+      if (maximalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "journalSize is too small");
+      }
+    }
     
     VPackSlice const planIdSlice = options.get("planId");
     TRI_voc_cid_t planId = 0;
     if (planIdSlice.isNumber()) {
-      planId = static_cast<TRI_voc_cid_t>(planIdSlice.getNumericValue<uint64_t>());
+      planId = planIdSlice.getNumericValue<TRI_voc_cid_t>();
     }
     else if (planIdSlice.isString()) {
       std::string tmp = planIdSlice.copyString();
@@ -1174,23 +1192,45 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
     if (planId > 0) {
       _planId = planId;
     }
-    try {
-      if (options.hasKey("keyOptions")) {
-        VPackSlice const slice = options.get("keyOptions");
-        VPackBuilder builder;
-        builder.add(slice);
-        _keyOptions = builder.steal();
-      }
+    
+    VPackSlice const cidSlice = options.get("cid");
+    if (cidSlice.isNumber()) {
+      _cid = cidSlice.getNumericValue<TRI_voc_cid_t>();
     }
-    catch (...) {
-      // Unparseable
-      // We keep a nullptr
+    else if (cidSlice.isString()) {
+      std::string tmp = cidSlice.copyString();
+      _cid = static_cast<TRI_voc_cid_t>(TRI_UInt64String2(tmp.c_str(), tmp.length()));
+    }
+      
+    if (options.hasKey("keyOptions")) {
+      VPackSlice const slice = options.get("keyOptions");
+      VPackBuilder builder;
+      builder.add(slice);
+      _keyOptions = builder.steal();
     }
   }
 
-  if (*_name == '\0') {
-    TRI_CopyString(_name, name, sizeof(_name) - 1);
+#ifndef TRI_HAVE_ANONYMOUS_MMAP
+  if (_isVolatile) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "volatile collections are not supported on this platform");
   }
+#endif
+    
+  if (_isVolatile && _waitForSync) {
+    // the combination of waitForSync and isVolatile makes no sense
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "volatile collections do not support the waitForSync option");
+  }
+  
+  if (_indexBuckets < 1 || _indexBuckets > 1024) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "indexBuckets must be a two-power between 1 and 1024");
+  }
+
+  if (! TRI_IsAllowedNameCollection(_isSystem, _name)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+ 
+  // fix _isSystem value if mis-specified by user 
+  _isSystem = (*_name == '_');
 }
 
 VocbaseCollectionInfo::~VocbaseCollectionInfo () {
