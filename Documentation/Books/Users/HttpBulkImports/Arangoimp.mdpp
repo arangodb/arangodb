@@ -62,11 +62,15 @@ specify a password, you will be prompted for one.
 
 Note that the collection (*users* in this case) must already exist or the import
 will fail. If you want to create a new collection with the import data, you need
-to specify the *--create-collection* option. Note that it is only possible to 
-create a document collection using the *--create-collection* flag, and no edge
-collections.
+to specify the *--create-collection* option. Note that by default it will create
+a document collection and no ede collection.
 
     > arangoimp --file "data.json" --type json --collection "users" --create-collection true
+
+To create an edge collection instead, use the *--create-collection-type* option
+and set it to *edge*:
+
+    > arangoimp --file "data.json" --collection "myedges" --create-collection true --create-collection-type edge
 
 When importing data into an existing collection it is often convenient to first
 remove all data from the collection and then start the import. This can be achieved
