@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 /* GeoIndex.h - header file for GeoIndex algorithms  */
-/* Version 2.1   8.1.2012   R. A. Parker             */
+/* Version 2.2  25.11.2015  R. A. Parker             */
 
 #ifndef ARANGODB_GEO_INDEX_GEO_INDEX_H
 #define ARANGODB_GEO_INDEX_GEO_INDEX_H 1
@@ -94,6 +94,7 @@ typedef struct {
 GeoCoordinates;
 
 typedef char GeoIndex;   /* to keep the structure private  */
+typedef char GeoCursor;  /* to keep the structure private  */
 
 
 size_t GeoIndex_MemoryUsage (void*);
@@ -108,6 +109,9 @@ GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
                     GeoCoordinate * c, double d);
 GeoCoordinates * GeoIndex_NearestCountPoints(GeoIndex * gi,
                     GeoCoordinate * c, int count);
+GeoCursor * GeoIndex_NewCursor(GeoIndex * gi, GeoCoordinate * c);
+GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count);
+void GeoIndex_CursorFree(GeoCursor * gc);
 void GeoIndex_CoordinatesFree(GeoCoordinates * clist);
 #ifdef TRI_GEO_DEBUG
 void GeoIndex_INDEXDUMP(GeoIndex * gi, FILE * f);
