@@ -103,11 +103,10 @@ namespace triagens {
           triagens::aql::AstNode const*                  varAccess;
           std::unique_ptr<triagens::basics::Json>        compareTo;
 
-          TraverserExpression (
-            bool pisEdgeAccess,
-            triagens::aql::AstNodeType pcomparisonType,
-            triagens::aql::AstNode const* pvarAccess
-          ) : isEdgeAccess(pisEdgeAccess),
+          TraverserExpression (bool pisEdgeAccess,
+                               triagens::aql::AstNodeType pcomparisonType,
+                               triagens::aql::AstNode const* pvarAccess)
+            : isEdgeAccess(pisEdgeAccess),
               comparisonType(pcomparisonType),
               varAccess(pvarAccess),
               compareTo(nullptr) {
@@ -134,6 +133,14 @@ namespace triagens {
           bool matchesCheck (TRI_json_t const* element) const;
 
           bool matchesCheck (DocumentAccessor& accessor) const;
+
+      protected:
+
+          TraverserExpression()
+            : isEdgeAccess(false),
+              comparisonType(triagens::aql::NODE_TYPE_ROOT),
+              varAccess(nullptr),
+              compareTo(nullptr) {}
 
         private:
 
@@ -262,7 +269,7 @@ namespace triagens {
           : _readDocuments(0),
             _filteredPaths(0),
             _pruneNext(false),
-            _done(false),
+            _done(true),
             _expressions(nullptr) {
           }
 
@@ -275,7 +282,7 @@ namespace triagens {
           : _readDocuments(0),
             _filteredPaths(0),
             _pruneNext(false),
-            _done(false),
+            _done(true),
             _opts(opts),
             _expressions(expressions) {
           }

@@ -67,7 +67,11 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   for (auto& map : *_expressions) {
     for (size_t i = 0; i < map.second.size(); ++i) {
       SimpleTraverserExpression* it = dynamic_cast<SimpleTraverserExpression*>(map.second.at(i));
-      std::unique_ptr<Expression> e(new Expression(ast, it->toEvaluate));
+      if (it == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
+                                     std::string("invalid expression map"));
+      }
+      std::unique_ptr<Expression> e(new Expression(ast, it->compareToNode));
       _hasV8Expression |= e->isV8();
       std::unordered_set<Variable const*> inVars;
       e->variables(inVars);
@@ -111,7 +115,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
                                                                           _trx,
                                                                           _expressions));
   }
-  if (!ep->usesInVariable()) {
+  if (! ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
   }
   else {
@@ -303,7 +307,7 @@ bool TraversalBlock::morePaths (size_t hint) {
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   // This is only save as long as _vertices is still build
-  return _vertices.size() > 0;
+  return !_vertices.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,7 +328,7 @@ size_t TraversalBlock::skipPaths (size_t hint) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TraversalBlock::initializePaths (AqlItemBlock const* items) {
-  if (_vertices.size() > 0) {
+  if (!_vertices.empty()) {
     // No Initialisation required.
     return;
   }
@@ -360,28 +364,17 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
           _traverser->setStartVertex(v);
         }
       }
-      else if (input.has("vertex")) {
-        // This is used whenever the input is the result of another traversal.
-        Json vertexJson = input.get("vertex");
-        if (vertexJson.has(TRI_VOC_ATTRIBUTE_ID) ) {
-          Json _idJson = vertexJson.get(TRI_VOC_ATTRIBUTE_ID);
-          if (_idJson.isString()) {
-            _vertexId = JsonHelper::getStringValue(_idJson.json(), "");
-            VertexId v = triagens::arango::traverser::IdStringToVertexId (
-              _resolver,
-              _vertexId
-            );
-            _traverser->setStartVertex(v);
-          }
-        }
-      }
     }
-    else if (in._type == AqlValue::DOCVEC) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
-                                     std::string("Only one start vertex allowed. Embed it in a FOR loop."));
+    else if (in.isString()) {
+      _vertexId = in.toString();
+      VertexId v = triagens::arango::traverser::IdStringToVertexId (
+        _resolver,
+        _vertexId
+      );
+      _traverser->setStartVertex(v);
     }
     else {
-      TRI_ASSERT(in.getTypeString() == "");
+      _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: Only strings or objects with _id are allowed");
     }
   }
 }
@@ -490,6 +483,10 @@ AqlItemBlock* TraversalBlock::getSome (size_t, // atLeast,
   clearRegisters(res.get());
   return res.release();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome
+////////////////////////////////////////////////////////////////////////////////
 
 size_t TraversalBlock::skipSome (size_t atLeast, size_t atMost) {
   size_t skipped = 0;

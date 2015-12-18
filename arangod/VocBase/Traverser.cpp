@@ -65,10 +65,13 @@ triagens::arango::traverser::VertexId triagens::arango::traverser::IdStringToVer
 
 TraverserExpression::TraverserExpression (TRI_json_t const* json) {
   isEdgeAccess = basics::JsonHelper::checkAndGetBooleanValue(json, "isEdgeAccess");
+
   comparisonType = static_cast<aql::AstNodeType>(basics::JsonHelper::checkAndGetNumericValue<uint32_t>(json, "comparisonType"));
+
   auto registerNode = [&](aql::AstNode const* node) -> void {
     _nodeRegister.emplace_back(node);
   };
+
   auto registerString = [&](std::string const& str) -> char const* {
     std::unique_ptr<std::string> copy(new std::string(str.c_str(), str.size()));
     _stringRegister.emplace_back(copy.get());
@@ -77,9 +80,15 @@ TraverserExpression::TraverserExpression (TRI_json_t const* json) {
     TRI_ASSERT(p->c_str() != nullptr);
     return p->c_str(); // should never change its position, even if vector grows/shrinks
   };
-  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::checkAndGetObjectValue(json, "varAccess"), triagens::basics::Json::NOFREE);
 
-  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::JsonHelper::getObjectElement(json, "compareTo"), triagens::basics::Json::NOFREE));
+  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE,
+                                 basics::JsonHelper::checkAndGetObjectValue(json, "varAccess"),
+                                 triagens::basics::Json::NOFREE);
+
+  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
+                                             basics::JsonHelper::getObjectElement(json, "compareTo"),
+                                             triagens::basics::Json::NOFREE));
+
   if (compareTo->json() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid compareTo value");
   }
@@ -93,9 +102,11 @@ TraverserExpression::TraverserExpression (TRI_json_t const* json) {
 
 void TraverserExpression::toJson (triagens::basics::Json& json,
                                   TRI_memory_zone_t* zone) const {
+
   json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
       ("comparisonType", triagens::basics::Json(static_cast<int32_t>(comparisonType)))
       ("varAccess", varAccess->toJson(zone, true));
+
   if (compareTo.get() != nullptr) {
     // We have to copy compareTo. The json is greedy and steals it...
     json("compareTo", compareTo->copy());
