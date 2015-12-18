@@ -8996,7 +8996,7 @@ function processQuery (query, explain) {
           }
           rc += "[" + value(indexNo) + "] -> ";
           rc += buildExpression(item.varAccess);
-          rc += " " + item.comparisonType + " ";
+          rc += " " + item.comparisonTypeStr + " ";
           rc += buildExpression(item.compareTo);
         }
       }
@@ -9112,11 +9112,20 @@ function processQuery (query, explain) {
           rc += "  , " + variableName(node.pathOutVariable) +
             "  " + annotation("/* paths */");
         }
+        require("internal").print(node);
         rc += "  " +
           keyword("IN") + " " +
-          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  " +
-          keyword("OUTBOUND") +
-          " '" + value(node.vertexId) + "'  " + annotation("/* startnode */") + "  ";
+          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
+
+        var translate = ["ANY", "INBOUND", "OUTBOUND"];
+        rc += keyword(translate[node.direction]);
+        if (node.hasOwnProperty("vertexId")) {
+          rc += " '" + value(node.vertexId) + "' ";
+        }
+        else {
+          rc += " " + variableName(node.inVariable) + " ";
+        }
+        rc += annotation("/* startnode */") + "  ";
           
         if (Array.isArray(node.graph)) {
           rc += node.graph.map(function(g) { return collection(g); }).join(", ");
