@@ -38,6 +38,7 @@ const path = require('path');
 const fs = require('fs');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
+const createRouter = require('@arangodb/foxx/router');
 const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
@@ -49,6 +50,10 @@ class FoxxContext {
   constructor(service) {
     this.service = service;
     this.argv = [];
+  }
+
+  use(path, router) {
+    this.service.router.use(path, router);
   }
 
   fileName(filename) {
@@ -218,6 +223,7 @@ class FoxxService {
     this.main[$_MODULE_CONTEXT].console = foxxConsole;
     this.main.require.cache = this.requireCache;
     this.main.context = new FoxxContext(this);
+    this.router = createRouter();
 
     let range = this.manifest.engines && this.manifest.engines.arangodb;
     this.legacy = range ? semver.gtr('3.0.0', range) : false;
