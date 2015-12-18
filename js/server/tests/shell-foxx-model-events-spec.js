@@ -1,8 +1,8 @@
 /*jshint globalstrict:false, strict:false */
 /*global describe, expect, it, beforeEach, createSpyObj */
 
-var FoxxRepository = require("@arangodb/foxx/repository").Repository,
-  Model = require("@arangodb/foxx/model").Model;
+var FoxxRepository = require("@arangodb/foxx/legacy/repository").Repository,
+  Model = require("@arangodb/foxx/legacy/model").Model;
 
 describe('Model Events', function () {
   'use strict';

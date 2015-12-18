@@ -42,7 +42,7 @@ function TemplateMiddlewareSpec () {
       response = {};
       options = {};
       next = function () {};
-      TemplateMiddleware = require("@arangodb/foxx/template_middleware").TemplateMiddleware;
+      TemplateMiddleware = require("@arangodb/foxx/legacy/template_middleware").TemplateMiddleware;
       db._drop("templateTest");
       templateCollection = db._create("templateTest");
     },

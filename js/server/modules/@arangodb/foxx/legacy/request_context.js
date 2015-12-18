@@ -28,14 +28,14 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const SwaggerDocs = require('@arangodb/foxx/swaggerDocs').Docs;
+const SwaggerDocs = require('@arangodb/foxx/legacy/swaggerDocs').Docs;
 const joi = require('joi');
 const _ = require('lodash');
-const internal = require('@arangodb/foxx/internals');
-const toJSONSchema = require('@arangodb/foxx/schema').toJSONSchema;
+const internal = require('@arangodb/foxx/legacy/internals');
+const toJSONSchema = require('@arangodb/foxx/legacy/schema').toJSONSchema;
 const is = require('@arangodb/is');
 const UnprocessableEntity = require('http-errors').UnprocessableEntity;
-const UnauthorizedError = require('@arangodb/foxx/authentication').UnauthorizedError;
+const UnauthorizedError = require('@arangodb/foxx/legacy/authentication').UnauthorizedError;
 
 function createBodyParamExtractor(rootElement, paramName, allowInvalid) {
   var extractElement;

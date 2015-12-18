@@ -44,7 +44,7 @@ function toJSONSchema(id, schema) {
   if (
     typeof schema.toJSONSchema === 'function' &&
     schema.toJSONSchema !== toJSONSchema &&
-    schema.toJSONSchema !== require('@arangodb/foxx/model').Model.toJSONSchema
+    schema.toJSONSchema !== require('@arangodb/foxx/legacy/model').Model.toJSONSchema
   ) {
     // allow overriding toJSONSchema.
     return schema.toJSONSchema(id);

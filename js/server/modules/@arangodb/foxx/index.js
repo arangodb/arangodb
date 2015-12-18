@@ -27,12 +27,12 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.Controller = require('@arangodb/foxx/controller').Controller;
-exports.Model = require('@arangodb/foxx/model').Model;
-exports.Repository = require('@arangodb/foxx/repository').Repository;
+exports.Controller = require('@arangodb/foxx/legacy/controller').Controller;
+exports.Model = require('@arangodb/foxx/legacy/model').Model;
+exports.Repository = require('@arangodb/foxx/legacy/repository').Repository;
+exports.createQuery = require('@arangodb/foxx/legacy/query').createQuery;
+exports.toJSONSchema = require('@arangodb/foxx/legacy/schema').toJSONSchema;
 exports.queues = require('@arangodb/foxx/queues');
-exports.createQuery = require('@arangodb/foxx/query').createQuery;
-exports.toJSONSchema = require('@arangodb/foxx/schema').toJSONSchema;
 
 const manager = require('@arangodb/foxx/manager');
 

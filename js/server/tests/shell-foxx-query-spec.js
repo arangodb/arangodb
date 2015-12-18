@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require('lodash'),
-  createQuery = require('@arangodb/foxx/query').createQuery,
+  createQuery = require('@arangodb/foxx/legacy/query').createQuery,
   arangodb = require('@arangodb'),
   db = arangodb.db;
 

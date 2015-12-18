@@ -38,7 +38,7 @@ function ModelSpec () {
 
   return {
     setUp: function () {
-      FoxxModel = require('@arangodb/foxx/model').Model;
+      FoxxModel = require('@arangodb/foxx/legacy/model').Model;
     },
 
     testWithInitialData: function () {
@@ -317,7 +317,7 @@ function ModelDBSpec () {
 
   return {
     setUp: function () {
-      FoxxModel = require('@arangodb/foxx/model').Model;
+      FoxxModel = require('@arangodb/foxx/legacy/model').Model;
 
       cn = "UnitTestsFoxxModel";
       db._drop(cn);
@@ -422,8 +422,8 @@ function ModelAnnotationSpec () {
 
   return {
     setUp: function () {
-      FoxxModel = require('@arangodb/foxx/model').Model;
-      toJSONSchema = require('@arangodb/foxx/schema').toJSONSchema;
+      FoxxModel = require('@arangodb/foxx/legacy/model').Model;
+      toJSONSchema = require('@arangodb/foxx/legacy/schema').toJSONSchema;
     },
 
     testGetEmptyJSONSchema: function () {
