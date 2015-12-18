@@ -67,21 +67,32 @@ const RE_NOT_FQPATH = /^[^\/]/;
 const RE_NOT_EMPTY = /./;
 
 const manifestSchema = {
-  assets: (
+  // Metadata
+  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
+  version: joi.string().required(),
+  engines: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, (
-      joi.object().required()
-      .keys({
-        files: (
-          joi.array().required()
-          .items(joi.string().required())
-        ),
-        contentType: joi.string().optional()
-      })
-    ))
+    .pattern(RE_NOT_EMPTY, joi.string().required())
   ),
+  license: joi.string().optional(),
+  description: joi.string().allow('').default(''),
+  keywords: joi.array().optional(),
+  thumbnail: joi.string().optional(),
   author: joi.string().allow('').default(''),
+  contributors: joi.array().optional(),
+  repository: (
+    joi.object().optional()
+    .keys({
+      type: joi.string().required(),
+      url: joi.string().required()
+    })
+  ),
+
+  // Config
+  lib: joi.string().default('.'),
+  isSystem: joi.boolean().default(false),
+  rootElement: joi.boolean().default(false),
   configuration: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -98,16 +109,6 @@ const manifestSchema = {
       })
     ))
   ),
-  contributors: joi.array().optional(),
-  controllers: joi.alternatives().try(
-    joi.string().optional(),
-    (
-      joi.object().optional()
-      .pattern(RE_NOT_FQPATH, joi.forbidden())
-      .pattern(RE_FQPATH, joi.string().required())
-    )
-  ),
-  defaultDocument: joi.string().allow('').allow(null).default('index.html'),
   dependencies: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
@@ -121,12 +122,38 @@ const manifestSchema = {
       })
     ))
   ),
-  description: joi.string().allow('').default(''),
-  engines: (
+
+  // Routing
+  defaultDocument: joi.string().allow('').allow(null).default('index.html'),
+  controllers: joi.alternatives().try(
+    joi.string().optional(),
+    (
+      joi.object().optional()
+      .pattern(RE_NOT_FQPATH, joi.forbidden())
+      .pattern(RE_FQPATH, joi.string().required())
+    )
+  ),
+  assets: (
     joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
+    .pattern(RE_NOT_EMPTY, (
+      joi.object().required()
+      .keys({
+        files: (
+          joi.array().required()
+          .items(joi.string().required())
+        ),
+        contentType: joi.string().optional()
+      })
+    ))
   ),
+  files: (
+    joi.object().optional()
+    .pattern(RE_EMPTY, joi.forbidden())
+    .pattern(RE_NOT_EMPTY, joi.alternatives().try(joi.string().required(), joi.object().required()))
+  ),
+
+  // Scripts
   exports: joi.alternatives().try(
     joi.string().optional(),
     (
@@ -134,23 +161,6 @@ const manifestSchema = {
       .pattern(RE_EMPTY, joi.forbidden())
       .pattern(RE_NOT_EMPTY, joi.string().required())
     )
-  ),
-  files: (
-    joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.alternatives().try(joi.string().required(), joi.object().required()))
-  ),
-  isSystem: joi.boolean().default(false),
-  keywords: joi.array().optional(),
-  lib: joi.string().default('.'),
-  license: joi.string().optional(),
-  name: joi.string().regex(/^[-_a-z][-_a-z0-9]*$/i).required(),
-  repository: (
-    joi.object().optional()
-    .keys({
-      type: joi.string().required(),
-      url: joi.string().required()
-    })
   ),
   scripts: (
     joi.object().optional()
@@ -170,10 +180,7 @@ const manifestSchema = {
         .default(Array, 'empty test files array')
       )
     )
-  ),
-  thumbnail: joi.string().optional(),
-  version: joi.string().required(),
-  rootElement: joi.boolean().default(false)
+  )
 };
 
 
