@@ -2425,6 +2425,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_ASSERT(! slice.isNone());
+    TRI_ASSERT(slice.isObject());
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx in trxCollection
@@ -2535,11 +2536,9 @@ int RestReplicationHandler::applyCollectionDumpMarker (triagens::arango::Transac
     return res;
   }
 
-  else {
-    errorMsg = "unexpected marker type " + StringUtils::itoa(type);
+  errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
-    return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
-  }
+  return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
 }
 
 static int restoreDataParser (char const* ptr,
@@ -2548,13 +2547,16 @@ static int restoreDataParser (char const* ptr,
                               bool useRevision,
                               std::string& errorMsg,
                               std::string& key,
+                              VPackBuilder& builder,
                               VPackSlice& doc,
                               TRI_voc_rid_t& rid,
                               TRI_replication_operation_e& type) {
-  std::shared_ptr<VPackBuilder> builder;
+  builder.clear();
+
   try {
     std::string line(ptr, pos);
-    builder = VPackParser::fromJson(line);
+    VPackParser parser(builder);
+    parser.parse(line);
   }
   catch (VPackException const&) {
     // Could not parse the given string
@@ -2568,7 +2570,11 @@ static int restoreDataParser (char const* ptr,
 
     return TRI_ERROR_HTTP_CORRUPTED_JSON;
   }
-  VPackSlice const slice = builder->slice();
+  catch (...) {
+    return TRI_ERROR_HTTP_CORRUPTED_JSON;
+  }
+
+  VPackSlice const slice = builder.slice();
 
   if (! slice.isObject()) {
     errorMsg = invalidMsg;
@@ -2612,12 +2618,12 @@ static int restoreDataParser (char const* ptr,
     }
   }
 
-  // key must not be 0, but doc can be 0!
   if (key.empty()) {
     errorMsg = invalidMsg;
 
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2633,6 +2639,8 @@ int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transacti
                                                      std::string& errorMsg) {
   string const invalidMsg = "received invalid JSON data for collection " +
                             StringUtils::itoa(trxCollection->_cid);
+  
+  VPackBuilder builder;
 
   char const* ptr = _request->body();
   char const* end = ptr + _request->bodySize();
@@ -2655,7 +2663,7 @@ int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transacti
       TRI_replication_operation_e type;
 
       int res = restoreDataParser(ptr, pos, invalidMsg, useRevision,
-                                  errorMsg, key, doc, rid, type);
+                                  errorMsg, key, builder, doc, rid, type);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -2820,6 +2828,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   }
 
   std::string const invalidMsg = std::string("received invalid JSON data for collection ") + name;
+  VPackBuilder builder;
 
   char const* ptr = _request->body();
   char const* end = ptr + _request->bodySize();
@@ -2845,7 +2854,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       TRI_replication_operation_e type;
 
       res = restoreDataParser(ptr, pos, invalidMsg, false,
-                                  errorMsg, key, doc, rid, type);
+                                  errorMsg, key, builder, doc, rid, type);
       if (res != TRI_ERROR_NO_ERROR) {
         // We might need to clean up buffers
         break;
