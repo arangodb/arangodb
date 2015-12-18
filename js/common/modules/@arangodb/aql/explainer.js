@@ -696,9 +696,17 @@ function processQuery (query, explain) {
         }
         rc += "  " +
           keyword("IN") + " " +
-          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  " +
-          keyword("OUTBOUND") +
-          " '" + value(node.vertexId) + "'  " + annotation("/* startnode */") + "  ";
+          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
+
+        var translate = ["ANY", "INBOUND", "OUTBOUND"];
+        rc += keyword(translate[node.direction]);
+        if (node.hasOwnProperty("vertexId")) {
+          rc += " '" + value(node.vertexId) + "' ";
+        }
+        else {
+          rc += " " + variableName(node.inVariable) + " ";
+        }
+        rc += annotation("/* startnode */") + "  ";
           
         if (Array.isArray(node.graph)) {
           rc += node.graph.map(function(g) { return collection(g); }).join(", ");
