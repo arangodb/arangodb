@@ -1,5 +1,5 @@
 'use strict';
-const _ = require('underscore');
+const _ = require('lodash');
 const ArangoError = require('@arangodb').ArangoError;
 const errors = require('@arangodb').errors;
 const internal = require('internal');

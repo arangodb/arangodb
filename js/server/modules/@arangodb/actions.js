@@ -37,7 +37,7 @@ var internal = require("internal");
 var fs = require("fs");
 var util = require("util");
 var console = require("console");
-var _ = require("underscore");
+var _ = require("lodash");
 
 var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");

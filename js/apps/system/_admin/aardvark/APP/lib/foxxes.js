@@ -31,7 +31,7 @@ exports.Foxxes = function () {
   // Define the Repository
   var aal = require("internal").db._collection("_tmp_aal"),
     foxxmanager = require("@arangodb/foxx/manager"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     ArangoError = require("@arangodb").ArangoError,
     fs = require("fs");
 

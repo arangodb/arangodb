@@ -39,7 +39,7 @@ const gm = require("@arangodb/general-graph");
 const vn = "UnitTestVertexCollection";
 const en = "UnitTestEdgeCollection";
 const isCluster = require("@arangodb/cluster").isCluster();
-var _ = require("underscore");
+var _ = require("lodash");
 var vertex = {};
 var edge = {};
 var vc;

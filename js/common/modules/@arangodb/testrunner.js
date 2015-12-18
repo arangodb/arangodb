@@ -2,7 +2,7 @@
 'use strict';
 
 var runTest = require('jsunity').runTest,
-  _ = require('underscore'),
+  _ = require('lodash'),
   internal = require('internal');
 
 ////////////////////////////////////////////////////////////////////////////////

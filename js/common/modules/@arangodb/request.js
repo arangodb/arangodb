@@ -31,7 +31,7 @@
 
 const internal = require('internal');
 const Buffer = require('buffer').Buffer;
-const extend = require('underscore').extend;
+const extend = require('lodash').extend;
 const httperr = require('http-errors');
 const is = require('@arangodb/is');
 const querystring = require('querystring');

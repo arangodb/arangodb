@@ -42,7 +42,7 @@ exports.Communication = function() {
     updateCollectionRouteForName,
     updateDatabaseRoutes,
     self = this,
-    _ = require("underscore");
+    _ = require("lodash");
 
   splitServerName = function(route) {
     var splits = route.split("/");

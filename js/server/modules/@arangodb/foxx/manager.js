@@ -35,7 +35,7 @@
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
-const _ = require('underscore');
+const _ = require('lodash');
 const fs = require('fs');
 const joi = require('joi');
 const util = require('util');

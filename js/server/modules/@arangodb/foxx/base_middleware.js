@@ -40,7 +40,7 @@ function BaseMiddleware() {
     var responseFunctions,
       requestFunctions,
       trace,
-      _ = require("underscore"),
+      _ = require("lodash"),
       console = require("console"),
       crypto = require("@arangodb/crypto"),
       actions = require("@arangodb/actions"),

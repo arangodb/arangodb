@@ -29,7 +29,7 @@
 /// @author Copyright 2013-2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore');
+var _ = require('lodash');
 var fs = require('fs');
 var internal = require('internal');
 var i = require('i')();

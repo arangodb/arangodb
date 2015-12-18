@@ -29,7 +29,7 @@
 var internal = require("internal");
 var fs = require("fs");
 var console = require("console");
-var _ = require('underscore')
+var _ = require('lodash')
 
 var JSHINT = require("jshint").JSHINT;
 var jshintrc = {};

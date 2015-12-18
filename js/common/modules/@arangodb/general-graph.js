@@ -34,7 +34,7 @@ var arangodb = require("@arangodb"),
   ArangoError = arangodb.ArangoError,
   db = arangodb.db,
   errors = arangodb.errors,
-  _ = require("underscore");
+  _ = require("lodash");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "@arangodb/general-graph"

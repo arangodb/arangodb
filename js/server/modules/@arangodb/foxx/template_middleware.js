@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require("@arangodb").db,
-  _ = require("underscore");
+  _ = require("lodash");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @start Docu Block JSF_foxx_TemplateMiddleware_initializer
@@ -54,7 +54,7 @@ var db = require("@arangodb").db,
 function TemplateMiddleware(templateCollection, helper) {
   var middleware = function (request, response) {
     var responseFunctions,
-      _ = require("underscore");
+      _ = require("lodash");
 
     responseFunctions = {
 

@@ -31,7 +31,7 @@ var db = require("@arangodb").db,
   crypto = require("@arangodb/crypto"),
   internal = require("internal"),
   is = require("@arangodb/is"),
-  _ = require("underscore"),
+  _ = require("lodash"),
   errors = internal.errors,
   defaultsFor = {};
 
