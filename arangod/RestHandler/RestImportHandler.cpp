@@ -1556,7 +1556,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject (VPackSl
   }
 
   try {
-    std::shared_ptr<VPackBuilder> result(new VPackBuilder());
+    auto result = std::make_shared<VPackBuilder>();
     result->openObject();
 
     for (size_t i = 0;  i < n;  ++i) {

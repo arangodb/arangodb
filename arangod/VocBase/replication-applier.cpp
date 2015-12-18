@@ -600,15 +600,13 @@ void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword) const {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   toVelocyPack(includePassword, *builder);
   builder->close();
 
   return builder;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication applier configuration
@@ -1465,14 +1463,13 @@ void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> TRI_replication_applier_t::toVelocyPack () const {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   toVelocyPack(*builder);
   builder->close();
 
   return builder;
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

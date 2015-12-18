@@ -230,7 +230,7 @@ int usersOnCoordinator (std::string const& dbname,
         (new std::map<std::string, std::string>());
 
     // set collection name (shard id)
-    std::shared_ptr<std::string> body(new string);
+    auto body = std::make_shared<std::string>();
     body->append("{\"collection\":\"");
     body->append(p.first);
     body->append("\"}");

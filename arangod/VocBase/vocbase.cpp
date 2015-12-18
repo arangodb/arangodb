@@ -594,12 +594,12 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
-                                            triagens::arango::VocbaseCollectionInfo& parameter,
+                                            triagens::arango::VocbaseCollectionInfo& parameters,
                                             TRI_voc_cid_t& cid,
                                             bool writeMarker,
                                             VPackBuilder& builder) {
   TRI_ASSERT(! builder.isClosed());
-  std::string name = parameter.name();
+  std::string name = parameters.name();
 
   WRITE_LOCKER(vocbase->_collectionsLock);
 
@@ -628,7 +628,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   // ok, construct the collection
   // .............................................................................
 
-  TRI_document_collection_t* document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameter, cid);
+  TRI_document_collection_t* document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameters, cid);
 
   if (document == nullptr) {
     return nullptr;
@@ -650,9 +650,9 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  if (parameter.planId() > 0) {
-    collection->_planId = parameter.planId();
-    col->_info.setPlanId(parameter.planId());
+  if (parameters.planId() > 0) {
+    collection->_planId = parameters.planId();
+    col->_info.setPlanId(parameters.planId());
   }
 
   // cid might have been assigned
@@ -1155,7 +1155,6 @@ static int DropCollection (TRI_vocbase_t* vocbase,
                                                           collection->_vocbase,
                                                           collection->_name,
                                                           true);
-      int res;
       if (! info.deleted()) {
         info.setDeleted(true);
 
@@ -1163,7 +1162,7 @@ static int DropCollection (TRI_vocbase_t* vocbase,
         bool doSync = (vocbase->_settings.forceSyncProperties &&
                        ! triagens::wal::LogfileManager::instance()->isInRecovery());
 
-        res = info.saveToFile(collection->_path, doSync);
+        int res = info.saveToFile(collection->_path, doSync);
 
         if (res != TRI_ERROR_NO_ERROR) {
           TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1190,7 +1189,6 @@ static int DropCollection (TRI_vocbase_t* vocbase,
     DropCollectionCallback(nullptr, collection);
 
     return TRI_ERROR_NO_ERROR;
-
   }
 
   // .............................................................................
@@ -1383,14 +1381,13 @@ void TRI_vocbase_col_t::toVelocyPack (VPackBuilder& builder,
 
 std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack (bool includeIndexes,
                                                                TRI_voc_tick_t maxTick) {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   toVelocyPack(*builder, includeIndexes, maxTick);
   builder->close();
 
   return builder;
 }
-
 
 void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
                                              TRI_voc_tick_t maxTick) {
@@ -1447,21 +1444,17 @@ void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
   // with FilterCollectionIndex
 }
 
-
 std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes (TRI_voc_tick_t maxTick) {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openArray();
   toVelocyPackIndexes(*builder, maxTick);
   builder->close();
   return builder;
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes
@@ -1738,7 +1731,7 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
     std::sort(collections.begin(), collections.end(), sortCallback);
   }
 
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openArray();
 
   for (auto& collection : collections) {

@@ -351,7 +351,7 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
 
 static void RenameDatafileCallback (TRI_datafile_t* datafile,
                                     void* data) {
-  compaction_context_t* context   = (compaction_context_t*) data;
+  compaction_context_t* context = static_cast<compaction_context_t*>(data);
   TRI_datafile_t* compactor = context->_compactor;
 
   TRI_document_collection_t* document = context->_document;

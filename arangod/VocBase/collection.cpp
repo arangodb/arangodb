@@ -1564,7 +1564,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (triagens::arango::VocbaseCollectionInf
 
 std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo (triagens::arango::VocbaseCollectionInfo const& info) {
   // This function might throw
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   TRI_CreateVelocyPackCollectionInfo(info, *builder);
   builder->close();

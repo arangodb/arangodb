@@ -399,7 +399,7 @@ std::string Index::context () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->add("id", VPackValue(std::to_string(_iid)));
   builder->add("type", VPackValue(typeName()));
@@ -435,7 +435,7 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeT
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures (bool closeToplevel) const {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->add("memory", VPackValue(memory()));
   if (closeToplevel) {
@@ -443,7 +443,6 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures (bool closeToplevel) co
   }
   return builder;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a JSON representation of the index

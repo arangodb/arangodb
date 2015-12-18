@@ -68,7 +68,7 @@ void TRI_vocbase_defaults_t::toVelocyPack(VPackBuilder& builder) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> TRI_vocbase_defaults_t::toVelocyPack() const {
-  std::shared_ptr<VPackBuilder> builder(new VPackBuilder());
+  auto builder = std::make_shared<VPackBuilder>();
   builder->openArray();
   toVelocyPack(*builder);
   builder->close();
