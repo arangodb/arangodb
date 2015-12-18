@@ -1039,25 +1039,29 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 
 // Only temporary until merge with Max
 VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other)
-: _version(TRI_COL_VERSION),
-  _type(other.type()),
-  _revision(0), // TODO
-  _cid(other.id()),
-  _planId(0), // TODO
-  _maximalSize(other.journalSize()),
-  _initialCount(-1),
-  _indexBuckets(other.indexBuckets()),
-  _isSystem(other.isSystem()),
-  _deleted(other.deleted()),
-  _doCompact(other.doCompact()),
-  _isVolatile(other.isVolatile()),
-  _waitForSync(other.waitForSync()) {
-  const std::string name = other.name();
+    : _version(TRI_COL_VERSION),
+      _type(other.type()),
+      _revision(0), // TODO
+      _cid(other.id()),
+      _planId(0), // TODO
+      _maximalSize(other.journalSize()),
+      _initialCount(-1),
+      _indexBuckets(other.indexBuckets()),
+      _keyOptions(nullptr),
+      _isSystem(other.isSystem()),
+      _deleted(other.deleted()),
+      _doCompact(other.doCompact()),
+      _isVolatile(other.isVolatile()),
+      _waitForSync(other.waitForSync()) {
+  std::string const name = other.name();
   memset(_name, 0, sizeof(_name));
   memcpy(_name, name.c_str(), name.size());
 
-  // TODO!
-  // _keyOptions.reset(other.keyOptions()->get());
+  std::unique_ptr<TRI_json_t> otherOpts(other.keyOptions());
+  if (otherOpts != nullptr) {
+    std::shared_ptr<arangodb::velocypack::Builder> builder = triagens::basics::JsonHelper::toVelocyPack(otherOpts.get());
+    _keyOptions = builder->steal();
+  }
 }
 
 
@@ -1093,9 +1097,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
     builder.add(keyOptions);
     _keyOptions = builder.steal();
   }
-  else {
-    // Keep nullptr
-  }
 }
 
 VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
@@ -1125,7 +1126,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
     _waitForSync(vocbase->_settings.defaultWaitForSync) {
 
   memset(_name, 0, sizeof(_name));
-    
+  
   if (name != '\0') {
     TRI_CopyString(_name, name, sizeof(_name) - 1);
   }
@@ -1170,6 +1171,9 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
         _isSystem = isSystemSlice.getBoolean();
       }
     }
+    else {
+      _isSystem = (*_name == '_');
+    }
   
     if (options.hasKey("journalSize")) {
       VPackSlice maxSizeSlice = options.get("journalSize");
@@ -1193,7 +1197,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
       _planId = planId;
     }
     
-    VPackSlice const cidSlice = options.get("cid");
+    VPackSlice const cidSlice = options.get("id");
     if (cidSlice.isNumber()) {
       _cid = cidSlice.getNumericValue<TRI_voc_cid_t>();
     }
@@ -1206,6 +1210,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
       VPackSlice const slice = options.get("keyOptions");
       VPackBuilder builder;
       builder.add(slice);
+      // Copy the ownership of the options over
       _keyOptions = builder.steal();
     }
   }
@@ -1224,18 +1229,13 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
   if (_indexBuckets < 1 || _indexBuckets > 1024) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "indexBuckets must be a two-power between 1 and 1024");
   }
-
+  
   if (! TRI_IsAllowedNameCollection(_isSystem, _name)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
  
   // fix _isSystem value if mis-specified by user 
   _isSystem = (*_name == '_');
-}
-
-VocbaseCollectionInfo::~VocbaseCollectionInfo () {
-  _keyOptions.reset(); // Resets the shared ptr to nullptr
-  // If this was the last instance holding it it will be freed
 }
 
 VocbaseCollectionInfo VocbaseCollectionInfo::fromFile (char const* path,
@@ -1395,6 +1395,7 @@ void VocbaseCollectionInfo::clearKeyOptions () {
 int VocbaseCollectionInfo::saveToFile (char const* path,
                                        bool forceSync) const {
   char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
+
   TRI_json_t* json = TRI_CreateJsonCollectionInfo(*this);
 
   // save json info to file
@@ -1462,8 +1463,7 @@ void VocbaseCollectionInfo::update (VocbaseCollectionInfo const& other) {
 
   TRI_CopyString(_name, other.namec_str(), sizeof(_name) - 1);
 
-  // TODO Ask Max if the old pointer is freed properly
-  // _keyOptions = other.keyOptions();
+  _keyOptions    = other.keyOptions();
 
   _deleted       = other.deleted();
   _doCompact     = other.doCompact();
