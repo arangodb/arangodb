@@ -1443,11 +1443,8 @@ void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
 
   // TODO temporary solution
   std::unique_ptr<TRI_json_t> stateJson(JsonState(&state));
-  res = triagens::basics::JsonHelper::toVelocyPack(stateJson.get(), builder);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  std::shared_ptr<arangodb::velocypack::Builder> b = triagens::basics::JsonHelper::toVelocyPack(stateJson.get());
+  builder.add("state", b->slice());
 
   // add server info
   builder.add("server", VPackValue(VPackValueType::Object));
