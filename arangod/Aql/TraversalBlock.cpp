@@ -115,7 +115,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
                                                                           _trx,
                                                                           _expressions));
   }
-  if (!ep->usesInVariable()) {
+  if (! ep->usesInVariable()) {
     _vertexId = ep->getStartVertex();
   }
   else {
@@ -365,12 +365,16 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
         }
       }
     }
-    else if (in._type == AqlValue::DOCVEC) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, 
-                                     std::string("Only one start vertex allowed. Embed it in a FOR loop."));
+    else if (in.isString()) {
+      _vertexId = in.toString();
+      VertexId v = triagens::arango::traverser::IdStringToVertexId (
+        _resolver,
+        _vertexId
+      );
+      _traverser->setStartVertex(v);
     }
     else {
-      TRI_ASSERT(in.getTypeString() == "");
+      _engine->getQuery()->registerWarning(TRI_ERROR_BAD_PARAMETER, "Invalid input for traversal: Only strings or objects with _id are allowed");
     }
   }
 }

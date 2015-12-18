@@ -648,6 +648,26 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal (ExecutionNode* previous,
   AstNode const* start = node->getMember(1);
   AstNode const* graph = node->getMember(2);
 
+  if (start->type == NODE_TYPE_OBJECT &&
+      start->isConstant()) {
+    size_t n = start->numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto member = start->getMember(i);
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+          strncmp(member->getStringValue(), TRI_VOC_ATTRIBUTE_ID, member->getStringLength()) == 0) {  
+        start = member->getMember(0);
+        break;
+      }
+    }
+  }
+
+  if (start->type != NODE_TYPE_REFERENCE &&
+      start->type != NODE_TYPE_VALUE) {
+    // operand is some misc expression
+    auto calc = createTemporaryCalculation(start, previous);
+    start = _ast->createNodeReference(getOutVariable(calc));
+    previous = calc;
+  }
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
           direction, start, graph);
