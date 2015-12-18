@@ -138,7 +138,6 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   if (ep->usesPathOutVariable()) {
     _pathVar = ep->pathOutVariable();
   }
-  _calculationNodeId = ep->getCalculationNodeId();
 }
 
 TraversalBlock::~TraversalBlock () {

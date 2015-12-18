@@ -27,11 +27,24 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/Index.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
+static uint64_t checkTraversalDepthValue (AstNode const* node) {
+  if (! node->isNumericValue()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
+  }
+  double v = node->getDoubleValue();
+  double intpart;
+  if (modf(v, &intpart) != 0.0 ||
+      v < 1.0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
+  }
+  return static_cast<uint64_t>(v);
+}
 
 
 // -----------------------------------------------------------------------------
@@ -85,9 +98,8 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _edgeOutVariable(nullptr),
     _pathOutVariable(nullptr),
     _graphObj(nullptr),
-    _CalculationNodeId(0),
-    _condition(nullptr)
-{
+    _condition(nullptr) {
+
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(start != nullptr);
@@ -126,12 +138,20 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
   }
 
   // Parse start node
-  if (start->type == NODE_TYPE_REFERENCE) {
-    _inVariable = static_cast<Variable*>(start->getData());
-    _vertexId = "";
-  } else {
-    _inVariable = nullptr;
-    _vertexId = start->getStringValue();
+  switch (start->type) {
+    case NODE_TYPE_REFERENCE:
+      _inVariable = static_cast<Variable*>(start->getData());
+      _vertexId = "";
+      break;
+    case NODE_TYPE_VALUE:
+      if (start->value.type != VALUE_TYPE_STRING) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid start vertex. Must either be an _id string or an object with _id.");
+      }
+      _inVariable = nullptr;
+      _vertexId = start->getStringValue();
+      break;
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid start vertex. Must either be an _id string or an object with _id.");
   }
 
   // Parse Steps and direction
@@ -155,45 +175,24 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       _direction = TRI_EDGE_OUT;
       break;
     default:
-      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "direction can only be INBOUND, OUTBOUND or ANY");
       break;
   }
 
   if (steps->isNumericValue()) {
     // Check if a double value is integer
-    double v = steps->getDoubleValue();
-    double intpart;
-    if (modf(v, &intpart) != 0.0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting integer number or range for number of steps.");
-    }
-    _minDepth = static_cast<uint64_t>(v);
-    _maxDepth = static_cast<uint64_t>(v);
+    _minDepth = checkTraversalDepthValue(steps);
+    _maxDepth = _minDepth;
   } else if (steps->type == NODE_TYPE_RANGE) {
     // Range depth
-    auto lhs = steps->getMember(0);
-    auto rhs = steps->getMember(1);
-    if (lhs->isNumericValue()) {
-      // Range is left-closed
-      // Check if a double value is integer
-      double v = lhs->getDoubleValue();
-      double intpart;
-      if (modf(v, &intpart) != 0.0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting integer number or range for number of steps.");
-      }
-      _minDepth = static_cast<uint64_t>(v);
-    }
-    if (rhs->isNumericValue()) {
-      // Range is right-closed
-      // Check if a double value is integer
-      double v = rhs->getDoubleValue();
-      double intpart;
-      if (modf(v, &intpart) != 0.0) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting integer number or range for number of steps.");
-      }
-      _maxDepth = static_cast<uint64_t>(v);
+    _minDepth = checkTraversalDepthValue(steps->getMember(0));
+    _maxDepth = checkTraversalDepthValue(steps->getMember(1));
+
+    if (_maxDepth < _minDepth) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
     }
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting integer number or range for number of steps.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid traversal depth");
   }
 
 }
@@ -218,8 +217,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _minDepth(minDepth),
     _maxDepth(maxDepth),
     _direction(direction),
-    _CalculationNodeId(0),
-   _condition(nullptr) {
+     _condition(nullptr) {
   for (auto& it : edgeColls) {
     _edgeColls.push_back(it);
   }
@@ -233,8 +231,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
     _edgeOutVariable(nullptr),
     _pathOutVariable(nullptr),
     _inVariable(nullptr),
-    _condition(nullptr)
-    {
+    _condition(nullptr) {
 
   _minDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "minDepth");
   _maxDepth = triagens::basics::JsonHelper::stringUInt64(base.json(), "maxDepth");
@@ -250,7 +247,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
       _direction = TRI_EDGE_OUT;
       break;
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "unsupported 'direction'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "Invalid direction value");
       break;
   }
 
@@ -395,8 +392,8 @@ void TraversalNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   json("database", triagens::basics::Json(_vocbase->_name))
-      ("minDepth", triagens::basics::Json(static_cast<int32_t>(_minDepth)))
-      ("maxDepth", triagens::basics::Json(static_cast<int32_t>(_maxDepth)))
+      ("minDepth", triagens::basics::Json(static_cast<double>(_minDepth)))
+      ("maxDepth", triagens::basics::Json(static_cast<double>(_maxDepth)))
       ("direction", triagens::basics::Json(static_cast<int32_t>(_direction)))
       ("graph" , _graphJson.copy());
 
@@ -457,7 +454,7 @@ ExecutionNode* TraversalNode::clone (ExecutionPlan* plan,
                                      bool withDependencies,
                                      bool withProperties) const {
   auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _inVariable,
-                                      _vertexId, _direction, _minDepth, _maxDepth);
+                             _vertexId, _direction, _minDepth, _maxDepth);
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -496,10 +493,26 @@ ExecutionNode* TraversalNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
         
 double TraversalNode::estimateCost (size_t& nrItems) const { 
-  size_t incoming;
+  size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  size_t count = 1000; // TODO: FIXME
-  nrItems = incoming * count;
+  double expectedEdgesPerDepth = 0;
+  auto collections = _plan->getAst()->query()->collections();
+  for (auto const& it : _edgeColls) {
+    auto collection = collections->get(it);
+    for (auto const& index : collection->getIndexes()) {
+      if (index->type == triagens::arango::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+        // We can only use Edge Index
+        if (index->hasSelectivityEstimate()) {
+          expectedEdgesPerDepth += 1 / index->selectivityEstimate();
+        }
+        else {
+          expectedEdgesPerDepth += 1000; // Hard-coded
+        }
+        break;
+      }
+    }
+  }
+  nrItems = incoming * pow(expectedEdgesPerDepth, _maxDepth);
   return depCost + nrItems;
 }
 
