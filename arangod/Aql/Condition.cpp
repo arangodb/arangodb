@@ -509,8 +509,9 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
   // We can only iterate through a proper DNF
   auto node = _root->getMember(position);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND);
- 
-  size_t const itemsInIndex = colNode->collection()->count(); 
+
+  // number of items in collection 
+  size_t const itemsInCollection = colNode->collection()->count(); 
 
   Index const* bestIndex  = nullptr;
   double bestCost         = 0.0;
@@ -522,16 +523,19 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
   for (auto const& idx : indexes) {
     double filterCost = 0.0;
     double sortCost   = 0.0;
+    size_t itemsInIndex = itemsInCollection;
 
     bool supportsFilter = false;
     bool supportsSort   = false;
-    
+
     // check if the index supports the filter expression
     double estimatedCost;
     size_t estimatedItems;
     if (idx->supportsFilterCondition(node, reference, itemsInIndex, estimatedItems, estimatedCost)) {
       // index supports the filter condition
       filterCost = estimatedCost;
+      // this reduces the number of items left
+      itemsInIndex = estimatedItems;
       supportsFilter = true;
     }
     else {
@@ -539,9 +543,9 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
       filterCost = itemsInIndex * 1.5;
     }
 
-    if (! sortCondition->isEmpty() &&
-        sortCondition->isOnlyAttributeAccess() &&
-        sortCondition->isUnidirectional()) {
+    bool const isOnlyAttributeAccess = (! sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
+
+    if (sortCondition->isUnidirectional()) {
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
@@ -549,6 +553,21 @@ std::pair<bool, bool> Condition::findIndexForAndNode (size_t position,
       if (indexSupportsSort(idx, reference, sortCondition, itemsInIndex, sortCost)) {
         supportsSort = true;
       }
+    }
+
+    if (! supportsSort && 
+        isOnlyAttributeAccess &&
+        node->isOnlyEqualityMatch()) {
+      // index cannot be used for sorting, but the filter condition consists only of equality lookups (==)
+      // now check if the index fields are the same as the sort condition fields
+      // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
+      size_t coveredFields = sortCondition->coveredAttributes(reference, idx->fields);
+
+      if (coveredFields == sortCondition->numAttributes() &&
+          (idx->isSorted() || idx->fields.size() == sortCondition->numAttributes())) {
+        // no sorting needed
+        sortCost = 0.0;
+      }     
     }
 
     // std::cout << "INDEX: " << idx << ", SUPPORTS FILTER: " << supportsFilter << ", SUPPORTS SORT: " << supportsSort << ", FILTER COST: " << filterCost << ", SORT COST: " << sortCost << "\n";

@@ -31,6 +31,8 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 
+#include <iostream>
+
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
     
@@ -59,6 +61,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::LIMIT:           
       // LIMIT invalidates the sort expression we already found
       _sorts.clear();
+      _filters.clear();
       break;
 
     case EN::SINGLETON:
@@ -80,9 +83,9 @@ bool ConditionFinder::before (ExecutionNode* en) {
        if (_sorts.empty()) {
          for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
            _sorts.emplace_back((it.first)->id, it.second);
-            TRI_IF_FAILURE("ConditionFinder::sortNode") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
+           TRI_IF_FAILURE("ConditionFinder::sortNode") {
+             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+           }
          }
        }
        break;

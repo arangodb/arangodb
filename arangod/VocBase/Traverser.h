@@ -273,7 +273,7 @@ namespace triagens {
           : _readDocuments(0),
             _filteredPaths(0),
             _pruneNext(false),
-            _done(false),
+            _done(true),
             _expressions(nullptr) {
           }
 
@@ -286,7 +286,7 @@ namespace triagens {
           : _readDocuments(0),
             _filteredPaths(0),
             _pruneNext(false),
-            _done(false),
+            _done(true),
             _opts(opts),
             _expressions(expressions) {
           }

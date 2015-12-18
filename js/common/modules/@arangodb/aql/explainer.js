@@ -415,9 +415,9 @@ function processQuery (query, explain) {
         return variable("#" + node.name);
       }
     }
-    catch(x) {
+    catch (x) {
       print(node);
-      throw(x);
+      throw x;
     }
     
     if (collectionVariables.hasOwnProperty(node.id)) {
@@ -457,6 +457,10 @@ function processQuery (query, explain) {
         return value(JSON.stringify(node.value));
       case "object":
         if (node.hasOwnProperty("subNodes")) {
+          if (node.subNodes.length > 20) {
+            // print only the first 20 values from the objects
+            return "{ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + ", ... }";
+          }
           return "{ " + node.subNodes.map(buildExpression).join(", ") + " }";
         }
         return "{ }";
@@ -692,9 +696,17 @@ function processQuery (query, explain) {
         }
         rc += "  " +
           keyword("IN") + " " +
-          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  " +
-          keyword("OUTBOUND") +
-          " '" + value(node.vertexId) + "'  " + annotation("/* startnode */") + "  ";
+          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
+
+        var translate = ["ANY", "INBOUND", "OUTBOUND"];
+        rc += keyword(translate[node.direction]);
+        if (node.hasOwnProperty("vertexId")) {
+          rc += " '" + value(node.vertexId) + "' ";
+        }
+        else {
+          rc += " " + variableName(node.inVariable) + " ";
+        }
+        rc += annotation("/* startnode */") + "  ";
           
         if (Array.isArray(node.graph)) {
           rc += node.graph.map(function(g) { return collection(g); }).join(", ");

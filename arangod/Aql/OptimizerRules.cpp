@@ -2046,10 +2046,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       }
 
       auto const& indexes = indexNode->getIndexes();
+      auto cond = indexNode->condition();
 
       if (indexes.size() != 1) {
         // can only use this index node if it uses exactly one index or multiple indexes on exactly the same attributes
-        auto cond = indexNode->condition();
 
         if (! cond->isSorted()) {
           // index conditions do not guarantee sortedness
@@ -2075,21 +2075,15 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
       // if we get here, we either have one index or multiple indexes on the same attributes
       auto index = indexes[0];
-
-      if (! index->isSorted()) {
-        // can only use a sorted index
-        return true;
-      }
-
-      if (index->sparse) {
-        // cannot use a sparse index for sorting
-        return true;
-      }
+      bool handled = false;
 
       SortCondition sortCondition(_sorts, _variableDefinitions);
 
-      if (! sortCondition.isEmpty() && 
-          sortCondition.isOnlyAttributeAccess() &&
+      bool const isOnlyAttributeAccess = (! sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
+
+      if (isOnlyAttributeAccess &&
+          index->isSorted() &&
+          ! index->sparse &&
           sortCondition.isUnidirectional() && 
           sortCondition.isDescending() == indexNode->reverse()) {
         // we have found a sort condition, which is unidirectional and in the same
@@ -2102,6 +2096,33 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // sort condition is fully covered by index... now we can remove the sort node from the plan
           _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
           _modified = true;
+          handled = true;
+        }
+      }
+      
+      if (! handled &&
+          isOnlyAttributeAccess &&
+          indexes.size() == 1) {
+        // special case... the index cannot be used for sorting, but we only compare with equality
+        // lookups. now check if the equality lookup attributes are the same as the index attributes
+        auto root = cond->root();
+
+        if (root != nullptr) {
+          auto condNode = root->getMember(0);
+
+          if (condNode->isOnlyEqualityMatch()) {
+            // now check if the index fields are the same as the sort condition fields
+            // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
+            Variable const* outVariable = indexNode->outVariable();
+            size_t coveredFields = sortCondition.coveredAttributes(outVariable, index->fields);
+
+            if (coveredFields == sortCondition.numAttributes() &&
+                (index->isSorted() || index->fields.size() == sortCondition.numAttributes())) {
+              // no need to sort
+              _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+              _modified = true;
+            }     
+          }
         }
       }
 
@@ -2278,17 +2299,16 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
         }
       }
 
-      if (handled) {
-        break;
-      }
-
-      if (! current->hasDependency()) {
+      if (handled ||
+          current->getType() == EN::LIMIT ||
+          ! current->hasDependency()) {
         break;
       }
 
       current = current->getFirstDependency();
     }
   }
+
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();

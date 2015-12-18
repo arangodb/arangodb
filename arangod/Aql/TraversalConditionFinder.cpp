@@ -330,7 +330,6 @@ bool TraversalConditionFinder::before (ExecutionNode* en) {
                     checkPathVariableAccessFeasible(cn, node, conditionVar, conditionIsImpossible, _plan->getAst())) {
                     condition->andCombine(it.second->expression()->node()->clone(_plan->getAst()));
                     foundCondition = true;
-                    node->setCalculationNodeId(cn->id());
                   }
                 if (conditionIsImpossible)
                   break;

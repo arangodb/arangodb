@@ -318,6 +318,27 @@
         this.delegateEvents();
       }
 
+      if ($('#accordion2')) {
+        $('#accordion2').bind("click", function() {
+          if ($('#collapseOne').is(":visible")) {
+            $('#collapseOne').hide();
+            setTimeout(function() {
+              $('.accordion-toggle').addClass('collapsed');
+            }, 100);
+          }
+          else {
+            $('#collapseOne').show();
+            setTimeout(function() {
+              $('.accordion-toggle').removeClass('collapsed');
+            }, 100);
+          }
+        });
+        $('#collapseOne').hide();
+        setTimeout(function() {
+          $('.accordion-toggle').addClass('collapsed');
+        }, 100);
+      }
+
       $("#modal-dialog").modal("show");
 
       //enable modal hotkeys after rendering is complete

@@ -118,31 +118,35 @@ function parseBodyForCreateCollection (req, res) {
   else {
     r.name = body.name;
   }
-  r.parameter = { waitForSync : false };
+  r.parameters = { waitForSync : false };
   r.type = arangodb.ArangoCollection.TYPE_DOCUMENT;
 
   if (body.hasOwnProperty("doCompact")) {
-    r.parameter.doCompact = body.doCompact;
+    r.parameters.doCompact = body.doCompact;
   }
 
   if (body.hasOwnProperty("isSystem")) {
-    r.parameter.isSystem = body.isSystem;
+    r.parameters.isSystem = (body.isSystem && r.name[0] === '_');
+  }
+  
+  if (body.hasOwnProperty("id")) {
+    r.parameters.id = body.id;
   }
 
   if (body.hasOwnProperty("isVolatile")) {
-    r.parameter.isVolatile = body.isVolatile;
+    r.parameters.isVolatile = body.isVolatile;
   }
 
   if (body.hasOwnProperty("journalSize")) {
-    r.parameter.journalSize = body.journalSize;
+    r.parameters.journalSize = body.journalSize;
   }
 
   if (body.hasOwnProperty("indexBuckets")) {
-    r.parameter.indexBuckets = body.indexBuckets;
+    r.parameters.indexBuckets = body.indexBuckets;
   }
 
   if (body.hasOwnProperty("keyOptions")) {
-    r.parameter.keyOptions = body.keyOptions;
+    r.parameters.keyOptions = body.keyOptions;
   }
 
   if (body.hasOwnProperty("type")) {
@@ -150,19 +154,19 @@ function parseBodyForCreateCollection (req, res) {
   }
 
   if (body.hasOwnProperty("waitForSync")) {
-    r.parameter.waitForSync = body.waitForSync;
+    r.parameters.waitForSync = body.waitForSync;
   }
 
   if (body.hasOwnProperty("shardKeys") && cluster.isCoordinator()) {
-    r.parameter.shardKeys = body.shardKeys || { };
+    r.parameters.shardKeys = body.shardKeys || { };
   }
 
   if (body.hasOwnProperty("numberOfShards") && cluster.isCoordinator()) {
-    r.parameter.numberOfShards = body.numberOfShards || 0;
+    r.parameters.numberOfShards = body.numberOfShards || 0;
   }
 
   if (body.hasOwnProperty("distributeShardsLike") && cluster.isCoordinator()) {
-    r.parameter.distributeShardsLike = body.distributeShardsLike || "";
+    r.parameters.distributeShardsLike = body.distributeShardsLike || "";
   }
 
   return r;
@@ -348,19 +352,19 @@ function post_api_collection (req, res) {
       }
     }
     if (r.type === arangodb.ArangoCollection.TYPE_EDGE) {
-      collection = arangodb.db._createEdgeCollection(r.name, r.parameter);
+      collection = arangodb.db._createEdgeCollection(r.name, r.parameters);
     }
     else {
-      collection = arangodb.db._createDocumentCollection(r.name, r.parameter);
+      collection = arangodb.db._createDocumentCollection(r.name, r.parameters);
     }
 
     var result = {};
 
     result.id = collection._id;
     result.name = collection.name();
-    result.waitForSync = r.parameter.waitForSync || false;
-    result.isVolatile = r.parameter.isVolatile || false;
-    result.isSystem = r.parameter.isSystem || false;
+    result.waitForSync = r.parameters.waitForSync || false;
+    result.isVolatile = r.parameters.isVolatile || false;
+    result.isSystem = r.parameters.isSystem || false;
     result.status = collection.status();
     result.type = collection.type();
     result.keyOptions = collection.keyOptions;

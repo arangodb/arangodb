@@ -2,6 +2,10 @@
   border: 0;
 }
 
+.accordion-body {
+  height: auto !important;
+}
+
 .accordion-heading a {
   border: 1px solid $c-accordion-heading;
   color: $c-black;

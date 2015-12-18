@@ -142,6 +142,10 @@ namespace triagens {
         _createCollection = value;
       }
 
+      void setCreateCollectionType (std::string const& value) {
+        _createCollectionType = value;
+      }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to overwrite existing data in the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,6 +242,7 @@ namespace triagens {
 
       std::string _separator;
       std::string _quote;
+      std::string _createCollectionType;
       bool _useBackslash;
       bool _createCollection;
       bool _overwrite;
