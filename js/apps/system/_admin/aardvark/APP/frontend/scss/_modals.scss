@@ -34,6 +34,9 @@
 
 }
 
+.select2-drop-active {
+  z-index: 9999999;
+}
 
 .modal-body {
   color: $c-btn-inverse;
