@@ -3,8 +3,8 @@
 
 var sinon = require('sinon');
 var expect = require('expect.js');
-var FoxxRepository = require("@arangodb/foxx/repository").Repository;
-var Model = require("@arangodb/foxx/model").Model;
+var FoxxRepository = require("@arangodb/foxx/legacy/repository").Repository;
+var Model = require("@arangodb/foxx/legacy/model").Model;
 
 describe('Model Events', function () {
   var collection, instance, repository;

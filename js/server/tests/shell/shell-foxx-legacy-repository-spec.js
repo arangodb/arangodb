@@ -31,8 +31,8 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
-const FoxxRepository = require('@arangodb/foxx/repository').Repository;
-const FoxxModel = require('@arangodb/foxx/model').Model;
+const FoxxRepository = require('@arangodb/foxx/legacy/repository').Repository;
+const FoxxModel = require('@arangodb/foxx/legacy/model').Model;
 
 describe('Repository', function () {
   const prefix = 'myApp';

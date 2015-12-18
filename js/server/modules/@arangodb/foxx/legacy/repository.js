@@ -27,7 +27,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const Model = require('@arangodb/foxx/model').Model;
+const Model = require('@arangodb/foxx/legacy/model').Model;
 const _ = require('lodash');
 const extend = require('@arangodb/extend').extend;
 const EventEmitter = require('events').EventEmitter;

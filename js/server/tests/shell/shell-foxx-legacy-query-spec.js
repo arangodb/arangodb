@@ -32,7 +32,7 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
-const createQuery = require('@arangodb/foxx/query').createQuery;
+const createQuery = require('@arangodb/foxx/legacy/query').createQuery;
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const ArangoError = arangodb.ArangoError;

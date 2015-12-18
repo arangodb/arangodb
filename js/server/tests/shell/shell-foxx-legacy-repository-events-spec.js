@@ -30,8 +30,8 @@
 
 const expect = require('chai').expect;
 const sinon = require('sinon');
-const FoxxRepository = require('@arangodb/foxx/repository').Repository;
-const Model = require('@arangodb/foxx/model').Model;
+const FoxxRepository = require('@arangodb/foxx/legacy/repository').Repository;
+const Model = require('@arangodb/foxx/legacy/model').Model;
 
 describe('Model Events', function () {
   let collection, instance, repository;
