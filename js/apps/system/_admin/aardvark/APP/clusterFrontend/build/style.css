@@ -2942,6 +2942,7 @@ div .tile, div .bigtile {
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
+    position: absolute;
     width: 50px; }
   div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
@@ -5461,6 +5462,9 @@ div.headerBar {
     .modal-header .close:hover, .modal-dashboard-header .close:hover {
       opacity: 1; }
 
+.select2-drop-active {
+  z-index: 9999999; }
+
 .modal-body {
   color: #736b68;
   font-family: 'Open Sans', sans-serif !important;
@@ -5928,6 +5932,7 @@ div .tile, div .bigtile {
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
+    position: absolute;
     width: 50px; }
   div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
