@@ -201,7 +201,7 @@ namespace triagens {
         uint32_t                              _indexBuckets;    // number of buckets used in hash tables for indexes
 
         char                                  _name[TRI_COL_PATH_LENGTH];  // name of the collection()
-        std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _keyOptions;      // options for key creation
+        std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> _keyOptions;      // options for key creation
 
         // flags
         bool                                  _isSystem;        // if true, this is a system collection
@@ -244,8 +244,6 @@ namespace triagens {
                                                TRI_vocbase_t*,
                                                char const*,
                                                bool);
-
-        virtual ~VocbaseCollectionInfo ();
 
         // collection version
         virtual TRI_col_version_t version () const;
