@@ -579,7 +579,7 @@ function processQuery (query, explain) {
           }
           rc += "[" + value(indexNo) + "] -> ";
           rc += buildExpression(item.varAccess);
-          rc += " " + item.comparisonTypeStr + " ";
+          rc += " " + item.comparisonType + " ";
           rc += buildExpression(item.compareTo);
         }
       }
@@ -695,7 +695,6 @@ function processQuery (query, explain) {
           rc += "  , " + variableName(node.pathOutVariable) +
             "  " + annotation("/* paths */");
         }
-        require("internal").print(node);
         rc += "  " +
           keyword("IN") + " " +
           value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
