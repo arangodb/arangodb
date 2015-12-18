@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertNull, assertUndefined, fail */
+/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertNull, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -204,6 +204,80 @@ function CollectionSuiteErrorHandling () {
 
 function CollectionSuite () {
   return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create with id
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithId : function () {
+      var cn = "example", id = "1234567890";
+
+      db._drop(cn);
+      db._drop(id);
+      var c1 = db._create(cn, { id: id });
+
+      assertTypeOf("string", c1._id);
+      assertEqual(id, c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(c1._id, c2._id);
+      assertEqual(c1.name(), c2.name());
+      assertEqual(c1.status(), c2.status());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isSystem
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithIsSystem : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn, { isSystem: true });
+
+      assertTypeOf("string", c1._id);
+      assertEqual(cn, c1.name());
+      assertFalse(c1.properties().isSystem);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isSystem
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithUnderscoreNoIsSystem : function () {
+      var cn = "_example";
+
+      db._drop(cn);
+      try {
+        db._create(cn, { isSystem: false });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isSystem
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithUnderscoreWithIsSystem : function () {
+      var cn = "_example";
+
+      db._drop(cn);
+      var c1 = db._create(cn, { isSystem: true });
+      assertTrue(c1.properties().isSystem);
+      db._drop(cn);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief long name

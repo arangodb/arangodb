@@ -1628,6 +1628,9 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     TRI_GET_GLOBAL_STRING(IsSystemKey);
     if (p->Has(IsSystemKey)) {
       parameters._isSystem = TRI_ObjectToBoolean(p->Get(IsSystemKey));
+      if (name.empty() || name[0] != '_') {
+        parameters._isSystem = false;
+      }
     }
 
     TRI_GET_GLOBAL_STRING(IsVolatileKey);

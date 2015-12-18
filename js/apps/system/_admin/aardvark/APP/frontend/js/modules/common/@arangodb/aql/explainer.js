@@ -695,7 +695,6 @@ function processQuery (query, explain) {
           rc += "  , " + variableName(node.pathOutVariable) +
             "  " + annotation("/* paths */");
         }
-        require("internal").print(node);
         rc += "  " +
           keyword("IN") + " " +
           value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
