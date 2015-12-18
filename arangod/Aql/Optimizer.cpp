@@ -208,7 +208,6 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           continue;
         }
 
-        int res;
         try {
           TRI_IF_FAILURE("Optimizer::createPlansOom") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -220,7 +219,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           // - if the rule throws, then the original plan will be deleted by the optimizer.
           //   thus the rule must not have deleted the plan itself or add it back to the
           //   optimizer
-          res = rule.func(this, p, &rule);
+          rule.func(this, p, &rule);
 
           if (! rule.isHidden) {
             ++_stats.rulesExecuted;
@@ -232,10 +231,6 @@ int Optimizer::createPlans (ExecutionPlan* plan,
             delete p;
           }
           throw;
-        }
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
         }
       }
 
@@ -503,8 +498,8 @@ void Optimizer::setupRules () {
 
   // merge filters into traversals
   registerRule("merge-traversal-filter",
-               mergeFilterIntoTraversal,
-               mergeFilterIntoTraversal_pass6,
+               mergeFilterIntoTraversalRule,
+               mergeFilterIntoTraversalRule_pass6,
                true);
   
   //////////////////////////////////////////////////////////////////////////////

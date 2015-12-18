@@ -193,7 +193,7 @@ namespace triagens {
         useIndexForSortRule_pass6                     = 850,
 
         // merge filters into graph traversals
-        mergeFilterIntoTraversal_pass6                = 860,
+        mergeFilterIntoTraversalRule_pass6            = 860,
 
 //////////////////////////////////////////////////////////////////////////////
 /// Pass 9: push down calculations beyond FILTERs and LIMITs
@@ -254,7 +254,7 @@ namespace triagens {
 /// applied next.
 ////////////////////////////////////////////////////////////////////////////////
           
-        typedef std::function<int(Optimizer*, ExecutionPlan*, Rule const*)> RuleFunction;
+        typedef std::function<void(Optimizer*, ExecutionPlan*, Rule const*)> RuleFunction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of an optimizer rule
@@ -295,7 +295,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-          PlanList () {};
+          PlanList () {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a plan
@@ -327,15 +327,6 @@ namespace triagens {
               }
             }
             return false;
-          }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a plan index pointing before the referenced rule, so it can be 
-///   re-executed
-////////////////////////////////////////////////////////////////////////////////
-
-          static RuleLevel beforeRule (RuleLevel l) {
-            return (RuleLevel) (l - 1);
           }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -59,7 +59,7 @@ namespace triagens {
 
         bool before (ExecutionNode*) override final;
 
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) final;
+        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final;
 
       private:
 
