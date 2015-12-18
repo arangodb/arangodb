@@ -163,8 +163,6 @@ function optimizerRuleTestSuite () {
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[7].label == 'foo' return {v:v,e:e,p:p}",
         // indexed access starts with 0 - this is also forbidden since it will look for the 6th!
         "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[5].label == 'foo' return {v:v,e:e,p:p}",
-        "FOR v, e, p IN 5..1 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' return {v:v,e:e,p:p}"
-        // TODO: right now we're not clever enough to find this:
         // "FOR v, e, p IN 1..5 OUTBOUND 'circles/A' GRAPH 'myGraph' FILTER p.edges[1].label == 'foo' AND p.edges[1].label == 'bar' return {v:v,e:e,p:p}"
       ];
 
