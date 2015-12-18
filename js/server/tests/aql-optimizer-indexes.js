@@ -1188,7 +1188,6 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-/* TODO
     testIndexOrSkiplistMultipleRangesPartialIndex : function () {
       c.ensureSkiplist("value2", "value3");
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
@@ -1211,7 +1210,6 @@ function optimizerIndexesTestSuite () {
       assertEqual(2, results.stats.scannedIndex);
       assertEqual(0, results.stats.scannedFull);
     },
-  */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
@@ -2718,11 +2716,235 @@ function optimizerIndexesTestSuite () {
 
   };
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerIndexesMultiCollectionTestSuite () {
+  var c1;
+  var c2;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection1");
+      db._drop("UnitTestsCollection2");
+      c1 = db._create("UnitTestsCollection1");
+      c2 = db._create("UnitTestsCollection2");
+ 
+      var i;
+      for (i = 0; i < 200; ++i) {
+        c1.save({ _key: "test" + i, value: i });
+      }
+      for (i = 0; i < 200; ++i) {
+        c2.save({ _key: "test" + i, value: i, ref: "UnitTestsCollection1/test" + i });
+      }
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection1");
+      db._drop("UnitTestsCollection2");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexAndSortInInner : function () {
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.ref LIMIT 1 RETURN j) SORT res[0] RETURN i";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
+
+      var sub = nodeTypes.indexOf("SubqueryNode");
+      assertNotEqual(-1, sub);
+
+      var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
+        return node.type;
+      });
+      
+      assertEqual("SingletonNode", subNodeTypes[0], query);
+      var idx = subNodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, idx, query); // index used for inner query
+      assertEqual("hash", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
+      assertNotEqual(-1, subNodeTypes.indexOf("SortNode"), query); // must have sort node for inner query
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseIndexAndNoSortInInner : function () {
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.value LIMIT 1 RETURN j) SORT res[0] RETURN i";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
+
+      var sub = nodeTypes.indexOf("SubqueryNode");
+      assertNotEqual(-1, sub);
+
+      var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
+        return node.type;
+      });
+      
+      assertEqual("SingletonNode", subNodeTypes[0], query);
+      var idx = subNodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, idx, query); // index used for inner query
+      assertEqual("hash", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
+      assertEqual(-1, subNodeTypes.indexOf("SortNode"), query); // must not have sort node for inner query
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseRightIndexAndSortInInner : function () {
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.ref LIMIT 1 RETURN j) SORT res[0] RETURN i";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
+
+      var sub = nodeTypes.indexOf("SubqueryNode");
+      assertNotEqual(-1, sub);
+
+      var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
+        return node.type;
+      });
+      
+      assertEqual("SingletonNode", subNodeTypes[0], query);
+      var idx = subNodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, idx, query); // index used for inner query
+      assertEqual("hash", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
+      assertNotEqual(-1, subNodeTypes.indexOf("SortNode"), query); // must have sort node for inner query
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseRightIndexAndSortInInner2 : function () {
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.value LIMIT 1 RETURN j) SORT res[0] RETURN i";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
+
+      var sub = nodeTypes.indexOf("SubqueryNode");
+      assertNotEqual(-1, sub);
+
+      var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
+        return node.type;
+      });
+      
+      assertEqual("SingletonNode", subNodeTypes[0], query);
+      var idx = subNodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, idx, query); // index used for inner query
+      assertEqual("hash", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
+      assertEqual(-1, subNodeTypes.indexOf("SortNode"), query); // we're filtering on a constant, must not have sort node for inner query
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseRightIndexAndSortInInnerInner : function () {
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = "FOR i IN " + c1.name() + " LET res = (FOR z IN 1..2 FOR j IN " + c2.name() + " FILTER j.value == i.value SORT j.value LIMIT 1 RETURN j) SORT res[0] RETURN i";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
+
+      var sub = nodeTypes.indexOf("SubqueryNode");
+      assertNotEqual(-1, sub);
+
+      var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
+        return node.type;
+      });
+      
+      assertEqual("SingletonNode", subNodeTypes[0], query);
+      var idx = subNodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, idx, query); // index used for inner query
+      assertEqual("hash", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
+      assertNotEqual(-1, subNodeTypes.indexOf("SortNode"), query); // we're filtering on a constant, but we're in an inner loop
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseRightIndexNoSortInInner : function () {
+      c2.ensureIndex({ type: "hash", fields: [ "value" ] });
+      c2.ensureIndex({ type: "skiplist", fields: [ "ref" ] });
+      var query = "FOR i IN " + c1.name() + " LET res = (FOR j IN " + c2.name() + " FILTER j.ref == i.ref SORT j.ref LIMIT 1 RETURN j) SORT res[0] RETURN i";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertEqual(-1, nodeTypes.indexOf("IndexNode"), query); // no index for outer query
+      assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query); // sort node for outer query
+
+      var sub = nodeTypes.indexOf("SubqueryNode");
+      assertNotEqual(-1, sub);
+
+      var subNodeTypes = plan.nodes[sub].subquery.nodes.map(function(node) {
+        return node.type;
+      });
+      
+      assertEqual("SingletonNode", subNodeTypes[0], query);
+      var idx = subNodeTypes.indexOf("IndexNode");
+      assertNotEqual(-1, idx, query); // index used for inner query
+      assertEqual("skiplist", plan.nodes[sub].subquery.nodes[idx].indexes[0].type);
+      assertEqual(-1, subNodeTypes.indexOf("SortNode"), query); // must not have sort node for inner query
+    }
+
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerIndexesTestSuite);
+jsunity.run(optimizerIndexesMultiCollectionTestSuite);
 
 return jsunity.done();
 

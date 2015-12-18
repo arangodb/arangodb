@@ -807,6 +807,26 @@ AstNode::~AstNode () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test if all members of a node are equality comparisons
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isOnlyEqualityMatch () const {
+  if (type != NODE_TYPE_OPERATOR_BINARY_AND &&
+      type != NODE_TYPE_OPERATOR_NARY_AND) {
+    return false;
+  }
+   
+  for (size_t i = 0; i < numMembers(); ++i) {
+    auto op = getMember(i);
+    if (op->type != triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief computes a hash value for a value node
 ////////////////////////////////////////////////////////////////////////////////
 
