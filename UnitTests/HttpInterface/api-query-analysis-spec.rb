@@ -128,7 +128,7 @@ describe ArangoDB do
       found.should eq(false)
     end
 
-    it "should truncate the query string to at least 64 bit" do
+    it "should truncate the query string to at least 64 bytes" do
       ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({slowQueryThreshold: 2, maxQueryStringLength: 12}))
       doc = ArangoDB.log_get("#{@prefix}-properties", @properties)
       res = JSON.parse doc.body
@@ -142,7 +142,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       res = JSON.parse doc.body
       res.length.should eq(1)
-      # This string is exactly 64 bit long
+      # This string is exactly 64 bytes long
       shortend = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b L"
       found = contains_query doc.body, shortend + "..."
       found.should eq(true)
@@ -155,7 +155,7 @@ describe ArangoDB do
       doc.code.should eq(200)
       res = JSON.parse doc.body
       res.length.should eq(1)
-      # This string is exactly 64 bit long
+      # This string is exactly 64 bytes long
       shortend = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a= y LET b= a LET c= \"öö"
       found = contains_query doc.body, shortend + "..."
       found.should eq(true)
