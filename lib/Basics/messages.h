@@ -47,8 +47,11 @@
 #define TRI_BYE_MESSAGE_ES "¡Hasta luego!"
 #define TRI_BYE_MESSAGE_FR "Au revoir!"
 #define TRI_BYE_MESSAGE_GR "Εις το επανιδείν!"
+#define TRI_BYE_MESSAGE_IL "תוארתהל!"
+// Should really be the following, but most terminals do not write right
+// to left, so we put it here backwards.
+//#define TRI_BYE_MESSAGE_IL "להתראות!"
 #define TRI_BYE_MESSAGE_IT "Arrivederci!"
-#define TRI_BYE_MESSAGE_IL "להתראות!"
 #define TRI_BYE_MESSAGE_JP "さようなら"
 #define TRI_BYE_MESSAGE_NL "Tot ziens!"
 #define TRI_BYE_MESSAGE_RU "До свидания!"
@@ -63,6 +66,7 @@
   TRI_BYE_MESSAGE_EO " " \
   TRI_BYE_MESSAGE_ES " " \
   TRI_BYE_MESSAGE_FR "\n" \
+  TRI_BYE_MESSAGE_IL " " \
   TRI_BYE_MESSAGE_IT " " \
   TRI_BYE_MESSAGE_IL " " \
   TRI_BYE_MESSAGE_NL " " \
