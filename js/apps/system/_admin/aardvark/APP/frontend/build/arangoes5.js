@@ -988,17 +988,17 @@ applier.properties = function(config){var db=internal.db;var requestResult;if(co
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
-var sync=function sync(config){var db=internal.db;var body=JSON.stringify(config || {});var requestResult=db._connection.PUT("/_api/replication/sync",body);arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
+var sync=function sync(config){var db=internal.db;var body=JSON.stringify(config || {});var requestResult;if(config.async){var headers={"X-Arango-Async":"store"};requestResult = db._connection.PUT_RAW("/_api/replication/sync",body,headers);}else {requestResult = db._connection.PUT("/_api/replication/sync",body);}arangosh.checkRequestResult(requestResult);if(config.async){return requestResult.headers["x-arango-async-id"];}return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint, for
 /// a single collection
 ////////////////////////////////////////////////////////////////////////////////
-var syncCollection=function syncCollection(collection,config){var db=internal.db;config = config || {};config.restrictType = "include";config.restrictCollections = [collection];config.includeSystem = true;var body=JSON.stringify(config);var requestResult=db._connection.PUT("/_api/replication/sync",body);arangosh.checkRequestResult(requestResult);return requestResult;}; ////////////////////////////////////////////////////////////////////////////////
+var syncCollection=function syncCollection(collection,config){var db=internal.db;config = config || {};config.restrictType = "include";config.restrictCollections = [collection];config.includeSystem = true;var body=JSON.stringify(config);var requestResult;if(config.async){var headers={"X-Arango-Async":"store"};requestResult = db._connection.PUT_RAW("/_api/replication/sync",body,headers);}else {requestResult = db._connection.PUT("/_api/replication/sync",body);}arangosh.checkRequestResult(requestResult);if(config.async){return requestResult.headers["x-arango-async-id"];}return requestResult;};var getSyncResult=function getSyncResult(id){var db=internal.db;var requestResult=db._connection.PUT_RAW("/_api/job/" + encodeURIComponent(id),"");arangosh.checkRequestResult(requestResult);if(requestResult.headers.hasOwnProperty("x-arango-async-id")){return JSON.parse(requestResult.body);}return false;}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches a server's id
 ////////////////////////////////////////////////////////////////////////////////
 var serverId=function serverId(){var db=internal.db;var requestResult=db._connection.GET("/_api/replication/server-id");arangosh.checkRequestResult(requestResult);return requestResult.serverId;}; // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
-exports.logger = logger;exports.applier = applier;exports.sync = sync;exports.syncCollection = syncCollection;exports.serverId = serverId; // -----------------------------------------------------------------------------
+exports.logger = logger;exports.applier = applier;exports.sync = sync;exports.syncCollection = syncCollection;exports.getSyncResult = getSyncResult;exports.serverId = serverId; // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 // Local Variables:
@@ -1272,7 +1272,7 @@ exports.throwBadParameter = function(msg){throw new exports.ArangoError({errorNu
 exports.checkParameter = function(usage,descs,vars){var i;for(i = 0;i < descs.length;++i) {var desc=descs[i];if(typeof vars[i] === "undefined"){exports.throwBadParameter(desc[0] + " missing, usage: " + usage);}if(typeof vars[i] !== desc[1]){exports.throwBadParameter(desc[0] + " should be a '" + desc[1] + "', " + "not '" + typeof vars[i] + "'");}}}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate info message for newer version(s) available
 ////////////////////////////////////////////////////////////////////////////////
-exports.checkAvailableVersions = function(version){var console=require("console");var log;if(require("org/arangodb").isServer){log = console.info;}else {log = internal.print;}if(version === undefined){version = internal.version;}if(version.match(/beta|alpha|preview|devel/) !== null){log("You are using an alpha/beta/preview version ('" + version + "') of ArangoDB");return;}try{var u="https://www.arangodb.com/repositories/versions.php?version=";var d=internal.download(u + version,"",{timeout:300});var v=JSON.parse(d.body);if(v.hasOwnProperty("bugfix")){log("Please note that a new bugfix version '" + v.bugfix.version + "' is available");}if(v.hasOwnProperty("minor")){log("Please note that a new minor version '" + v.minor.version + "' is available");}if(v.hasOwnProperty("major")){log("Please note that a new major version '" + v.major.version + "' is available");}}catch(err) {if(console && console.debug){console.debug("cannot check for newer version: ",err.stack);}}}; // -----------------------------------------------------------------------------
+exports.checkAvailableVersions = function(version){var console=require("console");var log;if(require("org/arangodb").isServer){log = console.info;}else {log = internal.print;}if(version === undefined){version = internal.version;}if(version.match(/beta|alpha|preview|devel/) !== null){log("You are using an alpha/beta/preview version ('" + version + "') of ArangoDB");return;}try{var u="https://www.arangodb.com/repositories/versions.php?version=" + version + "&os=" + internal.platform;var d=internal.download(u,"",{timeout:300});var v=JSON.parse(d.body);if(v.hasOwnProperty("bugfix")){log("Please note that a new bugfix version '" + v.bugfix.version + "' is available");}if(v.hasOwnProperty("minor")){log("Please note that a new minor version '" + v.minor.version + "' is available");}if(v.hasOwnProperty("major")){log("Please note that a new major version '" + v.major.version + "' is available");}}catch(err) {if(console && console.debug){console.debug("cannot check for newer version: ",err.stack);}}}; // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 // Local Variables:
@@ -1392,6 +1392,10 @@ var unregisterFunctionsGroup=function unregisterFunctionsGroup(group){'use stric
 ///
 /// The registered function is stored in the selected database's system 
 /// collection *_aqlfunctions*.
+///
+/// The function returns *true* when it updates/replaces an existing AQL 
+/// function of the same name, and *false* otherwise. It will throw an exception
+/// when it detects syntactially invalid function code.
 ///
 /// @EXAMPLES
 ///
@@ -7218,7 +7222,7 @@ if(typeof global === 'undefined' && typeof window !== 'undefined'){global = wind
 global.Buffer = require("buffer").Buffer;global.process = require("process");global.setInterval = global.setInterval || function(){};global.clearInterval = global.clearInterval || function(){};global.setTimeout = global.setTimeout || function(){};global.clearTimeout = global.clearTimeout || function(){}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief template string generator for building an AQL query
 ////////////////////////////////////////////////////////////////////////////////
-global.aqlQuery = function(){var strings=arguments[0];var bindVars={};var query=strings[0];var name,value,i;for(i = 1;i < arguments.length;i++) {value = arguments[i];name = 'value' + (i - 1);if(value.constructor && value.constructor.name === 'ArangoCollection'){name = '@' + name;value = value.name();}bindVars[name] = value;query += '@' + name + strings[i];}return {query:query,bindVars:bindVars};}; ////////////////////////////////////////////////////////////////////////////////
+global.aqlQuery = function(){var strings=arguments[0];var bindVars={};var query=strings[0];var name,value,i;for(i = 1;i < arguments.length;i++) {value = arguments[i];name = 'value' + (i - 1);if(value && value.constructor && value.constructor.name === 'ArangoCollection'){name = '@' + name;value = value.name();}bindVars[name] = value;query += '@' + name + strings[i];}return {query:query,bindVars:bindVars};}; ////////////////////////////////////////////////////////////////////////////////
 /// @brief start paging
 ////////////////////////////////////////////////////////////////////////////////
 global.start_pager = function start_pager(){var internal=require("internal");internal.startPager();}; ////////////////////////////////////////////////////////////////////////////////

@@ -1647,7 +1647,19 @@ if (list.length > 0) {
           <tr>
             <th class="collectionInfoTh2">Index buckets:</th>
             <th class="collectionInfoTh">
-              <div class="modal-text"><%=figuresData["indexBuckets"]%></div>
+              <div class="modal-text"><%=figuresData.indexBuckets%></div>
+            </th>
+          </tr>
+          <tr>
+            <th class="collectionInfoTh2">Compaction status:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
+            </th>
+          </tr>
+          <tr>
+            <th class="collectionInfoTh2">Waiting for:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=figuresData.figures.waitingFor%></div>
             </th>
           </tr>
         </table>
@@ -1741,6 +1753,22 @@ if (list.length > 0) {
             <th class="modal-text"><%=figuresData.figures.attributes.count%></th>
             <th class="tooltipInfoTh">
               <a class="modalTooltips" title="Total number of attributes in the collection">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">Uncollected</th>
+            <th class="modal-text"><%=figuresData.figures.uncollectedLogfileEntries%></th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of uncollected WAL entries">
+                <span class="arangoicon icon_arangodb_info"></span></a>
+            </th>
+          </tr>
+          <tr>
+            <th class="modal-text">References</th>
+            <th class="modal-text"><%=figuresData.figures.documentReferences%></th>
+            <th class="tooltipInfoTh">
+              <a class="modalTooltips" title="Total number of objects pointing to documents in collection datafiles">
                 <span class="arangoicon icon_arangodb_info"></span></a>
             </th>
           </tr>
@@ -2640,4 +2668,4 @@ var cutByResolution = function (str) {
         <% }); %>
       </ul>
     </div>
-  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="app.js?version=1445587018459"></script><script src="arangoes5.js?version=1445587018459"></script></body></html>
+  <% } %></script></head><body><nav class="navbar"><div class="resizecontainer"><div class="navlogo"><a class="logo" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a></div><div id="progressPlaceholderIcon"></div><div class="statmenu" id="statisticBar"></div><div class="usermenu" id="userBar" style="float:right"></div><div class="notificationmenu" id="notificationBar" style="float:right"></div><div class="navmenu" id="navigationBar"></div></div></nav><div class="centralRow resizecontainer"><div id="content" class="centralContent"></div></div><div id="modalPlaceholder"></div><div id="progressPlaceholder" style="display:none"></div><footer class="footer"><div class="resizecontainer" id="footerBar"></div></footer><script src="app.js?version=1450688788625"></script><script src="arangoes5.js?version=1450688788625"></script></body></html>
