@@ -1,5 +1,38 @@
+v2.7.4 (XXXX-XX-XX)
+-------------------
+
+* randomly shuffle available V8 contexts when picking one for an HTTP or scheduler
+  task. This distributes requests more evenly across contexts so they can eventually
+  be garbage-collected.
+
+* added the following attributes to the result of `collection.figures()` and the
+  corresponding HTTP API at `PUT /_api/collection/<name>/figures`:
+
+  - `documentReferences`: The number of references to documents in datafiles
+    that JavaScript code currently holds. This information can be used for
+    debugging compaction and unload issues.
+  - `waitingFor`: An optional string value that contains information about
+    which object type is at the head of the collection's cleanup queue. This 
+    information can be used for debugging compaction and unload issues.
+  - `compactionStatus.time`: The point in time the compaction for the collection
+    was last executed. This information can be used for debugging compaction
+    issues.
+  - `compactionStatus.message`: The action that was performed when the compaction
+    was last run for the collection. This information can be used for debugging
+    compaction issues.
+
+  Note: `waitingFor` and `compactionStatus` may be empty when called on a coordinator
+  in a cluster.
+
+* the compaction will now provide queryable status info that can be used to track
+  its progress. The compaction status is displayed in the web interface, too.
+
+
 v2.7.3 (2015-12-17)
 -------------------
+
+* fixed some replication value conversion issues when replication applier properties
+  were set via ArangoShell
 
 * fixed disappearing of documents for collections transferred via `sync` or
   `syncCollection` if the collection was dropped right before synchronization 
@@ -9,6 +42,7 @@ v2.7.3 (2015-12-17)
 
 * fixed an issue where overwriting the system sessions collection would break
   the web interface when authentication is enabled
+
 
 v2.7.2 (2015-12-01)
 -------------------
