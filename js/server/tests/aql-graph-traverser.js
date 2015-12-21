@@ -766,6 +766,61 @@ function multiCollectionGraphSuite () {
       });
     },
 
+    testOtherCollectionAttributeAccessInput: function () {
+      var query = "FOR y IN @@vCol "
+        + "FOR x IN OUTBOUND y._id @@eCol SORT x._id ASC RETURN x._id";
+      var bindVars = {
+        "@eCol": en,
+        "@vCol": vn
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 6);
+      assertEqual(result[0], vertex.B);
+      assertEqual(result[1], vertex.B);
+      assertEqual(result[2], vertex.C);
+      assertEqual(result[3], vertex.D);
+      assertEqual(result[4], vertex.E);
+      assertEqual(result[5], vertex.F);
+    },
+
+    testTraversalAttributeAccessInput: function () {
+      var query = "FOR x IN OUTBOUND @startId @@eCol "
+                  + "FOR y IN OUTBOUND x._id @@eCol SORT y._id ASC RETURN y._id";
+      var bindVars = {
+        "@eCol": en,
+        "startId": vertex.A
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], vertex.C);
+    },
+
+    testTraversalLetIdInput: function () {
+      var query = "FOR x IN OUTBOUND @startId @@eCol "
+                  + "LET next = x._id "
+                  + "FOR y IN OUTBOUND next @@eCol SORT y._id ASC RETURN y._id";
+      var bindVars = {
+        "@eCol": en,
+        "startId": vertex.A
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], vertex.C);
+    },
+
+    testTraversalLetDocInput: function () {
+      var query = "FOR x IN OUTBOUND @startId @@eCol "
+                  + "LET next = x "
+                  + "FOR y IN OUTBOUND next @@eCol SORT y._id ASC RETURN y._id";
+      var bindVars = {
+        "@eCol": en,
+        "startId": vertex.A
+      };
+      var result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], vertex.C);
+    }
+
   };
 }
 
@@ -847,62 +902,8 @@ function multiEdgeCollectionGraphSuite () {
         var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
         assertEqual(jsonResult, result, query);
       });
-    },
-
-    testOtherCollectionAttributeAccessInput: function () {
-      var query = "FOR y IN @@vCol "
-        + "FOR x IN OUTBOUND y._id @@eCol SORT x._id ASC RETURN x._id";
-      var bindVars = {
-        "@eCol": en,
-        "@vCol": vn
-      };
-      var result = db._query(query, bindVars).toArray();
-      assertEqual(result.length, 6);
-      assertEqual(result[0], vertex.B);
-      assertEqual(result[1], vertex.B);
-      assertEqual(result[2], vertex.C);
-      assertEqual(result[3], vertex.D);
-      assertEqual(result[4], vertex.E);
-      assertEqual(result[5], vertex.F);
-    },
-
-    testTraversalAttributeAccessInput: function () {
-      var query = "FOR x IN OUTBOUND @startId @@eCol "
-                  + "FOR y IN OUTBOUND x._id @@eCol SORT y._id ASC RETURN y._id";
-      var bindVars = {
-        "@eCol": en,
-        "startId": vertex.A
-      };
-      var result = db._query(query, bindVars).toArray();
-      assertEqual(result.length, 1);
-      assertEqual(result[0], vertex.C);
-    },
-
-    testTraversalLetIdInput: function () {
-      var query = "FOR x IN OUTBOUND @startId @@eCol "
-                  + "LET next = x._id "
-                  + "FOR y IN OUTBOUND next @@eCol SORT y._id ASC RETURN y._id";
-      var bindVars = {
-        "@eCol": en,
-        "startId": vertex.A
-      };
-      var result = db._query(query, bindVars).toArray();
-      assertEqual(result.length, 1);
-      assertEqual(result[0], vertex.C);
-    },
-
-    testTraversalLetDocInput: function () {
-      var query = "FOR x IN OUTBOUND @startId @@eCol "
-                  + "LET next = x "
-                  + "FOR y IN OUTBOUND next @@eCol SORT y._id ASC RETURN y._id";
-      var bindVars = {
-        "@eCol": en,
-        "startId": vertex.A
-      };
-      var result = db._query(query, bindVars).toArray();
-      assertEqual(result.length, 1);
-      assertEqual(result[0], vertex.C);
     }
+
   };
 }
 
