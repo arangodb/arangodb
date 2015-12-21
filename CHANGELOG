@@ -5,7 +5,7 @@ v2.7.5 (XXXX-XX-XX)
   web admin interface.
 
 
-v2.7.4 (2014-12-21)
+v2.7.4 (2015-12-21)
 -------------------
 
 * slightly adjusted V8 garbage collection strategy so that collection eventually
