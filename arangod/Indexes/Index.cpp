@@ -405,7 +405,8 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeT
   builder->add("type", VPackValue(typeName()));
 
   if (dumpFields()) {
-    builder->add("fields", VPackValue(VPackValueType::Array));
+    builder->add(VPackValue("fields"));
+    VPackArrayBuilder b1(builder.get());
 
     for (auto const& field : fields()) {
       std::string fieldString;

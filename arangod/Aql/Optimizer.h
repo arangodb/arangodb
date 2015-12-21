@@ -55,11 +55,12 @@ namespace triagens {
 
         VPackBuilder toVelocyPack () const {
           VPackBuilder result;
-          result.openObject();
-          result.add("rulesExecuted", VPackValue(rulesExecuted));
-          result.add("rulesSkipped", VPackValue(rulesSkipped));
-          result.add("plansCreated", VPackValue(plansCreated));
-          result.close();
+          {
+            VPackObjectBuilder b(&result);
+            result.add("rulesExecuted", VPackValue(rulesExecuted));
+            result.add("rulesSkipped", VPackValue(rulesSkipped));
+            result.add("plansCreated", VPackValue(plansCreated));
+          }
           return result;
         }
 

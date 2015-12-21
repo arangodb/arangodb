@@ -601,9 +601,10 @@ void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword
 
 std::shared_ptr<VPackBuilder> TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword) const {
   auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  toVelocyPack(includePassword, *builder);
-  builder->close();
+  {
+    VPackObjectBuilder b(builder.get());
+    toVelocyPack(includePassword, *builder);
+  }
 
   return builder;
 }
@@ -1464,10 +1465,10 @@ void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
 
 std::shared_ptr<VPackBuilder> TRI_replication_applier_t::toVelocyPack () const {
   auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  toVelocyPack(*builder);
-  builder->close();
-
+  {
+    VPackObjectBuilder b(builder.get());
+    toVelocyPack(*builder);
+  }
   return builder;
 }
 

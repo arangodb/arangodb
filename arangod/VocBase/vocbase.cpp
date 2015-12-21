@@ -1382,9 +1382,10 @@ void TRI_vocbase_col_t::toVelocyPack (VPackBuilder& builder,
 std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack (bool includeIndexes,
                                                                TRI_voc_tick_t maxTick) {
   auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  toVelocyPack(*builder, includeIndexes, maxTick);
-  builder->close();
+  {
+    VPackObjectBuilder b(builder.get());
+    toVelocyPack(*builder, includeIndexes, maxTick);
+  }
 
   return builder;
 }
@@ -1419,10 +1420,11 @@ void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
         if (iid <= static_cast<uint64_t>(maxTick)) {
           // convert "id" to string
           VPackBuilder toMerge;
-          toMerge.openObject();
-          char* idString = TRI_StringUInt64(iid);
-          toMerge.add("id", VPackValue(idString));
-          toMerge.close();
+          {
+            VPackObjectBuilder b(&toMerge);
+            char* idString = TRI_StringUInt64(iid);
+            toMerge.add("id", VPackValue(idString));
+          }
           VPackBuilder mergedBuilder = VPackCollection::merge(indexSlice, toMerge.slice(), false);
           builder.add(mergedBuilder.slice());
         }
@@ -1732,42 +1734,41 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vo
   }
 
   auto builder = std::make_shared<VPackBuilder>();
-  builder->openArray();
+  {
+    VPackArrayBuilder b(builder.get());
 
-  for (auto& collection : collections) {
-    TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+    for (auto& collection : collections) {
+      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-    if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
-        collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
-      // we do not need to care about deleted or corrupted collections
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      continue;
-    }
+      if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
+          collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+        // we do not need to care about deleted or corrupted collections
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        continue;
+      }
 
-    if (collection->_cid > maxTick) {
-      // collection is too new
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      continue;
-    }
+      if (collection->_cid > maxTick) {
+        // collection is too new
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        continue;
+      }
 
-    // check if we want this collection
-    if (filter != nullptr && ! filter(collection, data)) {
+      // check if we want this collection
+      if (filter != nullptr && ! filter(collection, data)) {
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        continue;
+      }
+      try {
+        VPackObjectBuilder b(builder.get());
+        collection->toVelocyPack(*builder, true, maxTick);
+      } 
+      catch (...) {
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        throw;
+      }
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      continue;
     }
-    try {
-      builder->openObject();
-      collection->toVelocyPack(*builder, true, maxTick);
-      builder->close();
-    } 
-    catch (...) {
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      throw;
-    }
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
   }
-
-  builder->close(); // Array
   return builder;
 }
 
@@ -1915,23 +1916,18 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   READ_LOCKER(vocbase->_inventoryLock);
 
+  TRI_vocbase_col_t* collection;
   VPackBuilder builder;
-  builder.openObject();
-
-  auto collection = CreateCollection(vocbase, parameters, cid, writeMarker, builder);
-  builder.close();
+  {
+    VPackObjectBuilder b(&builder);
+    collection = CreateCollection(vocbase, parameters, cid, writeMarker,
+                                  builder);
+  }
 
   if (! writeMarker) {
     return collection;
   }
   VPackSlice const slice = builder.slice();
-
-  if (slice.isNone()) {
-    // CreateCollection
-    // Did not write anything into the builder.
-    // TODO: what to do here?
-    return collection;
-  }
 
   int res = TRI_ERROR_NO_ERROR;
 
