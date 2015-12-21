@@ -49,16 +49,16 @@
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
-static char const* ReasonNoDatafiles       = "collection has no datafiles";
-static char const* ReasonCompactionBlocked = "existing compactor file is in the way and waiting to be processed";
-static char const* ReasonDatafileSmall     = "datafile is small and will be merged with next";
-static char const* ReasonEmpty             = "datafile contains data but collection is empty";
-static char const* ReasonOnlyDeletions     = "datafile contains only deletion markers";
-static char const* ReasonDeadSize          = "datafile contains much dead object space";
-static char const* ReasonDeadSizeShare     = "datafile contains high share of dead objects";
-static char const* ReasonDeadCount         = "datafile contains many dead objects";
-static char const* ReasonDeletionCount     = "datafile contains many deletions";
-static char const* ReasonNothingToCompact  = "no compaction opportunity found during inspection";
+static char const* ReasonNoDatafiles       = "skipped compaction because collection has no datafiles";
+static char const* ReasonCompactionBlocked = "skipped compaction because existing compactor file is in the way and waits to be processed";
+static char const* ReasonDatafileSmall     = "compacting datafile because it's small and will be merged with next";
+static char const* ReasonEmpty             = "compacting datafile because it collection is empty";
+static char const* ReasonOnlyDeletions     = "compacting datafile because it contains only deletion markers";
+static char const* ReasonDeadSize          = "compacting datafile because it contains much dead object space";
+static char const* ReasonDeadSizeShare     = "compacting datafile because it contains high share of dead objects";
+static char const* ReasonDeadCount         = "compacting datafile because it contains many dead objects";
+static char const* ReasonDeletionCount     = "compacting datafile because it contains many deletions";
+static char const* ReasonNothingToCompact  = "checked datafiles, but no compaction opportunity found";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum size of dead data (in bytes) in a datafile that will make
