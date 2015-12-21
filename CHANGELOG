@@ -7,6 +7,12 @@ v3.0.0 (XXXX-XX-XX)
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* fixes for AQL optimizer and traversal
+
+
+v2.8.0-beta2 (2015-12-16)
+-------------------------
+
 * added AQL query optimizer rule "sort-in-values"
 
   This rule pre-sorts the right-hand side operand of the `IN` and `NOT IN`
