@@ -31,8 +31,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 
-#include <iostream>
-
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
     
