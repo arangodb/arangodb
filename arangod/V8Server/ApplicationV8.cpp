@@ -698,8 +698,8 @@ void ApplicationV8::collectGarbage () {
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
         TRI_GET_GLOBALS();
-        hasActiveExternals = v8g->hasActiveExternals();
         TRI_RunGarbageCollectionV8(isolate, 1.0);
+        hasActiveExternals = v8g->hasActiveExternals();
 
         localContext->Exit();
       }
