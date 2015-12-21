@@ -188,10 +188,6 @@ void triagens::aql::sortInValuesRule (Optimizer* opt,
     modified = true;
   }
 
-  if (modified) {
-    plan->findVarUsage();
-  }
-  
   opt->addPlan(plan, rule, modified);
 }
 
@@ -332,7 +328,6 @@ void triagens::aql::removeRedundantSortsRule (Optimizer* opt,
 
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, ! toUnlink.empty());
@@ -401,7 +396,6 @@ void triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);
@@ -506,9 +500,9 @@ struct CollectVariableFinder {
 ////////////////////////////////////////////////////////////////////////////////
 
 #if 0    
-int triagens::aql::specializeCollectVariables (Optimizer* opt, 
-                                               ExecutionPlan* plan, 
-                                               Optimizer::Rule const* rule) {
+void triagens::aql::specializeCollectVariables (Optimizer* opt, 
+                                                ExecutionPlan* plan, 
+                                                Optimizer::Rule const* rule) {
   bool modified = false;
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::AGGREGATE, true);
   
@@ -604,13 +598,7 @@ int triagens::aql::specializeCollectVariables (Optimizer* opt,
     }
   }
   
-  if (modified) {
-    plan->findVarUsage();
-  }
- 
   opt->addPlan(plan, rule, modified);
-
-  return TRI_ERROR_NO_ERROR;
 }
 #endif
 
@@ -644,10 +632,6 @@ void triagens::aql::removeCollectIntoRule (Optimizer* opt,
     // outVariable is not used later. remove it!
     collectNode->clearOutVariable();
     modified = true;
-  }
-  
-  if (modified) {
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);
@@ -901,13 +885,7 @@ void triagens::aql::propagateConstantAttributesRule (Optimizer* opt,
   PropagateConstantAttributesHelper helper;
   helper.propagateConstants(plan);
 
-  bool const modified = helper.modified();
-
-  if (modified) {
-    plan->findVarUsage();
-  }
-  
-  opt->addPlan(plan, rule, modified);
+  opt->addPlan(plan, rule, helper.modified());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1038,10 +1016,6 @@ void triagens::aql::removeSortRandRule (Optimizer* opt,
     }
   }
   
-  if (modified) {
-    plan->findVarUsage();
-  }
-  
   opt->addPlan(plan, rule, modified);
 }
 
@@ -1109,10 +1083,6 @@ void triagens::aql::moveCalculationsUpRule (Optimizer* opt,
       modified = true;
     }
 
-  }
-  
-  if (modified) {
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);
@@ -1205,10 +1175,6 @@ void triagens::aql::moveCalculationsDownRule (Optimizer* opt,
       modified = true;
     }
 
-  }
-  
-  if (modified) {
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);
@@ -1318,7 +1284,6 @@ void triagens::aql::fuseCalculationsRule (Optimizer* opt,
         
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, ! toUnlink.empty());
@@ -1420,10 +1385,6 @@ void triagens::aql::specializeCollectRule (Optimizer* opt,
     }
   }
   
-  if (modified) {
-    plan->findVarUsage();
-  }
-
   opt->addPlan(plan, rule, modified);
 }
 
@@ -1492,10 +1453,6 @@ void triagens::aql::splitFiltersRule (Optimizer* opt,
     if (modified) {
       plan->unlinkNode(n, false);
     }
-  }
-  
-  if (modified) {
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);
@@ -1576,10 +1533,6 @@ void triagens::aql::moveFiltersUpRule (Optimizer* opt,
       modified = true;
     }
 
-  }
-  
-  if (modified) {
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);
@@ -1791,7 +1744,6 @@ void triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
     // finally replace the variables
     RedundantCalculationsReplacer finder(replacements);
     plan->root()->walk(&finder);
-    plan->findVarUsage();
 
     opt->addPlan(plan, rule, true);
   }
@@ -1854,7 +1806,6 @@ void triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
 
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    plan->findVarUsage();
   }
 
   opt->addPlan(plan, rule, ! toUnlink.empty());
@@ -1896,7 +1847,6 @@ void triagens::aql::useIndexesRule (Optimizer* opt,
       it.second = nullptr;
     }
     opt->addPlan(plan, rule, true);
-    plan->findVarUsage();
   }
   else {
     opt->addPlan(plan, rule, hasEmptyResult);
@@ -2173,11 +2123,7 @@ void triagens::aql::useIndexForSortRule (Optimizer* opt,
     }
   }
     
-  if (modified) {
-    plan->findVarUsage();
-  }
-        
-  opt->addPlan(plan, rule, modified, modified ? Optimizer::RuleLevel::pass5 : 0);
+  opt->addPlan(plan, rule, modified);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2278,7 +2224,6 @@ void triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
 
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);
@@ -2570,10 +2515,6 @@ void triagens::aql::scatterInClusterRule (Optimizer* opt,
     }
   }
       
-  if (wasModified) {
-    plan->findVarUsage();
-  }
-   
   opt->addPlan(plan, rule, wasModified);
 }
 
@@ -2773,8 +2714,6 @@ void triagens::aql::distributeInClusterRule (Optimizer* opt,
       plan->root(gatherNode, true);
     }
     wasModified = true;
-  
-    plan->findVarUsage();
   }
    
   opt->addPlan(plan, rule, wasModified);
@@ -2881,10 +2820,6 @@ void triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
     }
   }
   
-  if (modified) {
-    plan->findVarUsage();
-  }
-  
   opt->addPlan(plan, rule, modified);
 }
 
@@ -2971,10 +2906,6 @@ void triagens::aql::distributeSortToClusterRule (Optimizer* opt,
     }
   }
   
-  if (modified) {
-    plan->findVarUsage();
-  }
-  
   opt->addPlan(plan, rule, modified);
 }
 
@@ -3037,7 +2968,6 @@ void triagens::aql::removeUnnecessaryRemoteScatterRule (Optimizer* opt,
 
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, ! toUnlink.empty());
@@ -3243,7 +3173,6 @@ void triagens::aql::undistributeRemoveAfterEnumCollRule (Optimizer* opt,
   bool modified = false;
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
-    plan->findVarUsage();
     modified = true;
   }
   
@@ -3510,10 +3439,6 @@ void triagens::aql::replaceOrWithInRule (Optimizer* opt,
     }
   }
  
-  if (modified) {
-    plan->findVarUsage();
-  }
-
   opt->addPlan(plan, rule, modified);
 }
 
@@ -3696,10 +3621,6 @@ void triagens::aql::removeRedundantOrRule (Optimizer* opt,
     }
   }
  
-  if (modified) {
-    plan->findVarUsage();
-  }
-
   opt->addPlan(plan, rule, modified);
 }
 
@@ -3738,10 +3659,6 @@ void triagens::aql::removeDataModificationOutVariablesRule (Optimizer* opt,
       node->clearOutVariableNew();
       modified = true;
     }
-  }
-  
-  if (modified) {
-    plan->findVarUsage();
   }
   
   opt->addPlan(plan, rule, modified);

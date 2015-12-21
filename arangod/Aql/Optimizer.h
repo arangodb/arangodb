@@ -149,28 +149,24 @@ namespace triagens {
         // filters that are always true will be removed entirely
         // filters that are always false will be replaced with a NoResults node
         pass5                                         = 700,
-        removeUnnecessaryFiltersRule_pass5            = 710,
 
         // remove redundant sort blocks
-        removeRedundantSortsRule_pass5                = 720,
+        removeRedundantSortsRule_pass5                = 710,
 
         // remove SORT RAND() if appropriate
-        removeSortRandRule_pass5                      = 730,
+        removeSortRandRule_pass5                      = 720,
 
         // specialize the variables used in a COLLECT INTO
-        specializeCollectVariables_pass5              = 735,
-
-        // remove calculations that are never necessary
-        removeUnnecessaryCalculationsRule_pass5       = 740,
+        specializeCollectVariables_pass5              = 730,
 
         // remove INTO for COLLECT if appropriate
-        removeCollectIntoRule_pass5                   = 750,
+        removeCollectIntoRule_pass5                   = 740,
 
         // propagate constant attributes in FILTERs
-        propagateConstantAttributesRule_pass5         = 760,
+        propagateConstantAttributesRule_pass5         = 750,
         
         // remove unused out variables for data-modification queries
-        removeDataModificationOutVariablesRule_pass5  = 770,
+        removeDataModificationOutVariablesRule_pass5  = 760,
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
@@ -188,12 +184,17 @@ namespace triagens {
         
         // try to remove filters covered by index ranges
         removeFiltersCoveredByIndexRule_pass6         = 840,
+
+        removeUnnecessaryFiltersRule_pass6            = 850,
   
         // try to find sort blocks which are superseeded by indexes
-        useIndexForSortRule_pass6                     = 850,
+        useIndexForSortRule_pass6                     = 860,
+
+        // remove calculations that are never necessary
+        removeUnnecessaryCalculationsRule_pass6       = 870,
 
         // merge filters into graph traversals
-        mergeFilterIntoTraversalRule_pass6            = 860,
+        mergeFilterIntoTraversalRule_pass6            = 880,
 
 //////////////////////////////////////////////////////////////////////////////
 /// Pass 9: push down calculations beyond FILTERs and LIMITs
