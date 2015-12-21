@@ -1,9 +1,9 @@
 v2.7.4 (XXXX-XX-XX)
 -------------------
 
-* randomly shuffle available V8 contexts when picking one for an HTTP or scheduler
-  task. This distributes requests more evenly across contexts so they can eventually
-  be garbage-collected.
+* slightly adjusted V8 garbage collection strategy so that collection eventually
+  happens in all contexts that hold V8 external references to documents and
+  collections.
 
 * added the following attributes to the result of `collection.figures()` and the
   corresponding HTTP API at `PUT /_api/collection/<name>/figures`:
