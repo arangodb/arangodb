@@ -158,7 +158,12 @@ namespace triagens {
       void setInternals (triagens::arango::Index*, bool);
 
       bool isSorted () const {
-        return getInternals()->isSorted();
+        try {
+          return getInternals()->isSorted();
+        }
+        catch (...) {
+          return type == triagens::arango::Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
+        }
       }
 
 ////////////////////////////////////////////////////////////////////////////////
