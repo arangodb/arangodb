@@ -457,8 +457,12 @@ var exportApp = function (app) {
 /// @brief computes the exports of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-var invalidateExportCache = function () {
-  exportCache = {};
+var invalidateExportCache = function (dbname) {
+  if (dbname) {
+    delete exportCache[dbname];
+  } else {
+    exportCache = {};
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

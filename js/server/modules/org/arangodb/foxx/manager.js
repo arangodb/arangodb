@@ -256,18 +256,18 @@ function lookupApp(mount) {
 
 function refillCaches(dbname) {
   var cache = appCache[dbname] = {};
+  invalidateExportCache(dbname);
 
   var cursor = utils.getStorage().all();
   var routes = [];
 
   while (cursor.hasNext()) {
-    var config = _.clone(cursor.next());
-    var app = new FoxxService(config);
+    var config = cursor.next();
+    var app = new FoxxService(_.clone(config));
     var mount = app.mount;
     cache[mount] = app;
     routes.push(mount);
   }
-
   return routes;
 }
 
