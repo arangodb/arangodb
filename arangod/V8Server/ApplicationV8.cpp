@@ -441,6 +441,9 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
 
     LOG_TRACE("found unused V8 context");
     TRI_ASSERT(! _freeContexts.empty());
+   
+    // randomly shuffle free contexts so that different get contexts get used (and garbage collected) 
+    std::random_shuffle(_freeContexts.begin(), _freeContexts.end());
 
     context = _freeContexts.back();
     TRI_ASSERT(context != nullptr);
