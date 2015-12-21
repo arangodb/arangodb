@@ -403,7 +403,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
     // should not fail because we reserved enough space beforehand
     _busyContexts.emplace(context);
   }
-  
+
   // when we get here, we should have a context and an isolate  
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(isolate != nullptr);
@@ -586,7 +586,7 @@ void ApplicationV8::collectGarbage () {
 
   while (_stopping == 0) {
     V8Context* context = nullptr;
-
+    bool wasDirty = false;
     {
       bool gotSignal = false;
       CONDITION_LOCKER(guard, _contextCondition);
@@ -606,9 +606,6 @@ void ApplicationV8::collectGarbage () {
 
       if (preferFree && ! _freeContexts.empty()) {
         context = pickFreeContextForGc();
-//if (context != nullptr) {
-//LOG_WARNING("cleaning free context %d", (int) context->_id);
-//}
       }
 
       if (context == nullptr &&
@@ -620,6 +617,9 @@ void ApplicationV8::collectGarbage () {
           _freeContexts.emplace_back(context);
           context = nullptr;
         }
+        else {
+          wasDirty = true;
+        }
       }
 
       if (context == nullptr && ! preferFree && ! gotSignal && ! _freeContexts.empty()) {
@@ -627,9 +627,6 @@ void ApplicationV8::collectGarbage () {
         // spend on running the GC pro-actively
         // We'll pick one of the free contexts and clean it up
         context = pickFreeContextForGc();
-//if (context != nullptr) {
-//LOG_WARNING("cleaning free context2 %d", (int) context->_id);
-//}
       }
 
       // there is no context to clean up, probably they all have been cleaned up
@@ -643,7 +640,7 @@ void ApplicationV8::collectGarbage () {
     gc->updateGcStamp(lastGc);
 
     if (context != nullptr) {
-//LOG_WARNING("will collect now: %p", context);
+      //LOG_TRACE("will collect now: %d, numExecutions: %d, hasActive: %d", (int) context->_id, (int) context->_numExecutions, (int) context->_hasActiveExternals);
       LOG_TRACE("collecting V8 garbage");
       bool hasActiveExternals = false;
       auto isolate = context->isolate;
@@ -662,8 +659,8 @@ void ApplicationV8::collectGarbage () {
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
         TRI_GET_GLOBALS();
-        hasActiveExternals = v8g->hasActiveExternals();
         TRI_RunGarbageCollectionV8(isolate, 1.0);
+        hasActiveExternals = v8g->hasActiveExternals();
 
         localContext->Exit();
       }
@@ -680,13 +677,17 @@ void ApplicationV8::collectGarbage () {
       {
         CONDITION_LOCKER(guard, _contextCondition);
 
-        _freeContexts.emplace_back(context);
+        if (wasDirty) {
+          _freeContexts.emplace_back(context);
+        }
+        else {
+          _freeContexts.insert(_freeContexts.begin(), context);
+        }
         guard.broadcast();
       }
     }
     else {
       useReducedWait = false; // sanity
-//LOG_WARNING("no collecting...");
     }
   }
 
@@ -1155,9 +1156,9 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
   int pickedContextNr = -1; // index of context with lowest GC stamp, -1 means "none"
 
-  for (int i = 0; i < n; ++i) {
+  for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the context
-    if (_freeContexts[i]->_numExecutions == 0 && ! _freeContexts[i]->_hasActiveExternals) {
+    if (_freeContexts[i]->_numExecutions < 10 && ! _freeContexts[i]->_hasActiveExternals) {
       continue;
     }
 
@@ -1219,6 +1220,7 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
   TRI_ASSERT(context->_locker == nullptr);
 
   // enter a new isolate
+  bool hasActiveExternals = false;
   context->_id = i;
   context->isolate = isolate;
   TRI_ASSERT(context->_locker == nullptr);
@@ -1309,6 +1311,8 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
           break;
       }
     }
+    TRI_GET_GLOBALS();
+    hasActiveExternals = v8g->hasActiveExternals();
 
     // and return from the context
     localContext->Exit();
@@ -1323,7 +1327,7 @@ bool ApplicationV8::prepareV8Instance (size_t i, bool useActions) {
 
   // initialize garbage collection for context
   context->_numExecutions      = 0;
-  context->_hasActiveExternals = true;
+  context->_hasActiveExternals = hasActiveExternals;
   context->_lastGcStamp        = TRI_microtime() + randomWait;
 
   LOG_TRACE("initialized V8 context #%d", (int) i);
