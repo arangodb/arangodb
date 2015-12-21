@@ -21,10 +21,6 @@ v2.8.0 (XXXX-XX-XX)
   This allows specifying the type of the collection to be created when 
   `--create-collection` is set to `true`. 
 
-* randomly shuffle available V8 contexts when picking one for an HTTP or scheduler
-  task. This distributes requests more evenly across contexts so they can eventually
-  be garbage-collected.
-
 
 v2.8.0-beta2 (2015-12-16)
 -------------------------
