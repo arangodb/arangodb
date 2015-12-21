@@ -42,7 +42,6 @@ const util = require('util');
 const semver = require('semver');
 const utils = require('org/arangodb/foxx/manager-utils');
 const store = require('org/arangodb/foxx/store');
-const deprecated = require('org/arangodb/deprecated');
 const ArangoApp = require('org/arangodb/foxx/arangoApp').ArangoApp;
 const TemplateEngine = require('org/arangodb/foxx/templateEngine').Engine;
 const routeApp = require('org/arangodb/foxx/routing').routeApp;
@@ -359,28 +358,13 @@ function checkManifest(filename, manifest) {
   }
 
   if (manifest.setup && manifest.setup !== manifest.scripts.setup) {
-    deprecated('2.8', (
-      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "setup",`
-      + ` use "scripts.setup" instead.`
-    ));
     manifest.scripts.setup = manifest.scripts.setup || manifest.setup;
     delete manifest.setup;
   }
 
   if (manifest.teardown && manifest.teardown !== manifest.scripts.teardown) {
-    deprecated('2.8', (
-      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "teardown",`
-      + ` use "scripts.teardown" instead.`
-    ));
     manifest.scripts.teardown = manifest.scripts.teardown || manifest.teardown;
     delete manifest.teardown;
-  }
-
-  if (manifest.assets) {
-    deprecated('2.8', (
-      `Manifest "${filename}" for app "${manifest.name}" contains deprecated attribute "assets",`
-      + ` use "files" and an external build tool instead.`
-    ));
   }
 
   Object.keys(manifest).forEach(function (key) {

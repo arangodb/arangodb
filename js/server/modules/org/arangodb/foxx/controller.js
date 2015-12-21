@@ -340,7 +340,6 @@ class Controller {
   }
 
   addInjector(name, factory) {
-    deprecated('2.9', '"addInjector" is deprecated, use regular variables instead');
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {
@@ -566,7 +565,6 @@ class Controller {
   }
 
   del(route, callback) {
-    deprecated('2.9', '"del" is deprecated, use "delete" instead');
     return this.delete(route, callback);
   }
 

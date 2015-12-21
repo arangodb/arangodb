@@ -4,6 +4,8 @@ v2.7.5 (XXXX-XX-XX)
 * Foxx export cache should no longer break if a broken app is loaded in the
   web admin interface.
 
+* Foxx: removed some incorrect deprecation warnings.
+
 
 v2.7.4 (2015-12-21)
 -------------------
