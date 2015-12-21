@@ -77,6 +77,7 @@ namespace triagens {
           TYPE_UNKNOWN = 0,
           TYPE_RELOAD_ROUTING,
           TYPE_RELOAD_AQL,
+          TYPE_COLLECT_GARBAGE,
           TYPE_BOOTSTRAP_COORDINATOR,
           TYPE_WARMUP_EXPORTS
         };
@@ -91,6 +92,9 @@ namespace triagens {
           }
           if (type == "reloadAql") {
             return TYPE_RELOAD_AQL;
+          }
+          if (type == "collectGarbage") {
+            return TYPE_COLLECT_GARBAGE;
           }
           if (type == "bootstrapCoordinator") {
             return TYPE_BOOTSTRAP_COORDINATOR;
@@ -112,6 +116,8 @@ namespace triagens {
               return "reloadRouting";
             case TYPE_RELOAD_AQL:
               return "reloadAql";
+            case TYPE_COLLECT_GARBAGE:
+              return "collectGarbage";
             case TYPE_BOOTSTRAP_COORDINATOR:
               return "bootstrapCoordinator";
             case TYPE_WARMUP_EXPORTS:
@@ -132,6 +138,8 @@ namespace triagens {
               return CodeReloadRouting;
             case TYPE_RELOAD_AQL:
               return CodeReloadAql;
+            case TYPE_COLLECT_GARBAGE:
+              return CodeCollectGarbage;
             case TYPE_BOOTSTRAP_COORDINATOR:
               return CodeBootstrapCoordinator;
             case TYPE_WARMUP_EXPORTS:
@@ -148,6 +156,7 @@ namespace triagens {
 
         static char const* CodeReloadRouting;
         static char const* CodeReloadAql;
+        static char const* CodeCollectGarbage;
         static char const* CodeBootstrapCoordinator;
         static char const* CodeWarmupExports;
     };

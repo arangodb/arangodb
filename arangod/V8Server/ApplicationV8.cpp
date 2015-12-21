@@ -91,6 +91,13 @@ char const* GlobalContextMethods::CodeReloadAql
   = "try { require(\"org/arangodb/aql\").reload(); } catch (err) { }";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief collect garbage
+////////////////////////////////////////////////////////////////////////////////
+
+char const* GlobalContextMethods::CodeCollectGarbage
+  = "require(\"internal\").wait(0.01, true);";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief bootstrap coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -387,6 +394,8 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
     LOG_TRACE("found unused V8 context");
     TRI_ASSERT(! _freeContexts.empty());
 
+    std::random_shuffle(_freeContexts.begin(), _freeContexts.end());
+
     context = _freeContexts.back();
     TRI_ASSERT(context != nullptr);
 
@@ -465,7 +474,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     MUTEX_LOCKER(context->_globalMethodsLock);
     runGlobal = ! context->_globalMethods.empty();
   }
-
+  
   // exit the context
   {
     v8::HandleScope scope(isolate);
@@ -501,8 +510,8 @@ void ApplicationV8::exitContext (V8Context* context) {
   v8g->_allowUseDatabase   = false;
 
   LOG_TRACE("returned dirty V8 context");
- 
 
+ 
   // default is false
   bool performGarbageCollection = false;
 

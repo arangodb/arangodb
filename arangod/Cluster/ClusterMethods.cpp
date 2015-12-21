@@ -56,6 +56,23 @@ namespace triagens {
 
 template<typename T>
 static T ExtractFigure (TRI_json_t const* json,
+                        char const* name) {
+
+  TRI_json_t const* value = TRI_LookupObjectJson(json, name);
+
+  if (! TRI_IsNumberJson(value)) {
+    return static_cast<T>(0);
+  }
+
+  return static_cast<T>(value->_value._number);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts a numeric value from an hierarchical JSON
+////////////////////////////////////////////////////////////////////////////////
+
+template<typename T>
+static T ExtractFigure (TRI_json_t const* json,
                         char const* group,
                         char const* name) {
 
@@ -65,13 +82,7 @@ static T ExtractFigure (TRI_json_t const* json,
     return static_cast<T>(0);
   }
 
-  TRI_json_t const* value = TRI_LookupObjectJson(g, name);
-
-  if (! TRI_IsNumberJson(value)) {
-    return static_cast<T>(0);
-  }
-
-  return static_cast<T>(value->_value._number);
+  return ExtractFigure<T>(g, name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -442,11 +453,13 @@ int figuresOnCoordinator (string const& dbname,
             result->_journalfileSize      += ExtractFigure<int64_t>(figures, "journals", "fileSize");
             result->_compactorfileSize    += ExtractFigure<int64_t>(figures, "compactors", "fileSize");
             result->_shapefileSize        += ExtractFigure<int64_t>(figures, "shapefiles", "fileSize");
+            
+            result->_numberDocumentDitches+= ExtractFigure<uint64_t>(figures, "documentReferences");
           }
           nrok++;
         }
 
-        if (json != 0) {
+        if (json != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
       }

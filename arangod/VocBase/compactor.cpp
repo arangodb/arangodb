@@ -48,6 +48,14 @@
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
+static char const* ReasonNoDatafiles       = "skipped compaction because collection has no datafiles";
+static char const* ReasonCompactionBlocked = "skipped compaction because existing compactor file is in the way and waits to be processed";
+static char const* ReasonDatafileSmall     = "compacting datafile because it's small and will be merged with next";
+static char const* ReasonOnlyDeletions     = "compacting datafile because it contains only deletion markers";
+static char const* ReasonDeadSize          = "compacting datafile because it contains much dead object space";
+static char const* ReasonDeadSizeShare     = "compacting datafile because it contains high share of dead objects";
+static char const* ReasonNothingToCompact  = "checked datafiles, but no compaction opportunity found";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum size of dead data (in bytes) in a datafile that will make
 /// the datafile eligible for compaction at all.
@@ -980,6 +988,12 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
     // additionally, if there are no datafiles, then there's no need to compact
     TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
+    if (n == 0) {
+      document->setCompactionStatus(ReasonNoDatafiles);
+    }
+    else {
+      document->setCompactionStatus(ReasonCompactionBlocked);
+    }
     return false;
   }
 
@@ -997,6 +1011,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(compaction_info_t));
   int64_t numAlive = 0;
   bool compactNext = false;
+  char const* reason = nullptr;
 
   for (size_t i = 0;  i < n;  ++i) {
     uint64_t totalSize = 0;
@@ -1023,6 +1038,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
       compactNext = true;
       LOG_TRACE("will compact datafile %llu because it is small",
                 (unsigned long long) df->_fid);
+      reason = ReasonDatafileSmall;
     }
     else if (numAlive == 0 && dfi->_numberAlive == 0 && dfi->_numberDeletion > 0) {
       // compact first datafile(s) already if they have some deletions
@@ -1030,6 +1046,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
       compactNext = true;
       LOG_TRACE("will compact datafile %llu because it does not have alive or deletion markers",
                 (unsigned long long) df->_fid);
+      reason = ReasonOnlyDeletions;
     }
     else {
       // in all other cases, only check the number and size of "dead" objects
@@ -1039,6 +1056,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
         LOG_TRACE("will compact datafile %llu because it contains more than %llu bytes of dead objects",
                   (unsigned long long) df->_fid,
                   (unsigned long long) COMPACTOR_DEAD_SIZE_THRESHOLD);
+        reason = ReasonDeadSize;
       }
       else if (dfi->_sizeDead > 0) {
         // the size of dead objects is above some threshold
@@ -1051,6 +1069,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
           LOG_TRACE("will compact datafile %llu because it contains more than %f %% dead objects",
                     (unsigned long long) df->_fid,
                     (double) COMPACTOR_DEAD_SIZE_SHARE * 100.0);
+          reason = ReasonDeadSizeShare;
         }
       }
     }
@@ -1112,11 +1131,15 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   if (TRI_LengthVector(&vector) == 0) {
     // cleanup local variables
     TRI_DestroyVector(&vector);
+    document->setCompactionStatus(ReasonNothingToCompact);
     return false;
   }
  
   // handle datafiles with dead objects
   TRI_ASSERT(TRI_LengthVector(&vector) >= 1);
+  if (reason != nullptr) {
+    document->setCompactionStatus(reason);
+  }
 
   CompactifyDatafiles(document, &vector);
 

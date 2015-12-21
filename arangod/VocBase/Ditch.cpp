@@ -335,6 +335,7 @@ Ditch* Ditches::process (bool& popped,
       type == Ditch::TRI_DITCH_REPLICATION ||
       type == Ditch::TRI_DITCH_COMPACTION ||
       _numDocumentDitches > 0) {
+
     // did not find anything at the head of the barrier list or found an element marker
     // this means we must exit and cannot throw away datafiles and can unload collections
     return nullptr;
@@ -363,6 +364,31 @@ Ditch* Ditches::process (bool& popped,
   popped = true;
 
   return ditch;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name of the ditch at the head of the active ditches
+////////////////////////////////////////////////////////////////////////////////
+
+char const* Ditches::head () {
+  MUTEX_LOCKER(_lock);
+  
+  auto ditch = _begin;
+
+  if (ditch == nullptr) {
+    return nullptr;
+  }
+  return ditch->typeName();
+}
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of document ditches active
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t Ditches::numDocumentDitches () {
+  MUTEX_LOCKER(_lock);
+
+  return _numDocumentDitches;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
