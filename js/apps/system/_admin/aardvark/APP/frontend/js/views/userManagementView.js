@@ -13,21 +13,22 @@
     template: templateEngine.createTemplate("userManagementView.ejs"),
 
     events: {
-      "click #createUser"                   : "createUser",
-      "click #submitCreateUser"             : "submitCreateUser",
+      "click #createUser"                       : "createUser",
+      "click #submitCreateUser"                 : "submitCreateUser",
 //      "click #deleteUser"                   : "removeUser",
 //      "click #submitDeleteUser"             : "submitDeleteUser",
-      "click .editUser"                     : "editUser",
-      "click .icon"                         : "editUser",
-      "click #submitEditUser"               : "submitEditUser",
-      "click #userManagementToggle"         : "toggleView",
-      "keyup #userManagementSearchInput"    : "search",
-      "click #userManagementSearchSubmit"   : "search",
-      "click #callEditUserPassword"         : "editUserPassword",
-      "click #submitEditUserPassword"       : "submitEditUserPassword",
-      "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile",
-      "click .css-label"                    : "checkBoxes",
-      "change #userSortDesc"                : "sorting"
+//      "click .editUser"                     : "editUser",
+//      "click .icon"                         : "editUser",
+      "click #userManagementThumbnailsIn .tile" : "editUser",
+      "click #submitEditUser"                   : "submitEditUser",
+      "click #userManagementToggle"             : "toggleView",
+      "keyup #userManagementSearchInput"        : "search",
+      "click #userManagementSearchSubmit"       : "search",
+      "click #callEditUserPassword"             : "editUserPassword",
+      "click #submitEditUserPassword"           : "submitEditUserPassword",
+      "click #submitEditCurrentUserProfile"     : "submitEditCurrentUserProfile",
+      "click .css-label"                        : "checkBoxes",
+      "change #userSortDesc"                    : "sorting"
 
     },
 
@@ -202,6 +203,11 @@
     },
 
     editUser : function(e) {
+
+      if ($(e.currentTarget).hasClass('tile')) {
+        e.currentTarget = $(e.currentTarget).find('img');
+      }
+
       this.collection.fetch();
       var username = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
       if (username === '') {
