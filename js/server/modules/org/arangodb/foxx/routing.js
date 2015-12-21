@@ -401,34 +401,6 @@ var validateRoute = function(route) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Checks if an apps exports are already cached
-////////////////////////////////////////////////////////////////////////////////
-
-var isExported = function(mount) {
-  var dbname = arangodb.db._name();
-  if (!exportCache.hasOwnProperty(dbname)) {
-    exportCache[dbname] = {};
-    return false;
-  }
-  if (!exportCache[dbname].hasOwnProperty(mount)) {
-    return false;
-  }
-  return true;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Checks if an apps exports are already cached
-////////////////////////////////////////////////////////////////////////////////
-
-var setIsExported = function(mount) {
-  var dbname = arangodb.db._name();
-  if (!exportCache.hasOwnProperty(dbname)) {
-    exportCache[dbname] = {};
-  }
-  exportCache[dbname][mount] = true;
-};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -444,7 +416,7 @@ var exportApp = function (app) {
       errorMessage: errors.ERROR_APP_NEEDS_CONFIGURATION.message
     });
   }
-  if (!app._isDevelopment && isExported(app._mount)) {
+  if (!app._isDevelopment && app._isLoaded) {
     return app._exports;
   }
 
@@ -462,17 +434,9 @@ var exportApp = function (app) {
       });
     }
   }
-  setIsExported(app._mount);
+  app._isLoaded = true;
   return app._exports;
 
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the exports of an app
-////////////////////////////////////////////////////////////////////////////////
-
-var invalidateExportCache = function () {
-  exportCache = {};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -704,7 +668,6 @@ var mountController = function (app, routes, mountPoint, file) {
 
 exports.exportApp = exportApp;
 exports.routeApp = routeApp;
-exports.invalidateExportCache = invalidateExportCache;
 exports.__test_transformControllerToRoute = transformControllerToRoute;
 
 // -----------------------------------------------------------------------------

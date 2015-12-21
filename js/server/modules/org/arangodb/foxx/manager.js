@@ -222,8 +222,12 @@ function reloadRouting() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resetCache() {
+  _.each(appCache, function (cache) {
+    _.each(cache, function (app) {
+      app._isLoaded = false;
+    });
+  });
   appCache = {};
-  invalidateExportCache();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,18 +259,23 @@ function lookupApp(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function refillCaches(dbname) {
-  var cache = appCache[dbname] = {};
+  var cache = {};
+  _.each(appCache[dbname], function (app) {
+    app._isLoaded = false;
+  });
 
   var cursor = utils.getStorage().all();
   var routes = [];
 
   while (cursor.hasNext()) {
-    var config = _.clone(cursor.next());
-    var app = new ArangoApp(config);
+    var config = cursor.next();
+    var app = new ArangoApp(_.clone(config));
     var mount = app._mount;
     cache[mount] = app;
     routes.push(mount);
   }
+
+  appCache[dbname] = cache;
 
   return routes;
 }

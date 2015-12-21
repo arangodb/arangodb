@@ -177,6 +177,7 @@ function ArangoApp(config) {
   this._isSystem = config.isSystem || false;
   this._isDevelopment = config.isDevelopment || false;
   this._exports = {};
+  this._isLoaded = false;
   this._collectionPrefix = this._mount.substr(1).replace(/-/g, "_").replace(/\//g, "_") + "_";
 
   // Apply the default configuration and ignore all missing options
