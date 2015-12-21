@@ -3,6 +3,11 @@ v2.8.0 (XXXX-XX-XX)
 
 * fixes for AQL optimizer and traversal
 
+* added `--create-collection-type` option to arangoimp
+ 
+  This allows specifying the type of the collection to be created when 
+  `--create-collection` is set to `true`. 
+
 
 v2.8.0-beta2 (2015-12-16)
 -------------------------
