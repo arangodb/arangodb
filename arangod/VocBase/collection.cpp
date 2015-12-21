@@ -1172,7 +1172,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
       }
     }
     else {
-      _isSystem = (*_name == '_');
+      _isSystem = false;
     }
   
     if (options.hasKey("journalSize")) {
