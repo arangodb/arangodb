@@ -1687,27 +1687,30 @@ void RestReplicationHandler::handleCommandClusterInventory () {
         }
         else {
           VPackBuilder resultBuilder;
-          resultBuilder.openObject();
-          resultBuilder.add("collections", VPackValue(VPackValueType::Array));
-          for (auto const& it : result._values) {
-            // Only temporary until AgencyResult has _velocy
-            std::shared_ptr<VPackBuilder> parsedSubResult = JsonHelper::toVelocyPack(it.second._json);
-            VPackSlice const subResultSlice = parsedSubResult->slice();
-            if (subResultSlice.isObject()) {
-              if (includeSystem ||
-                  ! triagens::basics::VelocyPackHelper::getBooleanValue(subResultSlice, "isSystem", true)) {
-                resultBuilder.openObject();
-                resultBuilder.add("indexes", subResultSlice.get("indexes"));
-                resultBuilder.add("parameters", subResultSlice.get("parameters"));
-                resultBuilder.close();
+          {
+            VPackObjectBuilder b1(&resultBuilder);
+            resultBuilder.add(VPackValue("collections"));
+            {
+              VPackArrayBuilder b2(&resultBuilder);
+              for (auto const& it : result._values) {
+                // Only temporary until AgencyResult has _velocy
+                std::shared_ptr<VPackBuilder> parsedSubResult = JsonHelper::toVelocyPack(it.second._json);
+                VPackSlice const subResultSlice = parsedSubResult->slice();
+                if (subResultSlice.isObject()) {
+                  if (includeSystem ||
+                      ! triagens::basics::VelocyPackHelper::getBooleanValue(subResultSlice, "isSystem", true)) {
+                    VPackObjectBuilder b3(&resultBuilder);
+                    resultBuilder.add("indexes", subResultSlice.get("indexes"));
+                    resultBuilder.add("parameters", subResultSlice);
+                  }
+                }
               }
             }
+            TRI_voc_tick_t tick = TRI_CurrentTickServer();
+            char* tickString = TRI_StringUInt64(tick);
+            resultBuilder.add("tick", VPackValue(tickString));
+            resultBuilder.add("state", VPackValue("unused"));
           }
-          TRI_voc_tick_t tick = TRI_CurrentTickServer();
-          char* tickString = TRI_StringUInt64(tick);
-          resultBuilder.add("tick", VPackValue(tickString));
-          resultBuilder.add("state", VPackValue("unused"));
-          resultBuilder.close();
           generateResult(HttpResponse::OK, resultBuilder.slice());
         }
       }
