@@ -394,8 +394,6 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_t* vocbase,
     LOG_TRACE("found unused V8 context");
     TRI_ASSERT(! _freeContexts.empty());
 
-    std::random_shuffle(_freeContexts.begin(), _freeContexts.end());
-
     context = _freeContexts.back();
     TRI_ASSERT(context != nullptr);
 
@@ -578,6 +576,7 @@ void ApplicationV8::collectGarbage () {
   // to false again once all contexts have been cleaned up and there is nothing
   // more to do
   bool useReducedWait = false;
+  bool preferFree = false;
 
   // the time we'll wait for a signal
   uint64_t const regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
@@ -603,25 +602,40 @@ void ApplicationV8::collectGarbage () {
         useReducedWait = ! gotSignal;
       }
 
-      if (! _dirtyContexts.empty()) {
+      preferFree = ! preferFree;
+
+      if (preferFree && ! _freeContexts.empty()) {
+        context = pickFreeContextForGc();
+//if (context != nullptr) {
+//LOG_WARNING("cleaning free context %d", (int) context->_id);
+//}
+      }
+
+      if (context == nullptr &&
+          ! _dirtyContexts.empty()) {
         context = _dirtyContexts.back();
         _dirtyContexts.pop_back();
-        useReducedWait = false;
+        if (context->_numExecutions < 10 && ! context->_hasActiveExternals) {
+          // don't collect this one
+          _freeContexts.emplace_back(context);
+          context = nullptr;
+        }
       }
-      else if (! gotSignal && ! _freeContexts.empty()) {
+
+      if (context == nullptr && ! preferFree && ! gotSignal && ! _freeContexts.empty()) {
         // we timed out waiting for a signal, so we have idle time that we can
         // spend on running the GC pro-actively
         // We'll pick one of the free contexts and clean it up
         context = pickFreeContextForGc();
+//if (context != nullptr) {
+//LOG_WARNING("cleaning free context2 %d", (int) context->_id);
+//}
+      }
 
-        // there is no context to clean up, probably they all have been cleaned up
-        // already. increase the wait time so we don't cycle too much in the GC loop
-        // and waste CPU unnecessary
-        useReducedWait = (context != nullptr);
-      }
-      else {
-        useReducedWait = false; 
-      }
+      // there is no context to clean up, probably they all have been cleaned up
+      // already. increase the wait time so we don't cycle too much in the GC loop
+      // and waste CPU unnecessary
+      useReducedWait = (context != nullptr);
     }
 
     // update last gc time
@@ -629,6 +643,7 @@ void ApplicationV8::collectGarbage () {
     gc->updateGcStamp(lastGc);
 
     if (context != nullptr) {
+//LOG_WARNING("will collect now: %p", context);
       LOG_TRACE("collecting V8 garbage");
       bool hasActiveExternals = false;
       auto isolate = context->isolate;
@@ -668,6 +683,10 @@ void ApplicationV8::collectGarbage () {
         _freeContexts.emplace_back(context);
         guard.broadcast();
       }
+    }
+    else {
+      useReducedWait = false; // sanity
+//LOG_WARNING("no collecting...");
     }
   }
 
