@@ -947,6 +947,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 
   string distributeShardsLike;
 
+  std::string cid = "";  // Could come from properties
   if (2 <= args.Length()) {
     if (! args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
@@ -1001,6 +1002,12 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
       distributeShardsLike
         = TRI_ObjectToString(p->Get(TRI_V8_ASCII_STRING("distributeShardsLike")));
     }
+    
+    auto idKey = TRI_V8_ASCII_STRING("id");
+    if (p->Has(idKey) &&
+        p->Get(idKey)->IsString()) {
+      cid = TRI_ObjectToString(p->Get(idKey));
+    }
   }
 
   if (numberOfShards == 0 || numberOfShards > 1000) {
@@ -1012,12 +1019,14 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   ClusterInfo* ci = ClusterInfo::instance();
-
+ 
   // fetch a unique id for the new collection plus one for each shard to create
   uint64_t const id = ci->uniqid(1 + numberOfShards);
-
-  // collection id is the first unique id we got
-  string const cid = StringUtils::itoa(id);
+  if (cid.empty()) {
+    // collection id is the first unique id we got
+    cid = StringUtils::itoa(id);
+    // if id was given, the first unique id is wasted, this does not matter
+  }
 
   vector<string> dbServers;
 
