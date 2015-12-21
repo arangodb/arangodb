@@ -148,7 +148,7 @@ TraversalNode::TraversalNode (ExecutionPlan* plan,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid start vertex. Must either be an _id string or an object with _id.");
       }
       _inVariable = nullptr;
-      _vertexId = start->getStringValue();
+      _vertexId = std::string(start->getStringValue(), start->getStringLength());;
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "invalid start vertex. Must either be an _id string or an object with _id.");

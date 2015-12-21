@@ -88,7 +88,7 @@ You have two options here, you can either use a managed graph (see [the graphs c
      - `edges`: an array of all edges on this path.
  - `IN` `MIN`..`MAX` `OUTBOUND` startVertex `GRAPH` graphName
    - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
-   - **startVertex**: one vertex where the traversal will originate from
+   - **startVertex**: one vertex where the traversal will originate from, this can be specified in the form of an id string or in the form of a document with the attribute `_id`. All other values will lead to a warning and an empty result. If the specified id does not exist, the result is empty as well and there is no warning.
    - **graphName**: the name of a managed graph. It's vertex and edge collections will be looked up.
    - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`.
    - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
