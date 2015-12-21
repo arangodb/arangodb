@@ -151,6 +151,7 @@ namespace triagens {
       _maxUploadSize(maxUploadSize),
       _separator(","),
       _quote("\""),
+      _createCollectionType("document"),
       _useBackslash(false),
       _createCollection(false),
       _overwrite(false),
@@ -446,6 +447,10 @@ namespace triagens {
       if (_firstChunk) {
         if (_createCollection) {
           part += "&createCollection=yes";
+        }
+
+        if (! _createCollectionType.empty()) {
+          part += "&createCollectionType=" + _createCollectionType;
         }
 
         if (_overwrite) {

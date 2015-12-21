@@ -126,6 +126,24 @@ HttpHandler::status_t RestImportHandler::execute () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the collection type from the request
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_col_type_e RestImportHandler::getCollectionType () { 
+  // extract the collection type from the request
+  bool found;
+  std::string const& collectionType = _request->value("createCollectionType", found);
+
+  if (found && 
+      ! collectionType.empty() &&
+      collectionType == "edge") {
+    return TRI_COL_TYPE_EDGE;
+  }
+
+  return TRI_COL_TYPE_DOCUMENT;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the "overwrite" value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -387,6 +405,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// If this parameter has a value of `true` or `yes`, then the collection is
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{createCollectionType,string,optional}
+/// If this parameter has a value of `document` or `edge`, it will determine
+/// the type of collection that is going to be created when the `createCollection`
+/// option is set to `true`. The default value is `document`.
 ///
 /// @RESTQUERYPARAM{overwrite,boolean,optional}
 /// If this parameter has a value of `true` or `yes`, then all data in the
@@ -739,7 +762,7 @@ bool RestImportHandler::createFromJson (string const& type) {
     return false;
   }
 
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+  if (! checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
 
@@ -947,6 +970,11 @@ bool RestImportHandler::createFromJson (string const& type) {
 /// If this parameter has a value of `true` or `yes`, then the collection is
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
+///
+/// @RESTQUERYPARAM{createCollectionType,string,optional}
+/// If this parameter has a value of `document` or `edge`, it will determine
+/// the type of collection that is going to be created when the `createCollection`
+/// option is set to `true`. The default value is `document`.
 ///
 /// @RESTQUERYPARAM{overwrite,boolean,optional}
 /// If this parameter has a value of `true` or `yes`, then all data in the
@@ -1233,7 +1261,7 @@ bool RestImportHandler::createFromKeyValueList () {
     return false;
   }
 
-  if (! checkCreateCollection(collection, TRI_COL_TYPE_DOCUMENT)) {
+  if (! checkCreateCollection(collection, getCollectionType())) {
     return false;
   }
 
