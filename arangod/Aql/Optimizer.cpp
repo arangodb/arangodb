@@ -98,6 +98,7 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
       plan->addAppliedRule(static_cast<int>(rule->level));
     }
 
+    plan->clearVarUsageComputed();
     plan->invalidateCost();
   }
     
@@ -156,13 +157,6 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   _newPlans.clear();
 
   while (leastDoneLevel < maxRuleLevel) {
-    // Find variable usage for all old plans now:
-    for (auto& p : _plans.list) {
-      if (! p->varUsageComputed()) {
-        p->findVarUsage();
-      }
-    }
-
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
     /*
     for (auto const& p : _plans.list) {
@@ -208,10 +202,13 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           continue;
         }
 
-        int res;
         try {
           TRI_IF_FAILURE("Optimizer::createPlansOom") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+      
+          if (! p->varUsageComputed()) {
+            p->findVarUsage();
           }
 
           // all optimizer rule functions must obey the following guidelines:
@@ -220,7 +217,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           // - if the rule throws, then the original plan will be deleted by the optimizer.
           //   thus the rule must not have deleted the plan itself or add it back to the
           //   optimizer
-          res = rule.func(this, p, &rule);
+          rule.func(this, p, &rule);
 
           if (! rule.isHidden) {
             ++_stats.rulesExecuted;
@@ -232,10 +229,6 @@ int Optimizer::createPlans (ExecutionPlan* plan,
             delete p;
           }
           throw;
-        }
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
         }
       }
 
@@ -325,6 +318,9 @@ char const* Optimizer::translateRule (int rule) {
 
 void Optimizer::estimatePlans () {
   for (auto& p : _plans.list) {
+    if (! p->varUsageComputed()) {
+      p->findVarUsage();
+    }
     p->getCost();
     // this value is cached in the plan, so formally this step is
     // unnecessary, but for the sake of cleanliness...
@@ -503,8 +499,8 @@ void Optimizer::setupRules () {
 
   // merge filters into traversals
   registerRule("merge-traversal-filter",
-               mergeFilterIntoTraversal,
-               mergeFilterIntoTraversal_pass6,
+               mergeFilterIntoTraversalRule,
+               mergeFilterIntoTraversalRule_pass6,
                true);
   
   //////////////////////////////////////////////////////////////////////////////
@@ -516,7 +512,7 @@ void Optimizer::setupRules () {
   // filters that are always false will be replaced with a NoResults node
   registerRule("remove-unnecessary-filters-2",
                removeUnnecessaryFiltersRule,
-               removeUnnecessaryFiltersRule_pass5,
+               removeUnnecessaryFiltersRule_pass6,
                true);
   
   // remove redundant sort node
@@ -542,7 +538,7 @@ void Optimizer::setupRules () {
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2", 
                removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass5,
+               removeUnnecessaryCalculationsRule_pass6,
                true);
 
   // remove INTO from COLLECT
