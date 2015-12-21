@@ -127,6 +127,17 @@ let response = request({
 });
 ```
 
+!SUBSECTION Garbage collection
+
+The V8 garbage collection strategy was slightly adjusted so that it eventually
+happens in all V8 contexts that hold V8 external objects (references to ArangoDB
+documents and collections). This enables a better cleanup of these resources and
+prevents other processes such as compaction being stalled while waiting for these
+resources to be released.
+
+In this context the default value for the JavaScript garbage collection frequency
+(`--javascript.gc-frequency`) was also increased from 10 seconds to 15 seconds, 
+as less internal operations in ArangoDB are carried out in JavaScript.
 
 !SECTION Client tools
 
