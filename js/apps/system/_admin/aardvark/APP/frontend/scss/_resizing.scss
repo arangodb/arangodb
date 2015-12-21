@@ -328,7 +328,7 @@
       bottom: 12.1% !important;
       left: 50%;
       margin-left: -($int-width) / 2;
-      width: $int-width + 20px;
+      width: $int-width + 20px !important;
 
       .modal-body {
         // min-height: $dashboard-height;
