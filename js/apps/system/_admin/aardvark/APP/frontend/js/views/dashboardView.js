@@ -526,8 +526,11 @@
         }
       }
 
+      var origin = window.location.href.split("/"), 
+      preUrl = origin[0] + '//' + origin[2] + '/' + origin[3] + '/_system/' + origin[5] + '/' + origin[6] + '/';
+
       $.ajax(
-        url + urlParams,
+        preUrl + url + urlParams,
         {async: true}
       ).done(
         function (d) {

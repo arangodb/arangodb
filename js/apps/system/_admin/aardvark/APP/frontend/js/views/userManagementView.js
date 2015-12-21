@@ -17,8 +17,9 @@
       "click #submitCreateUser"             : "submitCreateUser",
 //      "click #deleteUser"                   : "removeUser",
 //      "click #submitDeleteUser"             : "submitDeleteUser",
-      "click .editUser"                     : "editUser",
-      "click .icon"                         : "editUser",
+//      "click .editUser"                     : "editUser",
+//      "click .icon"                         : "editUser",
+      "click .tile"                         : "editUser",
       "click #submitEditUser"               : "submitEditUser",
       "click #userManagementToggle"         : "toggleView",
       "keyup #userManagementSearchInput"    : "search",
@@ -202,6 +203,11 @@
     },
 
     editUser : function(e) {
+
+      if ($(e.currentTarget).hasClass('tile')) {
+        e.currentTarget = $(e.currentTarget).find('img');
+      }
+
       this.collection.fetch();
       var username = this.evaluateUserName($(e.currentTarget).attr("id"), '_edit-user');
       if (username === '') {
