@@ -695,18 +695,13 @@ bool RestQueryHandler::parseQuery () {
         result.add(VPackValue(it));
       }
       result.close(); // bindVars
-      result.add(VPackValue("ast"));
-      std::string tmp = triagens::basics::JsonHelper::toString(parseResult.json);
-      {
-        VPackParser parser(result);
-        parser.parse(tmp);
-      }
+
+      auto tmp = VPackParser::fromJson(triagens::basics::JsonHelper::toString(parseResult.json));
+      result.add("ast", tmp->slice());
       
       if (parseResult.warnings != nullptr) {
-        result.add(VPackValue("warnings"));
-        tmp = triagens::basics::JsonHelper::toString(parseResult.warnings);
-        VPackParser parser(result);
-        parser.parse(tmp);
+        auto tmp = VPackParser::fromJson(triagens::basics::JsonHelper::toString(parseResult.warnings));
+        result.add("warnings", tmp->slice());
       }
     }
 
