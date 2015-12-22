@@ -27,9 +27,8 @@
 #define ARANGOD_AQL_OPTIMIZER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/MutexLocker.h"
-
 #include "Aql/ExecutionPlan.h"
+#include "Basics/MutexLocker.h"
 
 namespace triagens {
   namespace aql {
@@ -97,9 +96,6 @@ namespace triagens {
         // as possible as early as possible)
         moveFiltersUpRule_pass1                       = 130,
 
-        // sort IN values
-        sortInValuesRule_pass1                        = 135,
-  
         // remove calculations that are repeatedly used in a query
         removeRedundantCalculationsRule_pass1         = 140,
 
@@ -189,6 +185,9 @@ namespace triagens {
   
         // try to find sort blocks which are superseeded by indexes
         useIndexForSortRule_pass6                     = 860,
+
+        // sort values used in IN comparisons of remaining filters 
+        sortInValuesRule_pass6                        = 865,
 
         // remove calculations that are never necessary
         removeUnnecessaryCalculationsRule_pass6       = 870,
