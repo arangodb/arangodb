@@ -137,8 +137,10 @@
     switchDatabase: function(e) {
       if (!$(e.target).parent().hasClass('iconSet')) {
         var changeTo = $(e.currentTarget).find("h5").text();
-        var url = this.collection.createDatabaseURL(changeTo);
-        window.location.replace(url);
+        if (changeTo !== '') {
+          var url = this.collection.createDatabaseURL(changeTo);
+          window.location.replace(url);
+        }
       }
     },
 
