@@ -143,6 +143,7 @@ namespace triagens {
       static AqlValue RemoveNth           (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue NotNull             (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue CurrentDatabase     (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
+      static AqlValue CollectionCount     (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue VarianceSample      (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue VariancePopulation  (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
       static AqlValue StdDevSample        (triagens::aql::Query*, triagens::arango::AqlTransaction*, FunctionParameters const&);
