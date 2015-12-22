@@ -1340,7 +1340,7 @@ int ClusterInfo::createCollectionCoordinator (
             }
           }
         }
-        loadCurrentCollections(true);
+        loadCurrentCollections();
         if (tmpHaveError) {
           errorMsg = "Error in creation of collection:" + tmpMsg;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
