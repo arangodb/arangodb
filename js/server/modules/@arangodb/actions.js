@@ -780,7 +780,7 @@ function installRoute (storage, route, urlPrefix, context) {
   var url = lookupUrl(urlPrefix, route.url);
 
   if (url === null) {
-    console.error("route has an unkown url, ignoring '%s'", route.name);
+    console.error("route has an unknown url, ignoring '%s'", route.name);
     return;
   }
 
