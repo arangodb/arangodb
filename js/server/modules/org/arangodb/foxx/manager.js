@@ -46,7 +46,6 @@ const ArangoApp = require('org/arangodb/foxx/arangoApp').ArangoApp;
 const TemplateEngine = require('org/arangodb/foxx/templateEngine').Engine;
 const routeApp = require('org/arangodb/foxx/routing').routeApp;
 const exportApp = require('org/arangodb/foxx/routing').exportApp;
-const invalidateExportCache = require('org/arangodb/foxx/routing').invalidateExportCache;
 const formatUrl = require('url').format;
 const parseUrl = require('url').parse;
 const arangodb = require('org/arangodb');

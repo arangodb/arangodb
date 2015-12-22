@@ -42,8 +42,6 @@ var is = require("org/arangodb/is");
 var console = require("console");
 var actions = require("org/arangodb/actions");
 
-var exportCache = {};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
