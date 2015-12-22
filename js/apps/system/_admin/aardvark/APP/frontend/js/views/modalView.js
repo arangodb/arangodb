@@ -319,7 +319,7 @@
       }
 
       if ($('#accordion2')) {
-        $('#accordion2').bind("click", function() {
+        $('#accordion2 .accordion-toggle').bind("click", function() {
           if ($('#collapseOne').is(":visible")) {
             $('#collapseOne').hide();
             setTimeout(function() {
