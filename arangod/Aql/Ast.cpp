@@ -2702,6 +2702,19 @@ AstNode* Ast::optimizeFunctionCall (AstNode* node) {
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
 
+  if (func->externalName == "LENGTH") {
+    // shortcut LENGTH(collection) to COLLECTION_COUNT(collection)
+    auto args = node->getMember(0);
+    if (args->numMembers() == 1) {
+      auto arg = args->getMember(0);
+      if (arg->type == NODE_TYPE_COLLECTION) {
+        auto countArgs = createNodeArray();
+        countArgs->addMember(createNodeValueString(arg->getStringValue(), arg->getStringLength()));
+        return createNodeFunctionCall("COLLECTION_COUNT", countArgs);
+      }
+    }
+  }
+
   if (! func->isDeterministic) {
     // non-deterministic function
     return node;

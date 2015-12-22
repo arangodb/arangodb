@@ -1125,13 +1125,8 @@ AqlValue Expression::executeSimpleExpressionExpansion (AstNode const* node,
     value = executeSimpleExpression(node->getMember(0), &myCollection, trx, argv, startPos, vars, regs, false);
 
     if (! value.isArray()) {
-      // must cast value to array first
-      FunctionParameters parameters{ std::make_pair(value, myCollection) };
-      auto res = Functions::ToArray(_ast->query(), trx, parameters);
-
-      // destroy old value and swap with function call result
       value.destroy();
-      value = res;
+      return AqlValue(new triagens::basics::Json(triagens::basics::Json::Array));
     }
 
     std::function<void(TRI_json_t const*, int64_t)> flatten = [&] (TRI_json_t const* json, int64_t level) {
@@ -1167,12 +1162,8 @@ AqlValue Expression::executeSimpleExpressionExpansion (AstNode const* node,
 
     if (! value.isArray()) {
       // must cast value to array first
-      FunctionParameters parameters{ std::make_pair(value, myCollection) };
-      auto res = Functions::ToArray(_ast->query(), trx, parameters);
-
-      // destroy old value and swap with function call result
       value.destroy();
-      value = res;
+      return AqlValue(new triagens::basics::Json(triagens::basics::Json::Array));
     }
   }
 

@@ -35,6 +35,110 @@ var db = require("@arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+function nestedArraySimpleSuite () {
+  var cn = "UnitTestsArray";
+  var c;
+
+  var indexUsed = function (query) {
+    var plan = AQL_EXPLAIN(query).plan;
+    var nodeTypes = plan.nodes.map(function(node) {
+      return node.type;
+    });
+    return (nodeTypes.indexOf("IndexNode") !== -1);
+  };
+
+  return {
+
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn);
+
+      c.insert({ _key: "1", value: "foo" });
+      c.insert({ _key: "2", value: [ "foo", "bar" ] });
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+    testAll : function () {
+      var q = "FOR doc IN " + c.name() + " RETURN doc._key";
+
+      var result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "1", "2" ], result);
+
+      // try with index
+      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
+      
+      result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "1", "2" ], result);
+      assertFalse(indexUsed(q));
+    },
+
+    testOne : function () {
+      var q = "FOR doc IN " + c.name() + " FILTER doc.value IN [ 'foo' ] RETURN doc._key";
+
+      var result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "1" ], result);
+
+      // try with index
+      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
+      
+      result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "1" ], result);
+      assertFalse(indexUsed(q));
+    },
+    
+    testOneExpansion : function () {
+      var q = "FOR doc IN " + c.name() + " FILTER doc.value[*] IN [ 'foo' ] RETURN doc._key";
+
+      var result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ ], result);
+
+      // try with index
+      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
+      
+      result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ ], result);
+      assertFalse(indexUsed(q));
+    },
+      
+    testOneReverse : function () {
+      var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value RETURN doc._key";
+
+      var result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "2" ], result);
+
+      // try with index
+      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
+      
+      result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "2" ], result);
+      assertTrue(indexUsed(q));
+    },
+    
+    testOneReverseExpansion : function () {
+      var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value[*] RETURN doc._key";
+
+      var result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "2" ], result);
+
+      // try with index
+      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
+      
+      result = AQL_EXECUTE(q).json.sort();
+      assertEqual([ "2" ], result);
+      assertTrue(indexUsed(q));
+    }
+
+  };
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
 function nestedArrayIndexSuite () {
   var cn = "UnitTestsArray";
   var c;
@@ -359,6 +463,7 @@ function nestedArrayInArraySuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+jsunity.run(nestedArraySimpleSuite);
 jsunity.run(nestedArrayIndexSuite);
 jsunity.run(nestedArrayInArraySuite);
 

@@ -4039,6 +4039,64 @@ AqlValue Functions::CurrentDatabase (triagens::aql::Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief function COLLECTION_COUNT
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::CollectionCount (triagens::aql::Query* query,
+                                     triagens::arango::AqlTransaction* trx,
+                                     FunctionParameters const& parameters) {
+  size_t const n = parameters.size();
+  if (n != 1) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "COLLECTION_COUNT", (int) 1, (int) 1);
+  }
+    
+  Json element = ExtractFunctionParameter(trx, parameters, 0, false);
+  if (! element.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
+  }
+  
+  std::string const colName = basics::JsonHelper::getStringValue(element.json(), "");
+
+  auto resolver = trx->resolver();
+  TRI_voc_cid_t cid = resolver->getCollectionId(colName);
+  if (cid == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND); 
+  }
+
+  auto collection = trx->trxCollection(cid);
+
+  // ensure the collection is loaded
+  if (collection == nullptr) {
+    int res = TRI_AddCollectionTransaction(trx->getInternals(), 
+                                           cid,
+                                           TRI_TRANSACTION_READ,
+                                           trx->nestingLevel(),
+                                           true,
+                                           true);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_FORMAT(res, "'%s'", colName.c_str());
+    }
+
+    TRI_EnsureCollectionsTransaction(trx->getInternals());
+    collection = trx->trxCollection(cid);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                    "'%s'",
+                                    colName.c_str());
+    }
+  }
+
+  auto document = trx->documentCollection(cid);
+    
+  if (document == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
+
+  return AqlValue(new Json(static_cast<double>(document->size())));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief function VARIANCE_SAMPLE
 ////////////////////////////////////////////////////////////////////////////////
 

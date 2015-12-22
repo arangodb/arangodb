@@ -1374,6 +1374,25 @@ function AQL_COLLECTIONS () {
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the number of documents in a collection
+/// this is an internal function that is not exposed to end users
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_COLLECTION_COUNT (name) {
+  'use strict';
+
+  if (typeof name !== 'string') {
+    THROW("COLLECTION_COUNT", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
+  }
+
+  var c = INTERNAL.db._collection(name);
+  if (c === null || c === undefined) {
+    THROW("COLLECTION_COUNT", INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, String(name));
+  }
+  return c.count();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                logical operations
 // -----------------------------------------------------------------------------
@@ -2632,6 +2651,19 @@ function AQL_TO_ARRAY (value) {
     case TYPEWEIGHT_OBJECT:
       return VALUES(value);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the array as is, or an empty array
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_ARRAYIZE (value) {
+  'use strict';
+
+  if (TYPEWEIGHT(value) !== TYPEWEIGHT_ARRAY) {
+    return [ ];
+  }
+  return value;
 }
 
 // -----------------------------------------------------------------------------
@@ -9181,6 +9213,7 @@ exports.ARITHMETIC_MODULUS = ARITHMETIC_MODULUS;
 
 exports.AQL_DOCUMENT = AQL_DOCUMENT;
 exports.AQL_COLLECTIONS = AQL_COLLECTIONS;
+exports.AQL_COLLECTION_COUNT = AQL_COLLECTION_COUNT;
 exports.AQL_CONCAT = AQL_CONCAT;
 exports.AQL_CONCAT_SEPARATOR = AQL_CONCAT_SEPARATOR;
 exports.AQL_CHAR_LENGTH = AQL_CHAR_LENGTH;
@@ -9205,6 +9238,7 @@ exports.AQL_TO_BOOL = AQL_TO_BOOL;
 exports.AQL_TO_NUMBER = AQL_TO_NUMBER;
 exports.AQL_TO_STRING = AQL_TO_STRING;
 exports.AQL_TO_ARRAY = AQL_TO_ARRAY;
+exports.AQL_ARRAYIZE = AQL_ARRAYIZE;
 exports.AQL_TO_LIST = AQL_TO_ARRAY; // alias
 exports.AQL_IS_NULL = AQL_IS_NULL;
 exports.AQL_IS_BOOL = AQL_IS_BOOL;
