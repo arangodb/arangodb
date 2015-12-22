@@ -1345,11 +1345,11 @@ int ClusterInfo::createCollectionCoordinator (
             }
           }
         }
+        loadCurrentCollections(true);
         if (tmpHaveError) {
           errorMsg = "Error in creation of collection:" + tmpMsg;
           return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION;
         }
-        loadPlannedCollections();
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }

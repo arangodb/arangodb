@@ -1048,6 +1048,7 @@ void ClusterCommThread::run () {
       else {
         if (op->result.serverID == "") {
           op->result.status = CL_COMM_ERROR;
+          op->result.errorMessage = "serverID was empty";
         }
         else {
           // We need a connection to this server:
@@ -1055,6 +1056,8 @@ void ClusterCommThread::run () {
               = ClusterInfo::instance()->getServerEndpoint(op->result.serverID);
           if (endpoint == "") {
             op->result.status = CL_COMM_ERROR;
+            op->result.errorMessage = "getServerEndpoint was empty, serverID: ";
+            op->result.errorMessage += op->result.serverID;
 
             if (cc->logConnectionErrors()) {
               LOG_ERROR("cannot find endpoint for server '%s'",
@@ -1072,6 +1075,8 @@ void ClusterCommThread::run () {
                 = cm->leaseConnection(endpoint);
             if (nullptr == connection) {
               op->result.status = CL_COMM_ERROR;
+              op->result.errorMessage = "cannot create connection to server: ";
+              op->result.errorMessage += op->result.serverID;
               if (cc->logConnectionErrors()) {
                 LOG_ERROR("cannot create connection to server '%s'", op->result.serverID.c_str());
               }
@@ -1110,9 +1115,11 @@ void ClusterCommThread::run () {
                   ! op->result.result->isComplete()) {
                 if (client->getErrorMessage() == "Request timeout reached") {
                   op->result.status = CL_COMM_TIMEOUT;
+                  op->result.errorMessage = "timeout";
                 }
                 else {
                   op->result.status = CL_COMM_ERROR;
+                  op->result.errorMessage = client->getErrorMessage();
                 }
                 cm->brokenConnection(connection);
                 client->invalidateConnection();
@@ -1121,6 +1128,10 @@ void ClusterCommThread::run () {
                 cm->returnConnection(connection);
                 if (op->result.result->wasHttpError()) {
                   op->result.status = CL_COMM_ERROR;
+                  op->result.errorMessage = "HTTP error, status ";
+                  op->result.errorMessage 
+                    += triagens::basics::StringUtils::itoa(
+                          op->result.result->getHttpReturnCode());
                 }
               }
             }

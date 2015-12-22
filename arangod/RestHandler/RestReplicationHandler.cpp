@@ -2170,7 +2170,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   // dig out number of shards:
   uint64_t numberOfShards = 1;
   VPackSlice const shards = parameters.get("shards");
-  if (! shards.isObject()) {
+  if (shards.isObject()) {
     numberOfShards = static_cast<uint64_t>(shards.length());
   }
   // We take one shard if "shards" was not given
@@ -2734,7 +2734,7 @@ void RestReplicationHandler::handleCommandRestoreData () {
   if (value == nullptr) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection parameter");
+                  "invalid collection parameter, not given");
     return;
   }
 
@@ -2743,9 +2743,10 @@ void RestReplicationHandler::handleCommandRestoreData () {
   TRI_voc_cid_t cid = resolver.getCollectionId(value);
 
   if (cid == 0) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid collection parameter");
+    std::string msg = "invalid collection parameter: '";
+    msg += value;
+    msg += "', cid is 0";
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return;
   }
 
@@ -2971,6 +2972,9 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
               if (result.getBoolean()) {
                 nrok++;
               }
+              else {
+                LOG_ERROR("some shard result not OK");
+              }
             }
             else {
               VPackSlice const errorMessage = answer.get("errorMessage");
@@ -2979,6 +2983,9 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
                 errorMsg.push_back(':');
               }
             }
+          }
+          else {
+            LOG_ERROR("result body is no object");
           }
         }
         else if (result.answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
@@ -3001,6 +3008,27 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
               errorMsg.append(errorMessage.copyString());
               errorMsg.push_back(':');
             }
+          }
+        }
+        else {
+          LOG_ERROR("Bad answer code from shard: %d", result.answer_code);
+        }
+      }
+      else {
+        LOG_ERROR("Bad status from DBServer: %d, msg: %s, shard: %s",
+                  result.status, result.errorMessage.c_str(),
+                  result.shardID.c_str());
+        if (result.status >= CL_COMM_SENT) {
+          if (result.result.get() == nullptr) {
+            LOG_ERROR("result.result is nullptr");
+          }
+          else {
+            auto msg = result.result->getResultTypeMessage();
+            LOG_ERROR("Bad HTTP return code: %d, msg: %s",
+                      result.result->getHttpReturnCode(), msg.c_str());
+            auto body = result.result->getBodyVelocyPack();
+            msg = body->toString();
+            LOG_ERROR("Body: %s", msg.c_str());
           }
         }
       }
