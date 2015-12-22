@@ -290,10 +290,11 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void QueryRegistry::expireQueries () {
+  double now = TRI_microtime();
   std::vector<std::pair<std::string, QueryId>> toDelete;
+
   {
     WRITE_LOCKER(_lock);
-    double now = TRI_microtime();
     for (auto& x : _queries) {
       // x.first is a TRI_vocbase_t* and
       // x.second is a std::unordered_map<QueryId, QueryInfo*>
@@ -307,6 +308,7 @@ void QueryRegistry::expireQueries () {
       }
     }
   }
+
   for (auto& p : toDelete) {
     try { // just in case
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);

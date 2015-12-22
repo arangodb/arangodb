@@ -118,7 +118,8 @@ bool V8PeriodicTask::handlePeriod () {
     _v8Dealer,
     "(function (params) { " + _command + " } )(params);",
     _parameters,
-    _allowUseDatabase);
+    _allowUseDatabase
+  );
 
   if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
     // just in case the dispatcher cannot accept the job (e.g. when shutting down)

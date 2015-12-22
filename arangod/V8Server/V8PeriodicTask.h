@@ -30,9 +30,7 @@
 #define ARANGODB_V8SERVER_V8PERIODIC_TASK_H 1
 
 #include "Basics/Common.h"
-
 #include "Scheduler/PeriodicTask.h"
-
 #include "VocBase/vocbase.h"
 
 struct TRI_json_t;
