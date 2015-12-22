@@ -7,7 +7,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
+/// Copyright 2013-2015 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+/// @author Alan Plum
+/// @author Copyright 2013-2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 
