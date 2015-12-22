@@ -692,7 +692,7 @@ namespace triagens {
 /// about all shards of a collection.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void loadCurrentCollections (bool);
+        void loadCurrentCollections ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection in current. This returns information about
