@@ -47,7 +47,6 @@ const FoxxService = require('@arangodb/foxx/service');
 const TemplateEngine = require('@arangodb/foxx/templateEngine').Engine;
 const routeApp = require('@arangodb/foxx/routing').routeApp;
 const exportApp = require('@arangodb/foxx/routing').exportApp;
-const invalidateExportCache = require('@arangodb/foxx/routing').invalidateExportCache;
 const formatUrl = require('url').format;
 const parseUrl = require('url').parse;
 const arangodb = require('@arangodb');
@@ -221,8 +220,12 @@ function reloadRouting() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resetCache() {
+  _.each(appCache, function (cache) {
+    _.each(cache, function (app) {
+      app.main.loaded = false;
+    });
+  });
   appCache = {};
-  invalidateExportCache();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,19 +257,23 @@ function lookupApp(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function refillCaches(dbname) {
-  var cache = appCache[dbname] = {};
+  var cache = {};
+  _.each(appCache[dbname], function (app) {
+    app.main.loaded = false;
+  });
 
   var cursor = utils.getStorage().all();
   var routes = [];
 
   while (cursor.hasNext()) {
-    var config = _.clone(cursor.next());
-    var app = new FoxxService(config);
+    var config = cursor.next();
+    var app = new FoxxService(_.clone(config));
     var mount = app.mount;
     cache[mount] = app;
     routes.push(mount);
   }
 
+  appCache[dbname] = cache;
   return routes;
 }
 
