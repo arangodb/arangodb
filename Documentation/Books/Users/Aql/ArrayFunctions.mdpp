@@ -4,7 +4,8 @@ AQL supports the following functions to operate on array values:
 
 - *LENGTH(array)*: Returns the length (number of array elements) of *array*. If 
   *array* is an object / document, returns the number of attribute keys of the document, 
-  regardless of their values.
+  regardless of their values. If *array* is a collection, returns the number of documents
+  in it.
 
 - *FLATTEN(array, depth)*: Turns an array of arrays into a flat array. All 
   array elements in *array* will be expanded in the result array. Non-array elements 
