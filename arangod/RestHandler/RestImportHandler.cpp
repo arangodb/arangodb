@@ -911,10 +911,9 @@ bool RestImportHandler::createFromJson (string const& type) {
   else {
     // the entire request body is one JSON document
     // TODO Workaround for cast char* to uint8_t* 
-    std::string body(_request->body(), _request->bodySize());
     std::shared_ptr<VPackBuilder> parsedDocuments;
     try {
-      parsedDocuments = VPackParser::fromJson(body);
+      parsedDocuments = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(_request->body()), _request->bodySize());
     }
     catch (VPackException const& e) {
       generateError(HttpResponse::BAD,

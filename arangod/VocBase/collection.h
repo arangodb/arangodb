@@ -301,6 +301,10 @@ namespace triagens {
         // Changes the name. Should only be called by TRI_RenameCollection
         // Use with caution!
         void rename (char const*);
+        
+        void setIsSystem (bool value) { 
+          _isSystem = value;
+        }
 
         void setRevision (TRI_voc_rid_t,
                           bool);

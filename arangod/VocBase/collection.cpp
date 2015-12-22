@@ -45,6 +45,9 @@
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace triagens::arango;
 
@@ -1257,13 +1260,21 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile (char const* path,
 
   std::string filePath(filename, strlen(filename));
   std::shared_ptr<VPackBuilder> content = triagens::basics::VelocyPackHelper::velocyPackFromFile(filePath);
-  VPackSlice const slice = content->slice();
+  VPackSlice slice = content->slice();
   if (! slice.isObject()) {
     LOG_ERROR("cannot open '%s', collection parameters are not readable", filename);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  VPackBuilder bx;
+  bx.openObject();
+  bx.add("isSystem", VPackValue(false));
+  bx.close();
+  VPackSlice isSystem = bx.slice();
+  VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
+  slice = b2.slice();
   VocbaseCollectionInfo info(vocbase, collectionName, slice);
 
   // warn about wrong version of the collection
