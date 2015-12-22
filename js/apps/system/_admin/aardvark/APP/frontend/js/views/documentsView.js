@@ -1065,10 +1065,10 @@
       else {
         if (result.responseText) {
           var message = JSON.parse(result.responseText);
-          arangoHelper.arangoNotification("Document error", message.errorMessage);
+          arangoHelper.arangoError("Document error", message.errorMessage);
         }
         else {
-          arangoHelper.arangoNotification("Document error", "Could not create index.");
+          arangoHelper.arangoError("Document error", "Could not create index.");
         }
       }
     },

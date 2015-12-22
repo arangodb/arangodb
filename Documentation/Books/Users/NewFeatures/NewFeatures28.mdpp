@@ -192,6 +192,11 @@ The following AQL functions have been added in 2.8:
   a human-readable explanation of AQL queries. This function is a shorthand for
   `require("org/arangodb/aql/explainer").explain(query)`.
 
+* the AQL query optimizer now automatically converts `LENGTH(collection-name)` to an optimized 
+  expression that returns the number of documents in a collection. Previous versions of 
+  ArangoDB returned a warning when using this expression and also enumerated all documents
+  in the collection, which was inefficient.
+
 * improved performance of skipping over many documents in an AQL query when no
   indexes and no filters are used, e.g.
 

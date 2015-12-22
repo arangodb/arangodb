@@ -200,6 +200,7 @@ void TraversalBlock::executeExpressions () {
       }
     }
   }
+  throwIfKilled(); // check if we were aborted
 }
 
 void TraversalBlock::executeFilterExpressions () {
@@ -301,12 +302,14 @@ bool TraversalBlock::morePaths (size_t hint) {
       _paths.emplace_back(pathValue);
     }
     _engine->_stats.scannedIndex += p->getReadDocuments();
+    
+    throwIfKilled(); // check if we were aborted
   }
 
   _engine->_stats.scannedIndex += _traverser->getAndResetReadDocuments();
   _engine->_stats.filtered += _traverser->getAndResetFilteredPaths();
   // This is only save as long as _vertices is still build
-  return !_vertices.empty();
+  return ! _vertices.empty();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -423,7 +426,8 @@ AqlItemBlock* TraversalBlock::getSome (size_t, // atLeast,
         // returnBlock(cur);
         delete cur;
         _pos = 0;
-      } else {
+      } 
+      else {
         initializePaths(cur);
       }
       return getSome(atMost, atMost);
