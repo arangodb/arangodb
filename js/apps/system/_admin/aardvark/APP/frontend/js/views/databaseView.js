@@ -28,7 +28,7 @@
       "click #databaseToggle"       : "toggleSettingsDropdown",
       "click .css-label"            : "checkBoxes",
       "click #dbSortDesc"           : "sorting",
-      "click svg"                   : "switchDatabase"
+      "click .tile"                 : "switchDatabase"
     },
 
     sorting: function() {
@@ -135,9 +135,11 @@
     },
 
     switchDatabase: function(e) {
-      var changeTo = $(e.currentTarget).parent().find("h5").text();
-      var url = this.collection.createDatabaseURL(changeTo);
-      window.location.replace(url);
+      if (!$(e.target).parent().hasClass('iconSet')) {
+        var changeTo = $(e.currentTarget).find("h5").text();
+        var url = this.collection.createDatabaseURL(changeTo);
+        window.location.replace(url);
+      }
     },
 
     submitCreateDatabase: function() {

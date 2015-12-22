@@ -2339,8 +2339,11 @@ window.StatisticsCollection = Backbone.Collection.extend({
         }
       }
 
+      var origin = window.location.href.split("/"), 
+      preUrl = origin[0] + '//' + origin[2] + '/' + origin[3] + '/_system/' + origin[5] + '/' + origin[6] + '/';
+
       $.ajax(
-        url + urlParams,
+        preUrl + url + urlParams,
         {async: true}
       ).done(
         function (d) {
@@ -2924,6 +2927,27 @@ window.StatisticsCollection = Backbone.Collection.extend({
       if (events) {
         this.events = events;
         this.delegateEvents();
+      }
+
+      if ($('#accordion2')) {
+        $('#accordion2').bind("click", function() {
+          if ($('#collapseOne').is(":visible")) {
+            $('#collapseOne').hide();
+            setTimeout(function() {
+              $('.accordion-toggle').addClass('collapsed');
+            }, 100);
+          }
+          else {
+            $('#collapseOne').show();
+            setTimeout(function() {
+              $('.accordion-toggle').removeClass('collapsed');
+            }, 100);
+          }
+        });
+        $('#collapseOne').hide();
+        setTimeout(function() {
+          $('.accordion-toggle').addClass('collapsed');
+        }, 100);
       }
 
       $("#modal-dialog").modal("show");

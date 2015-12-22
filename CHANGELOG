@@ -7,16 +7,19 @@ v3.0.0 (XXXX-XX-XX)
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* slightly adjusted V8 garbage collection strategy so that collection eventually
+  happens in all contexts that hold V8 external references to documents and
+  collections.
+
+  also adjusted default value of `--javascript.gc-frequency` from 10 seconds to
+  15 seconds, as less internal operations are carried out in JavaScript.
+
 * fixes for AQL optimizer and traversal
 
 * added `--create-collection-type` option to arangoimp
  
   This allows specifying the type of the collection to be created when 
   `--create-collection` is set to `true`. 
-
-* randomly shuffle available V8 contexts when picking one for an HTTP or scheduler
-  task. This distributes requests more evenly across contexts so they can eventually
-  be garbage-collected.
 
 
 v2.8.0-beta2 (2015-12-16)
@@ -311,9 +314,9 @@ v2.8.0-alpha1 (2015-12-03)
 v2.7.4 (XXXX-XX-XX)
 -------------------
 
-* randomly shuffle available V8 contexts when picking one for an HTTP or scheduler
-  task. This distributes requests more evenly across contexts so they can eventually
-  be garbage-collected.
+* slightly adjusted V8 garbage collection strategy so that collection eventually
+  happens in all contexts that hold V8 external references to documents and
+  collections.
 
 * added the following attributes to the result of `collection.figures()` and the
   corresponding HTTP API at `PUT /_api/collection/<name>/figures`:

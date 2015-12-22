@@ -382,7 +382,7 @@ void ClusterInfo::flush () {
   loadPlannedDatabases();
   loadCurrentDatabases();
   loadPlannedCollections();
-  loadCurrentCollections(true);
+  loadCurrentCollections();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -907,7 +907,7 @@ std::vector<std::shared_ptr<CollectionInfo>> const ClusterInfo::getCollections
 ////////////////////////////////////////////////////////////////////////////////
 
 static const std::string prefixCurrentCollections = "Current/Collections";
-void ClusterInfo::loadCurrentCollections (bool acquireLock) {
+void ClusterInfo::loadCurrentCollections () {
 
   uint64_t storedVersion = _currentCollectionsProt.version;
   MUTEX_LOCKER(_currentCollectionsProt.mutex);
@@ -919,14 +919,9 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
   // Now contact the agency:
   AgencyCommResult result;
   {
-    if (acquireLock) {
-      AgencyCommLocker locker("Current", "READ");
+    AgencyCommLocker locker("Current", "READ");
 
-      if (locker.successful()) {
-        result = _agency.getValues(prefixCurrentCollections, true);
-      }
-    }
-    else {
+    if (locker.successful()) {
       result = _agency.getValues(prefixCurrentCollections, true);
     }
   }
@@ -1026,7 +1021,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
   int tries = 0;
 
   if (! _currentCollectionsProt.isValid) {
-    loadCurrentCollections(true);
+    loadCurrentCollections();
     ++tries;
   }
 
@@ -1051,7 +1046,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
     }
 
     // must load collections outside the lock
-    loadCurrentCollections(true);
+    loadCurrentCollections();
   }
 
   return std::make_shared<CollectionInfoCurrent>();
@@ -1434,7 +1429,7 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
           return setErrormsg(
             TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, errorMsg);
         }
-        loadCurrentCollections(true);
+        loadCurrentCollections();
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
     }
@@ -1846,7 +1841,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
           resultJson = newIndex;
           TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, resultJson, "isNewlyCreated", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
 
-          loadCurrentCollections(true);
+          loadCurrentCollections();
 
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
@@ -2036,7 +2031,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
         }
 
         if (! found) {
-          loadCurrentCollections(true);
+          loadCurrentCollections();
           return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
         }
       }
@@ -2377,7 +2372,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer (
   int tries = 0;
 
   if (! _currentCollectionsProt.isValid) {
-    loadCurrentCollections(true);
+    loadCurrentCollections();
     tries++;
   }
 
@@ -2397,7 +2392,7 @@ std::shared_ptr<std::vector<ServerID>> ClusterInfo::getResponsibleServer (
     }
 
     // must load collections outside the lock
-    loadCurrentCollections(true);
+    loadCurrentCollections();
   }
 
   return std::make_shared<std::vector<ServerID>>();

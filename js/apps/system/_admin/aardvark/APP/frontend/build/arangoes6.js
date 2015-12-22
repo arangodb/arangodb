@@ -4972,7 +4972,7 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
   if (properties !== undefined) {
     [ "waitForSync", "journalSize", "isSystem", "isVolatile",
       "doCompact", "keyOptions", "shardKeys", "numberOfShards",
-      "distributeShardsLike", "indexBuckets" ].forEach(function(p) {
+      "distributeShardsLike", "indexBuckets", "id" ].forEach(function(p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -5786,6 +5786,13 @@ ArangoQueryCursor.prototype.toString = function () {
 
   result += ", hasMore: " + (this.hasNext() ? "true" : "false");
 
+  if (this.data.hasOwnProperty("extra") && 
+      this.data.extra.hasOwnProperty("warnings")) {
+    for (var j = 0; j < this.data.extra.warnings.length; j++) {
+      result += ", warning: " + this.data.extra.warnings[j].code +
+        " - " + this.data.extra.warnings[j].message;
+    }
+  }
   result += "]";
 
   if (!isCaptureModeActive) {
@@ -8277,9 +8284,9 @@ function processQuery (query, explain) {
         return variable("#" + node.name);
       }
     }
-    catch(x) {
+    catch (x) {
       print(node);
-      throw(x);
+      throw x;
     }
     
     if (collectionVariables.hasOwnProperty(node.id)) {
@@ -8319,6 +8326,10 @@ function processQuery (query, explain) {
         return value(JSON.stringify(node.value));
       case "object":
         if (node.hasOwnProperty("subNodes")) {
+          if (node.subNodes.length > 20) {
+            // print only the first 20 values from the objects
+            return "{ " + node.subNodes.slice(0, 20).map(buildExpression).join(", ") + ", ... }";
+          }
           return "{ " + node.subNodes.map(buildExpression).join(", ") + " }";
         }
         return "{ }";
@@ -8436,7 +8447,7 @@ function processQuery (query, explain) {
           }
           rc += "[" + value(indexNo) + "] -> ";
           rc += buildExpression(item.varAccess);
-          rc += " " + item.comparisonType + " ";
+          rc += " " + item.comparisonTypeStr + " ";
           rc += buildExpression(item.compareTo);
         }
       }
@@ -8554,9 +8565,17 @@ function processQuery (query, explain) {
         }
         rc += "  " +
           keyword("IN") + " " +
-          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  " +
-          keyword("OUTBOUND") +
-          " '" + value(node.vertexId) + "'  " + annotation("/* startnode */") + "  ";
+          value(node.minMaxDepth) + "  " + annotation("/* min..maxPathDepth */") + "  ";
+
+        var translate = ["ANY", "INBOUND", "OUTBOUND"];
+        rc += keyword(translate[node.direction]);
+        if (node.hasOwnProperty("vertexId")) {
+          rc += " '" + value(node.vertexId) + "' ";
+        }
+        else {
+          rc += " " + variableName(node.inVariable) + " ";
+        }
+        rc += annotation("/* startnode */") + "  ";
           
         if (Array.isArray(node.graph)) {
           rc += node.graph.map(function(g) { return collection(g); }).join(", ");
@@ -18992,7 +19011,16 @@ GeneralArrayCursor.prototype.execute = function () {
 GeneralArrayCursor.prototype._PRINT = function (context) {
   var text;
 
-  text = "GeneralArrayCursor([.. " + this._documents.length + " docs .., cached: " + String(this._cached) + "])";
+  text = "GeneralArrayCursor([.. " + this._documents.length + " docs .., cached: " + String(this._cached);
+
+  if (this.hasOwnProperty("_extra") &&
+      this._extra.hasOwnProperty("warnings")) {
+    for (var j = 0; j < this._extra.warnings.length; j++) {
+      text += ", WARNING: " + this._extra.warnings[j].code +
+        " - " + this._extra.warnings[j].message;
+    }
+  }
+  text += "])";
 
   if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";

@@ -2957,6 +2957,7 @@ div .tile, div .bigtile {
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
+    position: absolute;
     width: 50px; }
   div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
@@ -3203,7 +3204,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -114px;
-    width: 248px; }
+    width: 248px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3388,7 +3389,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -234px;
-    width: 488px; }
+    width: 488px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3573,7 +3574,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -354px;
-    width: 728px; }
+    width: 728px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3756,7 +3757,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -474px;
-    width: 968px; }
+    width: 968px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3936,7 +3937,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -594px;
-    width: 1208px; }
+    width: 1208px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4116,7 +4117,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -714px;
-    width: 1448px; }
+    width: 1448px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4296,7 +4297,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -834px;
-    width: 1688px; }
+    width: 1688px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4476,7 +4477,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -954px;
-    width: 1928px; }
+    width: 1928px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4656,7 +4657,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1074px;
-    width: 2168px; }
+    width: 2168px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4836,7 +4837,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1194px;
-    width: 2408px; }
+    width: 2408px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -5016,7 +5017,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1314px;
-    width: 2648px; }
+    width: 2648px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -5490,6 +5491,9 @@ div.headerBar {
     .modal-header .close:hover, .modal-dashboard-header .close:hover {
       opacity: 1; }
 
+.select2-drop-active {
+  z-index: 9999999; }
+
 .modal-body {
   color: #736b68;
   font-family: 'Open Sans', sans-serif !important;
@@ -5961,6 +5965,7 @@ div .tile, div .bigtile {
     height: 50px;
     margin-left: 90px;
     margin-top: 10px;
+    position: absolute;
     width: 50px; }
   div .tile .tile-icon, div .bigtile .tile-icon {
     color: #686766;
@@ -6433,7 +6438,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -114px;
-    width: 248px; }
+    width: 248px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -6618,7 +6623,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -234px;
-    width: 488px; }
+    width: 488px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -6803,7 +6808,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -354px;
-    width: 728px; }
+    width: 728px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -6986,7 +6991,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -474px;
-    width: 968px; }
+    width: 968px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -7166,7 +7171,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -594px;
-    width: 1208px; }
+    width: 1208px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -7346,7 +7351,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -714px;
-    width: 1448px; }
+    width: 1448px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -7526,7 +7531,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -834px;
-    width: 1688px; }
+    width: 1688px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -7706,7 +7711,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -954px;
-    width: 1928px; }
+    width: 1928px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -7886,7 +7891,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1074px;
-    width: 2168px; }
+    width: 2168px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -8066,7 +8071,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1194px;
-    width: 2408px; }
+    width: 2408px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -8246,7 +8251,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1314px;
-    width: 2648px; }
+    width: 2648px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
