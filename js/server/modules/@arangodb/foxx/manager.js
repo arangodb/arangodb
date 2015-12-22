@@ -267,7 +267,7 @@ function refillCaches(dbname) {
 
   while (cursor.hasNext()) {
     var config = cursor.next();
-    var app = new FoxxService(_.clone(config));
+    var app = new FoxxService(_.extend({}, config));
     var mount = app.mount;
     cache[mount] = app;
     routes.push(mount);

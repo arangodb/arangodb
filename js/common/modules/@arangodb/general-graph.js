@@ -52,7 +52,7 @@ var stringToArray = function (x) {
   if (typeof x === "string") {
     return [x];
   }
-  return _.clone(x);
+  return x.slice();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -964,7 +964,7 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
     + this.stack.length + ')';
   var opts;
   if (options) {
-    opts = _.clone(options);
+    opts = _.extend({}, options);
   } else {
     opts = {};
   }
@@ -2471,7 +2471,7 @@ var _renameCollection = function(oldName, newName) {
         return;
       }
       gdb.toArray().forEach(function(doc) {
-        var c = _.clone(doc), i, j, changed = false;
+        var c = _.extend({}, doc), i, j, changed = false;
         if (c.edgeDefinitions) {
           for (i = 0; i < c.edgeDefinitions.length; ++i) {
             var def = c.edgeDefinitions[i];

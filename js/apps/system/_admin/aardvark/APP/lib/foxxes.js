@@ -94,7 +94,7 @@ exports.Foxxes = function () {
     result.forEach(function(r, i) {
       // inject development flag
       if (r._key.match(/^dev:/)) {
-        result[i] = _.clone(r);
+        result[i] = _.extend({}, r);
         result[i].development = true;
       }
     });

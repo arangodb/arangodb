@@ -320,7 +320,7 @@ class FoxxService {
     var options = this.options.configuration;
     _.each(definitions, function (dfn, name) {
       var value = options[name] === undefined ? dfn.default : options[name];
-      config[name] = simple ? value : _.extend(_.clone(dfn), {
+      config[name] = simple ? value : _.extend({}, dfn, {
         title: getReadableName(name),
         current: value
       });
