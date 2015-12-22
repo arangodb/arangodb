@@ -124,7 +124,7 @@ exports.manage = function () {
       global.KEYSPACE_CREATE('queue-control', 1, true);
       var delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
 
-      if (delayUntil > Date.now() || delayUntil === -1) {
+      if (delayUntil === -1 || delayUntil > Date.now()) {
         return;
       }
 
