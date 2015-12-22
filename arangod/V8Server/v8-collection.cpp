@@ -58,7 +58,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "unicode/timezone.h"
-#include <iostream>
 
 using namespace std;
 using namespace triagens::basics;
@@ -2436,12 +2435,13 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
       if (par->IsObject()) {
         VPackBuilder builder;
         {
-          VPackObjectBuilder b(&builder);
           int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+
           if (res != TRI_ERROR_NO_ERROR) {
             TRI_V8_THROW_EXCEPTION(res);
           }
         }
+
         VPackSlice const slice = builder.slice();
         if (slice.hasKey("journalSize")) {
           VPackSlice maxSizeSlice = slice.get("journalSize");
@@ -2461,29 +2461,6 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
           TRI_V8_THROW_EXCEPTION_PARAMETER("indexBucket must be a two-power between 1 and 1024");
         }
         info.update(slice, false, collection->_vocbase);
-
-        // TODO FIXME temporary ASSERTIONS
-        v8::Handle<v8::Object> po = par->ToObject();
-
-        // extract doCompact flag
-        TRI_GET_GLOBAL_STRING(DoCompactKey);
-        if (po->Has(DoCompactKey)) {
-          TRI_ASSERT(info.doCompact() == TRI_ObjectToBoolean(po->Get(DoCompactKey)));
-        }
-
-        // extract sync flag
-        TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-        if (po->Has(WaitForSyncKey)) {
-          TRI_ASSERT(info.waitForSync() == TRI_ObjectToBoolean(po->Get(WaitForSyncKey)));
-        }
-
-        // extract the journal size
-        TRI_GET_GLOBAL_STRING(JournalSizeKey);
-        if (po->Has(JournalSizeKey)) {
-          auto maximalSize = (TRI_voc_size_t) TRI_ObjectToUInt64(po->Get(JournalSizeKey), false);
-          TRI_ASSERT(info.maximalSize() == maximalSize);
-        }
-
       }
 
       int res = ClusterInfo::instance()->setCollectionPropertiesCoordinator(databaseName, StringUtils::itoa(collection->_cid), &info);
@@ -2492,7 +2469,6 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
         TRI_V8_THROW_EXCEPTION(res);
       }
     }
-
 
     // return the current parameter set
     v8::Handle<v8::Object> result = v8::Object::New(isolate);

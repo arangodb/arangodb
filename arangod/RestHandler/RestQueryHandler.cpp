@@ -37,13 +37,13 @@
 #include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterMethods.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -81,24 +81,36 @@ bool RestQueryHandler::isDirect () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestQueryHandler::execute () {
-
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
   // execute one of the CRUD methods
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: deleteQuery(); break;
-    case HttpRequest::HTTP_REQUEST_GET:    readQuery(); break;
-    case HttpRequest::HTTP_REQUEST_PUT:    replaceProperties(); break;
-    case HttpRequest::HTTP_REQUEST_POST:   parseQuery(); break;
+  try {
+    switch (type) {
+      case HttpRequest::HTTP_REQUEST_DELETE: deleteQuery(); break;
+      case HttpRequest::HTTP_REQUEST_GET:    readQuery(); break;
+      case HttpRequest::HTTP_REQUEST_PUT:    replaceProperties(); break;
+      case HttpRequest::HTTP_REQUEST_POST:   parseQuery(); break;
 
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_PATCH:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
-    default: {
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-      break;
+      case HttpRequest::HTTP_REQUEST_HEAD:
+      case HttpRequest::HTTP_REQUEST_PATCH:
+      case HttpRequest::HTTP_REQUEST_ILLEGAL:
+      default: {
+        generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+        break;
+      }
     }
+  }
+  catch (Exception const& err) {
+    handleError(err);
+  }
+  catch (std::exception const& ex) {
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+    handleError(err);
+  }
+  catch (...) {
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    handleError(err);
   }
 
   // this handler is done
@@ -167,6 +179,7 @@ bool RestQueryHandler::readQueryProperties () {
     result.add("maxQueryStringLength", VPackValue(queryList->maxQueryStringLength()));
     result.close();
     VPackSlice slice = result.slice();
+
     generateResult(slice);
   }
   catch (Exception const& err) {
@@ -253,13 +266,14 @@ bool RestQueryHandler::readQueryProperties () {
 bool RestQueryHandler::readQuery (bool slow) {
   try {
     auto queryList = static_cast<QueryList*>(_vocbase->_queries);
-    auto const&& queries = slow ? queryList->listSlow() : queryList->listCurrent(); 
+    auto queries = slow ? queryList->listSlow() : queryList->listCurrent(); 
+
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Array));
 
-    for (auto it : queries) {
-      const auto&& timeString = TRI_StringTimeStamp(it.started);
-      const auto& queryString = it.queryString;
+    for (auto const& it : queries) {
+      auto const& timeString = TRI_StringTimeStamp(it.started);
+      auto const& queryString = it.queryString;
 
       result.add(VPackValue(VPackValueType::Object));
       result.add("id", VPackValue(StringUtils::itoa(it.id)));
@@ -302,7 +316,7 @@ bool RestQueryHandler::readQuery () {
     return true;
   }
 
-  const auto& name = suffix[0];
+  auto const& name = suffix[0];
 
   if (name == "slow") {
     return readQuery(true);
@@ -344,19 +358,14 @@ bool RestQueryHandler::deleteQuerySlow () {
   auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
   queryList->clearSlow();
 
-  try {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue(HttpResponse::OK));
-    result.close();
-    VPackSlice slice = result.slice();
-    generateResult(slice);
-  }
-  catch (...) {
-    // Ignore the error
-  }
-
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("error", VPackValue(false));
+  result.add("code", VPackValue(HttpResponse::OK));
+  result.close();
+  VPackSlice slice = result.slice();
+  generateResult(slice);
+  
   return true;
 }
 
@@ -398,18 +407,13 @@ bool RestQueryHandler::deleteQuery (const string& name) {
   auto res = queryList->kill(id);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    try {
-      VPackBuilder result;
-      result.add(VPackValue(VPackValueType::Object));
-      result.add("error", VPackValue(false));
-      result.add("code", VPackValue(HttpResponse::OK));
-      result.close();
-      VPackSlice slice = result.slice();
-      generateResult(slice);
-    }
-    catch (...) {
-      // Ignore the error
-    }
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.close();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
   }
   else {
     generateError(HttpResponse::BAD, res, "cannot kill query '" + name + "'");
@@ -432,14 +436,12 @@ bool RestQueryHandler::deleteQuery () {
     return true;
   }
 
-  const auto& name = suffix[0];
+  auto const& name = suffix[0];
 
   if (name == "slow") {
     return deleteQuerySlow();
   }
-  else {
-    return deleteQuery(name);
-  }
+  return deleteQuery(name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -544,8 +546,8 @@ bool RestQueryHandler::replaceProperties () {
     }
 
     attribute = body.get("slowQueryThreshold");
-    if (attribute.isDouble()) {
-      slowQueryThreshold = attribute.getDouble();
+    if (attribute.isNumber()) {
+      slowQueryThreshold = attribute.getNumber<double>();
     }
 
     attribute = body.get("maxQueryStringLength");

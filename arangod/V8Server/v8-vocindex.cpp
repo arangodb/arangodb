@@ -1592,6 +1592,7 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
+
     infoSlice = builder.slice();
   }
 
@@ -1804,7 +1805,6 @@ void TRI_InitV8indexArangoDB (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_createEdgeCollection"), JS_CreateEdgeCollectionVocbase);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_createDocumentCollection"), JS_CreateDocumentCollectionVocbase);
 }
-
 
 void TRI_InitV8indexCollection (v8::Isolate* isolate,
                                 v8::Handle<v8::ObjectTemplate> rt) {

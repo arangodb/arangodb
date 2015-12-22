@@ -98,6 +98,7 @@ TRI_json_t* VelocyPackHelper::velocyPackToJson (VPackSlice const& slice) {
 
 std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile (std::string const& path) {
   size_t length;
+  // TODO: Fix memleak
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
   // The Parser might THROW
   return VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content), length);

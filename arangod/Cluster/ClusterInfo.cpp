@@ -1445,8 +1445,8 @@ int ClusterInfo::dropCollectionCoordinator (string const& databaseName,
 /// @brief set collection properties in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
-                                                     string const& collectionID,
+int ClusterInfo::setCollectionPropertiesCoordinator (std::string const& databaseName,
+                                                     std::string const& collectionID,
                                                      VocbaseCollectionInfo const* info) {
   AgencyComm ac;
   AgencyCommResult res;
@@ -1480,25 +1480,23 @@ int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+    std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json));
     if (copy == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync");
-    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "indexBuckets");
+    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "doCompact");
+    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "journalSize");
+    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "waitForSync");
+    TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "indexBuckets");
 
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->doCompact()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->maximalSize()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->waitForSync()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy, "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->indexBuckets()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "doCompact", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->doCompact()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->maximalSize()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, info->waitForSync()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, copy.get(), "indexBuckets", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, info->indexBuckets()));
 
     res.clear();
-    res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy, 0.0);
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, copy);
+    res = ac.setValue("Plan/Collections/" + databaseName + "/" + collectionID, copy.get(), 0.0);
   }
 
   if (res.successful()) {
