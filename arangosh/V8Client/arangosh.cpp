@@ -1640,8 +1640,10 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
       // this will change the prompt for the next round
       promptError = true;
     }
-      
-    ClientConnection->setInterrupted(false);
+    
+    if (ClientConnection) {  
+      ClientConnection->setInterrupted(false);
+    }
 
     BaseClient.stopPager();
     BaseClient.printLine("");
@@ -2036,7 +2038,9 @@ static bool printHelo (bool useServer, bool promptError) {
     BaseClient.printWelcomeInfo();
 
     if (useServer) {
-      if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
+      if (ClientConnection &&
+          ClientConnection->isConnected() && 
+          ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
         ostringstream is;
         is << "Connected to ArangoDB '" << BaseClient.endpointString()
            << "' version: " << ClientConnection->getVersion() 
@@ -2052,7 +2056,8 @@ static bool printHelo (bool useServer, bool promptError) {
            << "', username: '" << BaseClient.username() << "'";
         BaseClient.printErrLine(is.str());
 
-        if (ClientConnection->getErrorMessage() != "") {
+        if (ClientConnection &&
+            ClientConnection->getErrorMessage() != "") {
           ostringstream is2;
           is2 << "Error message '" << ClientConnection->getErrorMessage() << "'";
           BaseClient.printErrLine(is2.str());
