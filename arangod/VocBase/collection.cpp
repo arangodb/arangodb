@@ -1267,14 +1267,24 @@ VocbaseCollectionInfo VocbaseCollectionInfo::fromFile (char const* path,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+ 
+  // fiddle "isSystem" value, which is not contained in the JSON file
+  bool isSystemValue = false; 
+  if (slice.hasKey("name")) {
+    auto name = slice.get("name").copyString();
+    if (! name.empty()) {
+      isSystemValue = name[0] == '_';
+    }
+  }
 
   VPackBuilder bx;
   bx.openObject();
-  bx.add("isSystem", VPackValue(false));
+  bx.add("isSystem", VPackValue(isSystemValue));
   bx.close();
   VPackSlice isSystem = bx.slice();
   VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
   slice = b2.slice();
+
   VocbaseCollectionInfo info(vocbase, collectionName, slice);
 
   // warn about wrong version of the collection
