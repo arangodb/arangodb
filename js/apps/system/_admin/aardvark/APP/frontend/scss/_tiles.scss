@@ -37,6 +37,8 @@ $iconsize: 50px;
   position: relative;
   text-align: center;
 
+  z-index: 1;
+
   &:hover {
     cursor: pointer;
   }
@@ -198,6 +200,7 @@ $iconsize: 50px;
       padding-left: 3px;
       padding-right: 3px;
       padding-top: 2px;
+      z-index: 2;
 
       &:hover {
         background-color: $c-positive;
