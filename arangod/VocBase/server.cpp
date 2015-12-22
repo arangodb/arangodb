@@ -135,8 +135,6 @@ static TRI_server_id_t ServerId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a new server id
-///
-/// TODO: generate a real UUID instead of the 2 random values
 ////////////////////////////////////////////////////////////////////////////////
 
 static int GenerateServerId (void) {
@@ -631,11 +629,8 @@ static int OpenDatabases (TRI_server_t* server,
     // setup defaults
     // .........................................................................
 
-    // use defaults and blend them with parameters found in file
+    // use defaults
     TRI_GetDatabaseDefaultsServer(server, &defaults);
-    // TODO: decide which parameter from the command-line should win vs. parameter.json
-    // TRI_FromJsonVocBaseDefaults(&defaults, TRI_LookupObjectJson(json, "properties"));
-
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     if (databaseName == nullptr) {
@@ -1067,24 +1062,9 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  // TODO
-  /*
-  properties = TRI_JsonVocBaseDefaults(TRI_CORE_MEM_ZONE, defaults);
-
-  if (properties == nullptr) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  */
-
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name, strlen(name)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, deleted));
-  // TODO: save properties later when it is clear what they will be used
-  // TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "properties", properties);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
@@ -2052,9 +2032,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-
-  // TODO: create application directories??
-//  CreateApplicationDirectory(vocbase->_name, server->_appPath);
 
   // increase reference counter
   TRI_UseVocBase(vocbase);

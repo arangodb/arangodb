@@ -75,46 +75,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_defaults_t::toVelocyPack() const {
   return builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhance defaults with data from JSON
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FromJsonVocBaseDefaults (TRI_vocbase_defaults_t* defaults,
-                                  VPackSlice const& slice) {
-  if (! slice.isObject()) {
-    return;
-  }
-  VPackSlice optionSlice = slice.get("waitForSync");
-  if (optionSlice.isBoolean()) {
-    defaults->defaultWaitForSync = optionSlice.getBool();
-  }
-
-  optionSlice = slice.get("requireAuthentication");
-  if (optionSlice.isBoolean()) {
-    defaults->requireAuthentication = optionSlice.getBool();
-  }
-
-  optionSlice = slice.get("requireAuthenticationUnixSockets");
-  if (optionSlice.isBoolean()) {
-    defaults->requireAuthenticationUnixSockets = optionSlice.getBool();
-  }
-
-  optionSlice = slice.get("authenticateSystemOnly");
-  if (optionSlice.isBoolean()) {
-    defaults->authenticateSystemOnly = optionSlice.getBool();
-  }
-  
-  optionSlice = slice.get("forceSyncProperties");
-  if (optionSlice.isBoolean()) {
-    defaults->forceSyncProperties = optionSlice.getBool();
-  }
-
-  optionSlice = slice.get("forceSyncProperties");
-  if (optionSlice.isNumber()) {
-    defaults->forceSyncProperties = optionSlice.getNumericValue<TRI_voc_size_t>();
-  }
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

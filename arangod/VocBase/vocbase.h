@@ -51,7 +51,7 @@ struct TRI_document_collection_t;
 class TRI_replication_applier_t;
 struct TRI_server_t;
 class TRI_vocbase_col_t;
-struct TRI_vocbase_defaults_s;
+struct TRI_vocbase_defaults_t;
 
 namespace triagens {
   namespace aql {
@@ -263,7 +263,7 @@ struct TRI_vocbase_t {
                  char const*,
                  TRI_voc_tick_t,
                  char const*,
-                 struct TRI_vocbase_defaults_s const*);
+                 struct TRI_vocbase_defaults_t const*);
 
   ~TRI_vocbase_t ();
 
@@ -434,7 +434,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t*,
                                          char const*,
                                          TRI_voc_tick_t,
                                          char const*,
-                                         struct TRI_vocbase_defaults_s const*);
+                                         struct TRI_vocbase_defaults_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing database, loads all collections
@@ -444,7 +444,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t*,
                                 char const*,
                                 TRI_voc_tick_t,
                                 char const*,
-                                struct TRI_vocbase_defaults_s const*,
+                                struct TRI_vocbase_defaults_t const*,
                                 bool,
                                 bool);
 

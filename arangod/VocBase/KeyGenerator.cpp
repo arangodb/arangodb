@@ -419,14 +419,7 @@ std::string AutoIncrementKeyGenerator::generate (TRI_voc_tick_t tick) {
       keyValue = _offset;
     }
     else {
-      uint64_t next = _lastValue + _increment - ((_lastValue - _offset) % _increment);
-
-      // TODO: check if we can remove the following if
-      if (next < _offset) {
-        next = _offset;
-      }
-
-      keyValue = next;
+      keyValue = _lastValue + _increment - ((_lastValue - _offset) % _increment);
     }
 
     // bounds and sanity checks

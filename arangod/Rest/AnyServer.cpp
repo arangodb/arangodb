@@ -174,7 +174,7 @@ static int ForkProcess (string const& workingDirectory, string& current) {
     LOG_FATAL_AND_EXIT("cannot get current directory");
   }
 
-  // change the current working directory (TODO must be configurable)
+  // change the current working directory
   if (! workingDirectory.empty()) {
     if (! FileUtils::changeDirectory(workingDirectory)) {
       LOG_FATAL_AND_EXIT("cannot change into working directory '%s'", workingDirectory.c_str());
@@ -268,9 +268,9 @@ int WaitForSupervisor (int pid) {
 
 #else
 
-// ..............................................................................
+// .............................................................................
 // TODO: use windows API CreateProcess & CreateThread to minic fork()
-// ..............................................................................
+// .............................................................................
 
 static int ForkProcess (string const& workingDirectory, string& current) {
 

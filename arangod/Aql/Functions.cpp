@@ -2843,7 +2843,7 @@ AqlValue Functions::Within (triagens::aql::Query* query,
   auto document = trx->documentCollection(cid);
     
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND); /// TODO
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   triagens::arango::Index* index = nullptr;

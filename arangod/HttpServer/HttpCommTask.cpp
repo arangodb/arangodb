@@ -750,10 +750,6 @@ void HttpCommTask::addResponse (HttpResponse* response) {
     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-expose-headers"),
                         "etag, content-encoding, content-length, location, server, x-arango-errors, x-arango-async-id");
 
-    // TODO: check whether anyone actually needs these headers in the browser:
-    // x-arango-replication-checkmore, x-arango-replication-lastincluded,
-    // x-arango-replication-lasttick, x-arango-replication-active");
-
     // send back original value of "Origin" header
     response->setHeader(TRI_CHAR_LENGTH_PAIR("access-control-allow-origin"), _origin);
 

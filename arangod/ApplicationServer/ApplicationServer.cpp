@@ -908,7 +908,7 @@ bool ApplicationServer::readConfigurationFile () {
     // A safer approach below
     // .........................................................................
 
-    string homeDir = FileUtils::homeDirectory(); // TODO homedirectory should either always or never end in "/"
+    string homeDir = FileUtils::homeDirectory();
 
     if (! homeDir.empty()) {
       if (homeDir[homeDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {

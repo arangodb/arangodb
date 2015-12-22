@@ -150,7 +150,7 @@ ServerState::StateEnum ServerState::stringToState (std::string const& value) {
   if (value == "SHUTDOWN") {
     return STATE_SHUTDOWN;
   }
-  // TODO: do we need to understand other states, too?
+  // TODO MAX: do we need to understand other states, too?
 
   return STATE_UNDEFINED;
 }
@@ -160,6 +160,7 @@ ServerState::StateEnum ServerState::stringToState (std::string const& value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::stateToString (StateEnum state) {
+  // TODO MAX: cleanup
   switch (state) {
     case STATE_UNDEFINED:
       return "UNDEFINED";

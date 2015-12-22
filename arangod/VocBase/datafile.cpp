@@ -1343,8 +1343,6 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
   flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
 #else
   // ugly workaround if MAP_ANONYMOUS is not available
-  // TODO: make this more portable
-  // TODO: find a good workaround for Windows
   fd = TRI_OPEN("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
   if (fd == -1) {
     return nullptr;
@@ -1787,68 +1785,6 @@ void TRI_UpdateTicksDatafile (TRI_datafile_t* datafile,
     }
   }
 
-// TODO: check whether the following code can be removed safely
-/*
-  if (type != TRI_DF_MARKER_HEADER &&
-      type != TRI_DF_MARKER_FOOTER &&
-      type != TRI_COL_MARKER_HEADER &&
-      type != TRI_DF_MARKER_ATTRIBUTE &&
-      type != TRI_DF_MARKER_SHAPE) {
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-    // check _tick value of marker and set min/max tick values for datafile
-    if (marker->_tick < datafile->_tickMin) {
-      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
-          "expected tick value >= tickMin %llu",
-          (unsigned long long) tick,
-          (int) marker->_type,
-          datafile->getName(datafile),
-          (unsigned long long) datafile->_tickMin);
-    }
-
-    if (tick < datafile->_tickMax) {
-      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
-          "expected tick value >= tickMax %llu",
-          (unsigned long long) tick,
-          (int) marker->_type,
-          datafile->getName(datafile),
-          (unsigned long long) datafile->_tickMax);
-    }
-
-    if (tick < static_cast<TRI_voc_tick_t>(datafile->_fid)) {
-      LOG_FATAL_AND_EXIT("logic error. invalid tick value %llu encountered when writing marker of type %d into datafile '%s'. "
-          "expected tick value >= fid %llu",
-          (unsigned long long) tick,
-          (int) marker->_type,
-          datafile->getName(datafile),
-          (unsigned long long) datafile->_fid);
-    }
-#endif
-
-    if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-        type == TRI_DOC_MARKER_KEY_EDGE) {
-      if (datafile->_dataMin == 0) {
-        datafile->_dataMin = tick;
-      }
-
-      if (datafile->_dataMax < tick) {
-        datafile->_dataMax = tick;
-      }
-    }
-  }
-
-  if (type != TRI_DF_MARKER_ATTRIBUTE &&
-      type != TRI_DF_MARKER_SHAPE) {
-
-    if (datafile->_tickMin == 0) {
-      datafile->_tickMin = tick;
-    }
-
-    if (datafile->_tickMax < marker->_tick) {
-      datafile->_tickMax = tick;
-    }
-  }
-  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////

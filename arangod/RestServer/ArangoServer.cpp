@@ -682,11 +682,11 @@ void ArangoServer::buildApplicationServer () {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
-  // .............................................................................
+  // ...........................................................................
   // init nonces
-  // .............................................................................
+  // ...........................................................................
 
-  uint32_t optionNonceHashSize = 0; // TODO: add a server option
+  uint32_t optionNonceHashSize = 0;
 
   if (optionNonceHashSize > 0) {
     LOG_DEBUG("setting nonce hash size to %d", (int) optionNonceHashSize);

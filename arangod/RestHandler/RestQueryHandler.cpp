@@ -678,33 +678,38 @@ bool RestQueryHandler::parseQuery () {
     }
 
     VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue(HttpResponse::OK));
-    result.add("parsed", VPackValue(true));
+    {
+      VPackObjectBuilder b(&result);
+      result.add("error", VPackValue(false));
+      result.add("code", VPackValue(HttpResponse::OK));
+      result.add("parsed", VPackValue(true));
 
-    result.add("collections", VPackValue(VPackValueType::Array));
-    for (const auto& it : parseResult.collectionNames) {
-      result.add(VPackValue(it));
+      result.add("collections", VPackValue(VPackValueType::Array));
+      for (const auto& it : parseResult.collectionNames) {
+        result.add(VPackValue(it));
+      }
+      result.close(); // Collections
+
+      result.add("bindVars", VPackValue(VPackValueType::Array));
+      for (const auto& it : parseResult.bindParameters) {
+        result.add(VPackValue(it));
+      }
+      result.close(); // bindVars
+      result.add(VPackValue("ast"));
+      std::string tmp = triagens::basics::JsonHelper::toString(parseResult.json);
+      {
+        VPackParser parser(result);
+        parser.parse(tmp);
+      }
+      
+      if (parseResult.warnings != nullptr) {
+        result.add(VPackValue("warnings"));
+        tmp = triagens::basics::JsonHelper::toString(parseResult.warnings);
+        VPackParser parser(result);
+        parser.parse(tmp);
+      }
     }
-    result.close(); // Collections
 
-    result.add("bindVars", VPackValue(VPackValueType::Array));
-    for (const auto& it : parseResult.bindParameters) {
-      result.add(VPackValue(it));
-    }
-    result.close(); // bindVars
-    // TODO The AST
-    // result.add("ast", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.json, Json::NOFREE).copy());
-    
-    result.add("warnings", VPackValue(VPackValueType::Array));
-    // TODO The Warnings
-    // if (parseResult.warnings != nullptr) {
-    //   result.set("warnings", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.warnings, Json::NOFREE).copy());
-    // }
-    result.close(); //warnings
-
-    result.close(); // base
     VPackSlice slice = result.slice();
     generateResult(slice);
   }

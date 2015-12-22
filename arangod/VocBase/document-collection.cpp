@@ -4122,7 +4122,7 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (triagens::ar
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        // TODO: doesn't this leak idx?
+        delete idx;
         idx = nullptr;
       }
     }

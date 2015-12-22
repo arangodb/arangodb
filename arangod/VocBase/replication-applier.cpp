@@ -1089,8 +1089,6 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
     return doSetError(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
   }
   
-  // TODO: prevent restart of the applier with a tick after a shutdown
-
   auto syncer = std::make_unique<triagens::arango::ContinuousSyncer>(
     _server,
     _vocbase,
@@ -1440,7 +1438,6 @@ void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
     }
   };
 
-  // TODO temporary solution
   std::unique_ptr<TRI_json_t> stateJson(JsonState(&state));
   std::shared_ptr<arangodb::velocypack::Builder> b = triagens::basics::JsonHelper::toVelocyPack(stateJson.get());
   builder.add("state", b->slice());

@@ -958,10 +958,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->canContinue();
       }
 
-      // TODO REMOVE Assertions
-      TRI_ASSERT(document->_info.doCompact() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true));
-      TRI_ASSERT(document->_info.waitForSync() == triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", vocbase->_settings.defaultWaitForSync));
-      TRI_ASSERT(document->_info.maximalSize() == triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize", vocbase->_settings.defaultMaximalSize));
       break;
     }
 
@@ -1124,10 +1120,14 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
           WaitForDeletion(vocbase, otherCid, statusCode);
         }
       }
+      else {
+        LOG_WARNING("empty name attribute in create collection marker for collection %llu and database %llu", 
+                    (unsigned long long) collectionId, 
+                    (unsigned long long) databaseId);
+        ++state->errorCount;
+        return state->canContinue();
+      }
 
-      
-      // TODO second attribute is the name. it might be undefined if there is
-      // no name attribute in the slice
       triagens::arango::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
 
       WaitForDeletion(vocbase, collectionId, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

@@ -84,7 +84,7 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid value type"); 
       }
       uint64_t cid = arangodb::velocypack::readUInt64(value.start() + 1);
-      char buffer[512]; // TODO: check if size is appropriate
+      char buffer[512]; // This is enough for collection name + _key
       size_t len = resolver->getCollectionName(&buffer[0], cid); 
       buffer[len] = '/';
       VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);

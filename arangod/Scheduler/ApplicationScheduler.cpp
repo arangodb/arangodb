@@ -242,47 +242,32 @@ static ControlCTask* localControlCTask;
     bool shutdown = false;
     string shutdownMessage;
 
-    // .........................................................................
-    // TODO: popup message
-    // .........................................................................
-
-
     switch (eventType) {
       case CTRL_BREAK_EVENT: {
-        //TODO: windows does not appreciate changing the environment in this manner
-        //TRI_SetProcessTitle(msg.c_str());
         shutdown = true;
         shutdownMessage = "control-break received";
         break;
       }
 
       case CTRL_C_EVENT: {
-        //TODO: windows does not appreciate changing the environment in this manner
-        //TRI_SetProcessTitle(msg.c_str());
         shutdown = true;
         shutdownMessage = "control-c received";
         break;
       }
 
       case CTRL_CLOSE_EVENT: {
-        //TODO: windows does not appreciate changing the environment in this manner
-        //TRI_SetProcessTitle(msg.c_str());
         shutdown = true;
         shutdownMessage = "window-close received";
         break;
       }
 
       case CTRL_LOGOFF_EVENT: {
-        //TODO: windows does not appreciate changing the environment in this manner
-        //TRI_SetProcessTitle(msg.c_str());
         shutdown = true;
         shutdownMessage = "user-logoff received";
         break;
       }
 
       case CTRL_SHUTDOWN_EVENT: {
-        //TODO: windows does not appreciate changing the environment in this manner
-        //TRI_SetProcessTitle(msg.c_str());
         shutdown = true;
         shutdownMessage = "system-shutdown received";
         break;
@@ -308,9 +293,9 @@ static ControlCTask* localControlCTask;
       return true;
     }
 
-     // ............................................................................
+     // ........................................................................
      // user is desperate to kill the server!
-     // ............................................................................
+     // ........................................................................
 
      LOG_INFO("%s, terminating", shutdownMessage.c_str());
      _exit(EXIT_FAILURE); // quick exit for windows

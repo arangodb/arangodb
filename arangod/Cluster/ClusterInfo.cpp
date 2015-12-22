@@ -1768,7 +1768,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
     if (! result.successful()) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newIndex);
-      // TODO
+      // TODO MAX
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, errorMsg);
     }
   }
@@ -1979,7 +1979,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
 
     if (! result.successful()) {
-      // TODO
+      // TODO MAX
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, errorMsg);
     }
   }

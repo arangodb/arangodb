@@ -162,7 +162,7 @@ int TRI_StopThread (TRI_thread_t* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DetachThread (TRI_thread_t* thread) {
-  // TODO: no native implementation
+  // no native implementation
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -201,13 +201,12 @@ int TRI_JoinThread (TRI_thread_t* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSelfThread (TRI_thread_t* thread) {
-  return false;
   // ...........................................................................
   // The GetThreadID(...) function is only available in Windows Vista or Higher
   // TODO: Change the TRI_thread_t into a structure which stores the thread id
   // as well as the thread handle. This can then be passed around
   // ...........................................................................
-  //return ( GetCurrentThreadId() == GetThreadId(thread) );
+  return ( GetCurrentThreadId() == GetThreadId(thread) );
 }
 
 

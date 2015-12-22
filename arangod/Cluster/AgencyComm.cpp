@@ -838,7 +838,6 @@ std::string AgencyComm::generateStamp () {
   struct tm tb;
   char buffer[21];
 
-  // TODO: optimise this
   TRI_gmtime(tt, &tb);
 
   size_t len = ::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);

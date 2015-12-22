@@ -206,16 +206,14 @@ static VocbaseAuthInfo* ConvertAuthInfo (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  // TODO remove this. Replace by VelocyPack
-  TRI_json_t* json = TRI_JsonShapedJson(shaper, &shapedJson);
+  std::unique_ptr<TRI_json_t> json(TRI_JsonShapedJson(shaper, &shapedJson));
 
   if (json == nullptr) {
     return nullptr;
   }
 
-  std::shared_ptr<VPackBuilder> parsed = triagens::basics::JsonHelper::toVelocyPack(json);
+  std::shared_ptr<VPackBuilder> parsed = triagens::basics::JsonHelper::toVelocyPack(json.get());
   std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(parsed->slice()));
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   return auth.release(); // maybe a nullptr
 }
 

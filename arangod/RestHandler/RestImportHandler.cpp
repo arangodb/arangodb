@@ -330,7 +330,6 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
           res = TRI_ERROR_OUT_OF_MEMORY;
 
           if (old != nullptr) {
-            // TODO only temporary
             std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
             std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old.get(), json.get(), false, true));
 
@@ -910,7 +909,6 @@ bool RestImportHandler::createFromJson (string const& type) {
 
   else {
     // the entire request body is one JSON document
-    // TODO Workaround for cast char* to uint8_t* 
     std::shared_ptr<VPackBuilder> parsedDocuments;
     try {
       parsedDocuments = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(_request->body()), _request->bodySize());

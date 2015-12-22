@@ -2414,7 +2414,7 @@ void triagens::aql::scatterInClusterRule (Optimizer* opt,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,
       ExecutionNode::REMOVE,
-      ExecutionNode::UPSERT // TODO: check if ok here
+      ExecutionNode::UPSERT
     }; 
 
     std::vector<ExecutionNode*> nodes(plan->findNodesOfType(types, true));

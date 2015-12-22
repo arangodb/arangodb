@@ -761,6 +761,16 @@ namespace triagens {
               }
             }
 
+            if (res.load() != TRI_ERROR_NO_ERROR) {
+              // Rollback such that the data can be deleted outside
+              try {
+                for (auto const& d : *data) {
+                  remove(userData, d);
+                }
+              }
+              catch (...) {
+              }
+            }
             return res.load();
           }
 

@@ -2064,12 +2064,9 @@ static void V8ArrayToStrings (const v8::Handle<v8::Value>& parameter,
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
   uint32_t const n = array->Length();
   for (uint32_t i = 0; i < n; ++i) {
-    if (! array->Get(i)->IsString()) {
-      // TODO Error Handling
-    } 
-    else {
+    if (array->Get(i)->IsString()) {
       result.emplace(TRI_ObjectToString(array->Get(i)));
-    }
+    } 
   }
 }
 
@@ -2747,7 +2744,6 @@ static void JS_QuerySleepAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   double n = TRI_ObjectToDouble(args[0]);
   double const until = TRI_microtime() + n;
 
-  // TODO: use select etc. to wait until point in time
   while (TRI_microtime() < until) {
     usleep(10000);
 
@@ -2955,10 +2951,8 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
     TRI_V8_RETURN_UNDEFINED();
   }
 
-  // TODO: caching the result makes subsequent results much faster, but
-  // prevents physical removal of the collection or database
   if (! cacheObject.IsEmpty()) {
-    cacheObject->ForceSet(cacheName, result); //, v8::DontEnum);
+    cacheObject->ForceSet(cacheName, result);
   }
 
   TRI_V8_RETURN(result);
@@ -4014,7 +4008,6 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    // TODO: raise an error here
     LOG_ERROR("out of memory when initializing VocBase");
   }
   else {

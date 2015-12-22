@@ -1407,6 +1407,7 @@ void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
 
   for (auto const& file : files) {
     if (regexec(&re, file.c_str(), (size_t) 0, nullptr, 0) == 0) {
+      // TODO: fix memleak
       char* fqn = TRI_Concatenate2File(_path, file.c_str());
       std::string path = std::string(fqn, strlen(fqn));
       std::shared_ptr<VPackBuilder> indexVPack = triagens::basics::VelocyPackHelper::velocyPackFromFile(path);
@@ -1440,10 +1441,6 @@ void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
   }
 
   regfree(&re);
-
-  // TODO !!
-  // TRI_IterateJsonIndexesCollectionInfo
-  // with FilterCollectionIndex
 }
 
 std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes (TRI_voc_tick_t maxTick) {

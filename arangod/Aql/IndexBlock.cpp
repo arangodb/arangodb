@@ -128,7 +128,6 @@ void IndexBlock::executeExpressions () {
     auto jsonified = a.toJson(_trx, myCollection, true);
     a.destroy();
     AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
-    // TODO: if we use the IN operator, we must make the resulting array unique
     _condition->getMember(toReplace->orMember)
               ->getMember(toReplace->andMember)
               ->changeMember(toReplace->operatorMember, evaluatedNode);

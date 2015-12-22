@@ -648,7 +648,6 @@ int HashIndex::batchInsertUnique (triagens::arango::Transaction* trx,
   int res = _uniqueArray->_hashArray->batchInsert(trx, &elements, numThreads);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO check leaks
     for (auto& it : elements) {
       // free all elements to prevent leak
       FreeElement(it);

@@ -3224,7 +3224,7 @@ static void InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which) {
-  v8::Isolate* isolate = args.GetIsolate(); // TODO: check if can be removed
+  v8::Isolate* isolate = args.GetIsolate();  // used in TRI_GET_GLOBALS
 
   if (args[which]->IsObject() && ! args[which]->IsArray()) {
     TRI_GET_GLOBALS();
@@ -3875,18 +3875,15 @@ static void JS_VersionVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& arg
       false
     );
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    // TODO ? TRI_FreeCollectionInfoOptions(&info);
 
     TRI_V8_RETURN(v8::Number::New(isolate, (int) info.version()));
   }
   catch (triagens::basics::Exception const& e) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    // TODO ? TRI_FreeCollectionInfoOptions(&info);
     TRI_V8_THROW_EXCEPTION_MESSAGE(e.code(), "cannot fetch collection info");
   }
   catch (...) {
     TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    // TODO ? TRI_FreeCollectionInfoOptions(&info);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot fetch collection info");
   }
   TRI_V8_TRY_CATCH_END

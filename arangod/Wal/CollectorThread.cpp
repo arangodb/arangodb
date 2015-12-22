@@ -1002,7 +1002,10 @@ int CollectorThread::collect (Logfile* logfile) {
     }
   }
 
-  // TODO: what to do if an error has occurred?
+  // Error conditions TRI_ERROR_ARANGO_DATABASE_NOT_FOUND and
+  // TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND are intentionally ignored
+  // here since this can actually happen if someone has dropped things
+  // in between.
 
   // remove all handled transactions from failedTransactions list
   if (! state.handledTransactions.empty()) {

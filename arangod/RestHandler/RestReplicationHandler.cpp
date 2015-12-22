@@ -1848,7 +1848,7 @@ int RestReplicationHandler::createCollection (VPackSlice const& slice,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the structure of a collection TODO
+/// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreCollection () {
@@ -1920,7 +1920,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the indexes of a collection TODO
+/// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreIndexes () {
@@ -2685,7 +2685,7 @@ int RestReplicationHandler::processRestoreDataBatch (triagens::arango::Transacti
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the data of a collection TODO
+/// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreData (CollectionNameResolver const& resolver,
@@ -2711,11 +2711,10 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
     errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
   }
   else {
-    // TODO: waitForSync disabled here. use for initial replication, too
-    // sync at end of trx
+    // waitForSync disabled here. use for initial replication, too
+    // TODO: sync at end of trx
     trxCollection->_waitForSync = false;
 
-    // create a fake transaction to avoid assertion failures. TODO: use proper transaction here
     res = processRestoreDataBatch(&trx, resolver, trxCollection, useRevision, force, errorMsg);
   }
 
@@ -2725,7 +2724,7 @@ int RestReplicationHandler::processRestoreData (CollectionNameResolver const& re
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the data of a collection TODO
+/// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRestoreData () {
@@ -2867,7 +2866,6 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
       if (! doc.isNone() && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
-        // TODO Only temporary
         std::unique_ptr<TRI_json_t> tmp(triagens::basics::VelocyPackHelper::velocyPackToJson(doc));
         res = ci->getResponsibleShard(col->id_as_string(), tmp.get(), true,
                                       responsibleShard, usesDefaultSharding);
@@ -3190,7 +3188,7 @@ void RestReplicationHandler::handleCommandGetKeys () {
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
     if (collectionKeys == nullptr) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
       return;
     }
 
@@ -3307,7 +3305,7 @@ void RestReplicationHandler::handleCommandFetchKeys () {
     auto collectionKeys = keysRepository->find(collectionKeysId);
 
     if (collectionKeys == nullptr) {
-      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
       return;
     }
 
@@ -3368,7 +3366,7 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
   bool found = keys->remove(collectionKeysId);
 
   if (! found) {
-    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND); // TODO: fix error code
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 

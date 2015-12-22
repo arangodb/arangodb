@@ -647,7 +647,6 @@ bool RestDocumentHandler::getDocumentCoordinator (
   map<string, string> resultHeaders;
   string resultBody;
 
-  // TODO: check if this is ok
   TRI_voc_rid_t rev = 0;
   bool found;
   char const* revstr = _request->value("rev", found);
@@ -1522,7 +1521,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       return false;
     }
 
-    // TODO Only temporary.
     std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
     if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
@@ -1579,7 +1577,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
-      // TODO Only temporary.
       std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
       if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(), false)) {
         TRI_FreeJson(shaper->memoryZone(), old);
@@ -1595,7 +1592,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
     }
 
-    // TODO Only temporary.
     std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
     res = trx.updateDocument(key, &mptr, json.get(), policy, waitForSync, revision, &rid);
   }

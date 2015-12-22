@@ -445,7 +445,6 @@ class KeySpace {
         TRI_json_t* current = found->json;
 
         if (! TRI_IsNumberJson(current)) {
-          // TODO: change error code
           return TRI_ERROR_ILLEGAL_NUMBER;
         }
 
@@ -485,7 +484,6 @@ class KeySpace {
         TRI_json_t* current = found->json;
 
         if (! TRI_IsArrayJson(current)) {
-          // TODO: change error code
           return TRI_ERROR_INTERNAL;
         }
 
@@ -505,14 +503,12 @@ class KeySpace {
       auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
       if (found == nullptr) {
-        // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
         
       TRI_json_t* current = found->json;
 
       if (! TRI_IsArrayJson(current)) {
-        // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
 
@@ -549,7 +545,6 @@ class KeySpace {
       TRI_json_t* current = source->json;
 
       if (! TRI_IsArrayJson(current)) {
-        // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
 
@@ -586,7 +581,6 @@ class KeySpace {
       }
 
       if (! TRI_IsArrayJson(dest->json)) {
-        // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
       }
 
@@ -653,7 +647,6 @@ class KeySpace {
         }
         else {
           if (! TRI_IsArrayJson(found->json)) {
-            // TODO: change error code
             TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL); 
           }
 
@@ -685,25 +678,21 @@ class KeySpace {
       auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
       if (found == nullptr) {
-        // TODO: change error code
         return false;
       }
       else {
         if (! TRI_IsArrayJson(found->json)) {
-          // TODO: change error code
           return false;
         }
 
         size_t const n = TRI_LengthArrayJson(found->json);
 
         if (index < 0) {
-          // TODO: change error code
           return false;
         }
 
         auto json = TRI_ObjectToJson(isolate, value);
         if (json == nullptr) {
-          // TODO: change error code
           return false;
         }
 
@@ -766,7 +755,6 @@ class KeySpace {
       v8::HandleScope scope(isolate);
 
       if (! value->IsObject() || value->IsArray()) {
-        // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -782,7 +770,6 @@ class KeySpace {
       }
 
       if (! TRI_IsObjectJson(found->json)) {
-        // TODO: change error code
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -897,7 +884,6 @@ static void JS_KeyspaceCreate (const v8::FunctionCallbackInfo<v8::Value>& args) 
 
     if (hash != nullptr) {
       if (! ignoreExisting) {
-        // TODO: change error code
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "hash already exists");
       }
       TRI_V8_RETURN_FALSE();
@@ -943,7 +929,6 @@ static void JS_KeyspaceDrop (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto it = h->data.find(name);
 
     if (it == h->data.end()) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -983,7 +968,6 @@ static void JS_KeyspaceCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   
@@ -1058,7 +1042,6 @@ static void JS_KeyspaceKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1097,7 +1080,6 @@ static void JS_KeyspaceGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1136,7 +1118,6 @@ static void JS_KeyspaceRemove (const v8::FunctionCallbackInfo<v8::Value>& args) 
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1178,7 +1159,6 @@ static void JS_KeyGet (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -1223,7 +1203,6 @@ static void JS_KeySet (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -1259,7 +1238,6 @@ static void JS_KeySetCas (const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string const&& key  = TRI_ObjectToString(args[1]);
 
   if (args[2]->IsUndefined()) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1272,7 +1250,6 @@ static void JS_KeySetCas (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -1319,7 +1296,6 @@ static void JS_KeyRemove (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -1362,7 +1338,6 @@ static void JS_KeyExists (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -1415,7 +1390,6 @@ static void JS_KeyIncr (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -1462,7 +1436,6 @@ static void JS_KeyUpdate (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1497,7 +1470,6 @@ static void JS_KeyKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1532,7 +1504,6 @@ static void JS_KeyValues (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1567,7 +1538,6 @@ static void JS_KeyPush (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1608,7 +1578,6 @@ static void JS_KeyPop (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1644,7 +1613,6 @@ static void JS_KeyTransfer (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1680,7 +1648,6 @@ static void JS_KeyGetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1716,7 +1683,6 @@ static void JS_KeySetAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   auto hash = GetKeySpace(vocbase, name);
 
   if (hash == nullptr) {
-    // TODO: change error code
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
@@ -1758,7 +1724,6 @@ static void JS_KeyType (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
@@ -1799,7 +1764,6 @@ static void JS_KeyCount (const v8::FunctionCallbackInfo<v8::Value>& args) {
     auto hash = GetKeySpace(vocbase, name);
 
     if (hash == nullptr) {
-      // TODO: change error code
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 

@@ -47,7 +47,7 @@ struct TRI_vocbase_t;
 /// @brief default settings
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vocbase_defaults_s {
+struct TRI_vocbase_defaults_t {
   TRI_voc_size_t    defaultMaximalSize;
   bool              defaultWaitForSync;
   bool              requireAuthentication;
@@ -64,16 +64,7 @@ typedef struct TRI_vocbase_defaults_s {
   std::shared_ptr<VPackBuilder> toVelocyPack () const;
 
   void applyToVocBase(TRI_vocbase_t*) const;
-}
-TRI_vocbase_defaults_t;
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhance defaults with data from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FromVelocyPackVocBaseDefaults (TRI_vocbase_defaults_t*,
-                                        VPackSlice const&);
+};
 
 #endif
 

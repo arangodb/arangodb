@@ -279,7 +279,7 @@ namespace triagens {
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the data of a collection TODO
+/// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
         int processRestoreData (CollectionNameResolver const&,

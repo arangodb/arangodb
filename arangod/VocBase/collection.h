@@ -434,7 +434,6 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO only temporary
 struct TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -453,7 +452,6 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t*,
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO only temporary
 struct TRI_json_t* TRI_CreateJsonCollectionInfo (triagens::arango::VocbaseCollectionInfo const&);
 
 std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo (triagens::arango::VocbaseCollectionInfo const&);

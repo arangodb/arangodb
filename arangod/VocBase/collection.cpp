@@ -412,8 +412,6 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a collection
-///
-/// TODO: Use ScanCollectionDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckCollection (TRI_collection_t* collection,
@@ -1040,13 +1038,12 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 // --SECTION--                                       class VocbaseCollectionInfo
 // -----------------------------------------------------------------------------
 
-// Only temporary until merge with Max
 VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other)
     : _version(TRI_COL_VERSION),
       _type(other.type()),
-      _revision(0), // TODO
+      _revision(0),  // TODO
       _cid(other.id()),
-      _planId(0), // TODO
+      _planId(0),  // TODO
       _maximalSize(other.journalSize()),
       _initialCount(-1),
       _indexBuckets(other.indexBuckets()),
@@ -1135,7 +1132,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
   }
 
   if (options.isObject()) {
-    // TODO what if both are present?
     TRI_voc_size_t maximalSize;
     if (options.hasKey("journalSize")) {
       maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<TRI_voc_size_t>(options, "journalSize", vocbase->_settings.defaultMaximalSize);
@@ -1153,8 +1149,6 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
     _waitForSync  = triagens::basics::VelocyPackHelper::getBooleanValue(options, "waitForSync", vocbase->_settings.defaultWaitForSync);
     _isVolatile   = triagens::basics::VelocyPackHelper::getBooleanValue(options, "isVolatile", false);
     _indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(options, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
-    // TODO
-    // CHECK data type
     _type = static_cast<TRI_col_type_e>(triagens::basics::VelocyPackHelper::getNumericValue<size_t>(options, "type", _type));
 
     std::string cname = triagens::basics::VelocyPackHelper::getStringValue(options, "name", "");
@@ -1454,8 +1448,7 @@ void VocbaseCollectionInfo::update (VPackSlice const& slice,
       _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true);
       _waitForSync = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "waitForSync", vocbase->_settings.defaultWaitForSync);
       _maximalSize = triagens::basics::VelocyPackHelper::getNumericValue<int>(slice, "maximalSize", vocbase->_settings.defaultMaximalSize);
-      // TODO: verify In this case the indexBuckets are not updated
-      // _indexBuckets = triagens::velocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
+      _indexBuckets = triagens::basics::VelocyPackHelper::getNumericValue<uint32_t>(slice, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
     }
     else {
       _doCompact = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "doCompact", true);
@@ -1595,26 +1588,12 @@ std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo (triagens::aran
 void TRI_CreateVelocyPackCollectionInfo (triagens::arango::VocbaseCollectionInfo const& info,
                                          VPackBuilder& builder) {
   // This function might throw
-  char* cidString;
-  char* planIdString;
-
+  //
   TRI_ASSERT(! builder.isClosed());
 
-  cidString = TRI_StringUInt64((uint64_t) info.id());
+  std::string cidString = std::to_string(info.id());
+  std::string planIdString = std::to_string(info.planId());
 
-  if (cidString == nullptr) {
-    // TODO Proper error message
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  planIdString = TRI_StringUInt64((uint64_t) info.planId());
-
-  if (planIdString == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, cidString);
-
-    // TODO Proper error message
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
   builder.add("version", VPackValue(info.version()));
   builder.add("type", VPackValue(info.type()));
   builder.add("cid", VPackValue(cidString));
@@ -1639,8 +1618,6 @@ void TRI_CreateVelocyPackCollectionInfo (triagens::arango::VocbaseCollectionInfo
     VPackSlice const slice(opts->data());
     builder.add("keyOptions", slice);
   }
-  TRI_Free(TRI_CORE_MEM_ZONE, planIdString);
-  TRI_Free(TRI_CORE_MEM_ZONE, cidString);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1657,8 +1634,13 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
                               bool doSync) {
   if (! slice.isNone()) {
     TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
-    // TODO: Verify that true is correct here!
-    collection->_info.update(slice, true, vocbase);
+    try {
+      collection->_info.update(slice, false, vocbase);
+    }
+    catch (...) {
+      TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
+      return TRI_ERROR_INTERNAL;
+    }
     TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
   }
   return collection->_info.saveToFile(collection->_directory, doSync);
@@ -1978,7 +1960,7 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
         // datafile header
         TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
         header._version     = TRI_DF_VERSION;
-        header._maximalSize = 0; // TODO: seems ok to set this to 0, check if this is ok
+        header._maximalSize = 0;
         header._fid         = tick;
         header.base._tick   = tick;
         header.base._crc    = TRI_FinalCrc32(TRI_BlockCrc32(TRI_InitialCrc32(), (char const*) &header.base, header.base._size));
