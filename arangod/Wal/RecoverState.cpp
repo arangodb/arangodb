@@ -41,6 +41,9 @@
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
@@ -1128,6 +1131,20 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->canContinue();
       }
 
+      // fiddle "isSystem" value, which is not contained in the JSON file
+      bool isSystemValue = false; 
+      if (! name.empty()) {
+        isSystemValue = name[0] == '_';
+      }
+
+      VPackBuilder bx;
+      bx.openObject();
+      bx.add("isSystem", VPackValue(isSystemValue));
+      bx.close();
+      VPackSlice isSystem = bx.slice();
+      VPackBuilder b2 = VPackCollection::merge(slice, isSystem, false);
+      slice = b2.slice();
+      
       triagens::arango::VocbaseCollectionInfo info(vocbase, name.c_str(), slice);
 
       WaitForDeletion(vocbase, collectionId, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
