@@ -137,19 +137,29 @@
     switchDatabase: function(e) {
       if (!$(e.target).parent().hasClass('iconSet')) {
         var changeTo = $(e.currentTarget).find("h5").text();
-        var url = this.collection.createDatabaseURL(changeTo);
-        window.location.replace(url);
+        if (changeTo !== '') {
+          var url = this.collection.createDatabaseURL(changeTo);
+          window.location.replace(url);
+        }
       }
     },
 
     submitCreateDatabase: function() {
-      var self = this;
-      var name  = $('#newDatabaseName').val();
-      var userName = $('#newUser').val();
-      var userPassword = $('#newPassword').val();
+      var self = this, userPassword,
+      name  = $('#newDatabaseName').val(),
+      userName = $('#newUser').val();
+
+      if ($('#useDefaultPassword').val() === 'true') {
+        userPassword = 'ARANGODB_DEFAULT_ROOT_PASSWORD'; 
+      }
+      else {
+        userPassword = $('#newPassword').val();
+      }
+
       if (!this.validateDatabaseInfo(name, userName, userPassword)) {
         return;
       }
+
       var options = {
         name: name,
         users: [
@@ -333,10 +343,18 @@
         )
       );
       tableContent.push(
+        window.modalView.createSelectEntry(
+          "useDefaultPassword",
+          "Use default password",
+          true,
+          "Read the password from the environment variable ARANGODB_DEFAULT_ROOT_PASSWORD.",
+          [{value: false, label: "No"}, {value: true, label: "Yes"}]        )
+      );
+      tableContent.push(
         window.modalView.createPasswordEntry(
           "newPassword",
           "Password",
-          "ARANGODB_DEFAULT_ROOT_PASSWORD",
+          "",
           false,
           "",
           false
@@ -354,6 +372,18 @@
         buttons,
         tableContent
       );
+
+      $('#useDefaultPassword').change(function() {
+
+        if ($('#useDefaultPassword').val() === 'true') {
+          $('#row_newPassword').hide();
+        }
+        else {
+          $('#row_newPassword').show();
+        }
+      });
+
+      $('#row_newPassword').hide();
     }
 
   });
