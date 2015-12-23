@@ -2875,7 +2875,8 @@ div .tile, div .bigtile {
   margin-left: 6px;
   margin-right: 6px;
   position: relative;
-  text-align: center; }
+  text-align: center;
+  z-index: 1; }
   div .tile:hover, div .bigtile:hover {
     cursor: pointer; }
   div .tile .warning-icons, div .bigtile .warning-icons {
@@ -2982,7 +2983,8 @@ div .tile, div .bigtile {
       padding-bottom: 2px;
       padding-left: 3px;
       padding-right: 3px;
-      padding-top: 2px; }
+      padding-top: 2px;
+      z-index: 2; }
       div .tile .iconSet span:hover, div .bigtile .iconSet span:hover {
         background-color: #8aa051;
         color: #fff; }
@@ -3174,7 +3176,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -114px;
-    width: 248px; }
+    width: 248px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3358,7 +3360,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -234px;
-    width: 488px; }
+    width: 488px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3542,7 +3544,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -354px;
-    width: 728px; }
+    width: 728px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3724,7 +3726,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -474px;
-    width: 968px; }
+    width: 968px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -3903,7 +3905,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -594px;
-    width: 1208px; }
+    width: 1208px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4082,7 +4084,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -714px;
-    width: 1448px; }
+    width: 1448px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4261,7 +4263,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -834px;
-    width: 1688px; }
+    width: 1688px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4440,7 +4442,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -954px;
-    width: 1928px; }
+    width: 1928px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4619,7 +4621,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1074px;
-    width: 2168px; }
+    width: 2168px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4798,7 +4800,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1194px;
-    width: 2408px; }
+    width: 2408px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
@@ -4977,7 +4979,7 @@ div .bigtile {
     bottom: 12.1% !important;
     left: 50%;
     margin-left: -1314px;
-    width: 2648px; }
+    width: 2648px !important; }
     .modal-chart-detail .modal-body {
       height: 95%;
       max-height: none;
