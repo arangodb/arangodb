@@ -29,6 +29,7 @@
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Dumper.h"
+#include "velocypack/Iterator.h"
 #include "velocypack/Sink.h"
 
 using namespace arangodb::velocypack;
@@ -168,7 +169,7 @@ void Builder::removeLast() {
   index.pop_back();
 }
 
-void Builder::close() {
+Builder& Builder::close() {
   if (isClosed()) {
     throw Exception(Exception::BuilderNeedOpenCompound);
   }
@@ -188,7 +189,7 @@ void Builder::close() {
     _pos -= 8;  // no bytelength and number subvalues needed
     _stack.pop_back();
     // Intentionally leave _index[depth] intact to avoid future allocs!
-    return;
+    return *this;
   }
 
   // From now on index.size() > 0
@@ -237,7 +238,7 @@ void Builder::close() {
       _pos += nLen + bLen;
 
       _stack.pop_back();
-      return;
+      return *this;
     }
   }
 
@@ -379,6 +380,7 @@ void Builder::close() {
   // off the _stack:
   _stack.pop_back();
   // Intentionally leave _index[depth] intact to avoid future allocs!
+  return *this;
 }
 
 // checks whether an Object value has a specific key attribute
@@ -675,7 +677,6 @@ uint8_t* Builder::set(Value const& item) {
 }
 
 uint8_t* Builder::set(Slice const& item) {
-
   checkKeyIsString(item.isString());
 
   ValueLength const l = item.byteSize();
@@ -788,6 +789,31 @@ uint8_t* Builder::add(std::string const& attrName, ValuePair const& sub) {
 uint8_t* Builder::add(std::string const& attrName, Slice const& sub) {
   return addInternal<Slice>(attrName, sub);
 }
+  
+// Add all subkeys and subvalues into an object from an ObjectIterator
+// and leaves open the object intentionally
+uint8_t* Builder::add(ObjectIterator& sub) {
+  return add(std::move(sub));
+}
+
+uint8_t* Builder::add(ObjectIterator&& sub) {
+  if (_stack.empty()) {
+    throw Exception(Exception::BuilderNeedOpenObject);
+  }
+  ValueLength& tos = _stack.back();
+  if (_start[tos] != 0x0b && _start[tos] != 0x14) {
+    throw Exception(Exception::BuilderNeedOpenObject);
+  }
+  if (_keyWritten) {
+    throw Exception(Exception::BuilderKeyAlreadyWritten);
+  }
+  auto const oldPos = _start + _pos;
+  while (sub.valid()) {
+    add(sub.key().copyString(), sub.value());
+    sub.next();
+  }
+  return oldPos;
+}
 
 uint8_t* Builder::add(Value const& sub) { return addInternal<Value>(sub); }
 
@@ -796,5 +822,27 @@ uint8_t* Builder::add(ValuePair const& sub) {
 }
 
 uint8_t* Builder::add(Slice const& sub) { return addInternal<Slice>(sub); }
+
+// Add all subkeys and subvalues into an object from an ArrayIterator
+// and leaves open the array intentionally
+uint8_t* Builder::add(ArrayIterator& sub) {
+  return add(std::move(sub));
+}
+
+uint8_t* Builder::add(ArrayIterator&& sub) {
+  if (_stack.empty()) {
+    throw Exception(Exception::BuilderNeedOpenArray);
+  }
+  ValueLength& tos = _stack.back();
+  if (_start[tos] != 0x06 && _start[tos] != 0x13) {
+    throw Exception(Exception::BuilderNeedOpenArray);
+  }
+  auto const oldPos = _start + _pos;
+  while (sub.valid()) {
+    add(sub.value());
+    sub.next();
+  }
+  return oldPos;
+}
 
 static_assert(sizeof(double) == 8, "double is not 8 bytes");
