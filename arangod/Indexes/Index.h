@@ -233,10 +233,46 @@ namespace triagens {
           if (i >= _fields.size()) {
             return false;
           }
-          TRI_ASSERT(i < _fields.size());
-          for (auto const& it : _fields[i]) {
-            if (it.shouldExpand) {
+          return TRI_AttributeNamesHaveExpansion(_fields[i]);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not any attribute is expanded
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isAttributeExpanded (std::vector<triagens::basics::AttributeName> const& attribute) const {
+          for (auto const& it : _fields) {
+            if (! triagens::basics::AttributeName::namesMatch(attribute, it)) {
+              continue;
+            }
+            return TRI_AttributeNamesHaveExpansion(it);
+          }
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not any attribute is expanded
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool attributeMatches (std::vector<triagens::basics::AttributeName> const& attribute) const {
+          for (auto const& it : _fields) {
+            if (triagens::basics::AttributeName::isIdentical(attribute, it, true)) {
               return true;
+            }
+          }
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not any attribute is expanded
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool hasExpansion () const {
+          for (auto const& it : _fields) {
+            for (auto const& it2 : it) {
+              if (it2.shouldExpand) {
+                return true;
+              }
             }
           }
           return false;

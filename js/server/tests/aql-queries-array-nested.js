@@ -46,6 +46,53 @@ function nestedArraySimpleSuite () {
     });
     return (nodeTypes.indexOf("IndexNode") !== -1);
   };
+    
+  var runQueries = function (q, expected, useIndexForSimple, useIndexForArray) {
+    // try without index
+    var result = AQL_EXECUTE(q).json.sort();
+    assertEqual(expected, result);
+
+    // try with hash index on value
+    var idx = c.ensureIndex({ type: "hash", fields: [ "value" ] });
+    assertEqual(2, c.getIndexes().length);
+    
+    result = AQL_EXECUTE(q).json.sort();
+    assertEqual(expected, result);
+    assertEqual(useIndexForSimple, indexUsed(q));
+
+    c.dropIndex(idx);
+    assertEqual(1, c.getIndexes().length);
+    
+    // try with hash index on value[*]
+    idx = c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
+    assertEqual(2, c.getIndexes().length);
+    
+    result = AQL_EXECUTE(q).json.sort();
+    assertEqual(expected, result);
+    assertEqual(useIndexForArray, indexUsed(q));
+    
+    c.dropIndex(idx);
+    assertEqual(1, c.getIndexes().length);
+    
+    // try with skiplist ndex on value
+    idx = c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
+    assertEqual(2, c.getIndexes().length);
+    
+    result = AQL_EXECUTE(q).json.sort();
+    assertEqual(expected, result);
+    assertEqual(useIndexForSimple, indexUsed(q));
+    
+    c.dropIndex(idx);
+    assertEqual(1, c.getIndexes().length);
+    
+    // try with skiplist index on value[*]
+    c.ensureIndex({ type: "skiplist", fields: [ "value[*]" ] });
+    assertEqual(2, c.getIndexes().length);
+    
+    result = AQL_EXECUTE(q).json.sort();
+    assertEqual(expected, result);
+    assertEqual(useIndexForArray, indexUsed(q));
+  };
 
   return {
 
@@ -62,73 +109,38 @@ function nestedArraySimpleSuite () {
     },
 
     testAll : function () {
+      var expected = [ "1", "2" ];
       var q = "FOR doc IN " + c.name() + " RETURN doc._key";
 
-      var result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "1", "2" ], result);
-
-      // try with index
-      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
-      
-      result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "1", "2" ], result);
-      assertFalse(indexUsed(q));
+      runQueries(q, expected, false, false);
     },
 
     testOne : function () {
+      var expected = [ "1" ];
       var q = "FOR doc IN " + c.name() + " FILTER doc.value IN [ 'foo' ] RETURN doc._key";
-
-      var result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "1" ], result);
-
-      // try with index
-      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
       
-      result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "1" ], result);
-      assertFalse(indexUsed(q));
+      runQueries(q, expected, true, false);
     },
-    
+   
     testOneExpansion : function () {
+      var expected = [ ];
       var q = "FOR doc IN " + c.name() + " FILTER doc.value[*] IN [ 'foo' ] RETURN doc._key";
 
-      var result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ ], result);
-
-      // try with index
-      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
-      
-      result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ ], result);
-      assertFalse(indexUsed(q));
+      runQueries(q, expected, false, false);
     },
       
     testOneReverse : function () {
+      var expected = [ "2" ];
       var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value RETURN doc._key";
 
-      var result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "2" ], result);
-
-      // try with index
-      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
-      
-      result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "2" ], result);
-      assertTrue(indexUsed(q));
+      runQueries(q, expected, false, true);
     },
-    
+   
     testOneReverseExpansion : function () {
+      var expected = [ "2" ];
       var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value[*] RETURN doc._key";
 
-      var result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "2" ], result);
-
-      // try with index
-      c.ensureIndex({ type: "hash", fields: [ "value[*]" ] });
-      
-      result = AQL_EXECUTE(q).json.sort();
-      assertEqual([ "2" ], result);
-      assertTrue(indexUsed(q));
+      runQueries(q, expected, false, true);
     }
 
   };
