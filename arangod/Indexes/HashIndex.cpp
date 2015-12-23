@@ -904,65 +904,76 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
   std::vector<TRI_hash_index_search_value_t*> searchValues;
   searchValues.reserve(maxPermutations);
 
-  // create all permutations
-  auto shaper = _collection->getShaper(); 
-  size_t current = 0;
-  bool done = false;
-  while (! done) {
-    auto searchValue = std::make_unique<TRI_hash_index_search_value_t>();
-    searchValue->reserve(n);
+  try {
+    // create all permutations
+    auto shaper = _collection->getShaper(); 
+    size_t current = 0;
+    bool done = false;
+    while (! done) {
+      auto searchValue = std::make_unique<TRI_hash_index_search_value_t>();
+      searchValue->reserve(n);
 
-    bool valid = true;
-    for (size_t i = 0; i < n; ++i) {
-      auto& state = permutationStates[i];
-      std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+      bool valid = true;
+      for (size_t i = 0; i < n; ++i) {
+        auto& state = permutationStates[i];
+        std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
 
-      if (json == nullptr) {
-        valid = false;
-        break;
+        if (json == nullptr) {
+          valid = false;
+          break;
+        }
+
+        auto shaped = TRI_ShapedJsonJson(shaper, json.get(), false);
+          
+        if (shaped == nullptr) {
+          // no such shape exists. this means we won't find this value and can go on with the next permutation
+          valid = false;
+          break;
+        }
+        
+        searchValue->_values[state.attributePosition] = *shaped;
+        TRI_Free(shaper->memoryZone(), shaped);
       }
 
-      auto shaped = TRI_ShapedJsonJson(shaper, json.get(), false);
-         
-      if (shaped == nullptr) {
-        // no such shape exists. this means we won't find this value and can go on with the next permutation
-        valid = false;
-        break;
+      if (valid) {
+        searchValues.push_back(searchValue.get());
+        searchValue.release();
       }
+
+      // now permute
+      while (true) {
+        if (++permutationStates[current].current < permutationStates[current].n) {
+          current = 0;
+          // abort inner iteration
+          break;
+        }
+
+        permutationStates[current].current = 0;
+
+        if (++current >= n) {
+          done = true;
+          break;
+        }
+        // next inner iteration
+      }
+    }
+
+    TRI_ASSERT(searchValues.size() <= maxPermutations);
       
-      searchValue->_values[state.attributePosition] = *shaped;
-      TRI_Free(shaper->memoryZone(), shaped);
+    // Create the iterator
+    TRI_IF_FAILURE("HashIndex::noIterator")  {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
-    if (valid) {
-      searchValues.push_back(searchValue.get());
-      searchValue.release();
+      
+  }
+  catch (...) {
+    // prevent a leak here
+    for (auto& it : searchValues) {
+      delete it;
     }
-
-    // now permute
-    while (true) {
-      if (++permutationStates[current].current < permutationStates[current].n) {
-        current = 0;
-        // abort inner iteration
-        break;
-      }
-
-      permutationStates[current].current = 0;
-
-      if (++current >= n) {
-        done = true;
-        break;
-      }
-      // next inner iteration
-    }
+    throw;
   }
 
-  TRI_ASSERT(searchValues.size() <= maxPermutations);
-    
-  // Create the iterator
-  TRI_IF_FAILURE("HashIndex::noIterator")  {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
   return new HashIndexIterator(this, searchValues);
 }
 
