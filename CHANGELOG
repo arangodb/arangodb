@@ -1,6 +1,10 @@
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* web interface: fixed several bugs during the dashboard initialize process
+
+* web interface: included several bugfixes: #1597, #1611, #1623
+
 * AQL query optimizer now converts `LENGTH(collection-name)` to an optimized 
   expression that returns the number of documents in a collection
 
@@ -73,8 +77,6 @@ v2.8.0 (XXXX-XX-XX)
 
 v2.8.0-beta2 (2015-12-16)
 -------------------------
-
-* web interface: included several bugfixes: #1597, #1611, #1623
 
 * added AQL query optimizer rule "sort-in-values"
 
