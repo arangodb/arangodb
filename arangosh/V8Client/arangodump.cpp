@@ -537,7 +537,7 @@ static int DumpCollection (int fd,
     bool checkMore = false;
     bool found;
 
-    // TODO FRAGEN: fix hard-coded headers
+    // TODO: fix hard-coded headers
     string header = response->getHeaderField("x-arango-replication-checkmore", found);
 
     if (found) {
@@ -545,7 +545,7 @@ static int DumpCollection (int fd,
       res = TRI_ERROR_NO_ERROR;
 
       if (checkMore) {
-        // TODO FRAGEN: fix hard-coded headers
+        // TODO: fix hard-coded headers
         header = response->getHeaderField("x-arango-replication-lastincluded", found);
 
         if (found) {
@@ -713,7 +713,6 @@ static int RunDump (string& errorMsg) {
     }
     meta.close();
 
-    // TODO FRAGEN: We might want to write VelocyPack to file!
     const string metaString = meta.slice().toJson();
     if (! TRI_WritePointer(fd, metaString.c_str(), metaString.size())) {
       TRI_CLOSE(fd);
@@ -807,7 +806,6 @@ static int RunDump (string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      // TODO FRAGEN We might want to write VelocyPack to file
       const string collectionInfo = collection.toJson();
 
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
@@ -906,7 +904,7 @@ static int DumpShard (int fd,
     bool checkMore = false;
     bool found;
 
-    // TODO FRAGEN: fix hard-coded headers
+    // TODO: fix hard-coded headers
     std::string header = response->getHeaderField("x-arango-replication-checkmore", found);
 
     if (found) {
@@ -914,7 +912,7 @@ static int DumpShard (int fd,
       res = TRI_ERROR_NO_ERROR;
 
       if (checkMore) {
-        // TODO FRAGEN: fix hard-coded headers
+        // TODO: fix hard-coded headers
         header = response->getHeaderField("x-arango-replication-lastincluded", found);
 
         if (found) {
@@ -1091,7 +1089,6 @@ static int RunClusterDump (string& errorMsg) {
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
-      // TODO FRAGEN We might want to store VelocyPack instead of JSON
       const string collectionInfo = collection.toJson();
 
       if (! TRI_WritePointer(fd, collectionInfo.c_str(), collectionInfo.size())) {
