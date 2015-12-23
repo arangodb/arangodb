@@ -37,8 +37,7 @@ var templatePath = fs.join(
   internal.startupPath,
   'server',
   'modules',
-  'org',
-  'arangodb',
+  '@arangodb',
   'foxx',
   'templates'
 );
