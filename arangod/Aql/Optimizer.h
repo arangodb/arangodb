@@ -97,9 +97,6 @@ namespace triagens {
         // as possible as early as possible)
         moveFiltersUpRule_pass1                       = 130,
 
-        // sort IN values
-        sortInValuesRule_pass1                        = 135,
-  
         // remove calculations that are repeatedly used in a query
         removeRedundantCalculationsRule_pass1         = 140,
 
@@ -160,9 +157,6 @@ namespace triagens {
         // specialize the variables used in a COLLECT INTO
         specializeCollectVariables_pass5              = 735,
 
-        // remove calculations that are never necessary
-        removeUnnecessaryCalculationsRule_pass5       = 740,
-
         // remove INTO for COLLECT if appropriate
         removeCollectIntoRule_pass5                   = 750,
 
@@ -191,10 +185,16 @@ namespace triagens {
   
         // try to find sort blocks which are superseeded by indexes
         useIndexForSortRule_pass6                     = 850,
+        
+        // sort values used in IN comparisons of remaining filters 
+        sortInValuesRule_pass6                        = 855,
+        
+        // remove calculations that are never necessary
+        removeUnnecessaryCalculationsRule_pass6       = 860,
 
         // merge filters into graph traversals
-        mergeFilterIntoTraversal_pass6                = 860,
-
+        mergeFilterIntoTraversal_pass6                = 870,
+        
 //////////////////////////////////////////////////////////////////////////////
 /// Pass 9: push down calculations beyond FILTERs and LIMITs
 //////////////////////////////////////////////////////////////////////////////

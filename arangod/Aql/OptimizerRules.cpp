@@ -110,8 +110,8 @@ int triagens::aql::sortInValuesRule (Optimizer* opt,
     setter = plan->getVarSetBy(variable->id);
 
     if (setter == nullptr || 
-        setter->getType() != EN::CALCULATION) {
-      // variable itself was not introduced by a calculation. 
+        (setter->getType() != EN::CALCULATION && setter->getType() != EN::SUBQUERY)) {
+      // variable itself was not introduced by a calculation.
       continue;
     }
 
@@ -121,42 +121,66 @@ int triagens::aql::sortInValuesRule (Optimizer* opt,
       // calculation. sorting the IN values will not provide a benefit here
       continue;
     }
-    
-    AstNode const* originalNode = static_cast<CalculationNode*>(setter)->expression()->node();
-    TRI_ASSERT(originalNode != nullptr);
-
-    AstNode const* testNode = originalNode;
-
-    if (originalNode->type == NODE_TYPE_FCALL &&
-        static_cast<Function const*>(originalNode->getData())->externalName == "NOOPT") {
-      // bypass NOOPT(...) 
-      TRI_ASSERT(originalNode->numMembers() == 1);
-      auto args = originalNode->getMember(0);
  
-      if (args->numMembers() > 0) {
-        testNode = args->getMember(0);
-      }
-    }
-
-    if (testNode->type == NODE_TYPE_VALUE ||
-        testNode->type == NODE_TYPE_OBJECT) {
-      // not really usable...
-      continue;
-    }
-
-    if (testNode->type == NODE_TYPE_ARRAY &&
-        testNode->numMembers() < 8) {
-      continue;
-    }
-
-    if (testNode->isSorted()) {
-      // already sorted
-      continue;
-    }
-
+    static size_t const Threshold = 8;
     auto ast = plan->getAst();
+    AstNode const* originalArg = nullptr;
+
+    if (setter->getType() == EN::CALCULATION) {
+      AstNode const* originalNode = static_cast<CalculationNode*>(setter)->expression()->node();
+      TRI_ASSERT(originalNode != nullptr);
+
+      AstNode const* testNode = originalNode;
+
+      if (originalNode->type == NODE_TYPE_FCALL &&
+          static_cast<Function const*>(originalNode->getData())->externalName == "NOOPT") {
+        // bypass NOOPT(...) 
+        TRI_ASSERT(originalNode->numMembers() == 1);
+        auto args = originalNode->getMember(0);
+   
+        if (args->numMembers() > 0) {
+          testNode = args->getMember(0);
+        }
+      }
+
+      if (testNode->type == NODE_TYPE_VALUE ||
+          testNode->type == NODE_TYPE_OBJECT) {
+        // not really usable...
+        continue;
+      }
+
+      if (testNode->type == NODE_TYPE_ARRAY &&
+          testNode->numMembers() < Threshold) {
+        // number of values is below threshold
+        continue;
+      }
+
+      if (testNode->isSorted()) {
+        // already sorted
+        continue;
+      }
+
+      originalArg = originalNode;
+    }
+    else {
+      TRI_ASSERT(setter->getType() == EN::SUBQUERY);
+      auto sub = static_cast<SubqueryNode*>(setter);
+
+      // estimate items in subquery
+      size_t nrItems = 0;
+      sub->getSubquery()->getCost(nrItems);
+
+      if (nrItems < Threshold) {
+        continue;
+      }
+      
+      originalArg = ast->createNodeReference(sub->outVariable());
+    }
+
+    TRI_ASSERT(originalArg != nullptr);
+
     auto args = ast->createNodeArray();
-    args->addMember(originalNode);
+    args->addMember(originalArg);
     auto sorted = ast->createNodeFunctionCall("SORTED_UNIQUE", args); 
 
     auto outVar = ast->variables()->createTemporaryVariable();
@@ -176,9 +200,17 @@ int triagens::aql::sortInValuesRule (Optimizer* opt,
     auto const& oldParents = setter->getParents();
     TRI_ASSERT(! oldParents.empty());
     calculationNode->addParent(oldParents[0]);
+
     oldParents[0]->removeDependencies();
     oldParents[0]->addDependency(calculationNode);
     setter->setParent(calculationNode);
+      
+    if (setter->getType() == EN::CALCULATION) {
+      // mark the original node as being removable, even if it can throw
+      // this is special as the optimizer will normally not remove any nodes  
+      // if they throw - even when fully unused otherwise
+      static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
+    }
 
     // finally adjust the variable inside the IN calculation
     inNode->changeMember(1, ast->createNodeReference(outVar));
@@ -1848,7 +1880,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     if (n->getType() == EN::CALCULATION) {
       auto nn = static_cast<CalculationNode*>(n);
 
-      if (nn->canThrow()) {
+      if (nn->canThrow() && ! nn->canRemoveIfThrows()) {
         // If this node can throw, we must not optimize it away!
         continue;
       }

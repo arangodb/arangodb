@@ -415,11 +415,6 @@ void Optimizer::setupRules () {
                true);
 #endif
 
-  registerRule("sort-in-values",
-               sortInValuesRule,
-               sortInValuesRule_pass1,
-               true);
-       
   // determine the "right" type of AggregateNode and 
   // add a sort node for each COLLECT (may be removed later) 
   // this rule cannot be turned off (otherwise, the query result might be wrong!)
@@ -539,12 +534,6 @@ void Optimizer::setupRules () {
                true);
 #endif 
 
-  // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations-2", 
-               removeUnnecessaryCalculationsRule,
-               removeUnnecessaryCalculationsRule_pass5,
-               true);
-
   // remove INTO from COLLECT
   registerRule("remove-collect-into",
                removeCollectIntoRule,
@@ -595,6 +584,18 @@ void Optimizer::setupRules () {
   registerRule("use-index-for-sort",
                useIndexForSortRule,
                useIndexForSortRule_pass6,
+               true);
+
+  // sort in-values in filters (note: must come after remove-filter-covered-by-index rule)
+  registerRule("sort-in-values",
+               sortInValuesRule,
+               sortInValuesRule_pass6,
+               true);
+
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations-2", 
+               removeUnnecessaryCalculationsRule,
+               removeUnnecessaryCalculationsRule_pass6,
                true);
 
   // finally, push calculations as far down as possible
