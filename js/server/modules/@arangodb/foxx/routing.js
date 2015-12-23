@@ -37,6 +37,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const arangodb = require('@arangodb');
 const actions = require('@arangodb/actions');
+const createRouter = require('@arangodb/foxx/router');
 const routeLegacyService = require('@arangodb/foxx/legacy/routing').routeService;
 
 // -----------------------------------------------------------------------------
@@ -149,25 +150,16 @@ exports.routeApp = function (service, throwOnErrors) {
   });
 
   service.main.exports = {};
-  service.routes = {
-    urlPrefix: '',
-    name: `foxx("${service.mount}")`,
-    routes: [],
-    middleware: [],
-    context: {},
-    models: {},
-
-    foxx: true,
-
-    foxxContext: {
-      service: service,
-      module: service.main
-    }
-  };
 
   let error = null;
   if (service.legacy) {
     error = routeLegacyService(service, throwOnErrors);
+  } else {
+    service.router = createRouter();
+    service.routes = {
+      name: `foxx("${service.mount}")`,
+      routes: []
+    };
   }
 
   if (service.manifest.files) {
@@ -190,17 +182,21 @@ exports.routeApp = function (service, throwOnErrors) {
     });
   }
 
-  if (service.manifest.main) {
-    try {
-      service.main.exports = service.run(service.manifest.main);
-      // TODO mount routes
-    } catch (e) {
-      console.errorLines(`Cannot execute Foxx service: ${e.stack}`);
-      error = e;
-      if (throwOnErrors) {
-        throw e;
+  if (!service.legacy) {
+    if (service.manifest.main) {
+      try {
+        service.main.exports = service.run(service.manifest.main);
+        // TODO mount routes
+      } catch (e) {
+        console.errorLines(`Cannot execute Foxx service: ${e.stack}`);
+        error = e;
+        if (throwOnErrors) {
+          throw e;
+        }
       }
     }
+
+    service.buildRoutes();
   }
 
   service.main.loaded = true;

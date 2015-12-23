@@ -30,6 +30,7 @@
 const _ = require('lodash');
 const ArangoError = require('@arangodb').ArangoError;
 const errors = require('@arangodb').errors;
+// const ALL_METHODS = require('@arangodb/actions').ALL_METHODS;
 const internal = require('internal');
 const assert = require('assert');
 const Module = require('module');
@@ -281,6 +282,26 @@ class FoxxService {
     }, this);
 
     return warnings;
+  }
+
+  buildRoutes() {
+    this.router._buildRouteTree();
+    // let service = this;
+    // this.routes.routes.push({
+    //   url: {match: '/*'},
+    //   action: {
+    //     callback(req, res, opts, next) { // next => 404, most likely
+    //       console.infoLines(JSON.stringify(req, null, 2));
+    //       let match;
+    //       for (match of service.router.findRoutes(req.suffix)) {
+    //         // ...
+    //       }
+    //       if (!match) {
+    //         next();
+    //       }
+    //     }
+    //   }
+    // });
   }
 
   applyDependencies(deps) {

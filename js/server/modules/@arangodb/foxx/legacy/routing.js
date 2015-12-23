@@ -336,6 +336,23 @@ function mountController(service, mount, filename) {
 exports.routeService = function (service, throwOnErrors) {
   let error = null;
   let defaultDocument = service.manifest.defaultDocument || 'index.html';
+
+  service.routes = {
+    urlPrefix: '',
+    name: `foxx("${service.mount}")`,
+    routes: [],
+    middleware: [],
+    context: {},
+    models: {},
+
+    foxx: true,
+
+    foxxContext: {
+      service: service,
+      module: service.main
+    }
+  };
+
   if ((service.mount + defaultDocument) !== service.mount) {
     // only add redirection if src and target are not the same
     service.routes.routes.push({
