@@ -217,9 +217,9 @@ function AnySuite () {
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 200);
       assertTrue(Math.abs(stats.average - statsExp.average) 
-                 < statsExp.averageStddev * 3);
+                 < statsExp.averageStddev * 4);
       assertTrue(Math.abs(stats.variance - statsExp.variance)
-                 < statsExp.varianceStddev * 3);
+                 < statsExp.varianceStddev * 4);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,9 +245,9 @@ function AnySuite () {
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 100);
       assertTrue(Math.abs(stats.average - statsExp.average) 
-                 < statsExp.averageStddev * 3);
+                 < statsExp.averageStddev * 4);
       assertTrue(Math.abs(stats.variance - statsExp.variance)
-                 < statsExp.varianceStddev * 3);
+                 < statsExp.varianceStddev * 4);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
