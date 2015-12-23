@@ -255,13 +255,7 @@ static void LocalEntryFunction () {
 }
 
 static void LocalExitFunction (int exitCode, void* data) {
-  int res = 0;
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
-  res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(1);
@@ -647,7 +641,7 @@ static int ProcessInputDirectory (std::string& errorMsg) {
         }
 
         if (overwriteName) {
-          // TODO
+          // TODO MAX
           // Situation:
           // Ich habe ein Json-Object von Datei (teile des Inhalts im Zweifel unbekannt)
           // Es gibt ein Sub-Json-Object "parameters" mit einem Attribute "name" der gesetzt ist.

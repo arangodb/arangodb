@@ -3095,9 +3095,14 @@ static void JS_Sleep (const v8::FunctionCallbackInfo<v8::Value>& args) {
   double n = TRI_ObjectToDouble(args[0]);
   double until = TRI_microtime() + n;
 
-  // TODO: use select etc. to wait until point in time
-  while (TRI_microtime() < until) {
-    usleep(10000);
+  while (true) {
+    double now = TRI_microtime();
+    if (now >= until) {
+      break;
+    }
+    uint64_t duration = (until - now >= 0.5) ?
+                        500000 : static_cast<uint64_t>((until - now) * 1000000);
+    usleep(duration);
   }
 
   TRI_V8_RETURN_UNDEFINED();

@@ -646,7 +646,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   if (collection == nullptr) {
     TRI_CloseDocumentCollection(document, false);
     TRI_FreeDocumentCollection(document);
-    // TODO: does the collection directory need to be removed?
+    // TODO FRAGEN: does the collection directory need to be removed?
     return nullptr;
   }
 

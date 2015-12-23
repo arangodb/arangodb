@@ -1079,7 +1079,7 @@ AstNode* Ast::createNodeIntersectedArray (AstNode const* lhs,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST unique array node, OR-merged from two other arrays
-/// TODO: optimize this function
+/// TODO FRAGEN: optimize this function
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeUnionizedArray (AstNode const* lhs, 

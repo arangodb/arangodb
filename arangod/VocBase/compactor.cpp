@@ -863,7 +863,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     if (! ok) {
       LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
       // compactor file does not need to be removed now. will be removed on next startup
-      // TODO: Remove
+      // TODO FRAGEN: Remove
       return;
     }
 

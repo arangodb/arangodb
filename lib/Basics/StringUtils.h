@@ -151,24 +151,6 @@ namespace triagens {
       std::string separate (std::string const& name, char separator = '-');
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief escape delimiter
-///
-/// This method escapes a set of character with a given escape character. The
-/// escape character is also escaped.
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string escape (std::string const& name, std::string const& specials, char quote = '\\');
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escape delimiter
-///
-/// This method escapes a set of character with a given escape character. The
-/// escape character is also escaped.
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string escape (std::string const& name, size_t len, std::string const& specials, char quote = '\\');
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief escape unicode
 ///
 /// This method escapes a unicode character string by replacing the unicode

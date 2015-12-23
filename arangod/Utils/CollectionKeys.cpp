@@ -321,7 +321,6 @@ void CollectionKeys::dumpDocs (triagens::basics::Json& json,
                                size_t chunk,
                                size_t chunkSize,
                                VPackSlice const& ids) const {
-  // TODO Only temporary. Will replace the TRI_json_t variant
   std::unique_ptr<TRI_json_t> jsonIds(triagens::basics::VelocyPackHelper::velocyPackToJson(ids));
   dumpDocs(json, chunk, chunkSize, jsonIds.get());
 }

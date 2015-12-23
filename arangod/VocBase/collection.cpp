@@ -1041,9 +1041,11 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 VocbaseCollectionInfo::VocbaseCollectionInfo (CollectionInfo const& other)
     : _version(TRI_COL_VERSION),
       _type(other.type()),
-      _revision(0),  // TODO
-      _cid(other.id()),
-      _planId(0),  // TODO
+      _revision(0),  // not known in the cluster case on the coordinator
+      _cid(other.id()),   // this is on the coordinator and describes a 
+                          // cluster-wide collection, for safety reasons,
+                          // we also set _cid
+      _planId(other.id()),
       _maximalSize(other.journalSize()),
       _initialCount(-1),
       _indexBuckets(other.indexBuckets()),

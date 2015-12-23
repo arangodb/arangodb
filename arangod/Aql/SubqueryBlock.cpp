@@ -87,7 +87,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
   bool const subqueryReturnsData = (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
 
   // TODO: constant and deterministic subqueries only need to be executed once
-  bool const subqueryIsConst = false; // TODO 
+  bool const subqueryIsConst = false;
 
   std::vector<AqlItemBlock*>* subqueryResults = nullptr;
 

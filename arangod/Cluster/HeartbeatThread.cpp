@@ -384,11 +384,19 @@ void HeartbeatThread::runCoordinator () {
     }
 
     if (shouldSleep) {
-      double const remain = interval - (TRI_microtime() - start);
+      double remain = interval - (TRI_microtime() - start);
 
-      // sleep for a while if appropriate
-      if (remain > 0.0) {
-        usleep((unsigned long) (remain * 1000.0 * 1000.0));
+      // sleep for a while if appropriate, on some systems usleep does not
+      // like arguments greater than 1000000
+      while (remain > 0.0) {
+        if (remain >= 0.5) {
+          usleep(500000);
+          remain -= 0.5;
+        }
+        else {
+          usleep((unsigned long) (remain * 1000.0 * 1000.0));
+          remain = 0.0;
+        }
       }
     }
   }

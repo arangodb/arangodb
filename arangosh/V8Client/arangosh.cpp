@@ -1908,11 +1908,6 @@ void LocalEntryFunction() {
 }
 
 static void LocalExitFunction (int exitCode, void* data) {
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
   int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
@@ -2231,7 +2226,7 @@ static int Run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
     switch (runMode) {
       case eInteractive: 
         RunShell(isolate, context, promptError);
-        ok = true; /// TODO
+        ok = true; /// TODO FRAGEN
         break;
       case eExecuteScript:
         // we have scripts to execute

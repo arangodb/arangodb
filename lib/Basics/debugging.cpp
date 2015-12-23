@@ -352,44 +352,6 @@ void TRI_GetBacktrace (std::string& btstr) {
           break;
         }
       }
-      // TODO: osx demangling works a little bit different. 
-      // http://oroboro.com/stack-trace-on-crash/ 
-      // says it should look like that:
-      //#ifdef DARWIN
-      //      // OSX style stack trace
-      //      for ( char *p = symbollist[i]; *p; ++p )
-      //      {
-      //         if (( *p == '_' ) && ( *(p-1) == ' ' ))
-      //            begin_name = p-1;
-      //         else if ( *p == '+' )
-      //            begin_offset = p-1;
-      //      }
-      //
-      //      if ( begin_name && begin_offset && ( begin_name < begin_offset ))
-      //      {
-      //         *begin_name++ = '\0';
-      //         *begin_offset++ = '\0';
-      //
-      //         // mangled name is now in [begin_name, begin_offset) and caller
-      //         // offset in [begin_offset, end_offset). now apply
-      //         // __cxa_demangle():
-      //         int status;
-      //         char* ret = abi::__cxa_demangle( begin_name, &funcname[0],
-      //                                          &funcnamesize, &status );
-      //         if ( status == 0 ) 
-      //         {
-      //            funcname = ret; // use possibly realloc()-ed string
-      //            fprintf( out, "  %-30s %-40s %s\n",
-      //                     symbollist[i], funcname, begin_offset );
-      //         } else {
-      //            // demangling failed. Output function name as a C function with
-      //            // no arguments.
-      //            fprintf( out, "  %-30s %-38s() %s\n",
-      //                     symbollist[i], begin_name, begin_offset );
-      //         }
-      //
-      //#else // !DARWIN - but is posix
-      // if the line could be processed, attempt to demangle the symbol
       if (mangled_name && offset_begin && offset_end && 
           mangled_name < offset_begin) {
         *mangled_name++ = '\0';

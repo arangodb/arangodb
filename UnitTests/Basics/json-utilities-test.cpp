@@ -180,14 +180,7 @@ BOOST_AUTO_TEST_CASE (tst_compare_values_unequal) {
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[false]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "[true]");
   JSON_CHECK(-1, TRI_CompareValuesJson, "1", "{}");
-
-  // TODO: add more tests
 }
-
-// TODO: add tests for
-  // TRI_CheckSameValueJson
-  // TRI_UniquifyArrayJson
-  // TRI_SortArrayJson
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test duplicate keys

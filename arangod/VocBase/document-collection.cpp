@@ -2191,6 +2191,9 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 
 static bool InitDocumentCollection (TRI_document_collection_t* document,
                                     VocShaper* shaper) {
+  // TODO: Here are leaks, in particular with _headersPtr etc., need sane
+  // convention of who frees what when. Do this in the context of the
+  // TRI_document_collection_t cleanup.
   TRI_ASSERT(document != nullptr);
 
   document->_cleanupIndexes     = false;
@@ -2387,6 +2390,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("cannot initialize document collection");
 
     // TODO: shouldn't we free document->_headersPtr etc.?
+    // Yes, do this in the context of the TRI_document_collection_t cleanup.
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
     delete document;
@@ -2401,6 +2405,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we free document->_headersPtr etc.?
+    // Yes, do this in the context of the TRI_document_collection_t cleanup.
     LOG_ERROR("cannot save collection parameters in directory '%s': '%s'",
               collection->_directory,
               TRI_last_error());
@@ -5931,7 +5936,7 @@ int TRI_document_collection_t::postInsertIndexes (triagens::arango::Transaction*
   
   auto const& indexes = allIndexes();
   size_t const n = indexes.size();
-  // TODO: remove usage of TRI_transaction_collection_t here
+  // TODO FRAGEN: remove usage of TRI_transaction_collection_t here
   TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx->getInternals(), _info.id(), TRI_TRANSACTION_WRITE);
 
   for (size_t i = 1; i < n; ++i) {

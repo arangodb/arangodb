@@ -1721,7 +1721,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id from VelocyPack TODO: move
+/// @brief extract the collection id from VelocyPack TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t RestReplicationHandler::getCid (VPackSlice const& slice) const {
@@ -1739,7 +1739,7 @@ TRI_voc_cid_t RestReplicationHandler::getCid (VPackSlice const& slice) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection, based on the VelocyPack provided TODO: move
+/// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::createCollection (VPackSlice const& slice,

@@ -1369,14 +1369,12 @@ int TRI_DestroyLockFile (char const* filename) {
   ssize_t n = LookupElementVectorString(&FileNames, filename);
 
   if (n < 0) {
-    // TODO: what happens if the file does not exist?
     return TRI_ERROR_NO_ERROR;
   }
 
   int fd = TRI_OPEN(filename, O_RDWR | TRI_O_CLOEXEC);
 
   if (fd < 0) {
-    // TODO: what happens if the file does not exist?
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -1802,9 +1800,12 @@ static bool CopyFileContents (int srcFD, int dstFD, ssize_t fileSize, std::strin
 
 bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &error) {
 #ifdef _WIN32
+  TRI_ERRORBUF;
   bool rc = CopyFile(src.c_str(), dst.c_str(), false) != 0;
   if (! rc) {
-    error = "failed to copy " + src + " to " + dst + " : "; /// TODO error
+    TRI_SYSTEM_ERROR();
+    error = "failed to copy " + src + " to " + dst + ": "
+            + TRI_GET_ERRORBUF;
   }
   return rc;
 #else
@@ -2402,8 +2403,6 @@ size_t TRI_GetNullBufferSizeFiles () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the files subsystem
-///
-/// TODO: initialize logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitializeFiles (void) {
@@ -2415,8 +2414,6 @@ void TRI_InitializeFiles (void) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown the files subsystem
-///
-/// TODO: initialize logging here?
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void) {

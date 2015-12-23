@@ -589,7 +589,7 @@ void triagens::aql::specializeCollectVariables (Optimizer* opt,
         // variable is used. now find out how it is used
         if (current->getType() != EN::CALCULATION) {
           // variable is used outside of a calculation... skip optimization
-          // TODO
+          // TODO FRAGEN
           break;
         }
 
