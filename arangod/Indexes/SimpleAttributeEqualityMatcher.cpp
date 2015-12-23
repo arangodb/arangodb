@@ -368,8 +368,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex (triagens::arango::Index co
 
     if (what->isAttributeAccessForVariable(attributeData) && 
         attributeData.first == reference &&
-        ! triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
-        index->attributeMatches(attributeData.second)) {
+        ! triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
       canUse = true;
