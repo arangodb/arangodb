@@ -1071,27 +1071,40 @@ bool SkiplistIndex::accessFitsIndex (triagens::aql::AstNode const* access,
         return false;
     }
     if (triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
-      // doc.value[*] IN 'value'
+      // doc.value[*] == 'value'
+      return false;
+    }
+    if (isAttributeExpanded(attributeData.second)) {
+      // doc.value == 'value' (with an array index)
       return false;
     }
   }
   else { 
     // ok, we do have an IN here... check if it's something like 'value' IN doc.value[*]
+    TRI_ASSERT(op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
+
     if (what->isAttributeAccessForVariable(attributeData) && 
         attributeData.first == reference &&
-        ! triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
-      // doc.value[*] IN 'value'
+        ! triagens::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
+        attributeMatches(attributeData.second)) {
+      // doc.value IN 'value'
+      // can use this index
       canUse = true;
     }
-    if (! canUse) {
-      // check for doc.value[*] IN 'value'
+    else {
+      // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
       what = other;
-      if (! what->isAttributeAccessForVariable(attributeData) ||
-          attributeData.first != reference) {
-        // this access is not referencing this collection
-        return false;
+      if (what->isAttributeAccessForVariable(attributeData) &&
+          attributeData.first == reference &&
+          isAttributeExpanded(attributeData.second) && 
+          attributeMatches(attributeData.second)) {
+        canUse = true;
       }
+    }
+    
+    if (! canUse) {
+      return false;
     }
   }
 
