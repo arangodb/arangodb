@@ -30,32 +30,58 @@ const joi = require('joi');
 
 const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
 const DEFAULT_PARAM_SCHEMA = joi.string().required();
-const $_WILDCARD = Symbol('@@wildcard');
-const $_PARAM = Symbol('@@parameter');
 
-function tokenize(ctx, path) {
-  return path.slice(1).split('/').map(function (name) {
+const ALL_METHODS = require('@arangodb/actions').ALL_METHODS;
+const $_WILDCARD = Symbol.for('@@wildcard'); // catch-all suffix
+const $_TERMINAL = Symbol.for('@@terminal'); // terminal -- routes be here
+const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, like static part)
+const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
+const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including router.all)
+
+function tokenize(path, ctx) {
+  if (path === '/') {
+    return [$_TERMINAL];
+  }
+  let tokens = path.slice(1).split('/').map(function (name) {
     if (name === '*') {
       return $_WILDCARD;
     }
     if (name.charAt(0) !== ':') {
       return name;
     }
-    ctx._pathParams[name.slice(1)] = {type: DEFAULT_PARAM_SCHEMA};
+    name = name.slice(1);
+    ctx._pathParamNames.push(name);
+    ctx._pathParams.set(name, {type: DEFAULT_PARAM_SCHEMA});
     return $_PARAM;
   });
+  if (tokens[tokens.length - 1] !== $_WILDCARD) {
+    tokens.push($_TERMINAL);
+  }
+  return tokens;
 }
 
 class SwaggerContext {
-  constructor() {
+  constructor(path) {
+    {
+      let n = path.length - 1;
+      if (path.charAt(n) === '/') {
+        path = path.slice(0, n);
+      }
+      if (path.charAt(0) !== '/') {
+        path = `/${path}`;
+      }
+    }
     this._headers = new Map();
-    this._pathParams = new Map();
     this._queryParams = new Map();
     this._bodyParam = null;
     this._response = null;
     this._summary = null;
     this._description = null;
     this._deprecated = false;
+    this.path = path;
+    this._pathParams = new Map();
+    this._pathParamNames = [];
+    this._pathTokens = tokenize(path, this);
   }
   header(name, type, description) {
     this._headers.set(name, {type: type, description: description});
@@ -92,28 +118,19 @@ class SwaggerContext {
 }
 
 class Route extends SwaggerContext {
-  constructor(method, path, handler, name) {
+  constructor(methods, path, handler, name) {
     if (typeof path !== 'string') {
       name = handler;
       handler = path;
       path = '/';
     }
-    {
-      let n = path.length - 1;
-      if (path.charAt(n) === '/') {
-        path = path.slice(0, n);
-      }
-      if (path.charAt(0) !== '/') {
-        path = `/${path}`;
-      }
-    }
-    super();
-    this.method = method;
-    this.path = path;
+    super(path);
+    this.methods = methods;
     this.handler = handler;
     this.name = name;
-    this._path = tokenize(this, path);
-    if (method === 'post' || method === 'put' || method === 'patch') {
+    if (['POST', 'PUT', 'PATCH'].some(function (method) {
+      return methods.indexOf(method) !== -1;
+    })) {
       this._bodyParam = {type: DEFAULT_BODY_SCHEMA};
     }
   }
@@ -121,12 +138,17 @@ class Route extends SwaggerContext {
 
 class Middleware extends SwaggerContext {
   constructor(path, fn) {
-    super();
     if (typeof path !== 'string') {
       fn = path;
-      path = '/*';
+      path = '/';
     }
-    this.path = path;
+    if (path.charAt(path.length - 1) !== '*') {
+      if (path.charAt(path.length - 1) !== '/') {
+        path += '/';
+      }
+      path += '*';
+    }
+    super(path);
     this.middleware = fn;
     this.handler = fn;
     if (typeof fn.register === 'function') {
@@ -135,51 +157,168 @@ class Middleware extends SwaggerContext {
   }
 }
 
-class Router {
+class Router extends SwaggerContext {
   constructor() {
-    this.all = new SwaggerContext();
+    super('');
     this._routes = [];
     this._middleware = [];
-    this._children = [];
   }
   use(path, fn) {
+    if (typeof path !== 'string') {
+      fn = path;
+      path = '/*';
+    }
     if (fn instanceof Router) {
-      this._children.push({path: path, router: fn});
-      return fn.all;
+      if (path.charAt(path.length - 1) !== '*') {
+        if (path.charAt(path.length - 1) !== '/') {
+          path += '/';
+        }
+        path += '*';
+      }
+      let child = {
+        path: path,
+        _pathParams: new Map(),
+        _pathParamNames: [],
+        router: fn
+      };
+      child._pathTokens = tokenize(path, child);
+      this._routes.push(child);
+      return fn;
     }
     const middleware = new Middleware(path, fn);
     this._middleware.push(middleware);
     return middleware;
   }
+  all(path, handler, name) {
+    const route = new Route(ALL_METHODS, path, handler, name);
+    this._routes.push(route);
+    return route;
+  }
   get(path, handler, name) {
-    const route = new Route('GET', path, handler, name);
+    const route = new Route(['GET'], path, handler, name);
     this._routes.push(route);
     return route;
   }
   post(path, handler, name) {
-    const route = new Route('POST', path, handler, name);
+    const route = new Route(['POST'], path, handler, name);
     this._routes.push(route);
     return route;
   }
   put(path, handler, name) {
-    const route = new Route('PUT', path, handler, name);
+    const route = new Route(['PUT'], path, handler, name);
     this._routes.push(route);
     return route;
   }
   patch(path, handler, name) {
-    const route = new Route('PATCH', path, handler, name);
+    const route = new Route(['PATCH'], path, handler, name);
     this._routes.push(route);
     return route;
   }
   delete(path, handler, name) {
-    const route = new Route('DELETE', path, handler, name);
+    const route = new Route(['DELETE'], path, handler, name);
     this._routes.push(route);
     return route;
   }
   head(path, handler, name) {
-    const route = new Route('HEAD', path, handler, name);
+    const route = new Route(['HEAD'], path, handler, name);
     this._routes.push(route);
     return route;
+  }
+  _buildRouteTree() {
+    const root = new Map();
+    this._tree = root;
+
+    // middleware always implicitly ends in a wildcard
+    // child routers always explicitly end in wildcards
+    // routes may explicitly end in a wildcard
+    // static names have precedence over params
+    // params have precedence over wildcards
+    // middleware is executed in order of precedence
+    // implicit 404 in middleware does not fail the routing
+    // router.all ONLY affects routes of THAT router (and its children)
+    // * router.all does NOT affect routes of sibling routers *
+
+    // should child routers have precedence over routes?
+    // ideally they should respect each others precedence
+    // and be treated equally
+
+    for (let middleware of this._middleware) {
+      let node = root;
+      for (let token of middleware._pathTokens) {
+        if (!node.has(token)) {
+          node.set(token, new Map());
+        }
+        node = node.get(token);
+      }
+      if (!node.has($_MIDDLEWARE)) {
+        node.set($_MIDDLEWARE, []);
+      }
+      node.get($_MIDDLEWARE).push(middleware);
+    }
+
+    for (let route of this._routes) {
+      let node = root;
+      for (let token of route._pathTokens) {
+        if (!node.has(token)) {
+          node.set(token, new Map());
+        }
+        node = node.get(token);
+      }
+      if (!node.has($_ROUTES)) {
+        node.set($_ROUTES, []);
+      }
+      node.get($_ROUTES).push(route);
+      if (route.router) {
+        route.router._buildRouteTree();
+      }
+    }
+  }
+  * _findRoutes(pathParts, middleware, routers) {
+    if (!middleware) {
+      middleware = [];
+    }
+    if (!routers) {
+      routers = [this];
+    }
+    for (let result of findRoutes(this._tree, pathParts, middleware, routers)) {
+      yield result;
+    }
+  }
+}
+
+function* findRoutes(node, suffix, middleware, routers) {
+  let wildcardNode = node.get($_WILDCARD);
+  if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
+    middleware = middleware.concat([wildcardNode.get($_MIDDLEWARE)]);
+  } else {
+    middleware = middleware.concat([[]]);
+  }
+  if (!suffix.length) {
+    let terminalNode = node.get($_TERMINAL);
+    let terminalRoutes = terminalNode && terminalNode.get($_ROUTES) || [];
+    for (let route of terminalRoutes) {
+      yield {route: route, middleware: middleware, routers: routers, suffix: suffix};
+    }
+  } else {
+    let part = suffix[0];
+    let tail = suffix.slice(1);
+    for (let childNode of [node.get(part), node.get($_PARAM)]) {
+      if (childNode) {
+        for (let result of findRoutes(childNode, tail, middleware, routers)) {
+          yield result;
+        }
+      }
+    }
+  }
+  let wildcardRoutes = wildcardNode && wildcardNode.get($_ROUTES) || [];
+  for (let route of wildcardRoutes) {
+    if (route.router) {
+      for (let result of route.router._findRoutes(suffix, middleware, routers.concat(route.router))) {
+        yield result;
+      }
+    } else {
+      yield {route: route, middleware: middleware, routers: routers, suffix: suffix};
+    }
   }
 }
 
