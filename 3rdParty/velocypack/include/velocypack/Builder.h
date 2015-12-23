@@ -45,6 +45,8 @@
 
 namespace arangodb {
 namespace velocypack {
+  class ArrayIterator;
+  class ObjectIterator;
 
 class Builder {
   friend class Parser;  // The parser needs access to internals.
@@ -332,6 +334,11 @@ class Builder {
 
   // Add a subvalue into an object from a ValuePair:
   uint8_t* add(std::string const& attrName, ValuePair const& sub);
+  
+  // Add all subkeys and subvalues into an object from an ObjectIterator
+  // and leaves open the object intentionally
+  uint8_t* add(ObjectIterator& sub);
+  uint8_t* add(ObjectIterator&& sub);
 
   // Add a subvalue into an array from a Value:
   uint8_t* add(Value const& sub);
@@ -341,9 +348,14 @@ class Builder {
 
   // Add a subvalue into an array from a ValuePair:
   uint8_t* add(ValuePair const& sub);
+  
+  // Add all subvalues into an array from an ArrayIterator
+  // and leaves open the array intentionally
+  uint8_t* add(ArrayIterator& sub);
+  uint8_t* add(ArrayIterator&& sub);
 
   // Seal the innermost array or object:
-  void close();
+  Builder& close();
 
   // Remove last subvalue written to an (unclosed) object or array:
   // Throws if an error occurs.
@@ -612,7 +624,6 @@ private:
       }
       throw;
     }
-
   }
 
   uint8_t* set(Value const& item);
