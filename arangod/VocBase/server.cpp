@@ -1483,7 +1483,6 @@ static int WriteDropMarker (TRI_voc_tick_t id) {
 
 static void DatabaseManager (void* data) {
   auto server = static_cast<TRI_server_t*>(data);
-  auto queryRegistry = static_cast<triagens::aql::QueryRegistry*>(server->_queryRegistry);
   int cleanupCycles = 0;
 
   while (true) {
@@ -1593,6 +1592,8 @@ static void DatabaseManager (void* data) {
 
       usleep(DATABASE_MANAGER_INTERVAL);
       // The following is only necessary after a wait:
+      auto queryRegistry = static_cast<triagens::aql::QueryRegistry*>(server->_queryRegistry);
+
       if (queryRegistry != nullptr) {
         queryRegistry->expireQueries();
       }
