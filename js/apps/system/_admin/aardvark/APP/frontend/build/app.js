@@ -24164,11 +24164,71 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     updateLineChart: function (figure, isDetailChart) {
+
       var g = isDetailChart ? this.detailGraph : this.graphs[figure],
       opts = {
         file: this.history[this.server][figure],
         dateWindow: this.updateDateWindow(g, isDetailChart)
       };
+
+      //round line chart values to 10th decimals
+      var pointer = 0, dates = [];
+      _.each(opts.file, function(value) {
+
+        var rounded = value[0].getSeconds() - (value[0].getSeconds() % 10); 
+        opts.file[pointer][0].setSeconds(rounded);
+        dates.push(opts.file[pointer][0]);
+
+        pointer++;
+      });
+      //get min/max dates of array
+      var maxDate = new Date(Math.max.apply(null, dates));
+      var minDate = new Date(Math.min.apply(null, dates));
+      var tmpDate = new Date(minDate.getTime()), missingDates = [];
+      var tmpDatesComplete = [];
+
+      while (tmpDate < maxDate) {
+        tmpDate = new Date(tmpDate.setSeconds(tmpDate.getSeconds() + 10));
+        tmpDatesComplete.push(tmpDate);
+      }
+
+      //iterate through all date ranges
+      _.each(tmpDatesComplete, function(date) {
+        var tmp = false;
+
+        //iterate through all available real date values
+        _.each(opts.file, function(availableDates) {
+          //if real date is inside date range
+          if (Math.floor(date.getTime()/1000) === Math.floor(availableDates[0].getTime()/1000)) {
+            tmp = true;
+          }
+        });
+
+        if (tmp === false) {
+          //a value is missing
+          if (date < new Date()) {
+            missingDates.push(date);
+          }
+        }
+      });
+
+      _.each(missingDates, function(date) {
+        if (figure === 'systemUserTime' ||
+            figure === 'requests' ||
+            figure === 'pageFaults' ||
+            figure === 'dataTransfer') {
+          opts.file.push([date, 0, 0]);
+        }
+        if (figure === 'totalTime') {
+          opts.file.push([date, 0, 0, 0]);
+        }
+      });
+
+      //sort for library
+      opts.file.sort(function(a,b){
+        return new Date(b[0]) - new Date(a[0]);
+      });
+
       g.updateOptions(opts);
     },
 
@@ -24597,7 +24657,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
         var selector = "#" + k + "Container svg";
 
-        if (self.history[self.server].residentSizeChart === undefined) {
+        if (self.history[self.server].residentSizeChart === undefined) {
           self.addEmptyDataLabels();
           return;
         }
