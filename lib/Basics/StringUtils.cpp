@@ -39,15 +39,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 
-// TODO need to this in another way
-#ifndef TRI_HAVE_GLOBAL_TIMEZONE_PROTO
-#ifdef GLOBAL_TIMEZONE
-extern long GLOBAL_TIMEZONE;
-#else
-static long GLOBAL_TIMEZONE = 0;
-#endif
-#endif
-
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -59,56 +50,15 @@ namespace {
     return a == ' ' || a == '\t' || a == '_';
   }
 
-
-
-  int32_t matchInteger (char const * & str, size_t size) {
-    int32_t result = 0;
-
-    for (size_t i = 0;  i < size;  i++, str++) {
-      if ('0' <= *str && *str <= '9') {
-        result = result * 10 + (*str - '0');
-      }
-      else {
-        std::string message("cannot parse date, expecting integer, got '" + string(1, *str) + "'");
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
-      }
-    }
-
-    return result;
-  }
-
-
-
-  int32_t matchInteger (char const * & str) {
-    int32_t result = 0;
-
-    for (;  *str;  str++) {
-      if ('0' <= *str && *str <= '9') {
-        result = result * 10 + (*str - '0');
-      }
-      else {
-        return result;
-      }
-    }
-
-    return result;
-  }
-
-
-
   char const * const BASE64_CHARS =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz"
     "0123456789+/";
 
-
-
   char const * const BASE64U_CHARS =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     "abcdefghijklmnopqrstuvwxyz"
     "0123456789-_";
-
-
 
   unsigned char const BASE64_REVS[256] = {
     '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0',   //   0

@@ -116,8 +116,6 @@
 /// @brief available features
 ////////////////////////////////////////////////////////////////////////////////
 
-#define GLOBAL_TIMEZONE                     timezone
-
 #define TRI_HAVE_POSIX                      1
 
 #define TRI_HAVE_MACOS_MEM_STATS            1
@@ -463,8 +461,6 @@
 /// @brief available features
 ////////////////////////////////////////////////////////////////////////////////
 
-#define GLOBAL_TIMEZONE                     timezone
-
 #define TRI_GCC_THREAD_LOCAL_STORAGE        1
 
 #define TRI_HAVE_POSIX                      1
@@ -645,9 +641,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_HAVE_LINENOISE                  1
-
-#define GLOBAL_TIMEZONE                     _timezone
-#define TRI_HAVE_GLOBAL_TIMEZONE_PROTO      1
 
 #define YY_NO_UNISTD_H                      1
 
