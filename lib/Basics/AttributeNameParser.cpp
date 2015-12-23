@@ -62,6 +62,25 @@ bool triagens::basics::AttributeName::isIdentical (std::vector<AttributeName> co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two attribute name vectors and return true if their names
+/// matches
+////////////////////////////////////////////////////////////////////////////////
+
+bool triagens::basics::AttributeName::namesMatch (std::vector<AttributeName> const& lhs,
+                                                  std::vector<AttributeName> const& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  
+  for (size_t i = 0; i < lhs.size(); ++i) {
+    if (lhs[i].name != rhs[i].name) {
+      return false;
+    } 
+  }
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two attribute name vectors
 ////////////////////////////////////////////////////////////////////////////////
       

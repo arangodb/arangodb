@@ -770,6 +770,11 @@ Json* SingleServerTraversalPath::vertexToJson (Transaction* trx,
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
     }
+            
+    auto trxCollection = trx->trxCollection(v.cid);
+    if (trxCollection != nullptr) {
+      trx->orderDitch(trxCollection);
+    }
   }
   TRI_doc_mptr_copy_t mptr;
   int res = trx->readSingle(collection, &mptr, v.key);
@@ -844,6 +849,10 @@ bool DepthFirstTraverser::vertexMatchesConditions (VertexId const& v, size_t dep
 
             if (collection == nullptr) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
+            }
+            auto trxCollection = _trx->trxCollection(v.cid);
+            if (trxCollection != nullptr) {
+              _trx->orderDitch(trxCollection);
             }
           }
 
@@ -1051,6 +1060,10 @@ void DepthFirstTraverser::setStartVertex (triagens::arango::traverser::VertexId 
 
               if (collection == nullptr) {
                 THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection is a nullptr");
+              }
+              auto trxCollection = _trx->trxCollection(v.cid);
+              if (trxCollection != nullptr) {
+                _trx->orderDitch(trxCollection);
               }
             }
 

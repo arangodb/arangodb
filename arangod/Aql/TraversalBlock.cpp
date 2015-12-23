@@ -28,10 +28,10 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
 #include "Aql/TraversalBlock.h"
-#include "Aql/ExecutionNode.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterTraverser.h"
 #include "V8/v8-globals.h"
@@ -94,6 +94,7 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
   }
 
   _resolver = new CollectionNameResolver(_trx->vocbase());
+
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     _traverser.reset(new triagens::arango::traverser::ClusterTraverser(
       ep->edgeColls(),
@@ -108,6 +109,11 @@ TraversalBlock::TraversalBlock (ExecutionEngine* engine,
     for (auto const& coll : ep->edgeColls()) {
       TRI_voc_cid_t cid = _resolver->getCollectionId(coll);
       edgeCollections.push_back(_trx->documentCollection(cid));
+  
+      auto trxCollection = _trx->trxCollection(cid);
+      if (trxCollection != nullptr) {
+        _trx->orderDitch(trxCollection);
+      }
     }
     _traverser.reset(new triagens::arango::traverser::DepthFirstTraverser(edgeCollections,
                                                                           opts,
@@ -163,6 +169,7 @@ void TraversalBlock::freeCaches () {
 int TraversalBlock::initialize () {
   int res = ExecutionBlock::initialize();
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
+
   if (usesVertexOutput()) {
     auto it = varInfo.find(_vertexVar->id);
     TRI_ASSERT(it != varInfo.end());

@@ -177,8 +177,6 @@ namespace triagens {
           void addCollectionRestriction (TRI_voc_cid_t cid);
       };
 
-
-
       struct ShortestPathOptions : BasicOptions {
 
         public:
@@ -256,6 +254,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                         class DepthFirstTraverser
 // -----------------------------------------------------------------------------
+
       class DepthFirstTraverser : public Traverser {
 
         private:
