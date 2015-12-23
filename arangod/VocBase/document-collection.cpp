@@ -5936,7 +5936,7 @@ int TRI_document_collection_t::postInsertIndexes (triagens::arango::Transaction*
   
   auto const& indexes = allIndexes();
   size_t const n = indexes.size();
-  // TODO FRAGEN: remove usage of TRI_transaction_collection_t here
+  // TODO: remove usage of TRI_transaction_collection_t here
   TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx->getInternals(), _info.id(), TRI_TRANSACTION_WRITE);
 
   for (size_t i = 1; i < n; ++i) {
