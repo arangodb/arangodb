@@ -24136,8 +24136,15 @@ window.ArangoUsers = Backbone.Collection.extend({
           tempColor = "#7da817";
           p = "+";
         }
-        $("#" + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: '
-          + tempColor +';">' + p + v + '%</span>');
+        if (self.history.hasOwnProperty(self.server) &&
+            self.history[self.server].hasOwnProperty(a)) {
+          $("#" + a).html(self.history[self.server][a][0] + '<br/><span class="dashboard-figurePer" style="color: '
+            + tempColor +';">' + p + v + '%</span>');
+        }
+        else {
+          $("#" + a).html('<br/><span class="dashboard-figurePer" style="color: '
+            + "#000" +';">' + "data not ready yet" + '</span>');
+        }
       });
     },
 
@@ -24469,12 +24476,26 @@ window.ArangoUsers = Backbone.Collection.extend({
       );
     },
 
+    addEmptyDataLabels: function () {
+      if ($('.dataNotReadyYet').length === 0) {
+        $('#dataTransferDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+        $('#totalTimeDistribution').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+        $('.dashboard-bar-chart-title').prepend('<p class="dataNotReadyYet"> data not ready yet </p>');
+      }
+    },
+
+    removeEmptyDataLabels: function () {
+      $('.dataNotReadyYet').remove();
+    },
+
     prepareResidentSize: function (update) {
+
       var self = this;
 
       var dimensions = this.getCurrentSize('#residentSizeChartContainer');
 
       var current = self.history[self.server].residentSizeCurrent / 1024 / 1024;
+      
       var currentA = "";
 
       if (current < 1025) {
@@ -24486,6 +24507,15 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       var currentP = fmtNumber(self.history[self.server].residentSizePercent * 100, 2);
       var data = [fmtNumber(self.history[self.server].physicalMemory / 1024 / 1024 / 1024, 0) + " GB"];
+
+
+      if (self.history[self.server].residentSizeChart === undefined) {
+        this.addEmptyDataLabels();
+        return;
+      }
+      else {
+        this.removeEmptyDataLabels();
+      }
 
       nv.addGraph(function () {
         var chart = nv.models.multiBarHorizontalChart()
@@ -24548,7 +24578,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     prepareD3Charts: function (update) {
       var self = this;
-
       var barCharts = {
         totalTimeDistribution: [
           "queueTimeDistributionPercent", "requestTimeDistributionPercent"],
@@ -24562,10 +24591,19 @@ window.ArangoUsers = Backbone.Collection.extend({
       }
 
       _.each(Object.keys(barCharts), function (k) {
+
         var dimensions = self.getCurrentSize('#' + k
           + 'Container .dashboard-interior-chart');
 
         var selector = "#" + k + "Container svg";
+
+        if (self.history[self.server].residentSizeChart === undefined) {
+          self.addEmptyDataLabels();
+          return;
+        }
+        else {
+          self.removeEmptyDataLabels();
+        }
 
         nv.addGraph(function () {
           var tickMarks = [0, 0.25, 0.5, 0.75, 1];

@@ -6083,6 +6083,12 @@ div .bigtile {
   right: 9px;
   top: 6px; }
 
+.dataNotReadyYet {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 100;
+  text-align: center; }
+
 .dashboard-sub-bar {
   background-color: #686766;
   border-bottom-left-radius: 3px;
