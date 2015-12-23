@@ -154,7 +154,7 @@ static TRI_index_operator_t* buildRangeOperator (TRI_json_t const* lowerBound,
   lowerOperator.release();
   upperOperator.release();
   return rangeOperator.release();
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees an element in the skiplist
@@ -1330,12 +1330,17 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     nullArray.add(Json(Json::Null));
     std::unique_ptr<TRI_index_operator_t> unboundOperator(TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr,
                                                           nullptr, nullArray.steal(), _shaper, 1));
-    std::vector<TRI_index_operator_t*> searchValues({unboundOperator.get()});
+    std::vector<TRI_index_operator_t*> searchValues({ unboundOperator.get() });
     unboundOperator.release();
 
-    TRI_IF_FAILURE("SkiplistIndex::noSortIterator")  {
+    TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
+      // prevent a (false-positive) memleak here
+      for (auto& it : searchValues) {
+        delete it;
+      }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+
     return new SkiplistIndexIterator(this, searchValues, reverse);
   }
 
@@ -1476,102 +1481,117 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
   std::vector<TRI_index_operator_t*> searchValues;
   searchValues.reserve(maxPermutations);
 
-  if (usedFields == 0) {
-    // We have a range query based on the first _field
-    auto op = buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper);
-    if (op != nullptr) {
-      searchValues.emplace_back(op);
-      TRI_IF_FAILURE("SkiplistIndex::onlyRangeOperator")  {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  try {
+    if (usedFields == 0) {
+      // We have a range query based on the first _field
+      std::unique_ptr<TRI_index_operator_t> op(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, nullptr, _shaper));
+
+      if (op != nullptr) {
+        searchValues.emplace_back(op.get());
+        op.release();
+
+        TRI_IF_FAILURE("SkiplistIndex::onlyRangeOperator")  {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
     }
-  }
-  else {
-    bool done = false;
-    // create all permutations
-    while (! done) {
-      std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, usedFields));
+    else {
+      bool done = false;
+      // create all permutations
+      while (! done) {
+        std::unique_ptr<TRI_json_t> parameter(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, usedFields));
 
-      bool valid = true;
-      for (size_t i = 0; i < usedFields; ++i) {
-        TRI_ASSERT(i < permutationStates.size());
-        auto& state = permutationStates[i];
-        std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+        bool valid = true;
+        for (size_t i = 0; i < usedFields; ++i) {
+          TRI_ASSERT(i < permutationStates.size());
+          auto& state = permutationStates[i];
+          std::unique_ptr<TRI_json_t> json(state.getValue()->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
 
-        if (json == nullptr) {
-          valid = false;
-          break;
-        }
-        TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter.get(), json.release());
-      }
-
-      if (valid) {
-        std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
-                                                                            nullptr,
-                                                                            nullptr, 
-                                                                            parameter.get(), 
-                                                                            _shaper, 
-                                                                            usedFields)); 
-        // Note we create a new RangeOperator always.
-        std::unique_ptr<TRI_index_operator_t> rangeOperator(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, parameter.get(), _shaper));
-        parameter.release();
-
-        if (rangeOperator != nullptr) {
-          std::unique_ptr<TRI_index_operator_t> combinedOp(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
-                                                                                   tmpOp.get(),
-                                                                                   rangeOperator.get(),
-                                                                                   nullptr,
-                                                                                   _shaper,
-                                                                                   2));
-          rangeOperator.release();
-          tmpOp.release();
-          searchValues.emplace_back(combinedOp.get());
-          TRI_IF_FAILURE("SkiplistIndex::rangeOperatorNoTmp")  {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          if (json == nullptr) {
+            valid = false;
+            break;
           }
-          combinedOp.release();
+          TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, parameter.get(), json.release());
         }
-        else {
-          if (tmpOp != nullptr) {
-            searchValues.emplace_back(tmpOp.get());
-            TRI_IF_FAILURE("SkiplistIndex::rangeOperatorTmp")  {
+
+        if (valid) {
+          std::unique_ptr<TRI_index_operator_t> tmpOp(TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, 
+                                                                              nullptr,
+                                                                              nullptr, 
+                                                                              parameter.get(), 
+                                                                              _shaper, 
+                                                                              usedFields)); 
+          // Note we create a new RangeOperator always.
+          std::unique_ptr<TRI_index_operator_t> rangeOperator(buildRangeOperator(lower.get(), includeLower, upper.get(), includeUpper, parameter.get(), _shaper));
+          parameter.release();
+
+          if (rangeOperator != nullptr) {
+            std::unique_ptr<TRI_index_operator_t> combinedOp(TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR,
+                                                                                    tmpOp.get(),
+                                                                                    rangeOperator.get(),
+                                                                                    nullptr,
+                                                                                    _shaper,
+                                                                                    2));
+            rangeOperator.release();
+            tmpOp.release();
+            searchValues.emplace_back(combinedOp.get());
+            combinedOp.release();
+            TRI_IF_FAILURE("SkiplistIndex::rangeOperatorNoTmp")  {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
-            tmpOp.release();
+          }
+          else {
+            if (tmpOp != nullptr) {
+              searchValues.emplace_back(tmpOp.get());
+              tmpOp.release();
+              TRI_IF_FAILURE("SkiplistIndex::rangeOperatorTmp")  {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+            }
           }
         }
-      }
 
-      size_t const np = permutationStates.size() - 1;
-      size_t current = 0;
-      // now permute
-      while (true) {
-        if (++permutationStates[np - current].current < permutationStates[np - current].n) {
-          current = 0;
-          // abort inner iteration
-          break;
+        size_t const np = permutationStates.size() - 1;
+        size_t current = 0;
+        // now permute
+        while (true) {
+          if (++permutationStates[np - current].current < permutationStates[np - current].n) {
+            current = 0;
+            // abort inner iteration
+            break;
+          }
+
+          permutationStates[np - current].current = 0;
+
+          if (++current >= usedFields) {
+            done = true;
+            break;
+          }
+          // next inner iteration
         }
-
-        permutationStates[np - current].current = 0;
-
-        if (++current >= usedFields) {
-          done = true;
-          break;
-        }
-        // next inner iteration
       }
     }
+
+    if (searchValues.empty()) {
+      return nullptr;
+    }
+
+    if (reverse) {
+      std::reverse(searchValues.begin(), searchValues.end());
+    }
+
+    TRI_IF_FAILURE("SkiplistIndex::noIterator") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
   }
-  if (searchValues.empty()) {
-    return nullptr;
-  }
-  if (reverse) {
-    std::reverse(searchValues.begin(), searchValues.end());
+  catch (...) {
+    // prevent memleak here
+    for (auto& it : searchValues) {
+      delete it;
+    }
+    throw;
   }
 
-  TRI_IF_FAILURE("SkiplistIndex::noIterator")  {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
   return new SkiplistIndexIterator(this, searchValues, reverse);
 }
 
