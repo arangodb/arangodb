@@ -484,6 +484,25 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate the cost estimation for the node and its dependencies
+////////////////////////////////////////////////////////////////////////////////
+  
+void ExecutionNode::invalidateCost () {
+  _estimatedCostSet = false;
+  
+  for (auto& dep : _dependencies) {
+    dep->invalidateCost();
+
+    // no need to virtualize this function too, as getType(), estimateCost() etc.
+    // are already virtual
+    if (dep->getType() == SUBQUERY) {
+      // invalid cost of subqueries, too 
+      static_cast<SubqueryNode*>(dep)->getSubquery()->invalidateCost();
+    } 
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1330,12 +1349,13 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
-        
+       
 double LimitNode::estimateCost (size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   nrItems = (std::min)(_limit, (std::max)(static_cast<size_t>(0), 
                                           incoming - _offset));
+
   return depCost + nrItems;
 }
 
@@ -1348,7 +1368,8 @@ CalculationNode::CalculationNode (ExecutionPlan* plan,
   : ExecutionNode(plan, base),
     _conditionVariable(varFromJson(plan->getAst(), base, "conditionVariable", true)),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
-    _expression(new Expression(plan->getAst(), base)) {
+    _expression(new Expression(plan->getAst(), base)),
+    _canRemoveIfThrows(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1392,6 +1413,7 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
   }
 
   auto c = new CalculationNode(plan, _id, _expression->clone(), conditionVariable, outVariable);
+  c->_canRemoveIfThrows = _canRemoveIfThrows;
 
   cloneHelper(c, plan, withDependencies, withProperties);
 

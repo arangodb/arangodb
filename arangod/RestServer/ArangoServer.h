@@ -598,8 +598,7 @@ namespace triagens {
 ///
 /// The default is *true*.
 /// When set to `false` the queue manager will be disabled and any jobs
-/// are prevented from being processed, which may improve CPU load if you do not
-/// plan to use Foxx queues at all.
+/// are prevented from being processed, which may reduce CPU load a great deal.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     
