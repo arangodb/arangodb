@@ -44,6 +44,12 @@ make
 make examples
 make swagger
 
+(
+  cd js/apps/system/_admin/aardvark/APP
+  npm install --only=dev
+  npm run grunt
+)
+
 git add -f Documentation/Examples/*.generated
 
 cd Documentation/Books; make
