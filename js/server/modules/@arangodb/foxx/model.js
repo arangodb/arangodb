@@ -27,7 +27,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-const _ = require('underscore');
+const _ = require('lodash');
 const joi = require('joi');
 const is = require('@arangodb/is');
 const toJSONSchema = require('@arangodb/foxx/schema').toJSONSchema;

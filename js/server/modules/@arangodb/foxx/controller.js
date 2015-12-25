@@ -29,7 +29,7 @@
 
 const RequestContext = require('@arangodb/foxx/request_context');
 const BaseMiddleware = require('@arangodb/foxx/base_middleware').BaseMiddleware;
-const _ = require('underscore');
+const _ = require('lodash');
 const is = require('@arangodb/is');
 const internal = require('@arangodb/foxx/internals');
 const swagger = require('@arangodb/foxx/swagger');

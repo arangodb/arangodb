@@ -36,7 +36,7 @@
     actions = require("@arangodb/actions"),
     Model = require("@arangodb/foxx").Model,
     Graph = require("@arangodb/general-graph"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     joi = require("joi"),
     arangodb = require("@arangodb"),
     errors = arangodb.errors,

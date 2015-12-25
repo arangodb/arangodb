@@ -29,7 +29,7 @@
 (function () {
   "use strict";
 
-  var _ = require("underscore"),
+  var _ = require("lodash"),
     Foxx = require("@arangodb/foxx"),
     version = require("@arangodb/database-version").CURRENT_VERSION + "", // do not use new String, there is bug in update
     Plans;

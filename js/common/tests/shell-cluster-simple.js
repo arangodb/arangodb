@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
-var _ = require("underscore");
+var _ = require("lodash");
 
 var createCollection = function (properties) {
   'use strict';

@@ -1,5 +1,5 @@
 'use strict';
-const _ = require('underscore');
+const _ = require('lodash');
 const joi = require('joi');
 const arangodb = require('@arangodb');
 const db = arangodb.db;

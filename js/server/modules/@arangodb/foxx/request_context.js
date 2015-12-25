@@ -30,7 +30,7 @@
 
 const SwaggerDocs = require('@arangodb/foxx/swaggerDocs').Docs;
 const joi = require('joi');
-const _ = require('underscore');
+const _ = require('lodash');
 const internal = require('@arangodb/foxx/internals');
 const toJSONSchema = require('@arangodb/foxx/schema').toJSONSchema;
 const is = require('@arangodb/is');

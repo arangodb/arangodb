@@ -2874,7 +2874,7 @@ function now() {
 /*global console:true */
 /*exported console */
 
-var _        = require("underscore");
+var _        = require("lodash");
 var events   = require("events");
 var vars     = require("./vars.js");
 var messages = require("./messages.js");
@@ -7975,7 +7975,7 @@ module.exports=require('fNbQ4d');
 
 "use strict";
 
-var _      = require("underscore");
+var _      = require("lodash");
 var events = require("events");
 var reg    = require("./reg.js");
 var state  = require("./state.js").state;
@@ -9671,7 +9671,7 @@ exports.Lexer = Lexer;
 },{"../data/ascii-identifier-data.js":1,"../data/non-ascii-identifier-part-only.js":2,"../data/non-ascii-identifier-start.js":3,"./reg.js":19,"./state.js":20,"events":7,"underscore":14}],18:[function(require,module,exports){
 "use strict";
 
-var _ = require("underscore");
+var _ = require("lodash");
 
 var errors = {
   // JSHint options

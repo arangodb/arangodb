@@ -36,7 +36,7 @@ var stub,
   mockConstructor,
   joi = require("joi"),
   transformRoute = require("@arangodb/foxx/routing").__test_transformControllerToRoute,
-  _ = require("underscore");
+  _ = require("lodash");
 
 // Sorry for Yak Shaving. But I can't take it anymore.
 

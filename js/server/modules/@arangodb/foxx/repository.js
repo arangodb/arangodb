@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const Model = require('@arangodb/foxx/model').Model;
-const _ = require('underscore');
+const _ = require('lodash');
 const extend = require('@arangodb/extend').extend;
 const EventEmitter = require('events').EventEmitter;
 
