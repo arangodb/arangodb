@@ -90,7 +90,7 @@ You have two options here, you can either use a managed graph (see [the graphs c
    - `OUTBOUND|INBOUND|ANY` traversal will be done for outbound / inbound / inbound+outbound pointing edges
    - **startVertex**: one vertex where the traversal will originate from, this can be specified in the form of an id string or in the form of a document with the attribute `_id`. All other values will lead to a warning and an empty result. If the specified id does not exist, the result is empty as well and there is no warning.
    - **graphName**: the name of a managed graph. It's vertex and edge collections will be looked up.
-   - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`.
+   - `MIN`: edges and vertices returned by this query will start at the traversal depth of `MIN` (thus edges and vertices below will not be returned). If not specified, defaults to `1`, which is the minimal possible value.
    - `MAX`: up to `MAX` length paths are traversed. If omitted in the query, `MAX` equals `MIN`. Thus only the vertices and edges in the range of `MIN` are returned.
 
 !SUBSUBSECTION Working on collection sets:
@@ -176,8 +176,8 @@ To get started we select the full graph; for better overview we only return the 
 
     @startDocuBlockInline GRAPHTRAV_02_traverse_all
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_02_traverse_all}
-    db._query("FOR v IN 0..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' RETURN v._key");
-    db._query("FOR v IN 0..3 OUTBOUND 'circles/A' edges RETURN v._key");
+    db._query("FOR v IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' RETURN v._key");
+    db._query("FOR v IN 1..3 OUTBOUND 'circles/A' edges RETURN v._key");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHTRAV_02_traverse_all
 
@@ -231,9 +231,9 @@ Since `circles/A` only has outbound edges, we start our queries from `circles/E`
 
     @startDocuBlockInline GRAPHTRAV_06_traverse_reverse_6
     @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_06_traverse_reverse_6}
-    db._query("FOR v IN 0..3 OUTBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
-    db._query("FOR v IN 0..3 INBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
-    db._query("FOR v IN 0..3 ANY 'circles/E' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 1..3 OUTBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 1..3 INBOUND 'circles/E' GRAPH 'traversalGraph' return v._key");
+    db._query("FOR v IN 1..3 ANY 'circles/E' GRAPH 'traversalGraph' return v._key");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHTRAV_06_traverse_reverse_6
 
