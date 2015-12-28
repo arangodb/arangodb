@@ -1,9 +1,9 @@
 arangosh&gt; db._create("test"); 
-[ArangoCollection 493809372, "test" (type document, status loaded)]
+[ArangoCollection 490781163, "test" (type document, status loaded)]
 arangosh&gt; for (i = 0; i &lt; 100; ++i) { db.test.save({ value: i }); }
 arangosh&gt; db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
 { 
-  "id" : "test/513797852", 
+  "id" : "test/510769643", 
   "type" : "skiplist", 
   "fields" : [ 
     "value" 
