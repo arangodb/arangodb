@@ -338,17 +338,37 @@ static TRI_thread_t StatisticsThread;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StatisticsQueueWorker (void* data) {
-  while (! Shutdown && TRI_ENABLE_STATISTICS) {
+  uint64_t sleepTime = 100 * 1000;
+  uint64_t const MaxSleepTime = 250 * 1000;
+  int nothingHappened = 0;
+
+  while (! Shutdown.load(std::memory_order_relaxed) && TRI_ENABLE_STATISTICS) {
     size_t count = ProcessAllRequestStatistics();
 
     if (count == 0) {
-      usleep(100 * 1000);
+      if (++nothingHappened == 10 * 30) {
+        // increase sleep time every 30 seconds
+        nothingHappened = 0;
+        sleepTime += 50 * 1000;
+        if (sleepTime > MaxSleepTime) {
+          sleepTime = MaxSleepTime;
+        }
+      }
+#ifdef _WIN32
+      usleep((unsigned long) sleepTime);
+#else
+      usleep((useconds_t) sleepTime);
+#endif
     }
-    else if (count < 10) {
-      usleep(10 * 1000);
-    }
-    else if (count < 100) {
-      usleep(1 * 1000);
+    else {
+      nothingHappened = 0;
+
+      if (count < 10) {
+        usleep(10 * 1000);
+      }
+      else if (count < 100) {
+        usleep(1 * 1000);
+      }
     }
   }
 

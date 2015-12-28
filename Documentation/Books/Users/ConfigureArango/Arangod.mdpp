@@ -87,6 +87,10 @@ the option *--disable-figures*.
 @startDocuBlock SessionTimeout
 
 
+!SUBSECTION Foxx queues 
+@startDocuBlock foxxQueues
+
+
 !SUBSECTION Foxx queues poll interval
 @startDocuBlock foxxQueuesPollInterval
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, fail, AQL_EXECUTE */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///
@@ -32,9 +32,9 @@ var errors = internal.errors;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
+var db = require("org/arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -425,10 +425,103 @@ function ahuacatlMiscFunctionsTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlCollectionCountTestSuite () {
+  var c;
+  var cn = "UnitTestsCollectionCount";
+
+  return {
+
+    setUp : function () {
+      db._drop(cn);
+      c = db._create(cn, { numberOfShards: 4 });
+
+      for (var i = 1; i <= 1000; ++i) {
+        c.insert({ _key: "test" + i });
+      }
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LENGTH(collection) - non existing
+////////////////////////////////////////////////////////////////////////////////
+
+    testLengthNonExisting : function () {
+      var cnot = cn + "DoesNotExist";
+
+      var queries = [
+        "RETURN LENGTH(" + cnot + ")",
+        "RETURN V8(LENGTH(" + cnot + "))"
+      ];
+
+      queries.forEach(function(q) {
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        }
+        catch (err) {
+          assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LENGTH(collection)
+////////////////////////////////////////////////////////////////////////////////
+
+    testLength : function () {
+      var queries = [
+        "RETURN LENGTH(" + cn + ")",
+        "RETURN V8(LENGTH(" + cn + "))"
+      ];
+
+      queries.forEach(function(q) {
+        var actual = AQL_EXECUTE(q);
+        assertEqual([ ], actual.warnings);
+        assertEqual([ 1000 ], actual.json);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LENGTH(collection)
+////////////////////////////////////////////////////////////////////////////////
+
+    testLengthUseInLoop : function () {
+      var actual = AQL_EXECUTE("FOR i IN 1..LENGTH(" + cn + ") REMOVE CONCAT('test', i) IN " + cn);
+      assertEqual([ ], actual.warnings);
+      assertEqual([ ], actual.json);
+      assertEqual(0, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LENGTH(collection)
+////////////////////////////////////////////////////////////////////////////////
+
+    testLengthUseInModification : function () {
+      try {
+        AQL_EXECUTE("FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN LENGTH(" + cn + ")");
+        fail();
+      }
+      catch (err) {
+        assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
+      }
+      assertEqual(1000, c.count());
+    }
+  
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlMiscFunctionsTestSuite);
+jsunity.run(ahuacatlCollectionCountTestSuite);
 
 return jsunity.done();
 

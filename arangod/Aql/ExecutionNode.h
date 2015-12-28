@@ -429,13 +429,7 @@ namespace triagens {
 /// @brief invalidate the cost estimation for the node and its dependencies
 ////////////////////////////////////////////////////////////////////////////////
         
-        void invalidateCost () {
-          _estimatedCostSet = false;
-          
-          for (auto& dep : _dependencies) {
-            dep->invalidateCost();
-          }
-        }
+        void invalidateCost (); 
        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimate the cost of the node . . .
@@ -1324,7 +1318,8 @@ namespace triagens {
           : ExecutionNode(plan, id), 
             _conditionVariable(conditionVariable),
             _outVariable(outVariable),
-            _expression(expr) {
+            _expression(expr),
+            _canRemoveIfThrows(false) {
 
           TRI_ASSERT(_expression != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -1389,6 +1384,26 @@ namespace triagens {
 
         Expression* expression () const {
           return _expression;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allow removal of this calculation even if it can throw
+/// this can only happen if the optimizer added a clone of this expression
+/// elsewhere, and if the clone will stand in
+////////////////////////////////////////////////////////////////////////////////
+
+        bool canRemoveIfThrows () const {
+          return _canRemoveIfThrows;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allow removal of this calculation even if it can throw
+/// this can only happen if the optimizer added a clone of this expression
+/// elsewhere, and if the clone will stand in
+////////////////////////////////////////////////////////////////////////////////
+
+        void canRemoveIfThrows (bool value) {
+          _canRemoveIfThrows = value;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1471,6 +1486,13 @@ namespace triagens {
 
         Expression* _expression;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allow removal of this calculation even if it can throw
+/// this can only happen if the optimizer added a clone of this expression
+/// elsewhere, and if the clone will stand in
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _canRemoveIfThrows;
     };
 
 // -----------------------------------------------------------------------------

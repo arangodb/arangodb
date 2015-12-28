@@ -29,6 +29,12 @@
   @extend %clear-float;
 }
 
+.dataNotReadyYet {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 100;
+  text-align: center;
+}
 
 .dashboard-sub-bar {
   @extend %clear-float;

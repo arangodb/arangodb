@@ -498,7 +498,7 @@ function arrayAccessTestSuite () {
       var expected = [ 
         "x-javascript", "x-cpp", "x-php", "x-ruby", "x-python"
       ];
-      var result = AQL_EXECUTE("RETURN @value[0].values[*].name[* RETURN CONCAT('x-', CURRENT)][**]", { value : tags }).json;
+      var result = AQL_EXECUTE("RETURN @value[0].values[* RETURN CONCAT('x-', CURRENT.name)][**]", { value : tags }).json;
       assertEqual([ expected ], result);
     },
 
@@ -506,7 +506,7 @@ function arrayAccessTestSuite () {
       var expected = [ 
         "x-cpp", "x-ruby", "x-python"
       ];
-      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.count >= 3].name[* RETURN CONCAT('x-', CURRENT)][**]", { value : tags }).json;
+      var result = AQL_EXECUTE("RETURN @value[0].values[* FILTER CURRENT.count >= 3 RETURN CONCAT('x-', CURRENT.name)][**]", { value : tags }).json;
       assertEqual([ expected ], result);
     },
 

@@ -87,6 +87,14 @@ namespace triagens {
       static bool isIdentical (std::vector<std::vector<AttributeName>> const&,
                                std::vector<std::vector<AttributeName>> const&,
                                bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two attribute name vectors and return true if their names
+/// matches
+////////////////////////////////////////////////////////////////////////////////
+
+      static bool namesMatch (std::vector<AttributeName> const&,
+                              std::vector<AttributeName> const&);
     };
 
 // -----------------------------------------------------------------------------

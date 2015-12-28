@@ -35,6 +35,7 @@
 // --SECTION--                                                           imports
 // -----------------------------------------------------------------------------
 
+const _ = require('underscore');
 const R = require('ramda');
 const fs = require('fs');
 const joi = require('joi');
@@ -47,7 +48,6 @@ const FoxxService = require('org/arangodb/foxx/service');
 const TemplateEngine = require('org/arangodb/foxx/templateEngine').Engine;
 const routeApp = require('org/arangodb/foxx/routing').routeApp;
 const exportApp = require('org/arangodb/foxx/routing').exportApp;
-const invalidateExportCache = require('org/arangodb/foxx/routing').invalidateExportCache;
 const formatUrl = require('url').format;
 const parseUrl = require('url').parse;
 const arangodb = require('org/arangodb');
@@ -60,7 +60,6 @@ const download = require('internal').download;
 const executeGlobalContextFunction = require('internal').executeGlobalContextFunction;
 const actions = require('org/arangodb/actions');
 const plainServerVersion = require("org/arangodb").plainServerVersion;
-const _ = require('underscore');
 
 const throwDownloadError = arangodb.throwDownloadError;
 const throwFileNotFound = arangodb.throwFileNotFound;
@@ -222,8 +221,12 @@ function reloadRouting() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function resetCache() {
+  _.each(appCache, function (cache) {
+    _.each(cache, function (app) {
+      app.main.loaded = false;
+    });
+  });
   appCache = {};
-  invalidateExportCache();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,19 +258,23 @@ function lookupApp(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function refillCaches(dbname) {
-  var cache = appCache[dbname] = {};
+  var cache = {};
+  _.each(appCache[dbname], function (app) {
+    app.main.loaded = false;
+  });
 
   var cursor = utils.getStorage().all();
   var routes = [];
 
   while (cursor.hasNext()) {
-    var config = _.clone(cursor.next());
-    var app = new FoxxService(config);
+    var config = cursor.next();
+    var app = new FoxxService(_.clone(config));
     var mount = app.mount;
     cache[mount] = app;
     routes.push(mount);
   }
 
+  appCache[dbname] = cache;
   return routes;
 }
 

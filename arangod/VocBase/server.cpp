@@ -1482,7 +1482,7 @@ static int WriteDropMarker (TRI_voc_tick_t id) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void DatabaseManager (void* data) {
-  TRI_server_t* server = static_cast<TRI_server_t*>(data);
+  auto server = static_cast<TRI_server_t*>(data);
   int cleanupCycles = 0;
 
   while (true) {
@@ -1592,16 +1592,18 @@ static void DatabaseManager (void* data) {
 
       usleep(DATABASE_MANAGER_INTERVAL);
       // The following is only necessary after a wait:
-      auto queryRegistry = static_cast<triagens::aql::QueryRegistry*>
-                                      (server->_queryRegistry);
+      auto queryRegistry = static_cast<triagens::aql::QueryRegistry*>(server->_queryRegistry);
+
       if (queryRegistry != nullptr) {
         queryRegistry->expireQueries();
       }
   
       // on a coordinator, we have no cleanup threads for the databases
       // so we have to do cursor cleanup here 
-      if (triagens::arango::ServerState::instance()->isCoordinator() && 
-          ++cleanupCycles == 10) { 
+      if (++cleanupCycles >= 10 &&
+          triagens::arango::ServerState::instance()->isCoordinator()) { 
+        // note: if no coordinator then cleanupCycles will increase endlessly,
+        // but it's only used for the following part
         cleanupCycles = 0;
 
         auto unuser(server->_databasesProtector.use());

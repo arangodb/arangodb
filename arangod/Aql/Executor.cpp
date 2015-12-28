@@ -274,7 +274,8 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT",              "AQL_FIRST_DOCUMENT", ".|+", true, true, false, true, true, &Functions::FirstDocument) },
   { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER",            "AQL_PARSE_IDENTIFIER", ".", true, true, false, true, true, &Functions::ParseIdentifier) },
   { "CURRENT_USER",                Function("CURRENT_USER",                "AQL_CURRENT_USER", "", false, false, false, false, true) },
-  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true, &Functions::CurrentDatabase) }
+  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE",            "AQL_CURRENT_DATABASE", "", false, false, false, false, true, &Functions::CurrentDatabase) },
+  { "COLLECTION_COUNT",            Function("COLLECTION_COUNT",            "AQL_COLLECTION_COUNT", "chs", false, false, true, false, true, &Functions::CollectionCount, NotInCluster) }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -728,6 +729,7 @@ void Executor::generateCodeForcedArray (AstNode const* node,
     // force the value to be an array
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.AQL_TO_ARRAY("));
     generateCodeNode(node);
+    _buffer->appendText(", false");
     _buffer->appendChar(')');
   } 
   else {
