@@ -561,6 +561,8 @@ namespace triagens {
                 DatabaseCollectionsCurrent;
         typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
                 AllCollectionsCurrent;
+        typedef std::shared_ptr<std::vector<ServerID> const>
+                FollowerInfo;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -922,6 +924,49 @@ namespace triagens {
           return 60.0;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get information about current followers of a shard, the first
+/// overloaded method is supposed to be very fast, whereas the second
+/// needs a hash lookup, on the other hand one only needs the shardID.
+/// Returns an empty shared_ptr if the follower information of the
+/// shard has been dropped (see `dropFollowerInfo` below).
+////////////////////////////////////////////////////////////////////////////////
+
+        FollowerInfo getFollowerInfo (TRI_collection_t& coll);
+        FollowerInfo getFollowerInfo (ShardID& c);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a follower to a shard, this is only done by the server side
+/// of the "get-in-sync" capabilities. This reports to the agency under
+/// `/Current` but in asynchronous "fire-and-forget" way. The method
+/// fails silently, if the follower information has since been dropped
+/// (see `dropFollowerInfo` below).
+////////////////////////////////////////////////////////////////////////////////
+
+        void addFollower (ShardID& c, ServerID const& s);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a follower from a shard, this is only done by the
+/// server if a synchronous replication request fails. This reports to
+/// the agency under `/Current` but in asynchronous "fire-and-forget"
+/// way. The method fails silently, if the follower information has
+/// since been dropped (see `dropFollowerInfo` below).
+////////////////////////////////////////////////////////////////////////////////
+
+        void removeFollower (ShardID& c, ServerID const& s);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop information about current followers of a shard
+////////////////////////////////////////////////////////////////////////////////
+
+        void dropFollowerInfo (ShardID& c);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal method to add a follower info entry
+////////////////////////////////////////////////////////////////////////////////
+
+        FollowerInfo newFollowerInfo (ShardID& c, int64_t& index);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -982,7 +1027,7 @@ namespace triagens {
             _currentDatabases;          // from Current/Databases
         ProtectionData _currentDatabasesProt;
 
-        // Finally, we need information about collections, again we have
+        // We need information about collections, again we have
         // data from Plan and from Current.
         // The information for _shards and _shardKeys are filled from the 
         // Plan (since they are fixed for the lifetime of the collection).
@@ -1008,6 +1053,13 @@ namespace triagens {
         ProtectionData _currentCollectionsProt;
         std::unordered_map<ShardID, std::shared_ptr<std::vector<ServerID>>>
             _shardIds;                  // from Current/Collections/
+
+        // The following is a special case, it is the current information
+        // about synchronous followers for each shard, for which we are
+        // responsible as a leader.
+        std::vector<FollowerInfo>            _followerInfos;
+        std::unordered_map<ShardID, int64_t> _followerInfoTable;
+        std::mutex                           _followerInfoMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uniqid sequence

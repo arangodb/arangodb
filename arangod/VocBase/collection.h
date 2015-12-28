@@ -370,8 +370,11 @@ struct TRI_collection_t {
   TRI_vector_pointer_t             _compactors;   // all compactor files
   TRI_vector_string_t              _indexFiles;   // all index filenames
 
+  int64_t                          _followerInfoIndex;  // short-cut to find
+                                                        // FollowerInfo in
+                                                        // ClusterInfo quickly
   TRI_collection_t (
-  ) {
+  ) : _followerInfoIndex(-1) {
   }
 
   explicit TRI_collection_t (
