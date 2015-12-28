@@ -835,6 +835,8 @@ static void JS_GetCollectionInfoClusterInfo (const v8::FunctionCallbackInfo<v8::
   result->Set(TRI_V8_ASCII_STRING("isVolatile"),  v8::Boolean::New(isolate, ci->isVolatile()));
   result->Set(TRI_V8_ASCII_STRING("waitForSync"), v8::Boolean::New(isolate, ci->waitForSync()));
   result->Set(TRI_V8_ASCII_STRING("journalSize"), v8::Number::New(isolate, ci->journalSize()));
+  result->Set(TRI_V8_ASCII_STRING("replicationFactor"), v8::Number::New(isolate, ci->replicationFactor()));
+  result->Set(TRI_V8_ASCII_STRING("replicationQuorum"), v8::Number::New(isolate, ci->replicationQuorum()));
 
   const std::vector<std::string>& sks = ci->shardKeys();
   v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate, (int) sks.size());

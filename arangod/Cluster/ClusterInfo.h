@@ -321,6 +321,32 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the replication factor
+////////////////////////////////////////////////////////////////////////////////
+
+        int replicationFactor () const {
+          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "replicationFactor");
+
+          if (TRI_IsNumberJson(node)) {
+            return (int) (node->_value._number);
+          }
+          return 1;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the replication quorum
+////////////////////////////////////////////////////////////////////////////////
+
+        int replicationQuorum () const {
+          TRI_json_t* const node = triagens::basics::JsonHelper::getObjectElement(_json, "replicationQuorum");
+
+          if (TRI_IsNumberJson(node)) {
+            return (int) (node->_value._number);
+          }
+          return 1;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the json
 ////////////////////////////////////////////////////////////////////////////////
 
