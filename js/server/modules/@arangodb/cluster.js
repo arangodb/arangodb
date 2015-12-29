@@ -111,6 +111,23 @@ function getByPrefix4d (values, prefix) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup for 4-dimensional nested dictionary data
+////////////////////////////////////////////////////////////////////////////////
+
+function lookup4d (data, a, b, c) {
+  if (! data.hasOwnProperty(a)) {
+    return undefined;
+  }
+  if (! data[a].hasOwnProperty(b)) {
+    return undefined;
+  }
+  if (! data[a][b].hasOwnProperty(c)) {
+    return undefined;
+  }
+  return data[a][b][c];
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a shardId => server map
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -457,6 +474,7 @@ function createLocalCollections (plannedCollections, planVersion) {
               var shard;
 
               collInfo.planId = collInfo.id;
+              var save = [collInfo.id, collInfo.name];
               delete collInfo.id;  // must not actually set it here
               delete collInfo.name;  // name is now shard
 
@@ -637,6 +655,8 @@ function createLocalCollections (plannedCollections, planVersion) {
                   }
                 }
               }
+              collInfo.id = save[0];
+              collInfo.name = save[1];
             }
           }
         }
@@ -759,11 +779,12 @@ function cleanupCurrentCollections (plannedCollections) {
           for (shard in shards) {
             if (shards.hasOwnProperty(shard)) {
 
-              if (shards[shard].DBServer === ourselves &&
+              if (shards[shard].servers[0] === ourselves &&
                   (! shardMap.hasOwnProperty(shard) ||
-                   shardMap[shard].indexOf(ourselves) === -1)) {
-                // found a shard we are entered for but that we don't have locally
-                console.info("cleaning up entry for unknown shard '%s' of '%s/%s",
+                   shardMap[shard].indexOf(ourselves) !== 0)) {
+                // found an entry in current of a shard that we used to be 
+                // leader for but that we are no longer leader for
+                console.info("cleaning up entry for shard '%s' of '%s/%s",
                              shard,
                              database,
                              collection);
@@ -782,6 +803,119 @@ function cleanupCurrentCollections (plannedCollections) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief synchronise collections for which we are followers (synchronously
+/// replicated shards)
+////////////////////////////////////////////////////////////////////////////////
+
+function synchroniseLocalFollowerCollections (plannedCollections) {
+  var ourselves = global.ArangoServerState.id();
+
+  var db = require("internal").db;
+  db._useDatabase("_system");
+  var localDatabases = getLocalDatabases();
+  var database;
+
+  // Get current information about collections from agency:
+  var all = global.ArangoAgency.get("Current/Collections", true);
+  var currentCollections = getByPrefix4d(all, "Current/Collections/");
+
+  var rep = require("@arangodb/replication");
+
+  // iterate over all matching databases
+  for (database in plannedCollections) {
+    if (plannedCollections.hasOwnProperty(database)) {
+      if (localDatabases.hasOwnProperty(database)) {
+        // save old database name
+        var previousDatabase = db._name();
+        // switch into other database
+        db._useDatabase(database);
+
+        try {
+          // iterate over collections of database
+          var collections = plannedCollections[database];
+          var collection;
+
+          // diff the collections
+          for (collection in collections) {
+            if (collections.hasOwnProperty(collection)) {
+              var collInfo = collections[collection];
+              var shards = collInfo.shards;   // this is the Plan
+              var shard;
+
+              collInfo.planId = collInfo.id;
+
+              for (shard in shards) {
+                if (shards.hasOwnProperty(shard)) {
+                  var pos = shards[shard].indexOf(ourselves);
+                  if (pos > 0) {   // found and not in position 0
+                    // found a shard we have to replicate synchronously
+                    // now see whether we are in sync by looking at the
+                    // current entry in the agency:
+                    var inCurrent = lookup4d(currentCollections, database, 
+                                             collection, shard);
+                    var count = 0;
+                    while (inCurrent === undefined ||
+                           ! inCurrent.hasOwnProperty("servers") ||
+                           typeof inCurrent.servers !== "object" ||
+                           typeof inCurrent.servers[0] !== "string" ||
+                           inCurrent.servers[0] === "") {
+                      count++;
+                      if (count > 30) {
+                        throw new Error("timeout waiting for leader for shard "
+                                        + shard);
+                      }
+                      console.info("Waiting for 1 second for leader to create shard...");
+                      require("internal").wait(1);
+                      all = global.ArangoAgency.get("Current/Collections",
+                                                    true);
+                      currentCollections = getByPrefix4d(all,
+                                                   "Current/Collections/");
+                      inCurrent = lookup4d(currentCollections, database, 
+                                           collection, shard);
+                    }
+                    if (inCurrent.servers.indexOf(ourselves) === -1) {
+                      // we not in there - must synchronise this shard from
+                      // the leader
+                      console.info("trying to synchronize local shard '%s/%s' for central '%s/%s'",
+                                   database,
+                                   shard,
+                                   database,
+                                   collInfo.planId);
+                      try {
+                        var ep = ArangoClusterInfo.getServerEndpoint(
+                              inCurrent.servers[0]);
+                        rep.syncCollection(shard, 
+                          { endpoint: ep, incremental: true });
+                        console.info("Synchronization worked for shard", shard);
+                      }
+                      catch (err2) {
+                        console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
+                                      database,
+                                      shard,
+                                      database,
+                                      collInfo.planId,
+                                      JSON.stringify(err2));
+                      }
+                    }
+
+                  }
+                }
+              }
+            }
+          }
+        }
+        catch (err) {
+          // always return to previous database
+          db._useDatabase(previousDatabase);
+          throw err;
+        }
+
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief handle collection changes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -794,6 +928,7 @@ function handleCollectionChanges (plan) {
     createLocalCollections(plannedCollections, plan["Plan/Version"]);
     dropLocalCollections(plannedCollections);
     cleanupCurrentCollections(plannedCollections);
+    synchroniseLocalFollowerCollections(plannedCollections);
   }
   catch (err) {
     console.error("Caught error in handleCollectionChanges: " + 
