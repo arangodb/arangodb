@@ -1095,7 +1095,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
       size_t count2 = 0;
       do {
         candidate = dbServers[count++];
-        if (count > dbServers.size()) {
+        if (count >= dbServers.size()) {
           count = 0;
         }
         if (++count2 == dbServers.size() + 1) {
