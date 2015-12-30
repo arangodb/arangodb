@@ -63,12 +63,14 @@ namespace triagens {
       QueryEntryCopy (TRI_voc_tick_t,
                       std::string const&,
                       double,
-                      double);
+                      double,
+                      std::string const&);
 
       TRI_voc_tick_t  id;
       std::string     queryString;
       double          started;
       double          runTime;
+      std::string     queryState;
     };
 
 // -----------------------------------------------------------------------------

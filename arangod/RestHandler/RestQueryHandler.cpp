@@ -271,15 +271,17 @@ bool RestQueryHandler::readQuery (bool slow) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Array));
 
-    for (auto const& it : queries) {
-      auto const& timeString = TRI_StringTimeStamp(it.started);
-      auto const& queryString = it.queryString;
+    for (auto const& q : queries) {
+      auto const& timeString = TRI_StringTimeStamp(q.started);
+      auto const& queryString = q.queryString;
+      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
 
       result.add(VPackValue(VPackValueType::Object));
-      result.add("id", VPackValue(StringUtils::itoa(it.id)));
+      result.add("id", VPackValue(StringUtils::itoa(q.id)));
       result.add("query", VPackValue(queryString));
       result.add("started", VPackValue(timeString));
-      result.add("runTime", VPackValue(it.runTime));
+      result.add("runTime", VPackValue(q.runTime));
+      result.add("state", VPackValue(queryState));
       result.close();
     }
     result.close();

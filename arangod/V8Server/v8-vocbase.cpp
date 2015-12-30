@@ -1526,14 +1526,16 @@ static void JS_QueriesCurrentAql (const v8::FunctionCallbackInfo<v8::Value>& arg
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
-    for (auto it : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(it.started);
+    for (auto q : queries) {
+      auto const&& timeString = TRI_StringTimeStamp(q.started);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, it.id));
-      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(it.queryString));
+      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
+      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(q.queryString));
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
-      obj->Set(TRI_V8_ASCII_STRING("runTime"), v8::Number::New(isolate, it.runTime));
+      obj->Set(TRI_V8_ASCII_STRING("runTime"), v8::Number::New(isolate, q.runTime));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
    
       result->Set(i++, obj);
     }
@@ -1578,14 +1580,16 @@ static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
     uint32_t i = 0;
     auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
 
-    for (auto it : queries) {
-      auto const&& timeString = TRI_StringTimeStamp(it.started);
+    for (auto q : queries) {
+      auto const&& timeString = TRI_StringTimeStamp(q.started);
+      auto const& queryState = q.queryState.substr(8, q.queryState.size()-9);
 
       v8::Handle<v8::Object> obj = v8::Object::New(isolate);
-      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, it.id));
-      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(it.queryString));
+      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, q.id));
+      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(q.queryString));
       obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
-      obj->Set(TRI_V8_ASCII_STRING("runTime"), v8::Number::New(isolate, it.runTime));
+      obj->Set(TRI_V8_ASCII_STRING("runTime"), v8::Number::New(isolate, q.runTime));
+      obj->Set(TRI_V8_ASCII_STRING("state"), TRI_V8_STD_STRING(queryState));
    
       result->Set(i++, obj);
     }

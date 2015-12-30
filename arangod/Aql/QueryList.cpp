@@ -54,11 +54,13 @@ QueryEntry::QueryEntry (triagens::aql::Query const* query,
 QueryEntryCopy::QueryEntryCopy (TRI_voc_tick_t id,
                                 std::string const& queryString,
                                 double started,
-                                double runTime) 
+                                double runTime,
+                                std::string const& queryState) 
   : id(id),
     queryString(queryString),
     started(started),
-    runTime(runTime) {
+    runTime(runTime),
+    queryState(queryState) {
 
 }
 
@@ -217,7 +219,8 @@ void QueryList::remove (Query const* query,
             entry->query->id(), 
             std::string(queryString, length).append(originalLength > maxLength ? "..." : ""), 
             entry->started, 
-            now - entry->started
+            now - entry->started,
+            std::string(" (while finished)")
           ));
 
           if (++_slowCount > _maxSlowQueries) {
@@ -316,7 +319,8 @@ std::vector<QueryEntryCopy> QueryList::listCurrent () {
         entry->query->id(), 
         std::string(queryString, length).append(originalLength > maxLength ? "..." : ""), 
         entry->started, 
-        now - entry->started
+        now - entry->started,
+        entry->query->getStateString()
       ));
 
        
