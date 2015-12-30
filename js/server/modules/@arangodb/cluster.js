@@ -35,6 +35,89 @@ var ArangoError = arangodb.ArangoError;
 var PortFinder = require("@arangodb/cluster/planner").PortFinder;
 var Planner = require("@arangodb/cluster/planner").Planner;
 var Kickstarter = require("@arangodb/cluster/kickstarter").Kickstarter;
+var endpointToURL = require("@arangodb/cluster/planner").endpointToURL;
+var download = require("internal").download;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a unique identifier
+////////////////////////////////////////////////////////////////////////////////
+
+function getUUID () {
+  var rand = require("internal").rand;
+  var sha1 = require("internal").sha1;
+  return sha1("blabla"+rand());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create and post an AQL query that will fetch a READ lock on a
+/// collection and will time out after a number of seconds
+////////////////////////////////////////////////////////////////////////////////
+
+function startReadingQuery (endpoint, collName, timeout) {
+  var uuid = getUUID();
+  console.info("Have uuid", uuid);
+  var query = {"query": `FOR x IN ${collName}
+                         LIMIT 1
+                         RETURN "${uuid}" + SLEEP(${timeout})`};
+  console.info("Have query:", JSON.stringify(query));
+  var url = endpointToURL(endpoint);
+  console.info("Have url:", url);
+  var r = download(url + "/_api/cursor", JSON.stringify(query),
+                   { method: "POST", headers: {"x-arango-async": true} });
+  console.info("After download: ", r);
+  if (r.code !== 202) {
+    console.error("Murks1:", r);
+    return false;
+  }
+  var count = 0;
+  while (true) {
+    console.info("Here we are1");
+    count += 1;
+    if (count > 500) {
+      console.error("giving up");
+      return false;
+    }
+    require("internal").wait(0.2);
+    console.info("Here we are");
+    r = download(url + "/_api/query/current");
+    console.info("Queries:", r);
+    if (r.code !== 200) {
+      console.error("startReadingQuery: Bad response from /_api/query/current",
+                    r);
+      continue;
+    }
+    try {
+      r = JSON.parse(r.body);
+    }
+    catch (err) {
+      console.error("startReadingQuery: Bad response body from",
+                    "/_api/query/current", r);
+      continue;
+    }
+    for (var i = 0; i < r.length; i++) {
+      if (r[i].query.indexOf(uuid) !== -1) {
+        // Bingo, found it: 
+        if (r[i].state === "executing") {
+          console.info("OK");
+          return r[i].id;
+        }
+        console.info("startReadingQuery: query found but not yet executing");
+        break;
+      }
+    }
+    console.error("Did not find query.");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel such a query, return whether or not the query was found
+////////////////////////////////////////////////////////////////////////////////
+
+function cancelReadingQuery (endpoint, queryid) {
+  var url = endpointToURL(endpoint) + "/_api/query/" + queryid;
+  var r = download(url, "", { method: "DELETE" });
+  return r.code === 200;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get values from Plan or Current by a prefix
@@ -864,8 +947,8 @@ function synchroniseLocalFollowerCollections (plannedCollections) {
                         throw new Error("timeout waiting for leader for shard "
                                         + shard);
                       }
-                      console.info("Waiting for 1 second for leader to create shard...");
-                      require("internal").wait(1);
+                      console.info("Waiting for 3 seconds for leader to create shard...");
+                      require("internal").wait(3);
                       all = global.ArangoAgency.get("Current/Collections",
                                                     true);
                       currentCollections = getByPrefix4d(all,
@@ -884,9 +967,25 @@ function synchroniseLocalFollowerCollections (plannedCollections) {
                       try {
                         var ep = ArangoClusterInfo.getServerEndpoint(
                               inCurrent.servers[0]);
+                        // First once without a read transaction:
+                        console.log("Hallo1");
                         rep.syncCollection(shard, 
                           { endpoint: ep, incremental: true });
-                        console.info("Synchronization worked for shard", shard);
+                        console.log("Hallo2");
+                        // Now start a read transaction to stop writes:
+                        var queryid = startReadingQuery(ep, shard, 300);
+                        console.log("Hallo3");
+                        rep.syncCollection(shard, 
+                          { endpoint: ep, incremental: true,
+                            forSynchronousReplication: true });
+                        console.log("Hallo4");
+                        if (cancelReadingQuery(ep, queryid)) {
+                          console.info("Synchronization worked for shard", shard);
+                        }
+                        else {
+                          console.error("Read transaction has timed out for shard", shard);
+                        }
+                        console.log("Hallo5");
                       }
                       catch (err2) {
                         console.error("synchronization of local shard '%s/%s' for central '%s/%s' failed: %s",
@@ -1127,7 +1226,7 @@ var shardList = function (dbName, collectionName) {
 /// @brief wait for a distributed response
 ////////////////////////////////////////////////////////////////////////////////
 
-var wait = function (data, shards) {
+var waitForDistributedResponse = function (data, shards) {
   var received = [ ];
 
   while (received.length < shards.length) {
@@ -1349,7 +1448,7 @@ exports.isCoordinatorRequest          = isCoordinatorRequest;
 exports.role                          = role;
 exports.shardList                     = shardList;
 exports.status                        = status;
-exports.wait                          = wait;
+exports.wait                          = waitForDistributedResponse;
 
 exports.Kickstarter = Kickstarter;
 exports.Planner = Planner;
