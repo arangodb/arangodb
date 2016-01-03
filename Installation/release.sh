@@ -35,7 +35,15 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-./configure --enable-maintainer-mode CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib
+if [ `uname` == "Darwin" ];  then
+  ./configure \
+    --enable-maintainer-mode \
+    CPPFLAGS="-I/usr/local/include -I/usr/local/opt/openssl/include" \
+    LDFLAGS=-L/usr/local/opt/openssl/lib
+else
+  ./configure --enable-maintainer-mode
+fi
+
 make built-sources
 make add-maintainer
 make add-automagic
