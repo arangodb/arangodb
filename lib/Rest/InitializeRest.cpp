@@ -69,9 +69,11 @@ namespace {
     CRYPTO_THREADID_set_pointer(id, p);
   }
   
+#ifndef __APPLE__
   template<> inline void setter (CRYPTO_THREADID* id, unsigned long val) {
     CRYPTO_THREADID_set_numeric(id, val);
   }
+#endif
 
   static void arango_threadid_func (CRYPTO_THREADID *id) {
     auto self = TRI_CurrentThreadId();
