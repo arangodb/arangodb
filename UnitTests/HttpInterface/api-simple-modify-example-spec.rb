@@ -581,5 +581,147 @@ describe ArangoDB do
       
     end
 
+################################################################################
+## update-by-example query
+################################################################################
+
+    context "update-by-example query, mergeObjects:" do
+      before do
+        @cn = "UnitTestsCollectionByExample"
+        ArangoDB.drop_collection(@cn)
+        
+        @cid = ArangoDB.create_collection(@cn, false)
+  
+        ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"_key\" : \"one\", \"value\" : \"test\" }")
+        ArangoDB.post("/_api/document?collection=#{@cn}", :body => "{ \"_key\" : \"two\", \"value\" : { \"test\" : \"foo\" } }")
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+      
+      it "updates the example, empty update value" do
+        cmd = api + "/update-by-example"
+        
+        # update two
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : { \"test\" : \"foo\" } }, \"newValue\" : { \"value\" : { } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/two", :body => "")
+        doc.parsed_response['value'].should eq({ "test" => "foo" })
+       
+        # update with mergeObjects = false
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : { \"test\" : \"foo\" } }, \"mergeObjects\" : false, \"newValue\" : { \"value\" : { } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/two", :body => "")
+        doc.parsed_response['value'].should eq({ })
+      end
+      
+      it "updates the example, mergeObjects not specified" do
+        cmd = api + "/update-by-example"
+        
+        # update one
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : \"test\" }, \"newValue\" : { \"value\" : { \"foo\" : \"bar\" } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        # this will simply overwrite the value
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/one", :body => "")
+        doc.parsed_response['value'].should eq({ "foo" => "bar" })
+       
+        # update two  
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : { \"test\" : \"foo\" } }, \"mergeObjects\" : true, \"newValue\" : { \"value\" : { \"bark\" : \"bart\" } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/two", :body => "")
+        doc.parsed_response['value'].should eq({ "test" => "foo", "bark" => "bart" })
+      end
+
+      it "updates the example, mergeObjects = true" do
+        cmd = api + "/update-by-example"
+        
+        # update one
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : \"test\" }, \"mergeObjects\" : true, \"newValue\" : { \"value\" : { \"foo\" : \"bar\" } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        # this will simply overwrite the value
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/one", :body => "")
+        doc.parsed_response['value'].should eq({ "foo" => "bar" })
+       
+        # update two  
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : { \"test\" : \"foo\" } }, \"mergeObjects\" : true, \"newValue\" : { \"value\" : { \"bark\" : \"bart\" } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/two", :body => "")
+        doc.parsed_response['value'].should eq({ "test" => "foo", "bark" => "bart" })
+      end
+      
+      it "updates the example, mergeObjects = false" do
+        cmd = api + "/update-by-example"
+        
+        # update one
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : \"test\" }, \"mergeObjects\" : false, \"newValue\" : { \"value\" : { \"foo\" : \"bar\" } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/one", :body => "")
+        doc.parsed_response['value'].should eq({ "foo" => "bar" })
+       
+        # update two  
+        body = "{ \"collection\" : \"#{@cn}\", \"example\" : { \"value\" : { \"test\" : \"foo\" } }, \"mergeObjects\" : true, \"newValue\" : { \"value\" : { \"bark\" : \"bart\" } } }"
+        doc = ArangoDB.log_put("#{prefix}-update-by-example", cmd, :body => body)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['updated'].should eq(1)
+        
+        doc = ArangoDB.log_get("#{prefix}-update-by-example", "/_api/document/#{@cn}/two", :body => "")
+        doc.parsed_response['value'].should eq({ "test" => "foo", "bark" => "bart" })
+      end
+    end
+
   end
 end
