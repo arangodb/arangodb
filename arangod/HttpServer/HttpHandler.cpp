@@ -134,7 +134,7 @@ void HttpHandler::addResponse(HttpHandler *) {
 /// @brief returns the id of the underlying task
 //////////////////////////////////////////////////////////////////////////////
 
-uint64_t HttpHandler::taskId() {
+uint64_t HttpHandler::taskId() const {
   return _taskId;
 }
 
@@ -142,7 +142,7 @@ uint64_t HttpHandler::taskId() {
 /// @brief returns the event loop of the underlying task
 //////////////////////////////////////////////////////////////////////////////
 
-EventLoop HttpHandler::eventLoop() {
+EventLoop HttpHandler::eventLoop() const {
   return _loop;
 }
 

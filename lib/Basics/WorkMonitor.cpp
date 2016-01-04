@@ -125,7 +125,7 @@ static std::atomic<bool> WORK_MONITOR_STOPPED(false);
 /// @brief deletes a description and its resources
 ////////////////////////////////////////////////////////////////////////////////
 
-static void deleteWorkDescription (WorkDescription* desc) {
+static void deleteWorkDescription (WorkDescription* desc, bool stopped) {
   if (desc->_destroy) {
     switch (desc->_type) {
       case WorkType::THREAD:
@@ -138,6 +138,16 @@ static void deleteWorkDescription (WorkDescription* desc) {
     }
   }
 
+  if (stopped) {
+    // we'll be getting here if the work monitor thread is already shut down
+    // and cannot delete anything anymore. this means we ourselves are
+    // responsible for cleaning up!
+    delete desc;
+    return;
+  }
+
+  // while the work monitor thread is still active, push the item on the
+  // work monitor's cleanup list for destruction    
   EMPTY_WORK_DESCRIPTION.push(desc);
 }
 
@@ -234,6 +244,8 @@ WorkDescription* WorkMonitor::createWorkDescription (WorkType type) {
     desc = new WorkDescription(type, prev);
   }
 
+  desc->_data.handler = nullptr;
+
   return desc;
 }
 
@@ -271,7 +283,7 @@ WorkDescription* WorkMonitor::deactivateWorkDescription () {
 
 void WorkMonitor::freeWorkDescription (WorkDescription* desc) {
   if (WORK_MONITOR_STOPPED) {
-    deleteWorkDescription(desc);
+    deleteWorkDescription(desc, true);
   }
   else {
     FREEABLE_WORK_DESCRIPTION.push(desc);
@@ -283,16 +295,24 @@ void WorkMonitor::freeWorkDescription (WorkDescription* desc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::pushThread (Thread* thread) {
+  TRI_ASSERT(thread != nullptr);
+  TRI_ASSERT(CURRENT_THREAD == nullptr);
   CURRENT_THREAD = thread;
 
-  WorkDescription* desc = createWorkDescription(WorkType::THREAD);
-  desc->_data.thread = thread;
+  try {
+    WorkDescription* desc = createWorkDescription(WorkType::THREAD);
+    desc->_data.thread = thread;
 
-  activateWorkDescription(desc);
+    activateWorkDescription(desc);
 
-  {
-    MutexLocker guard(&THREADS_LOCK);
-    THREADS.insert(thread);
+    {
+      MutexLocker guard(&THREADS_LOCK);
+      THREADS.insert(thread);
+    }
+  }
+  catch (...) {
+    CURRENT_THREAD = nullptr;
+    throw;
   }
 }
 
@@ -301,16 +321,24 @@ void WorkMonitor::pushThread (Thread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::popThread (Thread* thread) {
+  TRI_ASSERT(thread != nullptr);
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc->_type == WorkType::THREAD);
   TRI_ASSERT(desc->_data.thread == thread);
 
-  freeWorkDescription(desc);
+  CURRENT_THREAD = nullptr;
+  try {
+    freeWorkDescription(desc);
 
-  {
-    MutexLocker guard(&THREADS_LOCK);
-    THREADS.erase(thread);
+    {
+      MutexLocker guard(&THREADS_LOCK);
+      THREADS.erase(thread);
+    }
+  }
+  catch (...) {
+    // just to prevent throwing exceptions from here, as this method
+    // will be called in destructors...
   }
 }
 
@@ -319,13 +347,17 @@ void WorkMonitor::popThread (Thread* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::pushCustom (const char* type, const char* text, size_t length) {
+  TRI_ASSERT(type != nullptr);
+  TRI_ASSERT(text != nullptr);
+
   WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);
+  TRI_ASSERT(desc != nullptr);
+  
+  TRI_CopyString(desc->_customType, type, sizeof(desc->_customType) - 1);
 
-  if (sizeof(desc->_data.text) < length) {
-    length = sizeof(desc->_data.text);
+  if (sizeof(desc->_data.text) - 1 < length) {
+    length = sizeof(desc->_data.text) - 1;
   }
-
-  TRI_CopyString(desc->_customType, type, sizeof(desc->_customType));
   TRI_CopyString(desc->_data.text, text, length);
 
   activateWorkDescription(desc);
@@ -338,9 +370,16 @@ void WorkMonitor::pushCustom (const char* type, const char* text, size_t length)
 void WorkMonitor::popCustom () {
   WorkDescription* desc = deactivateWorkDescription();
 
+  TRI_ASSERT(desc != nullptr);
   TRI_ASSERT(desc->_type == WorkType::CUSTOM);
 
-  freeWorkDescription(desc);
+  try {
+    freeWorkDescription(desc);
+  }
+  catch (...) {
+    // just to prevent throwing exceptions from here, as this method
+    // will be called in destructors...
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -362,58 +401,65 @@ void WorkMonitor::run () {
 
   // clean old entries and create summary if requested
   while (! _stopping) {
-    bool found = false;
-    WorkDescription* desc;
+    try {
+      bool found = false;
+      WorkDescription* desc;
 
-    while (FREEABLE_WORK_DESCRIPTION.pop(desc)) {
-      found = true;
-      deleteWorkDescription(desc);
-    }
-
-    if (found) {
-      s = minSleep;
-    }
-    else if (s < maxSleep) {
-      s *= 2;
-    }
-
-// TODO(fc) trigger output
-#ifdef SHOW_RESULTS
-    double y = TRI_microtime();
-
-    if (x + 10 < y) {
-      x = y;
-
-      MutexLocker guard(&THREADS_LOCK);
-      VPackBuilder b;
-      b.add(VPackValue(VPackValueType::Array));
-
-      for (auto& thread : THREADS) {
-        WorkDescription* desc = thread->workDescription();
-
+      while (FREEABLE_WORK_DESCRIPTION.pop(desc)) {
+        found = true;
         if (desc != nullptr) {
-          b.add(VPackValue(VPackValueType::Object));
-          vpackWorkDescription(&b, desc);
-          b.close();
+          deleteWorkDescription(desc, false);
         }
       }
 
-      b.close();
+      if (found) {
+        s = minSleep;
+      }
+      else if (s < maxSleep) {
+        s *= 2;
+      }
 
-      VPackSlice s(b.start());
+  // TODO(fc) trigger output
+#ifdef SHOW_RESULTS
+      double y = TRI_microtime();
 
-      VPackOptions options;
-      options.prettyPrint = true;
+      if (x + 10 < y) {
+        x = y;
 
-      std::string buffer;
-      VPackStringSink sink(&buffer);
+        MutexLocker guard(&THREADS_LOCK);
+        VPackBuilder b;
+        b.add(VPackValue(VPackValueType::Array));
 
-      VPackDumper dumper(&sink, &options);
-      dumper.dump(s);
+        for (auto& thread : THREADS) {
+          WorkDescription* desc = thread->workDescription();
 
-      std::cout << buffer << "\n";
-    }
+          if (desc != nullptr) {
+            b.add(VPackValue(VPackValueType::Object));
+            vpackWorkDescription(&b, desc);
+            b.close();
+          }
+        }
+
+        b.close();
+
+        VPackSlice s(b.start());
+
+        VPackOptions options;
+        options.prettyPrint = true;
+
+        std::string buffer;
+        VPackStringSink sink(&buffer);
+
+        VPackDumper dumper(&sink, &options);
+        dumper.dump(s);
+
+        std::cout << buffer << "\n";
+      }
 #endif
+    }
+    catch (...) {
+      // must prevent propagation of exceptions from here
+    }
 
     usleep(s);
   }
@@ -425,12 +471,16 @@ void WorkMonitor::run () {
   // cleanup old entries
   WorkDescription* desc;
 
-  while (FREEABLE_WORK_DESCRIPTION.pop(desc) && desc != nullptr) {
-    deleteWorkDescription(desc);
+  while (FREEABLE_WORK_DESCRIPTION.pop(desc)) {
+    if (desc != nullptr) {
+      deleteWorkDescription(desc, false);
+    }
   }
   
-  while (EMPTY_WORK_DESCRIPTION.pop(desc) && desc != nullptr) {
-    delete desc;
+  while (EMPTY_WORK_DESCRIPTION.pop(desc)) {
+    if (desc != nullptr) {
+      delete desc;
+    }
   }
 }
 

@@ -109,7 +109,7 @@ void HttpServerJob::work() {
       _server->jobManager()->finishAsyncJob(_jobId, _handler->stealResponse());
     }
     else {
-      std::unique_ptr<TaskData> data(new TaskData());
+      auto data = std::make_unique<TaskData>();
 
       data->_taskId = _handler->taskId();
       data->_loop = _handler->eventLoop();

@@ -84,8 +84,10 @@ HandlerWorkStack::~HandlerWorkStack () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void WorkMonitor::pushHandler (HttpHandler* handler) {
+  TRI_ASSERT(handler != nullptr);
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
   desc->_data.handler = handler;
+  TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
   activateWorkDescription(desc);
 }
@@ -98,10 +100,18 @@ WorkDescription* WorkMonitor::popHandler (HttpHandler* handler, bool free) {
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc != nullptr);
+  TRI_ASSERT(desc->_type == WorkType::HANDLER);
+  TRI_ASSERT(desc->_data.handler != nullptr);
   TRI_ASSERT(desc->_data.handler == handler);
 
   if (free) {
-    freeWorkDescription(desc);
+    try {
+      freeWorkDescription(desc);
+    }
+    catch (...) {
+      // just to prevent throwing exceptions from here, as this method
+      // will be called in destructors...
+    }
   }
 
   return desc;
