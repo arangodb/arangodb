@@ -115,7 +115,7 @@ static boost::lockfree::queue<WorkDescription*> FREEABLE_WORK_DESCRIPTION(128);
 /// @brief stopped flag
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::atomic<bool> WORK_MONITOR_STOPPED(false);
+static std::atomic<bool> WORK_MONITOR_STOPPED(true);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -156,6 +156,7 @@ static void deleteWorkDescription (WorkDescription* desc, bool stopped) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #undef SHOW_RESULTS
+#define SHOW_RESULTS "hund"
 // TODO(fc) use vpackWorkDescription
 #ifdef SHOW_RESULTS
 #include <iostream>
@@ -493,6 +494,7 @@ void WorkMonitor::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void arangodb::InitializeWorkMonitor () {
+  WORK_MONITOR_STOPPED.store(false);
   WORK_MONITOR.start();
 }
 
