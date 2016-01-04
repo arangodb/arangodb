@@ -64,6 +64,9 @@ cd Documentation/Books; make
 
 case "$TAG" in
   *-alpha*|*-beta*|devel)
+    ;;
+
+  *)
     git rm -f EXPERIMENTAL
     ;;
 esac
