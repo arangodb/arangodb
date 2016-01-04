@@ -9,6 +9,8 @@ v3.0.0 (XXXX-XX-XX)
 v2.8.0 (XXXX-XX-XX)
 -------------------
 
+* reserved AQL keyword `NONE` for future use
+
 * web interface: fixed a graph display bug concerning dashboard view
 
 * web interface: fixed several bugs during the dashboard initialize process
