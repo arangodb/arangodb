@@ -13,10 +13,10 @@ For example, you could put the following into the *.arangosh.rc* file in your ho
 directory:
 
 ```js
-// var keyword omitted intentionally,
+// "var" keyword omitted intentionally...
 // otherwise "timed" would not survive the scope of this script
-timed = function (cb) {
-    var internal = require("internal");
+global.timed = function (cb) {
+  var internal = require("internal");
   var start = internal.time();
   cb();
   internal.print("execution took: ", internal.time() - start);
