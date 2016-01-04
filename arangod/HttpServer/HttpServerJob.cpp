@@ -92,9 +92,6 @@ void HttpServerJob::work() {
 
   LOG_TRACE("beginning job %p", (void*)this);
 
-  // start working with handler
-  RequestStatisticsAgent::transfer(_handler.get()); // TODO(fc) need to transfer to WorkData
-
   // the _handler needs to stay intact, so that we can cancel the job
   // therefore cannot use HandlerWorkStack here. Because we need to
   // keep the handler until the job is destroyed. Note that destroying

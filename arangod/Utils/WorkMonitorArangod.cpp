@@ -144,6 +144,10 @@ void WorkMonitor::VPACK_HANDLER (VPackBuilder* b, WorkDescription* desc) {
   b->add("user", VPackValue(request->user()));
   b->add("taskId", VPackValue(request->clientTaskId()));
 
+  if (handler->_statistics != nullptr) {
+    b->add("startTime", VPackValue(handler->_statistics->_requestStart));
+  }
+
   auto& info = request->connectionInfo();
 
   b->add("server", VPackValue(VPackValueType::Object));
