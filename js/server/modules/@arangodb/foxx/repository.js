@@ -536,8 +536,8 @@ _.extend(Repository.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  updateByExample(example, data) {
-    return this.collection.updateByExample(example, data);
+  updateByExample(example, data, options) {
+    return this.collection.updateByExample(example, data, options);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
