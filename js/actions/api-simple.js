@@ -2091,7 +2091,7 @@ actions.defineHttp({
 /// of documents in the collection, it is undefined which of the documents
 /// will be updated.
 ///
-/// @RESTSTRUCT{mergeObjectsc,put_api_simple_update_by_example_options,boolean,optional,}
+/// @RESTSTRUCT{mergeObjects,put_api_simple_update_by_example_options,boolean,optional,}
 /// Controls whether objects (not arrays) will be merged if present in both the
 /// existing and the patch document. If set to false, the value in the
 /// patch document will overwrite the existing document's value. If set to
