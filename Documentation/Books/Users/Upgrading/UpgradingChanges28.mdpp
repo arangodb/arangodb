@@ -15,6 +15,7 @@ The following AQL keywords were added in ArangoDB 2.8:
 * `INBOUND`
 * `ANY`
 * `ALL`
+* `NONE`
 
 Usage of these keywords for collection names, variable names or attribute names
 in AQL queries will not be possible without quoting. For example, the following
