@@ -35,6 +35,30 @@ var ERRORS = require("internal").errors;
 
 var API = "_api/simple/";
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the number of shards
+////////////////////////////////////////////////////////////////////////////////
+        
+var checkShards = function(req, collection) {
+  if (collection === null) {
+    throw "unexpected collection value";
+  }
+
+  var cluster = require("@arangodb/cluster");
+  if (! cluster.isCluster()) {
+    // no cluster
+    return true;
+  }
+
+  // check number of shards
+  var shards = cluster.shardList(req.database, collection.name());
+  if (shards.length <= 1) {
+    return true;
+  }
+
+  return false;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -1849,8 +1873,14 @@ actions.defineHttp({
             var limit = body.limit || null;
             options = {waitForSync: waitForSync, limit: limit};
           }
-          var result = collection.removeByExample(example, options);
-          actions.resultOk(req, res, actions.HTTP_OK, { deleted: result });
+        
+          if (options.limit > 0 && ! checkShards(req, collection)) {
+            actions.resultError(req, res, actions.HTTP_NOT_IMPLEMENTED, ERRORS.ERROR_CLUSTER_UNSUPPORTED.code);
+          }
+          else {
+            var result = collection.removeByExample(example, options);
+            actions.resultOk(req, res, actions.HTTP_OK, { deleted: result });
+          }
         }
       }
     }
@@ -2007,8 +2037,14 @@ actions.defineHttp({
             var limit = body.limit || null;
             options = {waitForSync: waitForSync, limit: limit};
           }
-          var result = collection.replaceByExample(example, newValue, options);
-          actions.resultOk(req, res, actions.HTTP_OK, { replaced: result });
+        
+          if (options.limit > 0 && ! checkShards(req, collection)) {
+            actions.resultError(req, res, actions.HTTP_NOT_IMPLEMENTED, ERRORS.ERROR_CLUSTER_UNSUPPORTED.code);
+          }
+          else {
+            var result = collection.replaceByExample(example, newValue, options);
+            actions.resultOk(req, res, actions.HTTP_OK, { replaced: result });
+          }
         }
       }
     }
@@ -2054,6 +2090,12 @@ actions.defineHttp({
 /// update at most. If *limit* is specified but is less than the number
 /// of documents in the collection, it is undefined which of the documents
 /// will be updated.
+///
+/// @RESTSTRUCT{mergeObjectsc,put_api_simple_update_by_example_options,boolean,optional,}
+/// Controls whether objects (not arrays) will be merged if present in both the
+/// existing and the patch document. If set to false, the value in the
+/// patch document will overwrite the existing document's value. If set to
+/// true, objects will be merged. The default is true.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -2159,6 +2201,10 @@ actions.defineHttp({
         var collection = db._collection(name);
         var limit = body.limit || null;
         var keepNull = body.keepNull || null;
+        var mergeObjects = true;
+        if (body.hasOwnProperty("mergeObjects")) {
+          mergeObjects = body.mergeObjects || false;
+        }
 
         if (collection === null) {
           actions.collectionNotFound(req, res, name);
@@ -2174,12 +2220,16 @@ actions.defineHttp({
           if (typeof options === "undefined") {
             var waitForSync = body.waitForSync || undefined;
             limit = body.limit || undefined;
-            options = {waitForSync: waitForSync, keepNull: keepNull, limit: limit};
+            options = {waitForSync: waitForSync, keepNull: keepNull, limit: limit, mergeObjects: mergeObjects};
           }
-          var result = collection.updateByExample(example,
-                                                  newValue,
-                                                  options);
-          actions.resultOk(req, res, actions.HTTP_OK, { updated: result });
+        
+          if (options.limit > 0 && ! checkShards(req, collection)) {
+            actions.resultError(req, res, actions.HTTP_NOT_IMPLEMENTED, ERRORS.ERROR_CLUSTER_UNSUPPORTED.code);
+          }
+          else {
+            var result = collection.updateByExample(example, newValue, options);
+            actions.resultOk(req, res, actions.HTTP_OK, { updated: result });
+          }
         }
       }
     }
