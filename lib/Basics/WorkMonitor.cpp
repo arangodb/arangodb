@@ -156,7 +156,6 @@ static void deleteWorkDescription (WorkDescription* desc, bool stopped) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #undef SHOW_RESULTS
-#define SHOW_RESULTS "hund"
 // TODO(fc) use vpackWorkDescription
 #ifdef SHOW_RESULTS
 #include <iostream>
