@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application server scheduler implementation
+/// @brief work monitor class
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,16 +22,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_APPLICATION_SCHEDULER_H
-#define ARANGODB_SCHEDULER_APPLICATION_SCHEDULER_H 1
+#ifndef ARANGODB_UTILS_WORK_MONITOR
+#define ARANGODB_UTILS_WORK_MONITOR 1
 
-#include "Basics/Common.h"
+#include "Basics/Thread.h"
 
-#include "ApplicationServer/ApplicationFeature.h"
+#include "Basics/WorkItem.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -40,231 +38,304 @@
 
 namespace triagens {
   namespace rest {
-    class ApplicationServer;
-    class Scheduler;
-    class SignalTask;
-    class Task;
+    class HttpHandler;
+  }
+}
+
+namespace arangodb {
+  namespace velocypack {
+    class Builder;
+  }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        class ApplicationScheduler
+// --SECTION--                                               enum class WorkType
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application server scheduler implementation
+/// @brief type of the current work
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ApplicationScheduler : public ApplicationFeature {
-      private:
-        ApplicationScheduler (ApplicationScheduler const&);
-        ApplicationScheduler& operator= (ApplicationScheduler const&);
+  enum class WorkType {
+    THREAD,
+    HANDLER,
+    CUSTOM
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            struct WorkDescription
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief description of the current work
+////////////////////////////////////////////////////////////////////////////////
+
+  struct WorkDescription {
+    WorkDescription (WorkType, WorkDescription*);
+
+    WorkType _type;
+    bool _destroy;
+
+    char _customType[16];
+
+    union data {
+      data () {}
+      ~data () {}
+
+      char text[256];
+      triagens::basics::Thread* thread;
+      triagens::rest::HttpHandler* handler;
+    } _data;
+
+    WorkDescription* _prev;
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class WorkMonitor
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief work monitor class
+////////////////////////////////////////////////////////////////////////////////
+
+  class WorkMonitor : public triagens::basics::Thread {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief constructors a new monitor
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit ApplicationScheduler (ApplicationServer*);
+      WorkMonitor ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
+/// @brief creates an empty WorkDescription
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~ApplicationScheduler ();
+      static WorkDescription* createWorkDescription (WorkType);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief activates a WorkDescription
+////////////////////////////////////////////////////////////////////////////////
+
+      static void activateWorkDescription (WorkDescription*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deactivates a WorkDescription
+////////////////////////////////////////////////////////////////////////////////
+
+      static WorkDescription* deactivateWorkDescription ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees an WorkDescription
+////////////////////////////////////////////////////////////////////////////////
+
+      static void freeWorkDescription (WorkDescription* desc);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pushes a threads
+////////////////////////////////////////////////////////////////////////////////
+
+      static void pushThread (triagens::basics::Thread* thread);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pops a threads
+////////////////////////////////////////////////////////////////////////////////
+
+      static void popThread (triagens::basics::Thread* thread);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pushes a custom task
+////////////////////////////////////////////////////////////////////////////////
+
+      static void pushCustom (const char* type, const char* text, size_t length);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pops a custom task
+////////////////////////////////////////////////////////////////////////////////
+
+      static void popCustom ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pushes a handler
+////////////////////////////////////////////////////////////////////////////////
+
+      static void pushHandler (triagens::rest::HttpHandler*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pops and releases a handler
+////////////////////////////////////////////////////////////////////////////////
+
+      static WorkDescription* popHandler (triagens::rest::HttpHandler*, bool free);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handler deleter
+////////////////////////////////////////////////////////////////////////////////
+
+      static void DELETE_HANDLER (WorkDescription* desc);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handler description string
+////////////////////////////////////////////////////////////////////////////////
+
+      static void VPACK_HANDLER (arangodb::velocypack::Builder*,
+                                 WorkDescription* desc);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Thread methods
+// -----------------------------------------------------------------------------
+
+    protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+      void run () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-      public:
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allows a multi scheduler to be build
+/// @brief initiate shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-        void allowMultiScheduler (bool value = true);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-        Scheduler* scheduler () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a signal handler
-////////////////////////////////////////////////////////////////////////////////
-
-        void installSignalHandler (SignalTask*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the number of used threads
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t numberOfThreads ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the processor affinity
-////////////////////////////////////////////////////////////////////////////////
-
-        void setProcessorAffinity (const std::vector<size_t>& cores);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief disables CTRL-C handling (because taken over by console input)
-////////////////////////////////////////////////////////////////////////////////
-
-        void disableControlCHandler ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        ApplicationFeature methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void setupOptions (std::map<std::string, basics::ProgramOptionsDescription>&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool afterOptionParsing (basics::ProgramOptions&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool prepare ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool start ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool open ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void stop ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-        void buildScheduler ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the scheduler reporter
-////////////////////////////////////////////////////////////////////////////////
-
-        void buildSchedulerReporter ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief quits on control-c signal
-////////////////////////////////////////////////////////////////////////////////
-
-        void buildControlCHandler ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adjusts the file descriptor limits
-////////////////////////////////////////////////////////////////////////////////
-
-        void adjustFileDescriptors ();
+      void shutdown () {
+        _stopping = true;
+      }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-      private:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief application server
+/// @brief stopping flag
 ////////////////////////////////////////////////////////////////////////////////
 
-        ApplicationServer* _applicationServer;
+      std::atomic<bool> _stopping;
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class HandlerWorkStack
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scheduler
+/// @brief auto push and pop for HttpHandler
 ////////////////////////////////////////////////////////////////////////////////
 
-      Scheduler* _scheduler; // TODO(fc) XXX delete this, this is now a singleton
+  class HandlerWorkStack {
+    HandlerWorkStack (const HandlerWorkStack&) = delete;
+    HandlerWorkStack& operator= (const HandlerWorkStack&) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task list
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Task*> _tasks;
+      HandlerWorkStack (triagens::rest::HttpHandler*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief interval for reports
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        double _reportInterval;
+      HandlerWorkStack (WorkItem::uptr<triagens::rest::HttpHandler>&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief is a multi-threaded scheduler allowed
+/// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _multiSchedulerAllowed;
+      ~HandlerWorkStack ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of scheduler threads
-/// @startDocuBlock schedulerThreads
-/// `--scheduler.threads arg`
-///
-/// An integer argument which sets the number of threads to use in the IO
-/// scheduler. The default is 1.
-/// @endDocuBlock
+/// @brief returns the handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint32_t _nrSchedulerThreads;
+      triagens::rest::HttpHandler* handler () const {
+        return _handler;
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private members
+// -----------------------------------------------------------------------------
+
+    private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scheduler backend
-/// @startDocuBlock schedulerBackend
-/// `--scheduler.backend arg`
-///
-/// The I/O method used by the event handler. The default (if this option is
-/// not specified) is to try all recommended backends. This is platform
-/// specific. See libev for further details and the meaning of select, poll
-/// and epoll.
-/// @endDocuBlock
+/// @brief handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint32_t _backend;
+      triagens::rest::HttpHandler* _handler;
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             class CustomWorkStack
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum number of file descriptors
+/// @brief auto push and pop for HttpHandler
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint32_t _descriptorMinimum;
+  class CustomWorkStack {
+    CustomWorkStack (const CustomWorkStack&) = delete;
+    CustomWorkStack& operator= (const CustomWorkStack&) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief disables CTRL-C handling (because taken over by console input)
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _disableControlCHandler;
-    };
-  }
+      CustomWorkStack (const char* type, const char* text, size_t length);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructory
+////////////////////////////////////////////////////////////////////////////////
+
+      ~CustomWorkStack ();
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    module methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts the work monitor
+////////////////////////////////////////////////////////////////////////////////
+
+  void InitializeWorkMonitor ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stops the work monitor
+////////////////////////////////////////////////////////////////////////////////
+
+  void ShutdownWorkMonitor ();
 }
 
 #endif
@@ -272,8 +343,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

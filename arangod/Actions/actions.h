@@ -58,10 +58,8 @@ class TRI_action_result_t {
   public:
     TRI_action_result_t ()
       : isValid(false), 
-        requeue(false), 
         canceled(false), 
-        response(nullptr), 
-        sleep(0.0) {
+        response(nullptr) {
     }
 
     // Please be careful here: In the beginning we had "bool requeue" after
@@ -74,12 +72,9 @@ class TRI_action_result_t {
     // to RestActionHandler::executeAction and suddenly requeue is true.
 
     bool isValid;
-    bool requeue;
     bool canceled;
 
     triagens::rest::HttpResponse* response;
-
-    double sleep;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

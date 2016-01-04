@@ -1437,7 +1437,7 @@ bool RestImportHandler::createFromKeyValueList () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestImportHandler::generateDocumentsCreated (RestImportResult const& result) {
-  _response = createResponse(HttpResponse::CREATED);
+  createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
   TRI_json_t json;

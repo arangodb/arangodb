@@ -48,6 +48,16 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  static variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scheduler singleton
+////////////////////////////////////////////////////////////////////////////////
+
+std::unique_ptr<Scheduler> Scheduler::SCHEDULER;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -79,6 +89,8 @@ Scheduler::Scheduler (size_t nrThreads)
 
   // setup signal handlers
   initializeSignalHandlers();
+
+  SCHEDULER.reset(this);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,9 +223,9 @@ bool Scheduler::isShutdownInProgress () {
 
 void Scheduler::shutdown () {
   for (auto& it : taskRegistered) {
-    LOG_DEBUG("forcefully removing task '%s'", it->name().c_str());
+    LOG_DEBUG("forcefully removing task '%s'", it.second->name().c_str());
 
-    deleteTask(it);
+    deleteTask(it.second);
   }
 
   taskRegistered.clear();
@@ -369,7 +381,7 @@ int Scheduler::unregisterTask (Task* task) {
   {
     MUTEX_LOCKER(schedulerLock);
 
-    auto it = task2thread.find(task);
+    auto it = task2thread.find(task); // TODO(fc) XXX remove this! This should be in the Task
 
     if (it == task2thread.end()) {
       LOG_WARNING("unregisterTask called for an unknown task %p (%s)", (void*) task, task->name().c_str());
@@ -381,7 +393,7 @@ int Scheduler::unregisterTask (Task* task) {
 
     thread = (*it).second;
 
-    taskRegistered.erase(task);
+    taskRegistered.erase(task->taskId());
     task2thread.erase(it);
   }
 
@@ -412,7 +424,7 @@ int Scheduler::destroyTask (Task* task) {
 
     thread = (*it).second;
 
-    taskRegistered.erase(task);
+    taskRegistered.erase(task->taskId());
     task2thread.erase(it);
   }
 
@@ -436,6 +448,22 @@ void Scheduler::setProcessorAffinity (size_t i, size_t c) {
   MUTEX_LOCKER(schedulerLock);
 
   threads[i]->setProcessorAffinity(c);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the task for a task id
+////////////////////////////////////////////////////////////////////////////////
+
+Task* Scheduler::lookupTaskById (uint64_t taskId) {
+  MUTEX_LOCKER(schedulerLock);
+  
+  auto&& task = taskRegistered.find(taskId);
+
+  if (task == taskRegistered.end()) {
+    return nullptr;
+  }
+
+  return task->second;
 }
 
 // -----------------------------------------------------------------------------
@@ -484,7 +512,7 @@ int Scheduler::registerTask (Task* task, ssize_t* got, ssize_t want) {
     thread = threads[n];
 
     task2thread[task] = thread;
-    taskRegistered.emplace(task);
+    taskRegistered[task->taskId()] = task;
   }
     
   if (nullptr != got) {

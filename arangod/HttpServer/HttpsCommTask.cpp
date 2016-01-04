@@ -444,8 +444,6 @@ bool HttpsCommTask::trySSLWrite () {
   }
 
   // we might have a new write buffer
-  _scheduler->sendAsync(SocketTask::_asyncWatcher);
-
   return true;
 }
 

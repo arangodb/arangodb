@@ -134,9 +134,9 @@ namespace triagens {
 /// @brief starts a new named queue
 ////////////////////////////////////////////////////////////////////////////////
 
-	int addExtraQueue (size_t identifier,
-			   size_t nrThreads,
-			   size_t maxSize);
+        int addExtraQueue (size_t identifier,
+                           size_t nrThreads,
+                           size_t maxSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new job
@@ -147,7 +147,7 @@ namespace triagens {
 /// the response over the network to the caller.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int addJob (Job*);
+        int addJob(std::unique_ptr<Job> &);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to cancel a job
@@ -201,7 +201,7 @@ namespace triagens {
 /// @brief dispatcher queues
 ////////////////////////////////////////////////////////////////////////////////
 
-	std::vector<DispatcherQueue*> _queues;
+        std::vector<DispatcherQueue*> _queues;
     };
   }
 }

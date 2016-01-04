@@ -57,10 +57,6 @@ actions.defineHttp({
       actions.routeRequest(req, res);
     }
     catch (err) {
-      if (err instanceof internal.SleepAndRequeue) {
-        throw err;
-      }
-
       var msg = 'A runtime error occurred while executing an action: '
                 + String(err) + " " + String(err.stack);
 

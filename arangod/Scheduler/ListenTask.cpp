@@ -190,7 +190,7 @@ bool ListenTask::handleEvent (EventToken token,
     _acceptFailures = 0;
 
     struct sockaddr_in6 addr_out_mem;
-    struct sockaddr_in* addr_out = (sockaddr_in*) &addr_out_mem;;
+    struct sockaddr_in* addr_out = (sockaddr_in*) &addr_out_mem;
     socklen_t len_out = sizeof(addr_out_mem);
 
     int res = TRI_getsockname(connectionSocket, (sockaddr*) addr_out, &len_out);
@@ -219,6 +219,7 @@ bool ListenTask::handleEvent (EventToken token,
     // set client address and port
     ConnectionInfo info;
 
+    Endpoint::DomainType type = _endpoint->getDomainType();
     char host[NI_MAXHOST], serv[NI_MAXSERV];
 
     if (getnameinfo((sockaddr*) addr, len,
@@ -226,11 +227,9 @@ bool ListenTask::handleEvent (EventToken token,
                     serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
 
       info.clientAddress = std::string(host);
-      info.clientPort = addr->sin_port;
+      info.clientPort = ntohs(addr->sin_port);
     }
     else {
-      Endpoint::DomainType type = _endpoint->getDomainType();
-
       if (type == Endpoint::DOMAIN_IPV4) {
         char buf[INET_ADDRSTRLEN + 1];
         char const* p = inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf) - 1);
@@ -239,7 +238,8 @@ bool ListenTask::handleEvent (EventToken token,
           buf[INET_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         }
-        info.clientPort = addr->sin_port;
+
+        info.clientPort = ntohs(addr->sin_port);
       }
       else if (type == Endpoint::DOMAIN_IPV6) {
         char buf[INET6_ADDRSTRLEN + 1];
@@ -249,12 +249,40 @@ bool ListenTask::handleEvent (EventToken token,
           buf[INET6_ADDRSTRLEN] = '\0';
           info.clientAddress = p;
         } 
-        info.clientPort = addrmem.sin6_port;
+
+        info.clientPort = ntohs(addrmem.sin6_port);
       }
     }
 
-    info.serverAddress = _endpoint->getHost();
-    info.serverPort    = _endpoint->getPort();
+    // set server address and port
+    if (type == Endpoint::DOMAIN_IPV4) {
+      char buf[INET_ADDRSTRLEN + 1];
+      char const* p = inet_ntop(AF_INET, &addr_out->sin_addr, buf, sizeof(buf) - 1);
+
+      if (p != nullptr) {
+        buf[INET_ADDRSTRLEN] = '\0';
+        info.serverAddress = p;
+      }
+
+      info.serverPort = ntohs(addr_out->sin_port);
+    }
+    else if (type == Endpoint::DOMAIN_IPV6) {
+      char buf[INET6_ADDRSTRLEN + 1];
+      char const* p = inet_ntop(AF_INET6, &addr_out_mem.sin6_addr, buf, sizeof(buf) - 1);
+
+      if (p != nullptr) {
+        buf[INET6_ADDRSTRLEN] = '\0';
+        info.serverAddress = p;
+      } 
+
+      info.serverPort = ntohs(addr_out_mem.sin6_port);
+    }
+    else {
+      info.serverAddress = _endpoint->getHost();
+      info.serverPort = _endpoint->getPort();
+    }
+
+    // set the endpoint
     info.endpoint      = _endpoint->getSpecification();
     info.endpointType  = _endpoint->getDomainType();
 

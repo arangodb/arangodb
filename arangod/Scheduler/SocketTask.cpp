@@ -54,7 +54,6 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     _keepAliveWatcher(nullptr),
     _readWatcher(nullptr),
     _writeWatcher(nullptr),
-    _asyncWatcher(nullptr),
     _commSocket(socket),
     _keepAliveTimeout(keepAliveTimeout),
     _writeBuffer(nullptr),
@@ -67,7 +66,7 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
   ConnectionStatisticsAgent::acquire();
-  ConnectionStatisticsAgentSetStart(this);
+  connectionStatisticsAgentSetStart();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +89,7 @@ SocketTask::~SocketTask () {
 
   delete _readBuffer;
 
-  ConnectionStatisticsAgentSetEnd(this);
+  connectionStatisticsAgentSetEnd();
   ConnectionStatisticsAgent::release();
 }
 
@@ -342,7 +341,6 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   _scheduler = scheduler;
   _loop = loop;
 
-  _asyncWatcher = _scheduler->installAsyncEvent(loop, this);
   _readWatcher  = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
   _writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
 
@@ -363,10 +361,6 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 void SocketTask::cleanup () {
   if (_scheduler != nullptr) {
-    if (_asyncWatcher != nullptr) {
-      _scheduler->uninstallEvent(_asyncWatcher);
-    }
-
     if (_keepAliveWatcher != nullptr) {
       _scheduler->uninstallEvent(_keepAliveWatcher);
     }
@@ -380,7 +374,6 @@ void SocketTask::cleanup () {
     }
   }
 
-  _asyncWatcher     = nullptr;
   _keepAliveWatcher = nullptr;
   _readWatcher      = nullptr;
   _writeWatcher     = nullptr;

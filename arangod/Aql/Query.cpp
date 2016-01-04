@@ -27,21 +27,22 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Query.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/Executor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
+#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/ShortStringStorage.h"
-#include "Basics/fasthash.h"
+#include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/WorkMonitor.h"
+#include "Basics/fasthash.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
-#include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
@@ -53,6 +54,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/Graphs.h"
 
+using namespace arangodb;
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
@@ -638,6 +640,8 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
+  CustomWorkStack work("AQL", _queryString, _queryLength);
+
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryStringHash = 0;
@@ -783,6 +787,8 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
 QueryResultV8 Query::executeV8 (v8::Isolate* isolate, 
                                 QueryRegistry* registry) {
+  CustomWorkStack work("AQL", _queryString, _queryLength);
+
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryStringHash = 0;

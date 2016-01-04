@@ -64,13 +64,13 @@ namespace {
       };
 
       status_t execute () override {
-        _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+        createResponse(HttpResponse::SERVICE_UNAVAILABLE);
 
         return status_t(HANDLER_DONE);
       };
 
       void handleError (const Exception& error) override {
-        _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+        createResponse(HttpResponse::SERVICE_UNAVAILABLE);
       };
   };
 }

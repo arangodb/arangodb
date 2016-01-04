@@ -100,7 +100,7 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
                                                          stealRequest());
 
   if (result == "") {
-    _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
+    createResponse(triagens::rest::HttpResponse::ACCEPTED);
   }
   else {
     generateError(triagens::rest::HttpResponse::BAD,

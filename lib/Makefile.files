@@ -32,15 +32,15 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/hashes.cpp \
 	lib/Basics/init.cpp \
 	lib/Basics/InitializeBasics.cpp \
-	lib/Basics/json.cpp \
 	lib/Basics/json-utilities.cpp \
+	lib/Basics/json.cpp \
 	lib/Basics/JsonHelper.cpp \
 	lib/Basics/levenshtein.cpp \
 	lib/Basics/locks-macos.cpp \
 	lib/Basics/locks-posix.cpp \
 	lib/Basics/logging.cpp \
-	lib/Basics/memory.cpp \
 	lib/Basics/memory-map-posix.cpp \
+	lib/Basics/memory.cpp \
 	lib/Basics/mimetypes.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
@@ -71,13 +71,14 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/vector.cpp \
 	lib/Basics/voc-errors.cpp \
 	lib/Basics/voc-mimetypes.cpp \
+	lib/Basics/WorkMonitor.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
-	lib/Rest/EndpointList.cpp \
 	lib/Rest/Endpoint.cpp \
 	lib/Rest/EndpointIp.cpp \
 	lib/Rest/EndpointIpV4.cpp \
 	lib/Rest/EndpointIpV6.cpp \
+	lib/Rest/EndpointList.cpp \
 	lib/Rest/EndpointUnixDomain.cpp \
 	lib/Rest/HttpRequest.cpp \
 	lib/Rest/HttpResponse.cpp \

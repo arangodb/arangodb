@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base request handler
 ///
 /// @file
@@ -208,7 +208,7 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
   string handle(std::move(DocumentHelper::assembleDocumentId(collectionName, key)));
   string rev(std::move(StringUtils::itoa(rid)));
 
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
 
   if (responseCode != HttpResponse::OK) {
@@ -273,7 +273,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectio
                                                          TRI_voc_rid_t rid) {
   string rev(std::move(StringUtils::itoa(rid)));
 
-  _response = createResponse(HttpResponse::PRECONDITION_FAILED);
+  createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("etag", 4, "\"" + rev + "\"");
 
@@ -298,8 +298,10 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectio
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
-  _response = createResponse(HttpResponse::NOT_MODIFIED);
-  _response->setHeader("etag", 4, "\"" + StringUtils::itoa(rid) + "\"");
+  string const&& rev = StringUtils::itoa(rid);
+
+  createResponse(HttpResponse::NOT_MODIFIED);
+  _response->setHeader("etag", 4, "\"" + rev + "\"");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +386,7 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   }
 
   // and generate a response
-  _response = createResponse(HttpResponse::OK);
+  createResponse(HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->setHeader("etag", 4, "\"" + rid + "\"");
 
@@ -685,15 +687,11 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::prepareExecute () {
+  RestBaseHandler::prepareExecute();
+
   bool found;
-  // LOCKING-DEBUG
-  // std::cout << "REQ coming in: " << _request->requestType() << ": " <<_request->fullUrl() << std::endl;
-  //std::map<std::string, std::string> h = _request->headers();
-  //for (auto& hh : h) {
-  //  std::cout << hh.first << ": " << hh.second << std::endl;
-  //}
-  //std::cout << std::endl;
   char const* shardId = _request->header("x-arango-nolock", found);
+
   if (found) {
     _nolockHeaderSet = new std::unordered_set<std::string>();
     _nolockHeaderSet->insert(std::string(shardId));
@@ -711,6 +709,8 @@ void RestVocbaseBaseHandler::finalizeExecute () {
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }
+
+  RestBaseHandler::finalizeExecute();
 }
 
 // -----------------------------------------------------------------------------

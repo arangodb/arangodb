@@ -3829,30 +3829,6 @@ static void JS_ArangoError (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief SleepAndRequeue
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SleepAndRequeue (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-
-  v8::Handle<v8::Object> self = args.Holder()->ToObject();
-
-  if (0 < args.Length() && args[0]->IsObject()) {
-    v8::Handle<v8::Object> data = args[0]->ToObject();
-    TRI_GET_GLOBAL_STRING(SleepKey);
-
-    if (data->Has(SleepKey)) {
-      self->Set(SleepKey, data->Get(SleepKey));
-    }
-  }
-
-  TRI_V8_RETURN(self);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief isIP
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4343,24 +4319,6 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
 
   rt = ft->InstanceTemplate();
   v8g->ArangoErrorTempl.Reset(isolate, rt);
-
-  // .............................................................................
-  // sleep and requeue a job
-  // .............................................................................
-
-  ft = v8::FunctionTemplate::New(isolate, JS_SleepAndRequeue);
-  ft->SetClassName(TRI_V8_ASCII_STRING("SleepAndRequeue"));
-
-  // SleepAndRequeue is a "sub-class" of Error
-  v8::Handle<v8::Function> SleepAndRequeueFunc = ft->GetFunction();
-
-  SleepAndRequeueFunc->Get(TRI_V8_ASCII_STRING("prototype"))->ToObject()->SetPrototype(ErrorPrototype);
-
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SleepAndRequeue"), SleepAndRequeueFunc);
-  
-  rt = ft->InstanceTemplate();
-  v8g->SleepAndRequeueTempl.Reset(isolate, rt);
-  v8g->SleepAndRequeueFuncTempl.Reset(isolate, ft);
 
   // .............................................................................
   // create the global functions

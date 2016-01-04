@@ -3,6 +3,8 @@ v3.0.0 (XXXX-XX-XX)
 
 * removed support for CoffeeScript source files
 
+* removed undocumented SleepAndRequeue
+
 
 v2.8.0 (XXXX-XX-XX)
 -------------------
@@ -249,6 +251,7 @@ v2.8.0-alpha1 (2015-12-03)
 
 
 * fixed non-deterministic query results in some cluster queries
+>>>>>>> 181db60b494097080cc1fac0a50895794eb91a57
 
 * fixed issue #1589
 

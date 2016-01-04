@@ -112,18 +112,12 @@ void V8TimerTask::getDescription (TRI_json_t* json) const {
 /// @brief handles the timer event
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8TimerTask::handleTimeout () {
-  V8Job* job = new V8Job(
-    _vocbase,
-    _v8Dealer,
-    "(function (params) { " + _command + " } )(params);",
-    _parameters,
-    _allowUseDatabase);
+bool V8TimerTask::handleTimeout() {
+  std::unique_ptr<Job> job(new V8Job(
+      _vocbase, _v8Dealer, "(function (params) { " + _command + " } )(params);",
+      _parameters, _allowUseDatabase));
 
-  if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
-    // just in case the dispatcher cannot accept the job (e.g. when shutting down)
-    delete job;
-  }
+  _dispatcher->addJob(job);
 
   // note: this will destroy the task (i.e. ourselves!!)
   _scheduler->destroyTask(this);
@@ -134,8 +128,3 @@ bool V8TimerTask::handleTimeout () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -58,7 +58,7 @@ V8QueueJob::V8QueueJob (size_t queue,
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
     _parameters(nullptr),
-    _canceled(0) {
+    _canceled(false) {
 
   if (parameters != nullptr) {
     // create our own copy of the parameters
@@ -93,16 +93,16 @@ size_t V8QueueJob::queue () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_t V8QueueJob::work () {
+void V8QueueJob::work () {
   if (_canceled) {
-    return status_t(JOB_DONE);
+    return;
   }
 
   ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
-    return status_t(JOB_DONE);
+    return;
   }
 
   // now execute the function within this context
@@ -155,8 +155,6 @@ Job::status_t V8QueueJob::work () {
   }
 
   _v8Dealer->exitContext(context);
-
-  return status_t(JOB_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +162,7 @@ Job::status_t V8QueueJob::work () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool V8QueueJob::cancel () {
-  _canceled = 1;
+  _canceled = true;
   return true;
 }
 
