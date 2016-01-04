@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.0.4.  */
+/* A Bison parser, made by GNU Bison 3.0.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2013 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -103,22 +103,23 @@ extern int Aqldebug;
     T_INBOUND = 312,
     T_ANY = 313,
     T_ALL = 314,
-    T_NIN = 315,
-    UMINUS = 316,
-    UPLUS = 317,
-    FUNCCALL = 318,
-    REFERENCE = 319,
-    INDEXED = 320,
-    EXPANSION = 321
+    T_NONE = 315,
+    T_NIN = 316,
+    UMINUS = 317,
+    UPLUS = 318,
+    FUNCCALL = 319,
+    REFERENCE = 320,
+    INDEXED = 321,
+    EXPANSION = 322
   };
 #endif
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-
+typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 17 "arangod/Aql/grammar.y" /* yacc.c:1915  */
+#line 17 "arangod/Aql/grammar.y" /* yacc.c:1909  */
 
   triagens::aql::AstNode*  node;
   struct {
@@ -128,10 +129,8 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 132 "arangod/Aql/grammar.hpp" /* yacc.c:1915  */
+#line 133 "arangod/Aql/grammar.hpp" /* yacc.c:1909  */
 };
-
-typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
 #endif

@@ -130,6 +130,7 @@ void Aqlerror (YYLTYPE* locp,
 %token T_ANY "any direction"
 
 %token T_ALL "all modifier"
+%token T_NONE "none modifier"
 
 /* define operator precedence */
 %left T_COMMA
