@@ -223,7 +223,7 @@ void RestJobHandler::putJob () {
 
   if (status == AsyncJobResult::JOB_PENDING) {
     // job is still pending
-    _response = createResponse(HttpResponse::NO_CONTENT);
+    createResponse(HttpResponse::NO_CONTENT);
     return;
   }
 
@@ -433,11 +433,11 @@ void RestJobHandler::getJobById (std::string const& value) {
 
   if (status == AsyncJobResult::JOB_PENDING) {
     // job is still pending
-    _response = createResponse(HttpResponse::NO_CONTENT);
+    createResponse(HttpResponse::NO_CONTENT);
     return;
   }
 
-  _response = createResponse(HttpResponse::OK);
+  createResponse(HttpResponse::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -51,6 +51,7 @@ namespace triagens {
 
   namespace rest {
     class SchedulerThread;
+    class TaskData;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class Scheduler
@@ -61,9 +62,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
    class Scheduler : private TaskManager {
-      private:
-        explicit Scheduler (Scheduler const&);
-        Scheduler& operator= (Scheduler const&);
+      Scheduler (Scheduler const&) = delete;
+      Scheduler& operator= (Scheduler const&) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  static variables
+// -----------------------------------------------------------------------------
+
+     public:
+     
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scheduler singleton
+////////////////////////////////////////////////////////////////////////////////
+
+       static std::unique_ptr<Scheduler> SCHEDULER;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -233,6 +245,15 @@ namespace triagens {
 
        void setProcessorAffinity (size_t i, size_t c);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the task for a task id
+///
+/// Warning: ONLY call this from within the scheduler task! Otherwise, the task
+///          MIGHT already be deleted.
+////////////////////////////////////////////////////////////////////////////////
+
+       Task* lookupTaskById (uint64_t);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            virtual public methods
 // -----------------------------------------------------------------------------
@@ -268,18 +289,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void stopSocketEvents (EventToken) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief called to register an asynchronous event
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual EventToken installAsyncEvent (EventLoop, Task*) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sends an asynchronous event
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void sendAsync (EventToken) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called to register a timer event
@@ -322,6 +331,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void uninstallEvent (EventToken) = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends data to a task
+////////////////////////////////////////////////////////////////////////////////
+
+     virtual void signalTask (std::unique_ptr<TaskData>&) = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -383,7 +398,7 @@ namespace triagens {
 /// @brief true if scheduler is shutting down
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t stopping;
+       volatile sig_atomic_t stopping; // TODO(fc) XXX make this atomic
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief true if scheduler is multi-threaded
@@ -413,7 +428,7 @@ namespace triagens {
 /// @brief active tasks
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<Task*> taskRegistered;
+        std::unordered_map<uint64_t, Task*> taskRegistered;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief scheduler activity flag
@@ -429,8 +444,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

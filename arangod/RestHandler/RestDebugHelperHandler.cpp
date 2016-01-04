@@ -74,7 +74,7 @@ bool RestDebugHelperHandler::isDirect () const {
 HttpHandler::status_t RestDebugHelperHandler::execute () {
   TRI_json_t result;
 
-  RequestStatisticsAgentSetIgnore(this);
+  requestStatisticsAgentSetIgnore();
 
   TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result, 3);
 
@@ -90,28 +90,13 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
   char const* sleepStr = _request->value("sleep", found);
   auto s = static_cast<unsigned long>(StringUtils::doubleDecimal(sleepStr) * 1000.0 * 1000.0);
 
-  char const* blockStr = _request->value("block", found);
-  bool block = (found && StringUtils::boolean(blockStr));
-
-  if (block && _dispatcherThread != nullptr) {
-    _dispatcherThread->block();
-  }
-
   if (0 < s) {
     usleep(s);
-  }
-
-  if (block && _dispatcherThread != nullptr) {
-    _dispatcherThread->unblock();
   }
 
   TRI_json_t sleepNumber;
   TRI_InitNumberJson(&sleepNumber, s / 1000000.0);
   TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "sleep", &sleepNumber);
-
-  TRI_json_t blockFlag;
-  TRI_InitBooleanJson(&blockFlag, block);
-  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "block", &blockFlag);
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
@@ -122,8 +107,3 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

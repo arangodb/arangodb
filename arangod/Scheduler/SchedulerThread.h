@@ -32,6 +32,9 @@
 #define ARANGODB_SCHEDULER_SCHEDULER_THREAD_H 1
 
 #include "Basics/Common.h"
+
+#include <boost/lockfree/queue.hpp>
+
 #include "Basics/Mutex.h"
 #include "Basics/SpinLock.h"
 #include "Basics/Thread.h"
@@ -121,6 +124,12 @@ namespace triagens {
 
         void destroyTask (Task*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sends data to a task
+////////////////////////////////////////////////////////////////////////////////
+
+      void signalTask (std::unique_ptr<TaskData>&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    Thread methods
 // -----------------------------------------------------------------------------
@@ -132,6 +141,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void run ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        void addStatus(arangodb::velocypack::Builder* b);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -170,7 +185,7 @@ namespace triagens {
         };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
@@ -197,13 +212,13 @@ namespace triagens {
 /// @brief true if scheduler threads is shutting down
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _stopping;
+        std::atomic<bool> _stopping;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief true if scheduler threads has stopped
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _stopped;
+        std::atomic<bool> _stopped;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief queue lock
@@ -225,14 +240,27 @@ namespace triagens {
 /// @brief open for business
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _open;
+        std::atomic<bool> _open;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief work indicator
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _hasWork;
+        std::atomic<bool> _hasWork;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief statistics
+///
+/// This is for statistics only. Never use this number for decisions.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::atomic<int> _numberTasks;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stored task data
+////////////////////////////////////////////////////////////////////////////////
+
+        boost::lockfree::queue<TaskData*> _taskData;
     };
   }
 }
@@ -242,8 +270,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

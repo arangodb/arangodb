@@ -131,6 +131,7 @@ add_library(
     Basics/vector.cpp
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp
+    Basics/WorkMonitor.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/EndpointList.cpp

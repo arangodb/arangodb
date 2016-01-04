@@ -387,7 +387,7 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
 
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
@@ -662,7 +662,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
   }
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   
   if (! generateBody) {
@@ -870,7 +870,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
     return false;
   }
   // Return the response we got:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   _response->setContentType(contentType);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
@@ -1659,7 +1659,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;
@@ -1902,7 +1902,7 @@ bool RestDocumentHandler::deleteDocumentCoordinator (
   }
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
   return responseCode >= triagens::rest::HttpResponse::BAD;

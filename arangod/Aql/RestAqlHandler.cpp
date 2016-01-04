@@ -153,7 +153,7 @@ void RestAqlHandler::createQueryFromJson () {
     return;
   }
 
-  _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
+  createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
   answerBody("queryId", triagens::basics::Json(StringUtils::itoa(_qId)))
@@ -211,7 +211,7 @@ void RestAqlHandler::parseQuery () {
   answerBody("ast", triagens::basics::Json(res.zone, res.json));
   res.json = nullptr;
 
-  _response = createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(answerBody.toString());
 }
@@ -265,7 +265,7 @@ void RestAqlHandler::explainQuery () {
   }
   res.json = nullptr;
 
-  _response = createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(answerBody.toString());
 }
@@ -337,7 +337,7 @@ void RestAqlHandler::createQueryFromString () {
     return;
   }
 
-  _response = createResponse(triagens::rest::HttpResponse::ACCEPTED);
+  createResponse(triagens::rest::HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   triagens::basics::Json answerBody(triagens::basics::Json::Object, 2);
   answerBody("queryId", triagens::basics::Json(StringUtils::itoa(_qId)))
@@ -568,7 +568,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
 
   _queryRegistry->close(_vocbase, _qId);
 
-  _response = createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   answerBody("error", triagens::basics::Json(false));
   _response->body().appendText(answerBody.toString());
@@ -883,7 +883,7 @@ void RestAqlHandler::handleUseQuery (std::string const& operation,
     return;
   }
 
-  _response = createResponse(triagens::rest::HttpResponse::OK);
+  createResponse(triagens::rest::HttpResponse::OK);
   _response->setContentType("application/json; charset=utf-8");
   _response->body().appendText(answerBody.toString());
 }

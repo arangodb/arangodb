@@ -112,19 +112,12 @@ void V8PeriodicTask::getDescription (TRI_json_t* json) const {
 /// @brief handles the next tick
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8PeriodicTask::handlePeriod () {
-  V8Job* job = new V8Job(
-    _vocbase,
-    _v8Dealer,
-    "(function (params) { " + _command + " } )(params);",
-    _parameters,
-    _allowUseDatabase
-  );
+bool V8PeriodicTask::handlePeriod() {
+  std::unique_ptr<Job> job(new V8Job(
+      _vocbase, _v8Dealer, "(function (params) { " + _command + " } )(params);",
+      _parameters, _allowUseDatabase));
 
-  if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
-    // just in case the dispatcher cannot accept the job (e.g. when shutting down)
-    delete job;
-  }
+  _dispatcher->addJob(job);
 
   return true;
 }
@@ -132,8 +125,3 @@ bool V8PeriodicTask::handlePeriod () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

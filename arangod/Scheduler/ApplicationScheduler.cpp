@@ -351,6 +351,7 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::~ApplicationScheduler () {
+  Scheduler::SCHEDULER.release(); // TODO(fc) XXX remove this
   delete _scheduler;
 }
 

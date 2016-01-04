@@ -137,7 +137,6 @@ add_executable(
     Dispatcher/DispatcherQueue.cpp
     Dispatcher/DispatcherThread.cpp
     Dispatcher/Job.cpp
-    Dispatcher/RequeueTask.cpp
     FulltextIndex/fulltext-handles.cpp
     FulltextIndex/fulltext-index.cpp
     FulltextIndex/fulltext-list.cpp
@@ -220,6 +219,7 @@ add_executable(
     Utils/Transaction.cpp
     Utils/TransactionContext.cpp
     Utils/V8TransactionContext.cpp
+    Utils/WorkMonitorArangod.cpp
     V8Server/ApplicationV8.cpp
     V8Server/V8Job.cpp
     V8Server/V8PeriodicTask.cpp

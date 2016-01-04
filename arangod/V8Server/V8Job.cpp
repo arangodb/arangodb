@@ -86,16 +86,16 @@ V8Job::~V8Job () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_t V8Job::work () {
+void V8Job::work () {
   if (_canceled) {
-    return status_t(JOB_DONE);
+    return;
   }
 
   ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
-    return status_t(JOB_DONE);
+    return;
   }
 
   // now execute the function within this context
@@ -155,8 +155,6 @@ Job::status_t V8Job::work () {
   }
 
   _v8Dealer->exitContext(context);
-
-  return status_t(JOB_DONE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

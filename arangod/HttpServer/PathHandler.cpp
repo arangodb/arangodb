@@ -83,7 +83,7 @@ namespace triagens {
         }
         url += defaultFile;
 
-        _response = createResponse(HttpResponse::MOVED_PERMANENTLY);
+        createResponse(HttpResponse::MOVED_PERMANENTLY);
 
         _response->setHeader(TRI_CHAR_LENGTH_PAIR("location"), url);
         _response->setContentType("text/html");
@@ -103,7 +103,7 @@ namespace triagens {
         if (next == ".") {
           LOG_WARNING("file '%s' contains '.'", name.c_str());
 
-          _response = createResponse(HttpResponse::FORBIDDEN);
+          createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '.'");
           return status_t(HANDLER_DONE);
         }
@@ -111,7 +111,7 @@ namespace triagens {
         if (next == "..") {
           LOG_WARNING("file '%s' contains '..'", name.c_str());
 
-          _response = createResponse(HttpResponse::FORBIDDEN);
+          createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains '..'");
           return status_t(HANDLER_DONE);
         }
@@ -121,7 +121,7 @@ namespace triagens {
         if (sc != std::string::npos) {
           LOG_WARNING("file '%s' contains illegal character", name.c_str());
 
-          _response = createResponse(HttpResponse::FORBIDDEN);
+          createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("path contains illegal character '" + std::string(1, next[sc]) + "'");
           return status_t(HANDLER_DONE);
         }
@@ -130,7 +130,7 @@ namespace triagens {
           if (! FileUtils::isDirectory(path)) {
             LOG_WARNING("file '%s' not found", name.c_str());
 
-            _response = createResponse(HttpResponse::NOT_FOUND);
+            createResponse(HttpResponse::NOT_FOUND);
             _response->body().appendText("file not found");
             return status_t(HANDLER_DONE);
           }
@@ -142,7 +142,7 @@ namespace triagens {
         if (! allowSymbolicLink && FileUtils::isSymbolicLink(name)) {
           LOG_WARNING("file '%s' contains symbolic link", name.c_str());
 
-          _response = createResponse(HttpResponse::FORBIDDEN);
+          createResponse(HttpResponse::FORBIDDEN);
           _response->body().appendText("symbolic links are not allowed");
           return status_t(HANDLER_DONE);
         }
@@ -151,12 +151,12 @@ namespace triagens {
       if (! FileUtils::isRegularFile(name)) {
         LOG_WARNING("file '%s' not found", name.c_str());
 
-        _response = createResponse(HttpResponse::NOT_FOUND);
+        createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not found");
         return status_t(HANDLER_DONE);
       }
 
-      _response = createResponse(HttpResponse::OK);
+      createResponse(HttpResponse::OK);
 
       try {
         FileUtils::slurp(name, _response->body());
@@ -164,7 +164,7 @@ namespace triagens {
       catch (...) {
         LOG_WARNING("file '%s' not readable", name.c_str());
 
-        _response = createResponse(HttpResponse::NOT_FOUND);
+        createResponse(HttpResponse::NOT_FOUND);
         _response->body().appendText("file not readable");
         return status_t(HANDLER_DONE);
       }
@@ -203,15 +203,11 @@ namespace triagens {
     }
 
     void PathHandler::handleError (const Exception&) {
-      _response = createResponse(HttpResponse::SERVER_ERROR);
+      createResponse(HttpResponse::SERVER_ERROR);
     }
   }
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
