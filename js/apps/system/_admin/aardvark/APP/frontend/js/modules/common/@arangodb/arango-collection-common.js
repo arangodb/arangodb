@@ -1031,6 +1031,15 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 /// the number of documents in the collection, it is undefined which documents are
 /// updated.
 ///
+/// `collection.updateByExample(document, newValue, options)`
+///
+/// Using this variant, the options for the operation can be passed using
+/// an object with the following sub-attributes:
+/// - *keepNull*
+/// - *waitForSync*
+/// - *limit*
+/// - *mergeObjects*
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
