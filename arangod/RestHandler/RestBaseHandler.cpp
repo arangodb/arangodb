@@ -87,7 +87,7 @@ void RestBaseHandler::generateResult (TRI_json_t const* json) {
 
 void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
                                       TRI_json_t const* json) {
-  _response = createResponse(code);
+  createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
   int res = TRI_StringifyJson(_response->body().stringBuffer(), json);
@@ -113,7 +113,7 @@ void RestBaseHandler::generateResult (VPackSlice const& slice) {
 
 void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
                                       VPackSlice const& slice) {
-  _response = createResponse(code);
+  createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
   VPackStringBufferAdapter buffer(_response->body().stringBuffer());
@@ -175,7 +175,7 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code,
 
 void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int errorCode, std::string const& message) {
 
-  _response = createResponse(code);
+  createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
   VPackBuilder builder;

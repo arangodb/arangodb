@@ -359,7 +359,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
   }
   // Essentially return the response we got from the DBserver, be it
   // OK or an error:
-  _response = createResponse(responseCode);
+  createResponse(responseCode);
   triagens::arango::mergeResponseHeaders(_response, resultHeaders);
   _response->body().appendText(resultBody.c_str(), resultBody.size());
 

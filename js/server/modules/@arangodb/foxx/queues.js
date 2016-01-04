@@ -27,7 +27,7 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore');
+var _ = require('lodash');
 var flatten = require('internal').flatten;
 var arangodb = require('@arangodb');
 var joi = require('joi');

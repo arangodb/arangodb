@@ -76,23 +76,6 @@ exports.ArangoError.prototype.toString = function() {
   return '[ArangoError ' + errorNum + ': ' + errorMessage + ']';
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief SleepAndRequeue
-////////////////////////////////////////////////////////////////////////////////
-
-if (global.SleepAndRequeue) {
-  exports.SleepAndRequeue = global.SleepAndRequeue;
-  delete global.SleepAndRequeue;
-
-  exports.SleepAndRequeue.prototype._PRINT = function (context) {
-    context.output += this.toString();
-  };
-
-  exports.SleepAndRequeue.prototype.toString = function() {
-    return '[SleepAndRequeue sleep: ' + this.sleep + ']';
-};
-
-}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------

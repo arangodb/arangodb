@@ -1237,7 +1237,9 @@ static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
     else {
       result->Set(TRI_V8_ASCII_STRING("plan"), TRI_ObjectJson(isolate, queryResult.json));
+      result->Set(TRI_V8_ASCII_STRING("cacheable"), v8::Boolean::New(isolate, queryResult.cached));
     }
+
     if (queryResult.clusterplan != nullptr) {
       result->Set(TRI_V8_ASCII_STRING("clusterplans"), TRI_ObjectJson(isolate, queryResult.clusterplan));
     }

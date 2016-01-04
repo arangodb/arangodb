@@ -62,7 +62,7 @@ bool RestPleaseUpgradeHandler::isDirect () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
-  _response = createResponse(HttpResponse::OK);
+  createResponse(HttpResponse::OK);
   _response->setContentType("text/plain; charset=utf-8");
 
   auto& buffer = _response->body();

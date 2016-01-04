@@ -96,7 +96,7 @@ var optionsDocumentation = [
   ''
 ];
 
-var _ = require("underscore");
+var _ = require("lodash");
 var cleanupDirectories = [];
 var testFuncs = {'all': function(){}};
 var print = require("internal").print;

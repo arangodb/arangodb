@@ -41,7 +41,8 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 namespace {
-  std::atomic_uint_fast64_t NEXT_TASK_ID(1);
+std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
+                                                             100000.0));
 }
 
 // -----------------------------------------------------------------------------
@@ -52,29 +53,24 @@ namespace {
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-Task::Task (std::string const& id,
-            std::string const& name)
-  : _scheduler(nullptr),
-    _loop(0),
-    _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_seq_cst)),
-    _id(id),
-    _name(name) {
-}
+Task::Task(std::string const &id, std::string const &name)
+    : _scheduler(nullptr),
+      _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_seq_cst)),
+      _loop(0),  // TODO(fc) XXX this should be an "invalid" marker!
+      _id(id),
+      _name(name) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-Task::Task (std::string const& name)
-  : Task("", name) {
-}
+Task::Task(std::string const &name) : Task("", name) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a task
 ////////////////////////////////////////////////////////////////////////////////
 
-Task::~Task () {
-}
+Task::~Task() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -84,12 +80,18 @@ Task::~Task () {
 /// @brief get a JSON representation of the task
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Task::toJson () const {
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+TRI_json_t *Task::toJson() const {  // TODO(fc) XXX this should be VPack
+  TRI_json_t *json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->id().c_str(), this->id().size()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->name().c_str(), this->name().size()));
+    TRI_Insert3ObjectJson(
+        TRI_UNKNOWN_MEM_ZONE, json, "id",
+        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->id().c_str(),
+                                 this->id().size()));
+    TRI_Insert3ObjectJson(
+        TRI_UNKNOWN_MEM_ZONE, json, "name",
+        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, this->name().c_str(),
+                                 this->name().size()));
 
     this->getDescription(json);
   }
@@ -102,17 +104,13 @@ TRI_json_t* Task::toJson () const {
 /// note: this function may be overridden
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Task::isUserDefined () const {
-  return false;
-}
+bool Task::isUserDefined() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allow thread to run on slave event loop
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Task::needsMainEventLoop () const {
-  return false;
-}
+bool Task::needsMainEventLoop() const { return false; }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -123,14 +121,8 @@ bool Task::needsMainEventLoop () const {
 /// this does nothing for basic tasks, but derived classes may override it
 ////////////////////////////////////////////////////////////////////////////////
 
-void Task::getDescription (TRI_json_t* json) const {
-}
+void Task::getDescription(TRI_json_t *json) const {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

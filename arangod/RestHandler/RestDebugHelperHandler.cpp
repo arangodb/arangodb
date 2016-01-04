@@ -72,25 +72,14 @@ bool RestDebugHelperHandler::isDirect () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestDebugHelperHandler::execute () {
-  RequestStatisticsAgentSetIgnore(this);
+  requestStatisticsAgentSetIgnore();
 
   bool found;
   char const* sleepStr = _request->value("sleep", found);
   auto s = static_cast<unsigned long>(StringUtils::doubleDecimal(sleepStr) * 1000.0 * 1000.0);
 
-  char const* blockStr = _request->value("block", found);
-  bool block = (found && StringUtils::boolean(blockStr));
-
-  if (block && _dispatcherThread != nullptr) {
-    _dispatcherThread->block();
-  }
-
   if (0 < s) {
     usleep(s);
-  }
-
-  if (block && _dispatcherThread != nullptr) {
-    _dispatcherThread->unblock();
   }
 
   try {
@@ -99,7 +88,6 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
     result.add("server", VPackValue("arango"));
     result.add("version", VPackValue(TRI_VERSION));
     result.add("sleep", VPackValue(s / 1000000.0));
-    result.add("block", VPackValue(block));
     result.close();
     VPackSlice slice(result.start());
     generateResult(slice);
@@ -107,14 +95,10 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
   catch (...) {
     // Ignore the error
   }
+
   return status_t(HANDLER_DONE);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

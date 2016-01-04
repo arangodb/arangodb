@@ -37,7 +37,7 @@ var internal = require("internal");
 var fs = require("fs");
 var util = require("util");
 var console = require("console");
-var _ = require("underscore");
+var _ = require("lodash");
 
 var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");
@@ -1106,7 +1106,7 @@ function buildRouting (dbname) {
 
     while (i.hasNext()) {
       var n = i.next();
-      var c = _.clone(n);
+      var c = _.extend({}, n);
       
       c.name = '_routing.document("' + c._key + '")';
 

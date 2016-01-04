@@ -29,19 +29,20 @@
 
 #include "Aql/Query.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/Executor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/ShortStringStorage.h"
-#include "Basics/fasthash.h"
+#include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/WorkMonitor.h"
+#include "Basics/fasthash.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
-#include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
@@ -53,6 +54,7 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/Graphs.h"
 
+using namespace arangodb;
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
@@ -653,6 +655,8 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute (QueryRegistry* registry) {
+  CustomWorkStack work("AQL", _queryString, _queryLength);
+
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryStringHash = 0;
@@ -796,6 +800,8 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
 QueryResultV8 Query::executeV8 (v8::Isolate* isolate, 
                                 QueryRegistry* registry) {
+  CustomWorkStack work("AQL", _queryString, _queryLength);
+
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryStringHash = 0;
@@ -1019,7 +1025,11 @@ QueryResult Query::explain () {
         it->planRegisters();
         out.add(it->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
       }
+
       result.json = out.steal();
+
+      // cacheability not available here
+      result.cached = false;
     }
     else {
       // Now plan and all derived plans belong to the optimizer
@@ -1029,6 +1039,10 @@ QueryResult Query::explain () {
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
       result.json = bestPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
+    
+      // cacheability
+      result.cached = (_queryString != nullptr && _queryLength > 0 &&
+                       ! _isModificationQuery && _warnings.empty() && _ast->root()->isCacheable());
     }
 
     _trx->commit();
@@ -1517,17 +1531,22 @@ triagens::arango::TransactionContext* Query::createTransactionContext () {
 ///        collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph const* Query::lookupGraphByName (std::string &name) {
+Graph const* Query::lookupGraphByName (std::string const& name) {
   auto it = _graphs.find(name);
+
   if (it != _graphs.end()) {
     return it->second;
   }
 
-  auto g = triagens::arango::lookupGraphByName (_vocbase, name);
-  if (g != nullptr) {
-    _graphs.emplace(name, g);
+  std::unique_ptr<triagens::aql::Graph> g(triagens::arango::lookupGraphByName(_vocbase, name));
+
+  if (g == nullptr) {
+    return nullptr;
   }
-  return g;
+
+  _graphs.emplace(name, g.get());
+
+  return g.release();
 }
 
 // -----------------------------------------------------------------------------

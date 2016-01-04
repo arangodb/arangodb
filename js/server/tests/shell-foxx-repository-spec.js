@@ -370,7 +370,7 @@ describe('Repository Methods', function () {
 
       instance.updateByExample(example, data);
 
-      expect(collection.updateByExample.calls.argsFor(0)).toEqual([example, data]);
+      expect(collection.updateByExample.calls.argsFor(0)).toEqual([example, data, undefined]);
     });
   });
 

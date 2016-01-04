@@ -27,7 +27,7 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require("underscore");
+var _ = require("lodash");
 var internal = require("internal");
 
 // Wraps the docs object of a route to add swagger compatible documentation

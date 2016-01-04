@@ -69,7 +69,7 @@ var PlannerLocalDefaults = {
 
 // Some helpers using underscore:
 
-var _ = require("underscore");
+var _ = require("lodash");
 
 function objmap (o, f) {
   var r = {};

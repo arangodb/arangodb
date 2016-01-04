@@ -318,6 +318,7 @@ bool IndexBlock::initIndexes () {
     }
     if (_currentIndex < _indexes.size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
+      TRI_ASSERT(_iterator == nullptr);
       _iterator = createIterator();
     }
     else {
@@ -363,6 +364,7 @@ void IndexBlock::startNextIterator () {
   }
   if (_currentIndex < _indexes.size()) {
     // This check will work as long as _indexes.size() < MAX_SIZE_T
+    TRI_ASSERT(_iterator == nullptr);
     _iterator = createIterator();
   }
 }

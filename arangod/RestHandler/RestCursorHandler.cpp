@@ -163,7 +163,7 @@ void RestCursorHandler::processQuery (VPackSlice const& slice) {
   TRI_ASSERT(TRI_IsArrayJson(queryResult.json));
  
   { 
-    _response = createResponse(HttpResponse::CREATED);
+    createResponse(HttpResponse::CREATED);
     _response->setContentType("application/json; charset=utf-8");
 
     triagens::basics::Json extra = buildExtra(queryResult);
@@ -886,7 +886,7 @@ void RestCursorHandler::modifyCursor () {
   }
 
   try {
-    _response = createResponse(HttpResponse::OK);
+    createResponse(HttpResponse::OK);
     _response->setContentType("application/json; charset=utf-8");
 
     _response->body().appendChar('{');
@@ -995,7 +995,7 @@ void RestCursorHandler::deleteCursor () {
     return;
   }
 
-  _response = createResponse(HttpResponse::ACCEPTED);
+  createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
    
   triagens::basics::Json json(triagens::basics::Json::Object);

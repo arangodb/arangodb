@@ -1775,8 +1775,97 @@ function SimpleQueryByExampleSuite () {
       collection.truncate();
       updated = collection.updateByExample({ value : 1 }, { });
       assertEqual(0, updated);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample, mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleMergeObjectsSameUnspecified : function () {
+      var updated;
+
+      collection.save({ _key: "one", value : { foo: "test" } });
+
+      // update don't specify mergeObjects behavior
+      updated = collection.updateByExample({ value: { foo : "test" } }, { value: { foo : "baz" } });
+      assertEqual(1, updated);
+
+      var doc = collection.document("one");
+      assertEqual({ foo: "baz" }, doc.value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample, mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleMergeObjectsUnspecified : function () {
+      var updated;
+
+      collection.save({ _key: "one", value : { foo: "test" } });
+
+      // update don't specify mergeObjects behavior
+      updated = collection.updateByExample({ value: { foo : "test" } }, 
+                                           { value: { bar : "baz" } });
+      assertEqual(1, updated);
+
+      var doc = collection.document("one");
+      assertEqual({ foo: "test", bar: "baz" }, doc.value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample, mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleMergeObjectsTrue : function () {
+      var updated;
+
+      collection.save({ _key: "one", value : { foo: "test" } });
+
+      // update don't specify mergeObjects behavior
+      updated = collection.updateByExample({ value: { foo : "test" } }, 
+                                           { value: { bar : "baz" } }, 
+                                           { mergeObjects: true });
+      assertEqual(1, updated);
+
+      var doc = collection.document("one");
+      assertEqual({ foo: "test", bar: "baz" }, doc.value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample, mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleMergeObjectsFalse : function () {
+      var updated;
+
+      collection.save({ _key: "one", value : { foo: "test" } });
+
+      // update don't specify mergeObjects behavior
+      updated = collection.updateByExample({ value: { foo : "test" } }, 
+                                           { value: { bar : "baz" } }, 
+                                           { mergeObjects: false });
+      assertEqual(1, updated);
+
+      var doc = collection.document("one");
+      assertEqual({ bar: "baz" }, doc.value);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: updateByExample, mergeObjects
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateByExampleMergeObjectsEmptyObject : function () {
+      var updated;
+
+      collection.save({ _key: "one", value : { foo: "test" } });
+
+      // update don't specify mergeObjects behavior
+      updated = collection.updateByExample({ value: { foo : "test" } }, { value: { } });
+      assertEqual(1, updated);
+
+      var doc = collection.document("one");
+      assertEqual({ foo: "test" }, doc.value);
+    }
   };
 }
 

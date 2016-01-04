@@ -58,6 +58,7 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
     _maxSize(maxSize),
     _waitLock(),
     _readyJobs(maxSize),
+    _numberJobs(0),
     _hazardLock(),
     _hazardPointer(nullptr),
     _stopping(false),
@@ -108,8 +109,8 @@ DispatcherQueue::~DispatcherQueue () {
 /// @brief adds a job
 ////////////////////////////////////////////////////////////////////////////////
 
-int DispatcherQueue::addJob (Job* job) {
-  TRI_ASSERT(job != nullptr);
+int DispatcherQueue::addJob (std::unique_ptr<Job>& job) {
+  TRI_ASSERT(job.get() != nullptr);
 
   // get next free slot, return false is queue is full
   size_t pos;
@@ -118,19 +119,23 @@ int DispatcherQueue::addJob (Job* job) {
     return TRI_ERROR_QUEUE_FULL;
   }
   
-  _jobs[pos] = job;
+  Job* raw = job.release();
+  _jobs[pos] = raw;
 
   // set the position inside the job
-  job->setQueuePosition(pos);
+  raw->setQueuePosition(pos);
 
   // add the job to the list of ready jobs
-  bool ok = _readyJobs.push(job);
+  bool ok = _readyJobs.push(raw);
 
-  if (! ok) {
+  if (ok) {
+    ++_numberJobs;
+  }
+  else {
     LOG_WARNING("cannot insert job into ready queue, giving up");
 
-    removeJob(job);
-    delete job;
+    removeJob(raw);
+    delete raw;
 
     return TRI_ERROR_QUEUE_FULL;
   }
@@ -170,7 +175,7 @@ void DispatcherQueue::removeJob (Job* job) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tries to cancel a job
+/// @brief cancels a job
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::cancelJob (uint64_t jobId) {
@@ -200,7 +205,7 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
       }
     }
 
-    if (job != nullptr && job->id() == jobId) {
+    if (job != nullptr && job->jobId() == jobId) {
 
       // cancel the job
       try {
@@ -257,13 +262,9 @@ void DispatcherQueue::beginShutdown () {
   {
     Job* job = nullptr;
     
-    while(_readyJobs.pop(job)) {
+    while (_readyJobs.pop(job)) {
       if (job != nullptr) {
-        try {
-          job->cancel();
-        }
-        catch (...) {
-        }
+        --_numberJobs;
 
         removeJob(job);
         delete job;
@@ -271,7 +272,7 @@ void DispatcherQueue::beginShutdown () {
     }
   }
 
-  // now try to get rid of the remaining jobs
+  // now try to get rid of the remaining (running) jobs
   MUTEX_LOCKER(_hazardLock);
 
   for (size_t i = 0;  i < _maxSize;  ++i) {
@@ -333,7 +334,7 @@ void DispatcherQueue::beginShutdown () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shut downs the queue
+/// @brief shuts down the queue
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherQueue::shutdown () {

@@ -36,8 +36,9 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"
-#include "Dispatcher/RequeueTask.h"
 #include "Scheduler/Scheduler.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -82,7 +83,7 @@ DispatcherThread::DispatcherThread (DispatcherQueue* queue)
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief main loop
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::run () {
@@ -100,6 +101,8 @@ void DispatcherThread::run () {
 
       while (_queue->_readyJobs.pop(job)) {
         if (job != nullptr) {
+          --(_queue->_numberJobs);
+
           worked = now;
           handleJob(job);
         }
@@ -145,6 +148,20 @@ void DispatcherThread::run () {
   _queue->removeStartedThread(this);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void DispatcherThread::addStatus(VPackBuilder* b) {
+  Thread::addStatus(b);
+  b->add("queue", VPackValue(_queue->_id));
+  b->add("stopping", VPackValue(_queue->_stopping.load()));
+  b->add("waitingJobs", VPackValue(_queue->_numberJobs.load()));
+  b->add("numberRunning", VPackValue((int) _queue->_nrRunning.load()));
+  b->add("numberWaiting", VPackValue((int) _queue->_nrWaiting.load()));
+  b->add("numberBlocked", VPackValue((int) _queue->_nrBlocked.load()));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -174,21 +191,12 @@ void DispatcherThread::unblock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void DispatcherThread::handleJob (Job* job) {
-
-  // set running job
   LOG_DEBUG("starting to run job: %s", job->getName().c_str());
 
-  // do the work (this might change the job type)
-  Job::status_t status(Job::JOB_FAILED);
-
+  // start all the dirty work
   try {
-    RequestStatisticsAgentSetQueueEnd(job);
-
-    // set current thread
-    job->setDispatcherThread(this);
-
-    // and do all the dirty work
-    status = job->work();
+    job->requestStatisticsAgentSetQueueEnd();
+    job->work();
   }
   catch (Exception const& ex) {
     try {
@@ -203,8 +211,6 @@ void DispatcherThread::handleJob (Job* job) {
     catch (...) {
       LOG_WARNING("caught unknown error while handling error!");
     }
-
-    status = Job::status_t(Job::JOB_FAILED);
   }
   catch (std::bad_alloc const& ex) {
     try {
@@ -216,8 +222,6 @@ void DispatcherThread::handleJob (Job* job) {
     catch (...) {
       LOG_WARNING("caught unknown error while handling error!");
     }
-
-    status = Job::status_t(Job::JOB_FAILED);
   }
   catch (std::exception const& ex) {
     try {
@@ -229,8 +233,6 @@ void DispatcherThread::handleJob (Job* job) {
     catch (...) {
       LOG_WARNING("caught unknown error while handling error!");
     }
-
-    status = Job::status_t(Job::JOB_FAILED);
   }
   catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -249,29 +251,11 @@ void DispatcherThread::handleJob (Job* job) {
     catch (...) {
       LOG_WARNING("caught unknown error while handling error!");
     }
-
-    status = Job::status_t(Job::JOB_FAILED);
   }
 
   // finish jobs
   try {
-    job->setDispatcherThread(nullptr);
-
-    if (status.status == Job::JOB_DONE || status.status == Job::JOB_FAILED) {
-      job->cleanup(_queue);
-    }
-    else if (status.status == Job::JOB_REQUEUE) {
-      if (0.0 < status.sleep) {
-        _queue->_scheduler->registerTask(
-          new RequeueTask(_queue->_scheduler,
-                          _queue->_dispatcher,
-                          status.sleep,
-                          job));
-      }
-      else {
-        _queue->_dispatcher->addJob(job);
-      }
-    }
+    job->cleanup(_queue);
   }
   catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -288,8 +272,3 @@ void DispatcherThread::handleJob (Job* job) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

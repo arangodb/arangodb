@@ -118,6 +118,7 @@ The current list of keywords is:
 - INBOUND
 - ANY
 - ALL
+- NONE
 
 Additional keywords may be added in future versions of ArangoDB. 
 
@@ -363,6 +364,15 @@ the query when it is executed, but not as part of the query text itself.
 Bind parameter names must start with any of the letters *a* to *z* (both in
 lower and upper case) or a digit (*0* to *9*), and can be followed by any
 letter, digit or the underscore symbol.
+
+Bind variables represent a value like a string, and must not be put in quotes.
+If you need to do string processing (concatenation, etc.) in the AQL query, you need
+[to use string functions to do so](../Aql/StringFunctions.md):
+
+    FOR u IN users
+      FILTER u.id == CONCAT('prefix', @id, 'suffix') && u.name == @name
+      RETURN u
+
 
 A special type of bind parameter exists for injecting collection names. This
 type of bind parameter has a name prefixed with an additional *@* symbol (thus

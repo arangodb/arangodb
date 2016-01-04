@@ -116,6 +116,7 @@ AM_CPPFLAGS = \
 	-I@top_srcdir@/lib \
 	-I@top_srcdir@/3rdParty/velocypack/include \
 	-I@top_builddir@/lib \
+	-I@top_srcdir@/3rdParty/velocypack/include \
 	@BOOST_CPPFLAGS@ \
 	@LIBEV_CPPFLAGS@ \
 	@MATH_CPPFLAGS@ \

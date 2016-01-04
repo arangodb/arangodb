@@ -86,11 +86,11 @@ ServerJob::~ServerJob () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_t ServerJob::work () {
+void ServerJob::work () {
   LOG_TRACE("starting plan update handler");
 
   if (_shutdown != 0) {
-    return status_t(Job::JOB_DONE);
+    return;
   }
  
   _heartbeat->setReady();
@@ -105,14 +105,6 @@ Job::status_t ServerJob::work () {
   }
     
   _heartbeat->removeDispatchedJob(result);
-
-  if (result) {
-    // tell the heartbeat thread that the server job was
-    // executed successfully
-    return status_t(Job::JOB_DONE);
-  }
-
-  return status_t(Job::JOB_FAILED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,7 +120,7 @@ bool ServerJob::cancel () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerJob::cleanup (DispatcherQueue* queue) {
-  queue->removeJob(this);
+  queue->cancelJob(_jobId);
   delete this;
 }
 

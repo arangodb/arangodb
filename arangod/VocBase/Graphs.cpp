@@ -46,13 +46,11 @@ const std::string graphs = "_graphs";
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, std::string const& name) {
-  triagens::aql::Graph* g = nullptr;
-
+triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, 
+                                                           std::string const& name) {
   if (ServerState::instance()->isCoordinator()) {
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
-    std::unique_ptr<std::map<std::string, std::string>> headers
-        (new std::map<std::string, std::string>());
+    auto headers = std::make_unique<std::map<std::string, std::string>>();
     std::map<std::string, std::string> resultHeaders;
     std::string resultBody;
 
@@ -76,45 +74,49 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
     }
 
     auto json = JsonHelper::fromString(resultBody);
+
     if (json == nullptr) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_HTTP_CORRUPTED_JSON,
                                     "while fetching _graph['%s'] entry: `%s`",
                                     name.c_str(),
                                     resultBody.c_str());
     }
-    g = new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
+  
+    return new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
   }
-  else {
-    CollectionNameResolver resolver(vocbase);
-    auto collName = resolver.getCollectionId(graphs);
 
+  CollectionNameResolver resolver(vocbase);
+  auto collName = resolver.getCollectionId(graphs);
 
-    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collName);
-    int res = trx.begin();
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res,
-                                    "while looking up graph '%s' in _graphs",
-                                    name.c_str());
-    }
-    TRI_doc_mptr_copy_t mptr;
-    res = trx.read(&mptr, name);
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_FORMAT(res,
-                                    "while looking up graph '%s' in _graphs",
-                                    name.c_str());
-    }
-    TRI_shaped_json_t document;
-    TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr.getDataPtr());
-    auto shaper = trx.trxCollection()->_collection->_collection->getShaper();
-    auto j = TRI_JsonShapedJson(shaper, &document);
-    if (j == nullptr) {
-      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_SHAPER_FAILED,
-                                    "while accessing shape for _graph['%s'] entry",
-                                    name.c_str());
-    }
-    g = new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
-    trx.finish(res);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collName);
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res,
+                                  "while looking up graph '%s' in _graphs",
+                                  name.c_str());
   }
-  return g;
+
+  TRI_doc_mptr_copy_t mptr;
+  res = trx.read(&mptr, name);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_FORMAT(res,
+                                  "while looking up graph '%s' in _graphs",
+                                  name.c_str());
+  }
+  TRI_shaped_json_t document;
+  TRI_EXTRACT_SHAPED_JSON_MARKER(document, mptr.getDataPtr());
+  auto shaper = trx.trxCollection()->_collection->_collection->getShaper();
+
+  auto j = TRI_JsonShapedJson(shaper, &document);
+  trx.finish(res);
+
+  if (j == nullptr) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_SHAPER_FAILED,
+                                  "while accessing shape for graph '%s'",
+                                  name.c_str());
+  }
+
+  return new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
 }
 

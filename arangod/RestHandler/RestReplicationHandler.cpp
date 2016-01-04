@@ -915,7 +915,7 @@ void RestReplicationHandler::handleCommandBatch () {
     int res = TRI_TouchBlockerCompactorVocBase(_vocbase, id, expires);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      _response = createResponse(HttpResponse::NO_CONTENT);
+      createResponse(HttpResponse::NO_CONTENT);
     }
     else {
       generateError(HttpResponse::responseCode(res), res);
@@ -930,7 +930,7 @@ void RestReplicationHandler::handleCommandBatch () {
     int res = TRI_RemoveBlockerCompactorVocBase(_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      _response = createResponse(HttpResponse::NO_CONTENT);
+      createResponse(HttpResponse::NO_CONTENT);
     }
     else {
       generateError(HttpResponse::responseCode(res), res);
@@ -1007,7 +1007,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
   }
 
   bool dummy;
-  _response = createResponse(static_cast<HttpResponse::HttpResponseCode>
+  createResponse(static_cast<HttpResponse::HttpResponseCode>
                              (res->result->getHttpReturnCode()));
   _response->setContentType(res->result->getHeaderField("content-type",dummy));
   _response->body().swap(& (res->result->getBody()));
@@ -1310,10 +1310,10 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        _response = createResponse(HttpResponse::NO_CONTENT);
+        createResponse(HttpResponse::NO_CONTENT);
       }
       else {
-        _response = createResponse(HttpResponse::OK);
+        createResponse(HttpResponse::OK);
       }
 
       _response->setContentType("application/x-arango-dump; charset=utf-8");
@@ -1410,10 +1410,10 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions () {
       size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
       if (length == 0) {
-        _response = createResponse(HttpResponse::NO_CONTENT);
+        createResponse(HttpResponse::NO_CONTENT);
       }
       else {
-        _response = createResponse(HttpResponse::OK);
+        createResponse(HttpResponse::OK);
       }
 
       _response->setContentType("application/x-arango-dump; charset=utf-8");
@@ -3370,7 +3370,7 @@ void RestReplicationHandler::handleCommandRemoveKeys () {
     return;
   }
 
-  _response = createResponse(HttpResponse::ACCEPTED);
+  createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
    
   triagens::basics::Json json(triagens::basics::Json::Object);
@@ -3651,10 +3651,10 @@ void RestReplicationHandler::handleCommandDump () {
     size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
     if (length == 0) {
-      _response = createResponse(HttpResponse::NO_CONTENT);
+      createResponse(HttpResponse::NO_CONTENT);
     }
     else {
-      _response = createResponse(HttpResponse::OK);
+      createResponse(HttpResponse::OK);
     }
 
     _response->setContentType("application/x-arango-dump; charset=utf-8");

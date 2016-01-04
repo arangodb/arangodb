@@ -71,29 +71,29 @@ struct TRI_server_t {
   TRI_server_t ();
   ~TRI_server_t ();
 
-  std::atomic<DatabasesLists*>       _databasesLists;
+  std::atomic<DatabasesLists*>               _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // triagens::basics::DataProtector<64>  
-  triagens::basics::DataProtector    _databasesProtector;
-  triagens::basics::Mutex            _databasesMutex;
+  triagens::basics::DataProtector            _databasesProtector;
+  triagens::basics::Mutex                    _databasesMutex;
 
-  TRI_thread_t                       _databaseManager;
+  TRI_thread_t                               _databaseManager;
 
-  TRI_vocbase_defaults_t             _defaults;
-  triagens::rest::ApplicationEndpointServer*  _applicationEndpointServer; 
-  triagens::basics::ThreadPool*      _indexPool;                 
-  triagens::aql::QueryRegistry*      _queryRegistry;
+  TRI_vocbase_defaults_t                     _defaults;
+  triagens::rest::ApplicationEndpointServer* _applicationEndpointServer; 
+  triagens::basics::ThreadPool*              _indexPool;                 
+  std::atomic<triagens::aql::QueryRegistry*> _queryRegistry;
 
-  char*                              _basePath;
-  char*                              _databasePath;
-  char*                              _lockFilename;
-  char*                              _serverIdFilename;
-  char*                              _appPath;
+  char*                                      _basePath;
+  char*                                      _databasePath;
+  char*                                      _lockFilename;
+  char*                                      _serverIdFilename;
+  char*                                      _appPath;
 
-  bool                               _disableReplicationAppliers;
-  bool                               _iterateMarkersOnOpen;
-  bool                               _hasCreatedSystemDatabase;
-  bool                               _initialized;
+  bool                                       _disableReplicationAppliers;
+  bool                                       _iterateMarkersOnOpen;
+  bool                                       _hasCreatedSystemDatabase;
+  bool                                       _initialized;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

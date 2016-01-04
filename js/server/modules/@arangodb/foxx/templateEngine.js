@@ -7,7 +7,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
+/// Copyright 2013-2015 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,10 +26,10 @@
 /// @author Lucas Dohmen
 /// @author Michael Hackstein
 /// @author Alan Plum
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2013-2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore');
+var _ = require('lodash');
 var fs = require('fs');
 var internal = require('internal');
 var i = require('i')();
@@ -37,8 +37,7 @@ var templatePath = fs.join(
   internal.startupPath,
   'server',
   'modules',
-  'org',
-  'arangodb',
+  '@arangodb',
   'foxx',
   'templates'
 );

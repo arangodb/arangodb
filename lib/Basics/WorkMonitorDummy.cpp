@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief requeue task
+/// @brief work monitor dummy class
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,57 +22,40 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RequeueTask.h"
+#include "WorkMonitor.h"
 
-#include "Basics/logging.h"
-#include "Dispatcher/Dispatcher.h"
-#include "Scheduler/Scheduler.h"
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
 
-using namespace std;
-using namespace triagens::rest;
+using namespace arangodb;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                 class WorkMonitor
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief thread deleter
 ////////////////////////////////////////////////////////////////////////////////
 
-RequeueTask::RequeueTask (Scheduler* scheduler,
-                          Dispatcher* dispatcher,
-                          double sleep,
-                          Job* job)
-  : Task("Requeue Task"),
-    TimerTask("Requeue Task", sleep),
-    _scheduler(scheduler),
-    _dispatcher(dispatcher),
-    _job(job) {
+void WorkMonitor::DELETE_HANDLER (WorkDescription*) {
+  TRI_ASSERT(false);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              PeriodicTask methods
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handles the next tick
+/// @brief thread description string
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RequeueTask::handleTimeout () {
-  _dispatcher->addJob(_job);
-  _scheduler->destroyTask(this);
-
-  return true;
+void WorkMonitor::VPACK_HANDLER (VPackBuilder*, WorkDescription*) {
+  TRI_ASSERT(false);
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

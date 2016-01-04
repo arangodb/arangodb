@@ -429,7 +429,7 @@ void RestExportHandler::createCursor () {
       double ttl = triagens::basics::VelocyPackHelper::getNumericValue<double>(options, "ttl", 30);
       bool count = triagens::basics::VelocyPackHelper::getBooleanValue(options, "count", false);
       
-      _response = createResponse(HttpResponse::CREATED);
+      createResponse(HttpResponse::CREATED);
       _response->setContentType("application/json; charset=utf-8");
 
       auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
@@ -492,7 +492,7 @@ void RestExportHandler::modifyCursor () {
   }
 
   try {
-    _response = createResponse(HttpResponse::OK);
+    createResponse(HttpResponse::OK);
     _response->setContentType("application/json; charset=utf-8");
 
     _response->body().appendChar('{');
@@ -538,7 +538,7 @@ void RestExportHandler::deleteCursor () {
     return;
   }
 
-  _response = createResponse(HttpResponse::ACCEPTED);
+  createResponse(HttpResponse::ACCEPTED);
   _response->setContentType("application/json; charset=utf-8");
   VPackBuilder result;
   result.openObject();

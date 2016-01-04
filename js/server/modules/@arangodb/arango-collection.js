@@ -681,48 +681,6 @@ ArangoCollection.prototype.removeByExample = function (example,
     waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
-  var i;
-  var cluster = require("@arangodb/cluster");
-
-  if (cluster.isCoordinator()) {
-    var dbName = require("internal").db._name();
-    var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    if (limit > 0 && shards.length > 1) {
-      var err = new ArangoError();
-      err.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
-      err.errorMessage = "limit is not supported in sharded collections";
-
-      throw err;
-    }
-
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put",
-                                     "shard:" + shard,
-                                     dbName,
-                                     "/_api/simple/remove-by-example",
-                                     JSON.stringify({
-                                       collection: shard,
-                                       example: example,
-                                       waitForSync: waitForSync,
-                                       limit: limit || undefined
-                                     }),
-                                     { },
-                                     options);
-    });
-
-    var deleted = 0;
-    var results = cluster.wait(coord, shards);
-    for (i = 0; i < results.length; ++i) {
-      var body = JSON.parse(results[i].body);
-
-      deleted += (body.deleted || 0);
-    }
-
-    return deleted;
-  }
 
   var query = buildExampleQuery(this, example, limit);
   var opts = { waitForSync : waitForSync };
@@ -770,49 +728,6 @@ ArangoCollection.prototype.replaceByExample = function (example,
     limit = tmp_options.limit;
   }
 
-  var cluster = require("@arangodb/cluster");
-
-  if (cluster.isCoordinator()) {
-    var dbName = require("internal").db._name();
-    var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    if (limit > 0 && shards.length > 1) {
-      var err2 = new ArangoError();
-      err2.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
-      err2.errorMessage = "limit is not supported in sharded collections";
-
-      throw err2;
-    }
-
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put",
-                                     "shard:" + shard,
-                                     dbName,
-                                     "/_api/simple/replace-by-example",
-                                     JSON.stringify({
-                                       collection: shard,
-                                       example: example,
-                                       newValue: newValue,
-                                       waitForSync: waitForSync,
-                                       limit: limit || undefined
-                                     }),
-                                     { },
-                                     options);
-    });
-
-    var replaced = 0;
-    var results = cluster.wait(coord, shards), i;
-    for (i = 0; i < results.length; ++i) {
-      var body = JSON.parse(results[i].body);
-
-      replaced += (body.replaced || 0);
-    }
-
-    return replaced;
-  }
-
   var query = buildExampleQuery(this, example, limit);
   var opts = { waitForSync : waitForSync };
   query.query += " REPLACE doc WITH @newValue IN @@collection OPTIONS " + JSON.stringify(opts);
@@ -826,11 +741,11 @@ ArangoCollection.prototype.replaceByExample = function (example,
 /// @param example the json object for finding documents which matches this
 ///        example
 /// @param newValue the json object which replaces the matched documents
-/// @param keepNull (optional) true or a json object which
+/// @param keepNull (optional) true or a JSON object which
 ///        contains the options
 /// @param waitForSync (optional) a boolean value
 /// @param limit (optional) an integer value, the max number of to deleting docs
-/// @throws "too many parameters" when keepNull is  a json object and limit
+/// @throws "too many parameters" when keepNull is a JSON object and limit
 ///        was given
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -852,6 +767,8 @@ ArangoCollection.prototype.updateByExample = function (example,
     throw err1;
   }
 
+  var mergeObjects = true;
+
   if (typeof keepNull === "object") {
     if (typeof waitForSync !== "undefined") {
       throw "too many parameters";
@@ -860,57 +777,16 @@ ArangoCollection.prototype.updateByExample = function (example,
 
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-        keepNull = tmp_options.keepNull;
+    keepNull = tmp_options.keepNull;
     waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
-  }
-
-  var cluster = require("@arangodb/cluster");
-
-  if (cluster.isCoordinator()) {
-    var dbName = require("internal").db._name();
-    var shards = cluster.shardList(dbName, this.name());
-    var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
-    var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-
-    if (limit > 0 && shards.length > 1) {
-      var err2 = new ArangoError();
-      err2.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
-      err2.errorMessage = "limit is not supported in sharded collections";
-
-      throw err2;
+    if (tmp_options.hasOwnProperty("mergeObjects")) {
+      mergeObjects = tmp_options.mergeObjects || false;
     }
-
-    shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put",
-                                     "shard:" + shard,
-                                     dbName,
-                                     "/_api/simple/update-by-example",
-                                     JSON.stringify({
-                                       collection: shard,
-                                       example: example,
-                                       newValue: newValue,
-                                       waitForSync: waitForSync,
-                                       keepNull: keepNull,
-                                       limit: limit || undefined
-                                     }),
-                                     { },
-                                     options);
-    });
-
-    var updated = 0;
-    var results = cluster.wait(coord, shards), i;
-    for (i = 0; i < results.length; ++i) {
-      var body = JSON.parse(results[i].body);
-
-      updated += (body.updated || 0);
-    }
-
-    return updated;
   }
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync : waitForSync, keepNull: keepNull };
+  var opts = { waitForSync : waitForSync, keepNull: keepNull, mergeObjects: mergeObjects };
   query.query += " UPDATE doc WITH @newValue IN @@collection OPTIONS " + JSON.stringify(opts);
   query.bindVars.newValue = newValue;
 

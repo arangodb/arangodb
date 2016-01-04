@@ -51,10 +51,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class HttpResponse {
-      private:
-        HttpResponse ();
-        HttpResponse (HttpResponse const&);
-        HttpResponse& operator= (HttpResponse const&);
+      HttpResponse () = delete;
+      HttpResponse (HttpResponse const&) = delete;
+      HttpResponse& operator= (HttpResponse const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types

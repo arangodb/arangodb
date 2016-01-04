@@ -27,7 +27,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var extend = require('underscore').extend;
+var extend = require('lodash').extend;
 
 function ArrayIterator(arr) {
   this.array = arr;

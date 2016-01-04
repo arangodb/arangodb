@@ -812,21 +812,10 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 
   else if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      v8::Handle<v8::Value> exception = tryCatch.Exception();
-      TRI_GET_GLOBAL(SleepAndRequeueFuncTempl, v8::FunctionTemplate);
-      bool isSleepAndRequeue = SleepAndRequeueFuncTempl->HasInstance(exception);
+      HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
+      response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
 
-      if (isSleepAndRequeue) {
-        result.requeue = true;
-        TRI_GET_GLOBAL_STRING(SleepKey);
-        result.sleep = TRI_ObjectToDouble(exception->ToObject()->Get(SleepKey));
-      }
-      else {
-        HttpResponse* response = new HttpResponse(HttpResponse::SERVER_ERROR, request->compatibility());
-        response->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
-
-        result.response = response;
-      }
+      result.response = response;
     }
     else {
       v8g->_canceled  = true;

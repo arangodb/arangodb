@@ -10,7 +10,7 @@
  */
 
 var jasmine = require('jasmine/core'),
-  _ = require('underscore'),
+  _ = require('lodash'),
   fs = require('fs'),
   Reporter = require('jasmine/reporter').Reporter;
   
@@ -68,7 +68,7 @@ exports.executeTestSuite = function (specFileNames, options) {
   var arangoReporter = new Reporter({ format: format });
   sandbox.addReporter(arangoReporter);
 
-  var _ = require('underscore'),
+  var _ = require('lodash'),
     internal = require('internal');
 
   _.each(specFileNames, function (specFileName) {

@@ -162,18 +162,14 @@ AsyncJobResult::~AsyncJobResult () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobManager::AsyncJobManager (generate_fptr idFunc, callback_fptr callback)
-  : _lock(),
-    _jobs(),
-    generate(idFunc),
-    callback(callback) {
-}
+AsyncJobManager::AsyncJobManager(callback_fptr callback)
+    : _lock(), _jobs(), callback(callback) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobManager::~AsyncJobManager () {
+AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
   deleteJobResults();
 }
@@ -339,27 +335,15 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob (HttpServerJob* job, uint64_t* jobId) {
-  if (jobId == nullptr) {
-    return;
-  }
-
-  TRI_ASSERT(job != nullptr);
-
-  *jobId = generate();
-  job->setId(*jobId);
-
+void AsyncJobManager::initAsyncJob (HttpServerJob* job, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
-  bool found;
-  char const* hdr = job->handler()->getRequest()->header("x-arango-coordinator", found);
-
-  if (found) {
+  if (hdr != nullptr) {
     LOG_DEBUG("Found header X-Arango-Coordinator in async request");
     ctx = new AsyncCallbackContext(string(hdr));
   }
 
-  AsyncJobResult ajr(*jobId,
+  AsyncJobResult ajr(job->jobId(),
                      nullptr,
                      TRI_microtime(),
                      AsyncJobResult::JOB_PENDING,
@@ -367,42 +351,27 @@ void AsyncJobManager::initAsyncJob (HttpServerJob* job, uint64_t* jobId) {
 
   WRITE_LOCKER(_lock);
 
-  _jobs.emplace(*jobId, ajr);
+  _jobs.emplace(job->jobId(), ajr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finishes the execution of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::finishAsyncJob (HttpServerJob* job) {
-  TRI_ASSERT(job != nullptr);
-
-  HttpHandler* handler = job->handler();
-  TRI_ASSERT(handler != nullptr);
-
-  AsyncJobResult::IdType jobId = job->id();
-
-  if (jobId == 0) {
-    return;
-  }
-
+void AsyncJobManager::finishAsyncJob (AsyncJobResult::IdType jobId,
+                                      HttpResponse* response) {
   double const now = TRI_microtime();
   AsyncCallbackContext* ctx = nullptr;
-  HttpResponse* response    = nullptr;
 
   {
     WRITE_LOCKER(_lock);
     auto it = _jobs.find(jobId);
 
     if (it == _jobs.end()) {
-      // job is already deleted.
-      // do nothing here. the dispatcher will throw away the handler,
-      // which will also dispose the response
+      delete response;
       return;
     }
     else {
-      response = handler->stealResponse();
-
       (*it).second._response = response;
       (*it).second._status = AsyncJobResult::JOB_DONE;
       (*it).second._stamp = now;
@@ -416,8 +385,6 @@ void AsyncJobManager::finishAsyncJob (HttpServerJob* job) {
       }
     }
   }
-
-  // If we got here, then we have stolen the pointer to the response
 
   // If there is a callback context, the job is no longer in the
   // list of "done" jobs, so we have to free the response and the
@@ -436,8 +403,3 @@ void AsyncJobManager::finishAsyncJob (HttpServerJob* job) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

@@ -31,7 +31,7 @@ exports.Foxxes = function () {
   // Define the Repository
   var aal = require("internal").db._collection("_tmp_aal"),
     foxxmanager = require("@arangodb/foxx/manager"),
-    _ = require("underscore"),
+    _ = require("lodash"),
     ArangoError = require("@arangodb").ArangoError,
     fs = require("fs");
 
@@ -94,7 +94,7 @@ exports.Foxxes = function () {
     result.forEach(function(r, i) {
       // inject development flag
       if (r._key.match(/^dev:/)) {
-        result[i] = _.clone(r);
+        result[i] = _.extend({}, r);
         result[i].development = true;
       }
     });

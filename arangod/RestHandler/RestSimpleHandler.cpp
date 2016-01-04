@@ -338,7 +338,7 @@ void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
     }
 
     { 
-      _response = createResponse(HttpResponse::OK);
+      createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
       size_t ignored = 0;
@@ -534,7 +534,7 @@ void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
     }
 
     { 
-      _response = createResponse(HttpResponse::OK);
+      createResponse(HttpResponse::OK);
       _response->setContentType("application/json; charset=utf-8");
 
       triagens::basics::Json result(triagens::basics::Json::Object, 3);

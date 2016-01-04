@@ -61,34 +61,6 @@ using namespace triagens::rest;
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief async event watcher
-////////////////////////////////////////////////////////////////////////////////
-
-  struct AsyncWatcher final : public ev_async, Watcher {
-    struct ev_loop* loop;
-    Task* task;
-
-    AsyncWatcher (struct ev_loop* loop, Task* task) 
-      : Watcher(EVENT_ASYNC),
-        loop(loop), 
-        task(task) {
-    }
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief async event callback
-////////////////////////////////////////////////////////////////////////////////
-
-  void asyncCallback (struct ev_loop*, ev_async* w, int revents) {
-    AsyncWatcher* watcher = (AsyncWatcher*) w; // cast from C type to C++ class
-    Task* task = watcher->task;
-
-    if (task != nullptr && (revents & EV_ASYNC)) {
-      task->handleEvent(watcher, EVENT_ASYNC);
-    }
-  }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief waker callback
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -404,14 +376,6 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
   EventType type = watcher->type;
 
   switch (type) {
-    case EVENT_ASYNC: {
-      AsyncWatcher* w = (AsyncWatcher*) watcher; 
-      ev_async_stop(w->loop, (ev_async*) w);
-      delete w;
-
-      break;
-    }
-
     case EVENT_PERIODIC: {
       PeriodicWatcher* w = (PeriodicWatcher*) watcher;
       ev_periodic_stop(w->loop, (ev_periodic*) w);
@@ -444,35 +408,6 @@ void SchedulerLibev::uninstallEvent (EventToken watcher) {
       break;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-EventToken SchedulerLibev::installAsyncEvent (EventLoop loop, Task* task) {
-  AsyncWatcher* watcher = new AsyncWatcher((struct ev_loop*) lookupLoop(loop), task);
-
-  ev_async* w = (ev_async*) watcher;
-  ev_async_init(w, asyncCallback);
-  ev_async_start(watcher->loop, w);
-
-  return watcher;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void SchedulerLibev::sendAsync (EventToken token) {
-  AsyncWatcher* watcher = (AsyncWatcher*) token;
-  
-  if (watcher == nullptr) {
-    return;
-  }
-
-  ev_async* w = (ev_async*) watcher;
-  ev_async_send(watcher->loop, w);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -631,6 +566,20 @@ void SchedulerLibev::rearmTimer (EventToken token, double timeout) {
   ev_timer* w = (ev_timer*) watcher;
   ev_timer_set(w, 0.0, timeout);
   ev_timer_again(watcher->loop, w);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void SchedulerLibev::signalTask (std::unique_ptr<TaskData>& data) {
+  size_t loop = size_t(data->_loop);
+
+  if (loop >= nrThreads) {
+    return;
+  }
+
+  threads[loop]->signalTask(data);
 }
 
 // -----------------------------------------------------------------------------

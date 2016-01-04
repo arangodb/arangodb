@@ -646,9 +646,7 @@ bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion) {
   // schedule a job for the change
   std::unique_ptr<triagens::rest::Job> job(new ServerJob(this, _server, _applicationV8));
 
-  if (_dispatcher->dispatcher()->addJob(job.get()) == TRI_ERROR_NO_ERROR) {
-    job.release();
-
+  if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
     ++_numDispatchedJobs;
     _versionThatTriggeredLastJob = currentPlanVersion;
 

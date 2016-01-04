@@ -31,9 +31,11 @@
 #ifndef ARANGODB_HTTP_SERVER_HTTP_COMM_TASK_H
 #define ARANGODB_HTTP_SERVER_HTTP_COMM_TASK_H 1
 
+#include "Scheduler/SocketTask.h"
+
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
-#include "Scheduler/SocketTask.h"
+#include "Basics/WorkItem.h"
 
 #include <deque>
 
@@ -45,37 +47,6 @@ namespace triagens {
     class HttpResponse;
     class HttpServer;
     class HttpServerJob;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class AsyncChunkedTask
-// -----------------------------------------------------------------------------
-
-    class AsyncChunkedTask : public Task {
-      public:
-        explicit AsyncChunkedTask (HttpCommTask*);
-        ~AsyncChunkedTask ();
-
-      public:
-        int signalChunk (std::string const&);
-        bool setup (Scheduler*, EventLoop) override;
-        void cleanup () override;
-        bool handleEvent (EventToken, EventType) override;
-        bool handleAsync ();
-        void signal ();
-
-      private:
-
-        HttpCommTask* _output;
-        bool _done;
-        basics::StringBuffer* _data;
-        basics::Mutex _dataLock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief event for async signals
-////////////////////////////////////////////////////////////////////////////////
-
-        EventToken _watcher;
-    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class HttpCommTask
@@ -117,47 +88,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the current handler for the task
-////////////////////////////////////////////////////////////////////////////////
-
-        void setHandler (HttpHandler* handler) {
-          TRI_ASSERT(_handler == nullptr);
-          TRI_ASSERT(handler != nullptr);
-          _handler = handler;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current job. note: this may be a nullptr
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpServerJob* job () const {
-          return _job; 
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the current job
-////////////////////////////////////////////////////////////////////////////////
-
-        void setCurrentJob (HttpServerJob* job) {
-          TRI_ASSERT(_job == nullptr);
-          _job = job;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the current job
-////////////////////////////////////////////////////////////////////////////////
-
-        void clearCurrentJob () {
-          _job = nullptr;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief signals a new chunk
-////////////////////////////////////////////////////////////////////////////////
-
-        int signalChunk (const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles response
@@ -276,27 +206,11 @@ namespace triagens {
 
         bool handleEvent (EventToken token, EventType events) override;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 AsyncTask methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleAsync ();
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief signals the task
-///
-/// Note that this method can only be called after the task has been registered.
-////////////////////////////////////////////////////////////////////////////////
-
-        void signal ();
+        void signalTask (TaskData*) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                SocketTask methods
@@ -345,24 +259,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief event for async signals
-////////////////////////////////////////////////////////////////////////////////
-
-        EventToken _watcher;
-   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the current job
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpServerJob* _job;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the current handler
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpHandler* _handler;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write buffers
@@ -489,12 +385,6 @@ namespace triagens {
         size_t _originalBodyLength;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief asnyc task for signaling when a new chunk is available
-////////////////////////////////////////////////////////////////////////////////
-
-        AsyncChunkedTask _chunkedTask;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief task ready
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -527,8 +417,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

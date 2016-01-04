@@ -133,6 +133,7 @@ add_library(
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp
     Basics/VPackStringBufferAdapter.cpp
+    Basics/WorkMonitor.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/EndpointList.cpp

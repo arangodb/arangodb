@@ -82,7 +82,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_t work () override;
+        void work () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -136,7 +136,7 @@ namespace triagens {
 /// @brief cancel flag
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _canceled;
+        std::atomic<bool> _canceled;
     };
   }
 }
@@ -146,8 +146,3 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

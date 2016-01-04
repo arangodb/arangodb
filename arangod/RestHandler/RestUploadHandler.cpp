@@ -129,7 +129,7 @@ HttpHandler::status_t RestUploadHandler::execute () {
   TRI_Free(TRI_CORE_MEM_ZONE, relative);
 
   // create the response
-  _response = createResponse(HttpResponse::CREATED);
+  createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
   VPackBuilder b;

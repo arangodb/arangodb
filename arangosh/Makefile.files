@@ -18,6 +18,7 @@ bin_arangob_LDADD = \
 	$(LIBS)
 
 bin_arangob_SOURCES = \
+	lib/Basics/WorkMonitorDummy.cpp \
 	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/Benchmark/arangob.cpp
 
@@ -35,6 +36,7 @@ bin_arangodump_LDADD = \
 	$(LIBS)
 
 bin_arangodump_SOURCES = \
+	lib/Basics/WorkMonitorDummy.cpp \
 	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/arangodump.cpp
 
@@ -52,6 +54,7 @@ bin_arangoimp_LDADD = \
 	$(LIBS) 
 
 bin_arangoimp_SOURCES = \
+	lib/Basics/WorkMonitorDummy.cpp \
 	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/arangoimp.cpp
@@ -70,6 +73,7 @@ bin_arangorestore_LDADD = \
 	$(LIBS)
 
 bin_arangorestore_SOURCES = \
+	lib/Basics/WorkMonitorDummy.cpp \
 	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/arangorestore.cpp
 
@@ -89,6 +93,7 @@ bin_arangosh_LDADD = \
 	@V8_LIBS@
 
 bin_arangosh_SOURCES = \
+	lib/Basics/WorkMonitorDummy.cpp \
 	arangosh/ArangoShell/ArangoClient.cpp \
 	arangosh/V8Client/ImportHelper.cpp \
 	arangosh/V8Client/V8ClientConnection.cpp \

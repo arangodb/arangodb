@@ -94,7 +94,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Dispatcher/DispatcherQueue.cpp \
 	arangod/Dispatcher/DispatcherThread.cpp \
 	arangod/Dispatcher/Job.cpp \
-	arangod/Dispatcher/RequeueTask.cpp \
 	arangod/FulltextIndex/fulltext-handles.cpp \
 	arangod/FulltextIndex/fulltext-index.cpp \
 	arangod/FulltextIndex/fulltext-list.cpp \
@@ -179,6 +178,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Utils/Transaction.cpp \
 	arangod/Utils/TransactionContext.cpp \
 	arangod/Utils/V8TransactionContext.cpp \
+	arangod/Utils/WorkMonitorArangod.cpp \
 	arangod/V8Server/ApplicationV8.cpp \
 	arangod/V8Server/V8Job.cpp \
 	arangod/V8Server/V8PeriodicTask.cpp \

@@ -93,6 +93,10 @@ var ERRORS = require("internal").errors;
 /// The result will also contain an attribute *warnings*, which is an array of 
 /// warnings that occurred during optimization or execution plan creation. Additionally,
 /// a *stats* attribute is contained in the result with some optimizer statistics.
+/// If *allPlans* is set to *false*, the result will contain an attribute *cacheable* 
+/// that states whether the query results can be cached on the server if the query
+/// result cache were used. The *cacheable* attribute is not present when *allPlans*
+/// is set to *true*.
 /// 
 /// Each plan in the result is a JSON object with the following attributes:
 /// - *nodes*: the array of execution nodes of the plan. The array of available node types
@@ -314,7 +318,8 @@ function post_api_explain (req, res) {
     result = {
       plan: result.plan,
       warnings: result.warnings,
-      stats: result.stats
+      stats: result.stats,
+      cacheable: result.cacheable
     };
   }
   actions.resultOk(req, res, actions.HTTP_OK, result);

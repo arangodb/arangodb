@@ -512,7 +512,10 @@ double TraversalNode::estimateCost (size_t& nrItems) const {
       }
     }
   }
-  nrItems = incoming * pow(expectedEdgesPerDepth, _maxDepth);
+  nrItems = static_cast<size_t>(incoming * pow(expectedEdgesPerDepth, _maxDepth));
+  if (nrItems == 0 && incoming > 0) {
+    nrItems = 1; // min value
+  }
   return depCost + nrItems;
 }
 

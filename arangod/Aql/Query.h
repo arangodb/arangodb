@@ -497,7 +497,7 @@ namespace triagens {
 /// @brief look up a graph in the _graphs collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Graph const* lookupGraphByName (std::string &name);
+        Graph const* lookupGraphByName (std::string const& name);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

@@ -32,7 +32,7 @@
 
 var joi = require("joi");
 var fs = require("fs");
-var _ = require('underscore');
+var _ = require('lodash');
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require('internal');

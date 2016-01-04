@@ -35,10 +35,11 @@
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 
-using namespace std;
+using namespace arangodb;
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -212,7 +213,7 @@ HttpHandler::status_t RestBatchHandler::execute () {
   string authorization = _request->header("authorization");
 
   // create the response
-  _response = createResponse(HttpResponse::OK);
+  createResponse(HttpResponse::OK);
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
@@ -307,86 +308,60 @@ HttpHandler::status_t RestBatchHandler::execute () {
       return status_t(HttpHandler::HANDLER_FAILED);
     }
 
-    HttpHandler::status_t status(HttpHandler::HANDLER_FAILED);
+    // start to work for this handler
+    {
+      HandlerWorkStack work(handler);
+      HttpHandler::status_t status = handler->executeFull();
 
-    do {
-      handler->prepareExecute();
-      try {
-        status = handler->execute();
+      if (status._status == HttpHandler::HANDLER_FAILED) {
+        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "executing a handler for batch part failed");
+
+        return status_t(HttpHandler::HANDLER_FAILED);
       }
-      catch (triagens::basics::Exception const& ex) {
-        handler->handleError(ex);
+
+      HttpResponse* partResponse = handler->getResponse();
+
+      if (partResponse == nullptr) {
+        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create a response for batch part request");
+
+        return status_t(HttpHandler::HANDLER_FAILED);
       }
-      catch (std::bad_alloc const& ex) {
-        triagens::basics::Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
-        handler->handleError(err);
+
+      const HttpResponse::HttpResponseCode code = partResponse->responseCode();
+
+      // count everything above 400 as error
+      if (code >= 400) {
+        ++errors;
       }
-      catch (std::exception const& ex) {
-        triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
-        handler->handleError(err);
+
+      // append the boundary for this subpart
+      _response->body().appendText(boundary + "\r\nContent-Type: ");
+      _response->body().appendText(triagens::rest::HttpRequest::BatchContentType);
+
+      // append content-id if it is present
+      if (helper.contentId != 0) {
+        _response->body().appendText("\r\nContent-Id: " + string(helper.contentId, helper.contentIdLength));
       }
-      catch (...) {
-        triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-        handler->handleError(err);
-      }
-      handler->finalizeExecute();
-    }
-    while (status.status == HttpHandler::HANDLER_REQUEUE);
 
+      _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
-    if (status.status == HttpHandler::HANDLER_FAILED) {
-      // one of the handlers failed, we must exit now
-      delete handler;
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "executing a handler for batch part failed");
+      // remove some headers we don't need
+      partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("connection"), "");
+      partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("server"), "");
 
-      return status_t(HttpHandler::HANDLER_FAILED);
-    }
+      // append the part response header
+      partResponse->writeHeader(&_response->body());
 
-    HttpResponse* partResponse = handler->getResponse();
-
-    if (partResponse == nullptr) {
-      delete handler;
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create a response for batch part request");
-
-      return status_t(HttpHandler::HANDLER_FAILED);
-    }
-
-    const HttpResponse::HttpResponseCode code = partResponse->responseCode();
-
-    if (code >= 400) {
-      // error
-      ++errors;
+      // append the part response body
+      _response->body().appendText(partResponse->body());
+      _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
     }
 
-    // append the boundary for this subpart
-    _response->body().appendText(boundary + "\r\nContent-Type: ");
-    _response->body().appendText(triagens::rest::HttpRequest::BatchContentType);
-
-    if (helper.contentId != 0) {
-      // append content-id
-      _response->body().appendText("\r\nContent-Id: " + string(helper.contentId, helper.contentIdLength));
-    }
-
-    _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
-
-    // remove some headers we don't need
-    partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("connection"), "");
-    partResponse->setHeader(TRI_CHAR_LENGTH_PAIR("server"), "");
-
-    // append the part response header
-    partResponse->writeHeader(&_response->body());
-    // append the part response body
-    _response->body().appendText(partResponse->body());
-    _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-
-    delete handler;
-
-
+    // we've read the last part
     if (! helper.containsMore) {
-      // we've read the last part
       break;
     }
-  } // next part
+  }
 
   // append final boundary + "--"
   _response->body().appendText(boundary + "--");
