@@ -28,9 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const InternalServerError = require('http-errors').InternalServerError;
 const ArangoError = require('@arangodb').ArangoError;
 const errors = require('@arangodb').errors;
-// const ALL_METHODS = require('@arangodb/actions').ALL_METHODS;
 const internal = require('internal');
 const assert = require('assert');
 const Module = require('module');
@@ -40,6 +40,7 @@ const fs = require('fs');
 const parameterTypes = require('@arangodb/foxx/manager-utils').parameterTypes;
 const getReadableName = require('@arangodb/foxx/manager-utils').getReadableName;
 const createRouter = require('@arangodb/foxx/router');
+
 const $_MODULE_ROOT = Symbol.for('@arangodb/module.root');
 const $_MODULE_CONTEXT = Symbol.for('@arangodb/module.context');
 
@@ -285,23 +286,46 @@ class FoxxService {
   }
 
   buildRoutes() {
+    let service = this;
     this.router._buildRouteTree();
-    // let service = this;
-    // this.routes.routes.push({
-    //   url: {match: '/*'},
-    //   action: {
-    //     callback(req, res, opts, next) { // next => 404, most likely
-    //       console.infoLines(JSON.stringify(req, null, 2));
-    //       let match;
-    //       for (match of service.router.findRoutes(req.suffix)) {
-    //         // ...
-    //       }
-    //       if (!match) {
-    //         next();
-    //       }
-    //     }
-    //   }
-    // });
+    this.routes.routes.push({
+      url: {match: '/*'},
+      action: {
+        callback(req, res, opts, next) {
+          console.infoLines(JSON.stringify(req, null, 2));
+          try {
+            service.router._dispatch(req, res);
+          } catch (e) {
+            let error = e;
+            if (!e.statusCode) {
+              console.errorLines(e.stack);
+              error = new InternalServerError();
+              error.cause = e;
+            }
+            if (error._isDefault) {
+              next();
+              return;
+            }
+            const body = {
+              error: true,
+              errorNum: error.statusCode,
+              errorMessage: error.message,
+              code: error.statusCode
+            };
+            if (error.statusCode === 405 && error.methods) {
+              res.headers.allow = error.methods.join(', ');
+            }
+            if (service.isDevelopment) {
+              let err = error.cause || error;
+              body.exception = String(err);
+              body.stacktrace = err.stack;
+            }
+            res.contentType = 'application/json';
+            res.body = JSON.stringify(body);
+          }
+        }
+      }
+    });
   }
 
   applyDependencies(deps) {
