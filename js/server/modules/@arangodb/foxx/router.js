@@ -273,25 +273,30 @@ class Router extends SwaggerContext {
       }
     }
   }
-  * _findRoutes(pathParts, middleware, routers) {
+  * _findRoutes(pathParts, middleware, routers, append) {
     if (!middleware) {
       middleware = [];
     }
     if (!routers) {
       routers = [this];
     }
-    for (let result of findRoutes(this._tree, pathParts, middleware, routers)) {
+    for (let result of findRoutes(this._tree, pathParts, middleware, routers, append)) {
       yield result;
     }
   }
 }
 
-function* findRoutes(node, suffix, middleware, routers) {
+function* findRoutes(node, suffix, middleware, routers, append) {
   let wildcardNode = node.get($_WILDCARD);
+  let nodeMiddleware = [];
   if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
-    middleware = middleware.concat([wildcardNode.get($_MIDDLEWARE)]);
+    nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
+  }
+  if (append) {
+    let i = middleware.length - 1;
+    middleware[i] = middleware[i].concat(nodeMiddleware);
   } else {
-    middleware = middleware.concat([[]]);
+    middleware = middleware.concat([nodeMiddleware]);
   }
   if (!suffix.length) {
     let terminalNode = node.get($_TERMINAL);
@@ -313,7 +318,7 @@ function* findRoutes(node, suffix, middleware, routers) {
   let wildcardRoutes = wildcardNode && wildcardNode.get($_ROUTES) || [];
   for (let route of wildcardRoutes) {
     if (route.router) {
-      for (let result of route.router._findRoutes(suffix, middleware, routers.concat(route.router))) {
+      for (let result of route.router._findRoutes(suffix, middleware, routers.concat(route.router), true)) {
         yield result;
       }
     } else {
