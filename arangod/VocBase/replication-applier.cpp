@@ -33,6 +33,7 @@
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/string-buffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -89,161 +90,14 @@ static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a JSON representation of the replication applier configuration
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t const* config,
-                                      bool includePassword) {
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 16);
-
-  if (json == nullptr) {
-    return nullptr;
-  }
-
-  if (config->_endpoint != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                         json,
-                         "endpoint",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_endpoint, strlen(config->_endpoint)));
-  }
-
-  if (config->_database != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                         json,
-                         "database",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_database, strlen(config->_database)));
-  }
-
-  if (config->_username != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                         json,
-                         "username",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_username, strlen(config->_username)));
-  }
-
-  if (config->_password != nullptr && includePassword) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                         json,
-                         "password",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_password, strlen(config->_password)));
-  }
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "requestTimeout",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, config->_requestTimeout));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "connectTimeout",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, config->_connectTimeout));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "ignoreErrors",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_ignoreErrors));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "maxConnectRetries",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_maxConnectRetries));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "sslProtocol",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_sslProtocol));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "chunkSize",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_chunkSize));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "autoStart",
-                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_autoStart));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "adaptivePolling",
-                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_adaptivePolling));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "autoResync",
-                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_autoResync));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "includeSystem",
-                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_includeSystem));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "requireFromPresent",
-                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_requireFromPresent));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "verbose",
-                       TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, config->_verbose));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "restrictType",
-                       TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_restrictType.c_str(), config->_restrictType.size()));
-  
-  TRI_json_t* collections = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (collections != nullptr) {
-    for (auto it : config->_restrictCollections) {
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE,
-                            collections,
-                            TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, it.first.c_str(), it.first.size()));
-    }
-
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                         json,
-                         "restrictCollections",
-                         collections);
-  }
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "connectionRetryWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_connectionRetryWaitTime / (1000.0 * 1000.0)));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "initialSyncMaxWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_initialSyncMaxWaitTime / (1000.0 * 1000.0)));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "idleMinWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMinWaitTime / (1000.0 * 1000.0)));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "idleMaxWaitTime",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_idleMaxWaitTime / (1000.0 * 1000.0)));
-  
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
-                       json,
-                       "autoResyncRetries",
-                       TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) config->_autoResyncRetries));
-
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief load the replication application configuration from a file
 /// this function must be called under the statusLock
 ////////////////////////////////////////////////////////////////////////////////
 
 static int LoadConfiguration (TRI_vocbase_t* vocbase,
                               TRI_replication_applier_configuration_t* config) {
-  TRI_DestroyConfigurationReplicationApplier(config);
+  // Clear
+  config->freeInternalStrings();
   TRI_InitConfigurationReplicationApplier(config);
 
   char* filename = GetConfigurationFilename(vocbase);
@@ -636,7 +490,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
     if (res != TRI_ERROR_NO_ERROR &&
         res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
-      TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
       delete applier;
       TRI_set_errno(res);
 
@@ -648,7 +501,6 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
     if (res != TRI_ERROR_NO_ERROR &&
         res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
-      TRI_DestroyConfigurationReplicationApplier(&applier->_configuration);
       delete applier;
       TRI_set_errno(res);
 
@@ -666,12 +518,109 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                     class TRI_replication_applier_configuration_t
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Frees all internal strings
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_replication_applier_configuration_t::freeInternalStrings () {
+  if (_endpoint != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _endpoint);
+    _endpoint = nullptr;
+  }
+
+  if (_database != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _database);
+    _database = nullptr;
+  }
+
+  if (_username != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _username);
+    _username = nullptr;
+  }
+
+  if (_password != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _password);
+    _password = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+///        Expects builder to be in an open Object state
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword,
+                                                            VPackBuilder& builder) const {
+  if (_endpoint != nullptr) {
+    builder.add("endpoint", VPackValue(_endpoint));
+  }
+  if (_database != nullptr) {
+    builder.add("database", VPackValue(_database));
+  }
+  if (_username != nullptr) {
+    builder.add("username", VPackValue(_username));
+  }
+  if (includePassword && _password != nullptr) {
+    builder.add("password", VPackValue(_password));
+  }
+
+  builder.add("requestTimeout", VPackValue(_requestTimeout));
+  builder.add("connectTimeout", VPackValue(_connectTimeout));
+  builder.add("ignoreErrors", VPackValue(_ignoreErrors));
+  builder.add("maxConnectRetries", VPackValue(_maxConnectRetries));
+  builder.add("sslProtocol", VPackValue(_sslProtocol));
+  builder.add("chunkSize", VPackValue(_chunkSize));
+  builder.add("autoStart", VPackValue(_autoStart));
+  builder.add("adaptivePolling", VPackValue(_adaptivePolling));
+  builder.add("autoResync", VPackValue(_autoResync));
+  builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
+  builder.add("includeSystem", VPackValue(_includeSystem));
+  builder.add("requireFromPresent", VPackValue(_requireFromPresent));
+  builder.add("verbose", VPackValue(_verbose));
+  builder.add("restrictType", VPackValue(_restrictType));
+
+  builder.add("restrictCollections", VPackValue(VPackValueType::Array));
+  for (auto& it : _restrictCollections) {
+    builder.add(VPackValue(it.first));
+  }
+  builder.close(); // restrictCollections
+
+  builder.add("connectionRetryWaitTime", VPackValue(static_cast<double>(_connectionRetryWaitTime) / (1000.0 * 1000.0)));
+  builder.add("initialSyncMaxWaitTime", VPackValue(static_cast<double>(_initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
+  builder.add("idleMinWaitTime", VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
+  builder.add("idleMaxWaitTime", VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword) const {
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder b(builder.get());
+    toVelocyPack(includePassword, *builder);
+  }
+
+  return builder;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication applier configuration
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_configuration_t const* config) {
-  return JsonConfiguration(config, false);
+  try {
+    std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
+    return triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
+  }
+  catch (...) {
+    return nullptr;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -715,7 +664,7 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
 /// @brief get the current replication applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
+int TRI_StateReplicationApplier (TRI_replication_applier_t const* applier,
                                  TRI_replication_applier_state_t* state) {
   TRI_InitStateReplicationApplier(state);
 
@@ -759,58 +708,13 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t* applier,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
-  TRI_replication_applier_state_t state;
-  TRI_replication_applier_configuration_t config;
-  TRI_json_t* server;
-
-  int res = TRI_StateReplicationApplier(applier, &state);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  try {
+    std::shared_ptr<VPackBuilder> builder = applier->toVelocyPack();
+    return triagens::basics::VelocyPackHelper::velocyPackToJson(builder->slice());
+  }
+  catch (...) {
     return nullptr;
   }
-
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
-    TRI_DestroyStateReplicationApplier(&state);
-
-    return nullptr;
-  }
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "state", JsonState(&state));
-
-  // add server info
-  server = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (server != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION, strlen(TRI_VERSION)));
-
-    TRI_server_id_t serverId = TRI_GetIdServer();
-    char* serverIdString = TRI_StringUInt64(serverId);
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverIdString, strlen(serverIdString)));
-
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "server", server);
-  }
-
-  TRI_InitConfigurationReplicationApplier(&config);
-
-  {
-    READ_LOCKER(applier->_statusLock);
-    TRI_CopyConfigurationReplicationApplier(&applier->_configuration, &config);
-  }
-
-  if (config._endpoint != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "endpoint", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._endpoint, strlen(config._endpoint)));
-  }
-
-  if (config._database != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "database", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._database, strlen(config._database)));
-  }
-
-  TRI_DestroyConfigurationReplicationApplier(&config);
-  TRI_DestroyStateReplicationApplier(&state);
-
-  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1003,32 +907,6 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy an applier configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
-  if (config->_endpoint != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
-    config->_endpoint = nullptr;
-  }
-
-  if (config->_database != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_database);
-    config->_database = nullptr;
-  }
-
-  if (config->_username != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_username);
-    config->_username = nullptr;
-  }
-
-  if (config->_password != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, config->_password);
-    config->_password = nullptr;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief copy an applier configuration
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1122,7 +1000,14 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
-  TRI_json_t* json = JsonConfiguration(config, true);
+  TRI_json_t* json;
+  try {
+    std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
+    json = triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
+  }
+  catch (...) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
 
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1167,7 +1052,6 @@ TRI_replication_applier_t::TRI_replication_applier_t (TRI_server_t* server,
 TRI_replication_applier_t::~TRI_replication_applier_t () {
   stop(true);
   TRI_DestroyStateReplicationApplier(&_state);
-  TRI_DestroyConfigurationReplicationApplier(&_configuration);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1205,8 +1089,6 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
     return doSetError(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
   }
   
-  // TODO: prevent restart of the applier with a tick after a shutdown
-
   auto syncer = std::make_unique<triagens::arango::ContinuousSyncer>(
     _server,
     _vocbase,
@@ -1382,7 +1264,6 @@ int TRI_replication_applier_t::forget () {
   TRI_InitStateReplicationApplier(&_state);
 
   TRI_RemoveConfigurationReplicationApplier(_vocbase);
-  TRI_DestroyConfigurationReplicationApplier(&_configuration);
   TRI_InitConfigurationReplicationApplier(&_configuration);
 
   return TRI_ERROR_NO_ERROR;
@@ -1522,6 +1403,72 @@ int TRI_replication_applier_t::setError (int errorCode,
   return doSetError(errorCode, msg);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+///        Expects builder to be in an open Object state
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
+  TRI_ASSERT(! builder.isClosed());
+  TRI_replication_applier_state_t state;
+  TRI_replication_applier_configuration_t config;
+
+  int res = TRI_StateReplicationApplier(this, &state);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  try {
+    TRI_InitConfigurationReplicationApplier(&config);
+    {
+      READ_LOCKER(_statusLock);
+      TRI_CopyConfigurationReplicationApplier(&_configuration, &config);
+    }
+  }
+  catch (...) {
+    TRI_DestroyStateReplicationApplier(&state);
+    throw;
+  }
+
+  triagens::basics::ScopeGuard guard{
+    []() -> void { },
+    [&state, &config]() -> void {
+      TRI_DestroyStateReplicationApplier(&state);
+    }
+  };
+
+  std::unique_ptr<TRI_json_t> stateJson(JsonState(&state));
+  std::shared_ptr<arangodb::velocypack::Builder> b = triagens::basics::JsonHelper::toVelocyPack(stateJson.get());
+  builder.add("state", b->slice());
+
+  // add server info
+  builder.add("server", VPackValue(VPackValueType::Object));
+  builder.add("version", VPackValue(TRI_VERSION));
+  builder.add("serverId", VPackValue(TRI_StringUInt64(TRI_GetIdServer())));
+  builder.close(); // server
+  
+  if (config._endpoint != nullptr) {
+    builder.add("endpoint", VPackValue(config._endpoint));
+  }
+  if (config._database != nullptr) {
+    builder.add("database", VPackValue(config._database));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> TRI_replication_applier_t::toVelocyPack () const {
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder b(builder.get());
+    toVelocyPack(*builder);
+  }
+  return builder;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -1558,6 +1505,7 @@ int TRI_replication_applier_t::doSetError (int errorCode,
 
   return errorCode;
 }
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

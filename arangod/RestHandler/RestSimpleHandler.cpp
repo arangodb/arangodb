@@ -31,11 +31,17 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "VocBase/Traverser.h"
-#include "V8Server/ApplicationV8.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace triagens::arango;
 using namespace triagens::rest;
@@ -72,13 +78,17 @@ HttpHandler::status_t RestSimpleHandler::execute () {
   HttpRequest::HttpRequestType type = _request->requestType();
 
   if (type == HttpRequest::HTTP_REQUEST_PUT) {
-    std::unique_ptr<TRI_json_t> json(parseJsonBody());
+    bool parsingSuccess = true;
+    VPackOptions options;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parsingSuccess);
 
-    if (json.get() == nullptr) {
+    if (! parsingSuccess) {
       return status_t(HANDLER_DONE);
     }
 
-    if (! TRI_IsObjectJson(json.get())) {
+    VPackSlice body = parsedBody.get()->slice();
+
+    if (! body.isObject()) {
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting JSON object body");
       return status_t(HANDLER_DONE);
     }
@@ -86,10 +96,10 @@ HttpHandler::status_t RestSimpleHandler::execute () {
     char const* prefix = _request->requestPath();
 
     if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH.c_str()) == 0) {
-      removeByKeys(json.get());
+      removeByKeys(body);
     }
     else if (strcmp(prefix, RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH.c_str()) == 0) {
-      lookupByKeys(json.get());
+      lookupByKeys(body);
     }
     else {
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "unsupported value for <operation>");
@@ -251,18 +261,19 @@ bool RestSimpleHandler::wasCanceled () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
+void RestSimpleHandler::removeByKeys (VPackSlice const& slice) {
+  TRI_ASSERT(slice.isObject());
   try { 
     std::string collectionName;
     {
-      auto const value = TRI_LookupObjectJson(json, "collection");
+      VPackSlice const value = slice.get("collection");
 
-      if (! TRI_IsStringJson(value)) {
+      if (! value.isString()) {
         generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
         return;
       }
     
-      collectionName = std::string(value->_value._string.data, value->_value._string.length - 1);
+      collectionName = value.copyString();
 
       if (! collectionName.empty()) {
         auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
@@ -275,27 +286,30 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
       }
     }
 
-    auto const* keys = TRI_LookupObjectJson(json, "keys");
+    VPackSlice const keys = slice.get("keys");
 
-    if (! TRI_IsArrayJson(keys)) { 
+    if (! keys.isArray()) { 
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting array for <keys>");
       return;
     }
     
     bool waitForSync = false;
     {
-      auto const* value = TRI_LookupObjectJson(json, "options");
-      if (TRI_IsObjectJson(value)) {
-        value = TRI_LookupObjectJson(value, "waitForSync");
-        if (TRI_IsBooleanJson(value)) {
-          waitForSync = value->_value._boolean;
+      VPackSlice const value = slice.get("options");
+      if (value.isObject()) {
+        VPackSlice wfs = value.get("waitForSync");
+        if (wfs.isBool()) {
+          waitForSync = wfs.getBool();
         }
       }
     }
 
-    triagens::basics::Json bindVars(triagens::basics::Json::Object, 3);
-    bindVars("@collection", triagens::basics::Json(collectionName));
-    bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keys)));
+    VPackBuilder bindVars;
+    bindVars.openObject();
+    bindVars.add("@collection", VPackValue(collectionName));
+    bindVars.add("keys", keys);
+    bindVars.close();
+    VPackSlice varsSlice = bindVars.slice();
 
     std::string aql("FOR key IN @keys REMOVE key IN @@collection OPTIONS { ignoreErrors: true, waitForSync: ");
     aql.append(waitForSync ? "true" : "false");
@@ -306,7 +320,7 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
                                _vocbase, 
                                aql.c_str(),
                                aql.size(),
-                               bindVars.steal(),
+                               triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
                                nullptr,
                                triagens::aql::PART_MAIN);
  
@@ -329,27 +343,33 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 
       size_t ignored = 0;
       size_t removed = 0;
+      VPackSlice stats = queryResult.stats.slice();
 
-      if (queryResult.stats != nullptr) {
-        auto found = TRI_LookupObjectJson(queryResult.stats, "writesIgnored");
-        if (TRI_IsNumberJson(found)) {
-          ignored = static_cast<size_t>(found->_value._number);
+      if (! stats.isNone()) {
+        TRI_ASSERT(stats.isObject());
+        VPackSlice found = stats.get("writesIgnored");
+        if (found.isNumber()) {
+          ignored = found.getNumericValue<size_t>();
         }
-        
-        found = TRI_LookupObjectJson(queryResult.stats, "writesExecuted");
-        if (TRI_IsNumberJson(found)) {
-          removed = static_cast<size_t>(found->_value._number);
+
+        found = stats.get("writesExecuted");
+        if (found.isNumber()) {
+          removed = found.getNumericValue<size_t>();
         }
       }
 
-      triagens::basics::Json result(triagens::basics::Json::Object);
-      result.set("removed", triagens::basics::Json(static_cast<double>(removed)));
-      result.set("ignored", triagens::basics::Json(static_cast<double>(ignored)));
+      VPackBuilder result;
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("removed", VPackValue(removed));
+      result.add("ignored", VPackValue(ignored));
+      result.add("error", VPackValue(false));
+      result.add("code", VPackValue(_response->responseCode()));
+      result.close();
+      VPackSlice s = result.slice();
 
-      result.set("error", triagens::basics::Json(false));
-      result.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
-  
-      result.dump(_response->body());
+      triagens::basics::VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+      VPackDumper dumper(&buffer); 
+      dumper.dump(s);
     }
   }  
   catch (triagens::basics::Exception const& ex) {
@@ -445,18 +465,16 @@ void RestSimpleHandler::removeByKeys (TRI_json_t const* json) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
+void RestSimpleHandler::lookupByKeys (VPackSlice const& slice) {
   try {
     std::string collectionName;
     { 
-      auto const value = TRI_LookupObjectJson(json, "collection");
-
-      if (! TRI_IsStringJson(value)) {
+      VPackSlice const value = slice.get("collection");
+      if (! value.isString()) {
         generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
         return;
       }
-
-      collectionName = std::string(value->_value._string.data, value->_value._string.length - 1);
+      collectionName = value.copyString();
 
       if (! collectionName.empty()) {
         auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
@@ -469,18 +487,22 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
       }
     }
 
-    auto const* keys = TRI_LookupObjectJson(json, "keys");
+    VPackSlice const keys = slice.get("keys");
 
-    if (! TRI_IsArrayJson(keys)) { 
+    if (! keys.isArray()) { 
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting array for <keys>");
       return;
     }
 
-    triagens::basics::Json bindVars(triagens::basics::Json::Object, 2);
-    bindVars("@collection", triagens::basics::Json(collectionName));
-    bindVars("keys", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keys)));
-  
-    triagens::aql::BindParameters::StripCollectionNames(TRI_LookupObjectJson(bindVars.json(), "keys"), collectionName.c_str());
+    VPackBuilder bindVars;
+    bindVars.add(VPackValue(VPackValueType::Object));
+    bindVars.add("@collection", VPackValue(collectionName));
+    VPackBuilder strippedBuilder = triagens::aql::BindParameters::StripCollectionNames(keys, collectionName.c_str());
+    VPackSlice stripped = strippedBuilder.slice();
+
+    bindVars.add("keys", stripped);
+    bindVars.close();
+    VPackSlice varsSlice = bindVars.slice();
 
     std::string const aql("FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
     
@@ -489,7 +511,7 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
                                _vocbase, 
                                aql.c_str(),
                                aql.size(),
-                               bindVars.steal(),
+                               triagens::basics::VelocyPackHelper::velocyPackToJson(varsSlice),
                                nullptr,
                                triagens::aql::PART_MAIN);
  
@@ -522,8 +544,8 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
 
         // This is for internal use of AQL Traverser only.
         // Should not be documented
-        auto const postFilter = TRI_LookupObjectJson(json, "filter");
-        if (postFilter != nullptr && TRI_IsArrayJson(postFilter)) {
+        VPackSlice const postFilter = slice.get("filter");
+        if (postFilter.isArray()) {
           std::vector<triagens::arango::traverser::TraverserExpression*> expressions;
           triagens::basics::ScopeGuard guard{
             []() -> void { },
@@ -533,14 +555,14 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
               }
             }
           };
-          size_t length = TRI_LengthArrayJson(postFilter);
+
+          VPackValueLength length = postFilter.length();
           
           expressions.reserve(length);
 
-          for (size_t j = 0; j < length; ++j) {
-            TRI_json_t* exp = TRI_LookupArrayJson(postFilter, j);
-            if (TRI_IsObjectJson(exp)) {
-              auto expression = std::make_unique<traverser::TraverserExpression>(exp);
+          for (auto const& it : VPackArrayIterator(postFilter)) {
+            if (it.isObject()) {
+              auto expression = std::make_unique<traverser::TraverserExpression>(it);
               expressions.emplace_back(expression.get());
               expression.release();
             }
@@ -602,6 +624,10 @@ void RestSimpleHandler::lookupByKeys (TRI_json_t const* json) {
   catch (triagens::basics::Exception const& ex) {
     unregisterQuery(); 
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  }
+  catch (std::exception const& ex) {
+    unregisterQuery(); 
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   }
   catch (...) {
     unregisterQuery(); 

@@ -35,8 +35,6 @@
 #include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-struct TRI_json_t;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class RestSimpleHandler
 // -----------------------------------------------------------------------------
@@ -121,13 +119,13 @@ namespace triagens {
 /// @brief execute a batch remove operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removeByKeys (struct TRI_json_t const*);
+        void removeByKeys (VPackSlice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a batch lookup operation
 ////////////////////////////////////////////////////////////////////////////////
 
-        void lookupByKeys (struct TRI_json_t const*);
+        void lookupByKeys (VPackSlice const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

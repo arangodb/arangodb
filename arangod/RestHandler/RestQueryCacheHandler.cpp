@@ -116,14 +116,18 @@ HttpHandler::status_t RestQueryCacheHandler::execute () {
 bool RestQueryCacheHandler::clearCache () {
   auto queryCache = triagens::aql::QueryCache::instance();
   queryCache->invalidate();
-
-  Json result(Json::Object, 2);
-
-  result
-  .set("error", Json(false))
-  .set("code", Json(HttpResponse::OK));
-
-  generateResult(HttpResponse::OK, result.json());
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.close();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
+  }
+  catch (...) {
+    // Ignore the error
+  }
   return true;
 }
 
@@ -158,8 +162,9 @@ bool RestQueryCacheHandler::readProperties () {
   try {
     auto queryCache = triagens::aql::QueryCache::instance();
 
-    Json result = queryCache->properties();
-    generateResult(HttpResponse::OK, result.json());
+    VPackBuilder result = queryCache->properties();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
   }
   catch (Exception const& err) {
     handleError(err);
@@ -219,11 +224,20 @@ bool RestQueryCacheHandler::replaceProperties () {
                   "expecting PUT /_api/query-cache/properties");
     return true;
   }
+  bool validBody = true;
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, validBody);
 
-  std::unique_ptr<TRI_json_t> body(parseJsonBody());
-
-  if (body == nullptr) {
+  if (! validBody) {
     // error message generated in parseJsonBody
+    return true;
+  }
+  VPackSlice body = parsedBody.get()->slice();
+
+  if (! body.isObject()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON-Object body");
     return true;
   }
 
@@ -233,16 +247,15 @@ bool RestQueryCacheHandler::replaceProperties () {
     std::pair<std::string, size_t> cacheProperties;
     queryCache->properties(cacheProperties);
 
-    auto attribute = static_cast<TRI_json_t const*>(TRI_LookupObjectJson(body.get(), "mode"));
-
-    if (TRI_IsStringJson(attribute)) {
-      cacheProperties.first = std::string(attribute->_value._string.data, attribute->_value._string.length - 1);
+    VPackSlice attribute = body.get("mode");
+    if (attribute.isString()) {
+      cacheProperties.first = attribute.copyString();
     }
 
-    attribute = static_cast<TRI_json_t const*>(TRI_LookupObjectJson(body.get(), "maxResults"));
-   
-    if (TRI_IsNumberJson(attribute)) {
-      cacheProperties.second = static_cast<size_t>(attribute->_value._number);
+    attribute = body.get("maxResults");
+
+    if (attribute.isNumber()) {
+      cacheProperties.second = static_cast<size_t>(attribute.getUInt());
     }
 
     queryCache->setProperties(cacheProperties);

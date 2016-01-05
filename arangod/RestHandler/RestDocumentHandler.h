@@ -145,7 +145,7 @@ namespace triagens {
 
       bool createDocumentCoordinator (char const* collection,
                                       bool waitForSync,
-                                      TRI_json_t* json);
+                                      VPackSlice const& document);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document, coordinator case in a cluster
@@ -182,8 +182,7 @@ namespace triagens {
                                       TRI_doc_update_policy_e policy,
                                       bool waitForSync,
                                       bool isPatch,
-                                      TRI_json_t* json);
-
+                                      VPackSlice const& document);
 
     };
   }

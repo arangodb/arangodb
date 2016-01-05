@@ -102,7 +102,7 @@ bool DummyShell::writeHistory () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string DummyShell::getLine (const std::string& prompt, bool& eof) {
-  cout << prompt << flush;
+  std::cout << prompt << flush;
 
   string line;
   getline(cin, line);

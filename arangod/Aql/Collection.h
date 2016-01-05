@@ -120,7 +120,7 @@ namespace triagens {
 
       inline bool isEdgeCollection () const {
         auto document = documentCollection();
-        return (document->_info._type == TRI_COL_TYPE_EDGE);
+        return (document->_info.type() == TRI_COL_TYPE_EDGE);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -129,7 +129,7 @@ namespace triagens {
       
       inline bool isDocumentCollection () const {
         auto document = documentCollection();
-        return (document->_info._type == TRI_COL_TYPE_DOCUMENT);
+        return (document->_info.type() == TRI_COL_TYPE_DOCUMENT);
       }
 
 ////////////////////////////////////////////////////////////////////////////////

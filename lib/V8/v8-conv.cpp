@@ -29,9 +29,10 @@
 
 #include "v8-conv.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Basics/Exceptions.h"
 #include "Basics/logging.h"
+#include "Basics/StringUtils.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-json.h"
@@ -73,7 +74,7 @@ static inline v8::Handle<v8::Value> ObjectJsonNumber (v8::Isolate* isolate, TRI_
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_json_t NUMBER into a V8 object
+/// @brief converts a TRI_json_t STRING into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline v8::Handle<v8::Value> ObjectJsonString (v8::Isolate* isolate, TRI_json_t const* json) {

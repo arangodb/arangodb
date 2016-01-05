@@ -33,6 +33,9 @@
 #include "Basics/Common.h"
 #include "Basics/json.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace triagens {
   namespace aql {
 
@@ -86,6 +89,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t hash () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strip collection name prefixes from the parameters
+/// the values must be a VelocyPack array
+////////////////////////////////////////////////////////////////////////////////
+
+        static VPackBuilder StripCollectionNames (VPackSlice const&, 
+                                                  char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief strip collection name prefixes from the parameters

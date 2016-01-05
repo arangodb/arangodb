@@ -41,6 +41,8 @@
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 
+#include <fstream>
+
 using namespace std;
 
 // -----------------------------------------------------------------------------

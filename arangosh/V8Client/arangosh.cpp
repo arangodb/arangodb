@@ -1502,7 +1502,7 @@ static std::string BuildPrompt () {
 /// @brief executes the shell
 ////////////////////////////////////////////////////////////////////////////////
 
-static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, bool promptError) {
+static int  RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
@@ -1662,6 +1662,8 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
   BaseClient.printLine("");
 
   BaseClient.printByeBye();
+
+  return promptError ? TRI_ERROR_INTERNAL : TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1908,11 +1910,6 @@ void LocalEntryFunction() {
 }
 
 static void LocalExitFunction (int exitCode, void* data) {
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
   int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
@@ -2230,8 +2227,10 @@ static int Run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
   try {
     switch (runMode) {
       case eInteractive: 
-        RunShell(isolate, context, promptError);
-        ok = true; /// TODO
+        ok = RunShell(isolate, context, promptError) == TRI_ERROR_NO_ERROR;
+        if (isatty(STDIN_FILENO)) {
+          ok = true;
+        }
         break;
       case eExecuteScript:
         // we have scripts to execute

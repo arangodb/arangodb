@@ -29,8 +29,8 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HASH_INDEX_HASH__ARRAY_H
-#define ARANGODB_HASH_INDEX_HASH__ARRAY_H 1
+#ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
+#define ARANGODB_BASICS_ASSOC_UNIQUE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/gcd.h"
@@ -40,6 +40,10 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
 #include "Basics/random.h"
+
+#include <thread>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
   namespace basics {
@@ -79,13 +83,17 @@ namespace triagens {
     template <class Key, class Element>
       class AssocUnique {
 
+        private:
+
+          typedef void UserData;
+
         public:
           
-          typedef std::function<uint64_t(Key const*)> HashKeyFuncType;
-          typedef std::function<uint64_t(Element const*)> HashElementFuncType;
-          typedef std::function<bool(Key const*, uint64_t hash, Element const*)> 
+          typedef std::function<uint64_t(UserData*, Key const*)> HashKeyFuncType;
+          typedef std::function<uint64_t(UserData*, Element const*)> HashElementFuncType;
+          typedef std::function<bool(UserData*, Key const*, uint64_t hash, Element const*)> 
             IsEqualKeyElementFuncType;
-          typedef std::function<bool(Element const*, Element const*)> 
+          typedef std::function<bool(UserData*, Element const*, Element const*)> 
             IsEqualElementElementFuncType;
 
           typedef std::function<void(Element*)> CallbackElementFuncType;
@@ -209,7 +217,8 @@ namespace triagens {
 /// @brief resizes the array
 ////////////////////////////////////////////////////////////////////////////////
 
-          void resizeInternal (Bucket& b,
+          void resizeInternal (UserData* userData,
+                               Bucket& b,
                                uint64_t targetSize,
                                bool allowShrink) {
 
@@ -262,7 +271,7 @@ namespace triagens {
 
                 if (element != nullptr) {
                   uint64_t i, k;
-                  i = k = _hashElement(element) % n;
+                  i = k = _hashElement(userData, element) % n;
 
                   for (; i < n && b._table[i] != nullptr; ++i);
                   if (i == n) {
@@ -286,10 +295,12 @@ namespace triagens {
 /// @brief check a resize of the hash array
 ////////////////////////////////////////////////////////////////////////////////
 
-          bool checkResize (Bucket& b, uint64_t expected) {
+          bool checkResize (UserData* userData,
+                            Bucket& b, 
+                            uint64_t expected) {
             if (2 * (b._nrAlloc + expected) < 3 * b._nrUsed) {
               try {
-                resizeInternal(b, 2 * (b._nrAlloc + expected) + 1, false);
+                resizeInternal(userData, b, 2 * (b._nrAlloc + expected) + 1, false);
               }
               catch (...) {
                 return false;
@@ -303,7 +314,8 @@ namespace triagens {
 ///        Iterates using the given step size
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findElementSequentialBucketsRandom (BucketPosition& position,
+          Element* findElementSequentialBucketsRandom (UserData* userData,
+                                                       BucketPosition& position,
                                                        uint64_t const step,
                                                        BucketPosition const& initial) const {
             Element* found;
@@ -330,7 +342,8 @@ namespace triagens {
 ///        This does not resize and expects to have enough space
 ////////////////////////////////////////////////////////////////////////////////
 
-          int doInsert (Element* element,
+          int doInsert (UserData* userData,
+                        Element* element,
                         Bucket& b,
                         uint64_t hash) {
 
@@ -339,10 +352,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr &&
-                 ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                 ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                   ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                   ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             }
 
             Element* arrayElement = b._table[i];
@@ -404,7 +417,7 @@ namespace triagens {
 /// @brief resizes the hash table
 ////////////////////////////////////////////////////////////////////////////////
 
-          int resize (size_t size) {
+          int resize (UserData* userData, size_t size) {
             size /= _buckets.size();
             for (auto& b : _buckets) {
               if (2 * (2 * size + 1) < 3 * b._nrUsed) {
@@ -412,7 +425,7 @@ namespace triagens {
               }
 
               try {
-                resizeInternal(b, 2 * size + 1, false);
+                resizeInternal(userData, b, 2 * size + 1, false);
               }
               catch (...) {
                 return TRI_ERROR_OUT_OF_MEMORY;
@@ -439,11 +452,29 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Appends information about statistics in the given VPackBuilder
+////////////////////////////////////////////////////////////////////////////////
+          
+          void appendToVelocyPack (std::shared_ptr<VPackBuilder> builder) {
+            builder->add("buckets", VPackValue(VPackValueType::Array));
+            for (auto& b : _buckets) {
+              builder->add(VPackValue(VPackValueType::Object));
+              builder->add("nrAlloc", VPackValue(b._nrAlloc));
+              builder->add("nrUsed", VPackValue(b._nrUsed));
+              builder->close();
+            }
+            builder->close(); // buckets
+            builder->add("nrBuckets", VPackValue(_buckets.size()));
+            builder->add("totalUsed", VPackValue(size()));
+          }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an element equal to the given element.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* find (Element const* element) const {
-            uint64_t i = _hashElement(element);
+          Element* find (UserData* userData,
+                         Element const* element) const {
+            uint64_t i = _hashElement(userData, element);
             Bucket const& b = _buckets[i & _bucketsMask];
 
             uint64_t const n = b._nrAlloc;
@@ -451,10 +482,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualElementElementByKey(element, b._table[i]); ++i);
+                  ! _isEqualElementElementByKey(userData, element, b._table[i]); ++i);
             }
 
             // ...........................................................................
@@ -469,8 +500,9 @@ namespace triagens {
 /// @brief finds an element given a key, returns NULL if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findByKey (Key const* key) const {
-            uint64_t hash = _hashKey(key);
+          Element* findByKey (UserData* userData,
+                              Key const* key) const {
+            uint64_t hash = _hashKey(userData, key);
             uint64_t i = hash;
             uint64_t bucketId = i & _bucketsMask;
             Bucket const& b = _buckets[bucketId];
@@ -480,10 +512,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                  ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             }
             
             // ...........................................................................
@@ -500,10 +532,11 @@ namespace triagens {
 /// was found at (or would be placed into)
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findByKey (Key const* key,
+          Element* findByKey (UserData* userData,
+                              Key const* key,
                               BucketPosition& position,
                               uint64_t& hash) const {
-            hash = _hashKey(key);
+            hash = _hashKey(userData, key);
             uint64_t i = hash;
             uint64_t bucketId = i & _bucketsMask;
             Bucket const& b = _buckets[bucketId];
@@ -513,10 +546,10 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                  ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             }
             
             // if requested, pass the position of the found element back
@@ -536,15 +569,16 @@ namespace triagens {
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-          int insert (Element* element) {
-            uint64_t hash = _hashElement(element);
+          int insert (UserData* userData,
+                      Element* element) {
+            uint64_t hash = _hashElement(userData, element);
             Bucket& b = _buckets[hash & _bucketsMask];
 
-            if (! checkResize(b, 0)) {
+            if (! checkResize(userData, b, 0)) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            return doInsert(element, b, hash);
+            return doInsert(userData, element, b, hash);
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -557,7 +591,7 @@ namespace triagens {
 /// inserted, but resizing afterwards failed!
 ////////////////////////////////////////////////////////////////////////////////
 
-          int insertAtPosition (Element* element, BucketPosition const& position) {
+          int insertAtPosition (UserData* userData, Element* element, BucketPosition const& position) {
             Bucket& b = _buckets[position.bucketId];
             Element* arrayElement = b._table[position.position];
 
@@ -568,7 +602,7 @@ namespace triagens {
             b._table[position.position] = element;
             b._nrUsed++;
            
-            if (! checkResize(b, 0)) {
+            if (! checkResize(userData, b, 0)) {
               return TRI_ERROR_OUT_OF_MEMORY;
             }
             
@@ -579,7 +613,8 @@ namespace triagens {
 /// @brief adds multiple elements to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-          int batchInsert (std::vector<Element*> const* data,
+          int batchInsert (UserData* userData,
+                           std::vector<Element*> const* data,
                            size_t numThreads) {
 
             std::atomic<int> res(TRI_ERROR_NO_ERROR);
@@ -606,7 +641,7 @@ namespace triagens {
                   std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
 
                   for (size_t i = lower; i < upper; ++i) {
-                    uint64_t hash = _hashElement(elements[i]);
+                    uint64_t hash = _hashElement(userData, elements[i]);
                     auto bucketId = hash & _bucketsMask;
 
                     auto it = partitions.find(bucketId);
@@ -615,7 +650,7 @@ namespace triagens {
                       it = partitions.emplace(bucketId, DocumentsPerBucket()).first;
                     }
 
-                    (*it).second.emplace_back(std::make_pair(elements[i], hash));
+                    (*it).second.emplace_back(elements[i], hash);
                   }
 
                   // transfer ownership to the central map
@@ -691,14 +726,14 @@ namespace triagens {
                       expected += it2.size();
                     }
 
-                    if (! checkResize(b, expected)) {
+                    if (! checkResize(userData, b, expected)) {
                       res = TRI_ERROR_OUT_OF_MEMORY;
                       return;
                     }
                     
                     for (auto const& it2 : it.second) {
                       for (auto const& it3 : it2) {
-                        doInsert(it3.first, b, it3.second);
+                        doInsert(userData, it3.first, b, it3.second);
                       }
                     }
                   }
@@ -726,6 +761,16 @@ namespace triagens {
               }
             }
 
+            if (res.load() != TRI_ERROR_NO_ERROR) {
+              // Rollback such that the data can be deleted outside
+              try {
+                for (auto const& d : *data) {
+                  remove(userData, d);
+                }
+              }
+              catch (...) {
+              }
+            }
             return res.load();
           }
 
@@ -733,7 +778,9 @@ namespace triagens {
 /// @brief helper to heal a hole where we deleted something
 ////////////////////////////////////////////////////////////////////////////////
 
-          void healHole (Bucket& b, uint64_t i) {
+          void healHole (UserData* userData, 
+                         Bucket& b, 
+                         uint64_t i) {
 
             // ...........................................................................
             // remove item - destroy any internal memory associated with the 
@@ -753,7 +800,7 @@ namespace triagens {
             uint64_t k = TRI_IncModU64(i, n);
 
             while (b._table[k] != nullptr) {
-              uint64_t j = _hashElement(b._table[k]) % n;
+              uint64_t j = _hashElement(userData, b._table[k]) % n;
 
               if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
                 b._table[i] = b._table[k];
@@ -765,7 +812,7 @@ namespace triagens {
             }
 
             if (b._nrUsed == 0) {
-              resizeInternal(b, initialSize(), true);
+              resizeInternal(userData, b, initialSize(), true);
             }
 
           }
@@ -776,8 +823,9 @@ namespace triagens {
 /// was not found and the old value, if it was successfully removed
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* removeByKey (Key const* key) {
-            uint64_t hash = _hashKey(key);
+          Element* removeByKey (UserData* userData,
+                                Key const* key) {
+            uint64_t hash = _hashKey(userData, key);
             uint64_t i = hash;
             Bucket& b = _buckets[i & _bucketsMask];
 
@@ -786,16 +834,16 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualKeyElement(key, hash, b._table[i]); ++i);
+                  ! _isEqualKeyElement(userData, key, hash, b._table[i]); ++i);
             }
 
             Element* old = b._table[i];
 
             if (old != nullptr) {
-              healHole(b, i);
+              healHole(userData, b, i);
             }
             return old;
           }
@@ -805,8 +853,9 @@ namespace triagens {
 /// was not found and the old value, if it was successfully removed
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* remove (Element const* element) {
-            uint64_t i = _hashElement(element);
+          Element* remove (UserData* userData,
+                           Element const* element) {
+            uint64_t i = _hashElement(userData, element);
             Bucket& b = _buckets[i & _bucketsMask];
 
             uint64_t const n = b._nrAlloc;
@@ -814,16 +863,16 @@ namespace triagens {
             uint64_t k = i;
 
             for (; i < n && b._table[i] != nullptr && 
-                ! _isEqualElementElement(element, b._table[i]); ++i);
+                ! _isEqualElementElement(userData, element, b._table[i]); ++i);
             if (i == n) {
               for (i = 0; i < k && b._table[i] != nullptr && 
-                  ! _isEqualElementElement(element, b._table[i]); ++i);
+                  ! _isEqualElementElement(userData, element, b._table[i]); ++i);
             }
 
             Element* old = b._table[i];
 
             if (old != nullptr) {
-              healHole(b, i);
+              healHole(userData, b, i);
             }
 
             return old;
@@ -835,12 +884,14 @@ namespace triagens {
 
           void invokeOnAllElements (CallbackElementFuncType callback) {
             for (auto& b : _buckets) {
-              if (b._table != nullptr) {
-                for (size_t i = 0; i < b._nrAlloc; ++i) {
-                  if (b._table[i] != nullptr) {
-                    callback(b._table[i]);
-                  }
+              if (b._table == nullptr) {
+                continue;
+              }
+              for (size_t i = 0; i < b._nrAlloc; ++i) {
+                if (b._table[i] == nullptr) {
+                  continue;
                 }
+                callback(b._table[i]);
               }
             }
           }
@@ -854,7 +905,8 @@ namespace triagens {
 ///        During a continue the total will not be modified.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findSequential (BucketPosition& position,
+          Element* findSequential (UserData* userData,
+                                   BucketPosition& position,
                                    uint64_t& total) const {
             if (position.bucketId >= _buckets.size()) {
               // bucket id is out of bounds. now handle edge cases
@@ -917,7 +969,8 @@ namespace triagens {
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findSequentialReverse (BucketPosition& position) const {
+          Element* findSequentialReverse (UserData* userData,
+                                          BucketPosition& position) const {
             if (position.bucketId >= _buckets.size()) {
               // bucket id is out of bounds. now handle edge cases
               if (position.bucketId < SIZE_MAX - 1) {
@@ -964,7 +1017,8 @@ namespace triagens {
 ///        Convention: *step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-          Element* findRandom (BucketPosition& initialPosition,
+          Element* findRandom (UserData* userData,
+                               BucketPosition& initialPosition,
                                BucketPosition& position,
                                uint64_t& step,
                                uint64_t& total) const {
@@ -1008,7 +1062,7 @@ namespace triagens {
               }
             }
 
-            return findElementSequentialBucketsRandom(position, step, initialPosition);
+            return findElementSequentialBucketsRandom(userData, position, step, initialPosition);
           }
 
       };

@@ -113,9 +113,6 @@ void QueryRegistry::insert (QueryId id,
 
     TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) != _queries.find(vocbase->_name)->second.end());
   
-    // Also, we need to count down the debugging counters for transactions:
-    triagens::arango::TransactionBase::increaseNumbers(-1, -1);
-
     // If we have set _makeNolockHeaders, we need to unset it:
     if (Transaction::_makeNolockHeaders != nullptr) {
       if (Transaction::_makeNolockHeaders == query->engine()->lockedShards()) {
@@ -158,9 +155,6 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
   }
   qi->_isOpen = true;
 
-  // We need to count up the debugging counters for transactions:
-  triagens::arango::TransactionBase::increaseNumbers(1, 1);
-
   // If we had set _makeNolockHeaders, we need to reset it:
   if (qi->_query->engine()->lockedShards() != nullptr) {
     if (Transaction::_makeNolockHeaders == nullptr) {
@@ -198,9 +192,6 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                 "query with given vocbase and id is not open");
   }
-
-  // We need to count down the debugging counters for transactions:
-  triagens::arango::TransactionBase::increaseNumbers(-1, -1);
 
   // If we have set _makeNolockHeaders, we need to unset it:
   if (Transaction::_makeNolockHeaders != nullptr) {
@@ -249,8 +240,6 @@ void QueryRegistry::destroy (std::string const& vocbase,
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
   if (! qi->_isOpen) {
-    // We need to count up the debugging counters for transactions:
-    triagens::arango::TransactionBase::increaseNumbers(1, 1);
     // If we had set _makeNolockHeaders, we need to reset it:
     if (qi->_query->engine()->lockedShards() != nullptr) {
       if (Transaction::_makeNolockHeaders == nullptr) {

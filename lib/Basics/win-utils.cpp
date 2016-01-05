@@ -137,29 +137,6 @@ static void InvalidParameterHandler (const wchar_t* expression, // expression se
                                      unsigned int line,         // line within file - NULL
                                      uintptr_t pReserved) {     // in case microsoft forget something
   LOG_ERROR("Invalid handle parameter passed");
-/*
-  if (expression != 0) {
-    wprintf(L"win-utils.c:InvalidParameterHandler:EXPRESSION = %s\n",expression);
-  }
-  else {
-    wprintf(L"win-utils.c:InvalidParameterHandler:EXPRESSION = NULL\n");
-  }
-  if (function != 0) {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FUNCTION = %s\n",function);
-  }
-  else {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FUNCTION = NULL\n");
-  }
-  if (file!= 0) {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FILE = %s\n",file);
-  }
-  else {
-    wprintf(L"win-utils.c:InvalidParameterHandler:FILE = NULL\n");
-  }
-*/
-  //abort();
-  // TODO: use the wcstombs_s function to convert wchar to char - since all the above
-  // wchar never will contain 2 byte chars
 }
 
 ////////////////////////////////////////////////////////////////////////////////

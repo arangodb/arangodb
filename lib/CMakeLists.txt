@@ -129,8 +129,10 @@ add_library(
     Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
     Basics/vector.cpp
+    Basics/VelocyPackHelper.cpp
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp
+    Basics/VPackStringBufferAdapter.cpp
     Basics/WorkMonitor.cpp
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
@@ -183,6 +185,7 @@ add_library(
     V8/v8-json.cpp
     V8/v8-shell.cpp
     V8/v8-utils.cpp
+    V8/v8-vpack.cpp
     V8/v8-environment.cpp
     SimpleHttpClient/GeneralClientConnection.cpp
     SimpleHttpClient/ClientConnection.cpp

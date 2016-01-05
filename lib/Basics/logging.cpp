@@ -1879,7 +1879,6 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
 
     if (TRI_JoinThread(&LoggingThread) != TRI_ERROR_NO_ERROR) {
       // ignore all errors for now as we cannot log them anywhere...
-      // TODO: find some means to signal errors on shutdown
     }
 
     TRI_DestroyCondition(&LogCondition);

@@ -37,6 +37,8 @@
 #include "Rest/HttpRequest.h"
 #include "velocypack/Slice.h"
 
+#include <list>
+
 namespace triagens {
   namespace httpclient {
     class GeneralClientConnection;

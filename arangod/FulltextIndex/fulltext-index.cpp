@@ -1038,7 +1038,6 @@ static node_t* EnsureSubNode (index_t* const idx,
 
   if (numFollowers > 0) {
     // linear search
-    // TODO: optimise this search
     node_char_t* followerKeys;
 
     followerKeys = NodeFollowersKeys(node);

@@ -590,7 +590,7 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(skiplistOperator, reverse));
+  std::unique_ptr<SkiplistIterator> skiplistIterator(static_cast<triagens::arango::SkiplistIndex*>(idx)->lookup(&trx, skiplistOperator, reverse));
   delete skiplistOperator;
 
   if (! skiplistIterator) {
@@ -820,7 +820,7 @@ static void EdgesQuery (TRI_edge_direction_e direction,
         continue;
       }
 
-      std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key.get());
+      std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid, key.get());
 
       for (size_t j = 0;  j < edges.size();  ++j) {
         v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
@@ -855,7 +855,7 @@ static void EdgesQuery (TRI_edge_direction_e direction,
       TRI_V8_THROW_EXCEPTION(res);
     }
 
-    std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(document, direction, cid, key.get());
+    std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(&trx, document, direction, cid, key.get());
 
     trx.finish(res);
 
@@ -1221,7 +1221,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
 
   // find the matches
   std::vector<TRI_doc_mptr_t*> list;
-  static_cast<triagens::arango::HashIndex*>(idx)->lookup(&searchValue, list);
+  static_cast<triagens::arango::HashIndex*>(idx)->lookup(&trx, &searchValue, list);
 
   // convert result
   size_t total = list.size();
@@ -1473,7 +1473,7 @@ static void JS_ChecksumCollection (const v8::FunctionCallbackInfo<v8::Value>& ar
 
   trx.lockRead();
   // get last tick
-  string const rid = StringUtils::itoa(document->_info._revision);
+  string const rid = StringUtils::itoa(document->_info.revision());
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
@@ -1988,7 +1988,7 @@ static void NearQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->nearQuery(latitude, longitude, limit);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->nearQuery(&trx, latitude, longitude, limit);
 
   if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);
@@ -2084,7 +2084,7 @@ static void WithinQuery (SingleCollectionReadOnlyTransaction& trx,
   v8::Handle<v8::Array> distances = v8::Array::New(isolate);
   result->Set(TRI_V8_ASCII_STRING("distances"), distances);
 
-  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->withinQuery(latitude, longitude, radius);
+  GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(idx)->withinQuery(&trx, latitude, longitude, radius);
 
   if (cors != nullptr) {
     int res = StoreGeoResult(isolate, trx, collection, cors, documents, distances);
@@ -2290,16 +2290,19 @@ static void JS_RemoveByKeys (const v8::FunctionCallbackInfo<v8::Value>& args) {
   
   size_t ignored = 0;
   size_t removed = 0;
-    
-  if (queryResult.stats != nullptr) {
-    auto found = TRI_LookupObjectJson(queryResult.stats, "writesIgnored");
-    if (TRI_IsNumberJson(found)) {
-      ignored = static_cast<size_t>(found->_value._number);
+
+  VPackSlice stats = queryResult.stats.slice();
+
+  if (! stats.isNone()) {
+    TRI_ASSERT(stats.isObject());
+    VPackSlice found = stats.get("writesIgnored");
+    if (found.isNumber()) {
+      ignored = found.getNumericValue<size_t>();
     }
-      
-    found = TRI_LookupObjectJson(queryResult.stats, "writesExecuted");
-    if (TRI_IsNumberJson(found)) {
-      removed = static_cast<size_t>(found->_value._number);
+
+    found = stats.get("writesExecuted");
+    if (found.isNumber()) {
+      removed = found.getNumericValue<size_t>();
     }
   }
 

@@ -109,9 +109,6 @@ class MultiCollectionEdgeExpander {
 
     void operator() (VertexId& source,
                      vector<ArangoDBPathFinder::Step*>& result) {
-      TransactionBase fake(true); // Fake a transaction to please checks. 
-                                  // This is due to multi-threading
-
       equal_to<VertexId> eq;
       for (auto const& edgeCollection : _edgeCollections) { 
         auto edges = edgeCollection->getEdges(_direction, source); 
@@ -178,8 +175,6 @@ class SimpleEdgeExpander {
 
     void operator() (VertexId& source,
                      vector<ArangoDBPathFinder::Step*>& result) {
-      TransactionBase fake(true); // Fake a transaction to please checks. 
-                                  // This is due to multi-threading
       auto edges = _edgeCollection->getEdges(_direction, source); 
 
       equal_to<VertexId> eq;
@@ -914,7 +909,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
       triagens::arango::EdgeIndex* edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
       if (dir) {
         TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
-        edgeIndex->lookup(&it, tmp, last, 1);
+        edgeIndex->lookup(_trx, &it, tmp, last, 1);
 
         while (last == nullptr) {
           // Switch back direction
@@ -926,21 +921,21 @@ void DepthFirstTraverser::_defInternalFunctions () {
           }
           TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
           edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
-          edgeIndex->lookup(&it, tmp, last, 1);
+          edgeIndex->lookup(_trx, &it, tmp, last, 1);
           if (last == nullptr) {
             dir = true;
             TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
-            edgeIndex->lookup(&it, tmp, last, 1);
+            edgeIndex->lookup(_trx, &it, tmp, last, 1);
           }
         }
       } else {
         TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
-        edgeIndex->lookup(&it, tmp, last, 1);
+        edgeIndex->lookup(_trx, &it, tmp, last, 1);
         while (last == nullptr) {
           // now change direction
           dir = true;
           TRI_edge_index_iterator_t it(TRI_EDGE_OUT, startVertex.cid, startVertex.key);
-          edgeIndex->lookup(&it, tmp, last, 1);
+          edgeIndex->lookup(_trx, &it, tmp, last, 1);
           if (last == nullptr) {
             // The other direction also has no further edges
             dir = false;
@@ -951,7 +946,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
             }
             TRI_edge_index_iterator_t it(TRI_EDGE_IN, startVertex.cid, startVertex.key);
             edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
-            edgeIndex->lookup(&it, tmp, last, 1);
+            edgeIndex->lookup(_trx, &it, tmp, last, 1);
           }
         }
       }
@@ -965,7 +960,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
           return;
         }
         EdgeInfo e(
-          _edgeCols.at(eColIdx)->_info._cid,
+          _edgeCols.at(eColIdx)->_info.id(),
           tmp.back()
         );
         VertexId other;
@@ -993,7 +988,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
       // Do not touch the bool parameter, as long as it is default the first encountered nullptr is final
       TRI_edge_index_iterator_t it(_opts.direction, startVertex.cid, startVertex.key);
       triagens::arango::EdgeIndex* edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
-      edgeIndex->lookup(&it, tmp, last, 1);
+      edgeIndex->lookup(_trx, &it, tmp, last, 1);
       while (last == nullptr) {
         // This edge collection does not have any more edges for this vertex. Check the next one
         ++eColIdx;
@@ -1002,7 +997,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
           return;
         }
         edgeIndex = _edgeCols.at(eColIdx)->edgeIndex();
-        edgeIndex->lookup(&it, tmp, last, 1);
+        edgeIndex->lookup(_trx, &it, tmp, last, 1);
       }
       if (last != nullptr) {
         // sth is stored in tmp. Now push it on edges
@@ -1014,7 +1009,7 @@ void DepthFirstTraverser::_defInternalFunctions () {
           return;
         }
         EdgeInfo e(
-          _edgeCols.at(eColIdx)->_info._cid,
+          _edgeCols.at(eColIdx)->_info.id(),
           tmp.back()
         );
         VertexId other;

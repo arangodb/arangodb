@@ -35,6 +35,12 @@
 #include "VocBase/ExampleMatcher.h"
 #include "VocBase/Traverser.h"
 
+namespace triagens {
+  namespace arango {
+    class Transaction;
+  }
+}
+
 class VocShaper;
 
 struct EdgeInfo {
@@ -42,7 +48,7 @@ struct EdgeInfo {
   TRI_doc_mptr_copy_t mptr;
 
   EdgeInfo (
-    TRI_voc_cid_t& pcid,
+    TRI_voc_cid_t pcid,
     TRI_doc_mptr_copy_t& pmptr
   ) : cid(pcid), mptr(pmptr) { }
 
@@ -355,8 +361,15 @@ typedef std::function<double(TRI_doc_mptr_copy_t& edge)> WeightCalculatorFunctio
 ////////////////////////////////////////////////////////////////////////////////
 
 class EdgeCollectionInfo {
+
   private:
-    
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the underlying transaction
+////////////////////////////////////////////////////////////////////////////////
+
+    triagens::arango::Transaction* _trx;
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -377,10 +390,12 @@ class EdgeCollectionInfo {
 
   public:
 
-    EdgeCollectionInfo (TRI_voc_cid_t& edgeCollectionCid,
+    EdgeCollectionInfo (triagens::arango::Transaction* trx,
+                        TRI_voc_cid_t& edgeCollectionCid,
                         TRI_document_collection_t* edgeCollection,
                         WeightCalculatorFunction weighter)
-      : _edgeCollectionCid(edgeCollectionCid),
+      : _trx(trx),
+        _edgeCollectionCid(edgeCollectionCid),
         _edgeCollection(edgeCollection),
         _weighter(weighter) {
     }
@@ -391,7 +406,7 @@ class EdgeCollectionInfo {
 
     std::vector<TRI_doc_mptr_copy_t> getEdges (TRI_edge_direction_e direction,
                                                triagens::arango::traverser::VertexId const& vertexId) const {
-      return TRI_LookupEdgesDocumentCollection(_edgeCollection,
+      return TRI_LookupEdgesDocumentCollection(_trx, _edgeCollection,
                    direction, vertexId.cid, const_cast<char*>(vertexId.key));
     }
 
@@ -459,7 +474,6 @@ std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,
     triagens::arango::traverser::ShortestPathOptions& opts
 );
-
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path> TRI_RunSimpleShortestPathSearch (
     std::vector<EdgeCollectionInfo*>& collectionInfos,

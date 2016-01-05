@@ -29,6 +29,8 @@
 #include "Basics/Common.h"
 #include "Aql/ExecutionPlan.h"
 #include "Basics/MutexLocker.h"
+#include <velocypack/velocypack-aliases.h>
+#include <deque>
 
 namespace triagens {
   namespace aql {
@@ -49,6 +51,17 @@ namespace triagens {
         int64_t rulesExecuted = 0;
         int64_t rulesSkipped  = 0;
         int64_t plansCreated  = 1; // 1 for the initial plan
+
+        VPackBuilder toVelocyPack () const {
+          VPackBuilder result;
+          {
+            VPackObjectBuilder b(&result);
+            result.add("rulesExecuted", VPackValue(rulesExecuted));
+            result.add("rulesSkipped", VPackValue(rulesSkipped));
+            result.add("plansCreated", VPackValue(plansCreated));
+          }
+          return result;
+        }
 
         TRI_json_t* toJson (TRI_memory_zone_t* zone) const {
           TRI_json_t* stats = TRI_CreateObjectJson(zone, 3);
@@ -151,9 +164,6 @@ namespace triagens {
 
         // remove SORT RAND() if appropriate
         removeSortRandRule_pass5                      = 720,
-
-        // specialize the variables used in a COLLECT INTO
-        specializeCollectVariables_pass5              = 730,
 
         // remove INTO for COLLECT if appropriate
         removeCollectIntoRule_pass5                   = 740,

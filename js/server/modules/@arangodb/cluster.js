@@ -458,6 +458,7 @@ function createLocalCollections (plannedCollections, planVersion) {
 
               collInfo.planId = collInfo.id;
               delete collInfo.id;  // must not actually set it here
+              delete collInfo.name;  // name is now shard
 
               for (shard in shards) {
                 if (shards.hasOwnProperty(shard)) {

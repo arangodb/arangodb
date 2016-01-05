@@ -43,7 +43,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_shape_s;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                REPLICATION LOGGER
@@ -116,7 +116,7 @@ struct TRI_replication_dump_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
-                                   struct TRI_vocbase_col_s*,
+                                   TRI_vocbase_col_t*,
                                    TRI_voc_tick_t,
                                    TRI_voc_tick_t,
                                    bool,

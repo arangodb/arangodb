@@ -573,7 +573,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
     case SHAPED: {
       TRI_ASSERT(document != nullptr);
       TRI_ASSERT(_marker != nullptr);
-      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(isolate, *trx, document->_info._cid, _marker);
+      return TRI_WrapShapedJson<triagens::arango::AqlTransaction>(isolate, *trx, document->_info.id(), _marker);
     }
 
     case DOCVEC: {
@@ -647,7 +647,7 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
       return TRI_ExpandShapedJson(
         shaper,
         trx->resolver(),
-        document->_info._cid,
+        document->_info.id(),
         _marker
       );
     }
@@ -723,7 +723,7 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
 
       // _id, _key, _rev
       char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
-      std::string id(trx->resolver()->getCollectionName(document->_info._cid));
+      std::string id(trx->resolver()->getCollectionName(document->_info.id()));
       id.push_back('/');
       id.append(key);
       json(TRI_VOC_ATTRIBUTE_ID, Json(id));
@@ -840,7 +840,7 @@ Json AqlValue::extractObjectMember (triagens::arango::AqlTransaction* trx,
         if (name[1] == 'i' && strcmp(name, TRI_VOC_ATTRIBUTE_ID) == 0) {
           // _id
           buffer.reset();
-          trx->resolver()->getCollectionName(document->_info._cid, buffer);
+          trx->resolver()->getCollectionName(document->_info.id(), buffer);
           buffer.appendChar('/');
           buffer.appendText(TRI_EXTRACT_MARKER_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());

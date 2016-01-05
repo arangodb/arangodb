@@ -34,8 +34,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/hashes.h"
 
-#include <mutex>
+#include <deque>
 #include <functional>
+#include <mutex>
+#include <stack>
+#include <thread>
 
 namespace triagens {
   namespace basics {

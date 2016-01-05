@@ -32,8 +32,12 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -73,7 +77,6 @@ void RestBaseHandler::handleError (Exception const& ex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from JSON
 ////////////////////////////////////////////////////////////////////////////////
-
 void RestBaseHandler::generateResult (TRI_json_t const* json) {
   generateResult(HttpResponse::OK, json);
 }
@@ -97,28 +100,57 @@ void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (VPackSlice const& slice) {
+  generateResult(HttpResponse::OK, slice);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateResult (HttpResponse::HttpResponseCode code,
+                                      VPackSlice const& slice) {
+  createResponse(code);
+  _response->setContentType("application/json; charset=utf-8");
+
+  VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+
+  VPackDumper dumper(&buffer);
+  try {
+    dumper.dump(slice);
+  }
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestBaseHandler::generateCanceled () {
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-  char* msg = TRI_DuplicateString("request canceled");
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add("error", VPackValue(true));
+    builder.add("code", VPackValue((int32_t) HttpResponse::GONE));
+    builder.add("errorNum", VPackValue((int32_t) TRI_ERROR_REQUEST_CANCELED));
+    builder.add("errorMessage", VPackValue("request canceled"));
+    builder.close();
 
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "code", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) HttpResponse::GONE));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) TRI_ERROR_REQUEST_CANCELED));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "errorMessage", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, msg, strlen(msg)));
-
-  generateResult(HttpResponse::GONE, json);
-
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    VPackSlice slice(builder.start());
+    generateResult(HttpResponse::GONE, slice);
+  } 
+  catch (...) {
+    generateError(HttpResponse::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,22 +178,37 @@ void RestBaseHandler::generateError (HttpResponse::HttpResponseCode code, int er
   createResponse(code);
   _response->setContentType("application/json; charset=utf-8");
 
-  _response->body().appendText("{\"error\":true,\"errorMessage\":\"");
-  if (message.empty()) {
-    // prevent empty error messages
-    _response->body().appendText(TRI_errno_string(errorCode));
+  VPackBuilder builder;
+  try {
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add("error", VPackValue(true));
+    if (message.empty()) {
+      // prevent empty error messages
+      builder.add("errorMessage", VPackValue(TRI_errno_string(errorCode)));
+    }
+    else {
+      builder.add("errorMessage", VPackValue(StringUtils::escapeUnicode(message)));
+    }
+    builder.add("code", VPackValue(code));
+    builder.add("errorNum", VPackValue(errorCode));
+    builder.close();
+    VPackSlice slice(builder.start());
+    VPackStringBufferAdapter buffer(_response->body().stringBuffer());
+    VPackDumper dumper(&buffer);
+    dumper.dump(slice);
   }
-  else {
-    _response->body().appendText(StringUtils::escapeUnicode(message));
+  catch (...) {
+    // Building the error response failed
   }
-
-  _response->body().appendText("\",\"code\":");
-  _response->body().appendInteger(code);
-  _response->body().appendText(",\"errorNum\":");
-  _response->body().appendInteger(errorCode);
-  _response->body().appendText("}");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an OUT_OF_MEMORY error
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::generateOOMError () {
+  generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

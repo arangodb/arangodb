@@ -83,7 +83,7 @@ namespace triagens {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json buildOptions (TRI_json_t const*);
+        VPackBuilder buildOptions (VPackSlice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an export cursor and return the first results

@@ -447,7 +447,7 @@ static void CopyAttributes (v8::Isolate* isolate,
   char buffer[TRI_VOC_KEY_MAX_LENGTH + 1];
   char const* docKey = TRI_EXTRACT_MARKER_KEY(static_cast<TRI_df_marker_t const*>(marker));
   TRI_ASSERT(docKey != nullptr);
-  size_t keyLength = strlen(docKey);// TODO: avoid strlen
+  size_t keyLength = strlen(docKey);
   memcpy(buffer, docKey, keyLength);
   if (excludeAttribute == nullptr ||
       strcmp(excludeAttribute, TRI_VOC_ATTRIBUTE_KEY) != 0) {
@@ -512,7 +512,6 @@ static void CopyAttributes (v8::Isolate* isolate,
         bool ok = shaper->extractShapedJson(&document, 0, pid, &json, &shape);
   
         if (ok && shape != nullptr) {
-          /// TODO: avoid strlen
           self->ForceSet(TRI_V8_STRING(att), TRI_JsonShapeData(isolate, shaper, shape, json._data.data, json._data.length));
         }
       }

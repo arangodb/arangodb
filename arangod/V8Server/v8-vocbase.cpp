@@ -52,6 +52,7 @@
 #include "V8/JSLoader.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8/V8LineEditor.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-replication.h"
@@ -1009,7 +1010,8 @@ static bool ReloadAuthCoordinator (TRI_vocbase_t* vocbase) {
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(json != nullptr);
 
-    result = TRI_PopulateAuthInfo(vocbase, json);
+    std::shared_ptr<VPackBuilder> transformed = triagens::basics::JsonHelper::toVelocyPack(json);
+    result = TRI_PopulateAuthInfo(vocbase, transformed->slice());
   }
   else {
     result = false;
@@ -1248,11 +1250,12 @@ static void JS_ExplainAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
     else {
       result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
     }
-    if (queryResult.stats == nullptr) {
+    VPackSlice stats = queryResult.stats.slice();
+    if (stats.isNone()) {
       result->Set(TRI_V8_STRING("stats"), v8::Object::New(isolate));
     }
     else {
-      result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(isolate, queryResult.stats));
+      result->Set(TRI_V8_STRING("stats"), TRI_VPackToV8(isolate, stats));
     }
   }
 
@@ -1315,10 +1318,11 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
   // return the array value as it is. this is a performance optimisation
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (queryResult.json != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING("json"),     TRI_ObjectJson(isolate, queryResult.json));
+    result->ForceSet(TRI_V8_ASCII_STRING("json"), TRI_ObjectJson(isolate, queryResult.json));
   }
-  if (queryResult.stats != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
+  VPackSlice stats = queryResult.stats.slice();
+  if (! stats.isNone()) {
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_VPackToV8(isolate, stats));
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
@@ -1417,8 +1421,9 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   result->ForceSet(TRI_V8_ASCII_STRING("json"), queryResult.result);
 
-  if (queryResult.stats != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_ObjectJson(isolate, queryResult.stats));
+  VPackSlice stats = queryResult.stats.slice();
+  if (! stats.isNone()) {
+    result->ForceSet(TRI_V8_ASCII_STRING("stats"), TRI_VPackToV8(isolate, stats));
   }
   if (queryResult.profile != nullptr) {
     result->ForceSet(TRI_V8_ASCII_STRING("profile"), TRI_ObjectJson(isolate, queryResult.profile));
@@ -1686,7 +1691,7 @@ static void JS_QueryCachePropertiesAql (const v8::FunctionCallbackInfo<v8::Value
   }
 
   auto properties = queryCache->properties();
-  TRI_V8_RETURN(TRI_ObjectJson(isolate, properties.json()));
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, properties.slice()));
   
   // fetch current configuration and return it
   TRI_V8_TRY_CATCH_END
@@ -2061,12 +2066,9 @@ static void V8ArrayToStrings (const v8::Handle<v8::Value>& parameter,
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
   uint32_t const n = array->Length();
   for (uint32_t i = 0; i < n; ++i) {
-    if (! array->Get(i)->IsString()) {
-      // TODO Error Handling
-    } 
-    else {
+    if (array->Get(i)->IsString()) {
       result.emplace(TRI_ObjectToString(array->Get(i)));
-    }
+    } 
   }
 }
 
@@ -2296,6 +2298,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       auto cid = resolver->getCollectionId(it);
       auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
+        trx.get(),
         cid,
         colObj,
         AttributeWeightCalculator(
@@ -2309,6 +2312,7 @@ static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& arg
       auto cid = resolver->getCollectionId(it);
       auto colObj = ditches.find(cid)->second.col->_collection->_collection;
       edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
+        trx.get(),
         cid,
         colObj,
         HopWeightCalculator()
@@ -2633,6 +2637,7 @@ static void JS_QueryNeighbors (const v8::FunctionCallbackInfo<v8::Value>& args) 
     auto cid = resolver->getCollectionId(it);
     auto colObj = ditches.find(cid)->second.col->_collection->_collection;
     edgeCollectionInfos.emplace_back(new EdgeCollectionInfo(
+      trx.get(),
       cid,
       colObj,
       HopWeightCalculator()
@@ -2741,7 +2746,6 @@ static void JS_QuerySleepAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   double n = TRI_ObjectToDouble(args[0]);
   double const until = TRI_microtime() + n;
 
-  // TODO: use select etc. to wait until point in time
   while (TRI_microtime() < until) {
     usleep(10000);
 
@@ -2949,10 +2953,8 @@ static void MapGetVocBase (v8::Local<v8::String> const name,
     TRI_V8_RETURN_UNDEFINED();
   }
 
-  // TODO: caching the result makes subsequent results much faster, but
-  // prevents physical removal of the collection or database
   if (! cacheObject.IsEmpty()) {
-    cacheObject->ForceSet(cacheName, result); //, v8::DontEnum);
+    cacheObject->ForceSet(cacheName, result);
   }
 
   TRI_V8_RETURN(result);
@@ -4008,7 +4010,6 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
 
   v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
   if (v.IsEmpty()) {
-    // TODO: raise an error here
     LOG_ERROR("out of memory when initializing VocBase");
   }
   else {

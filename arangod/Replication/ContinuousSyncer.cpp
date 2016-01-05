@@ -573,7 +573,8 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    int res = applyCollectionDumpMarker(trxCollection,
+    int res = applyCollectionDumpMarker(trx,
+                                        trxCollection,
                                         type,
                                         (const TRI_voc_key_t) keyJson->_value._string.data,
                                         rid,
@@ -607,7 +608,8 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    res = applyCollectionDumpMarker(trxCollection,
+    res = applyCollectionDumpMarker(&trx,
+                                    trxCollection,
                                     type,
                                     (const TRI_voc_key_t) keyJson->_value._string.data,
                                     rid,
@@ -791,13 +793,6 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
-  TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
-
-  bool waitForSync      = JsonHelper::getBooleanValue(collectionJson, "waitForSync", false);
-  bool doCompact        = JsonHelper::getBooleanValue(collectionJson, "doCompact", true);
-  int maximalSize       = JsonHelper::getNumericValue<int>(collectionJson, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-  uint32_t indexBuckets = JsonHelper::getNumericValue<uint32_t>(collectionJson, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
-
   TRI_voc_cid_t cid = getCid(json);
   char const* cname = getCName(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
@@ -814,18 +809,13 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
   }
 
   try {
+
+    TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
+    std::shared_ptr<arangodb::velocypack::Builder> tmp = triagens::basics::JsonHelper::toVelocyPack(collectionJson);
     triagens::arango::CollectionGuard guard(_vocbase, cid);
-
-    TRI_col_info_t parameters;
-
-    // only need to set these three properties as the others cannot be updated on the fly
-    parameters._doCompact    = doCompact;
-    parameters._maximalSize  = maximalSize;
-    parameters._waitForSync  = waitForSync;
-    parameters._indexBuckets = indexBuckets;
-
     bool doSync = _vocbase->_settings.forceSyncProperties;
-    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters, doSync);
+
+    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, tmp->slice(), doSync);
   }
   catch (triagens::basics::Exception const& ex) {
     return ex.code();

@@ -62,6 +62,11 @@
 #include "V8Server/v8-user-structures.h"
 #include "Wal/LogfileManager.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 
 // -----------------------------------------------------------------------------
@@ -85,16 +90,6 @@ static std::atomic<bool> ThrowCollectionNotLoaded(false);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auxiliary struct for index iteration
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct index_json_helper_s {
-  TRI_json_t*    _list;
-  TRI_voc_tick_t _maxTick;
-}
-index_json_helper_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief states for TRI_DropCollectionVocBase()
@@ -474,14 +469,6 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           VOCBASE
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new collection
 ///
@@ -550,7 +537,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("duplicate entry for collection name '%s'", name);
     LOG_ERROR("collection id %llu has same name as already added collection %llu",
               (unsigned long long) cid,
-              (unsigned long long) ((TRI_vocbase_col_t*) found)->_cid);
+              (unsigned long long) static_cast<TRI_vocbase_col_t const*>(found)->_cid);
 
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -607,12 +594,12 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
-                                            TRI_col_info_t* parameter,
+                                            triagens::arango::VocbaseCollectionInfo& parameters,
                                             TRI_voc_cid_t& cid,
                                             bool writeMarker,
-                                            TRI_json_t*& json) {
-  TRI_ASSERT(json == nullptr);
-  char const* name = parameter->_name;
+                                            VPackBuilder& builder) {
+  TRI_ASSERT(! builder.isClosed());
+  std::string name = parameters.name();
 
   WRITE_LOCKER(vocbase->_collectionsLock);
 
@@ -630,7 +617,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   // check that we have a new name
   // .............................................................................
 
-  void const* found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name);
+  void const* found = TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name.c_str());
 
   if (found != nullptr) {
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
@@ -641,7 +628,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   // ok, construct the collection
   // .............................................................................
 
-  TRI_document_collection_t* document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameter, cid);
+  TRI_document_collection_t* document = TRI_CreateDocumentCollection(vocbase, vocbase->_path, parameters, cid);
 
   if (document == nullptr) {
     return nullptr;
@@ -651,9 +638,9 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
 
   // add collection container
   TRI_vocbase_col_t* collection = AddCollection(vocbase,
-                                                col->_info._type,
-                                                col->_info._name,
-                                                col->_info._cid,
+                                                col->_info.type(),
+                                                col->_info.namec_str(),
+                                                col->_info.id(),
                                                 col->_directory);
 
   if (collection == nullptr) {
@@ -663,13 +650,13 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  if (parameter->_planId > 0) {
-    collection->_planId = parameter->_planId;
-    col->_info._planId = parameter->_planId;
+  if (parameters.planId() > 0) {
+    collection->_planId = parameters.planId();
+    col->_info.setPlanId(parameters.planId());
   }
 
   // cid might have been assigned
-  cid = col->_info._cid;
+  cid = col->_info.id();
 
   collection->_status = TRI_VOC_COL_STATUS_LOADED;
   collection->_collection = document;
@@ -678,7 +665,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                  sizeof(collection->_path) - 1);
 
   if (writeMarker) {
-    json = TRI_CreateJsonCollectionInfo(&col->_info);
+    TRI_CreateVelocyPackCollectionInfo(col->_info, builder);
   }
 
   return collection;
@@ -717,22 +704,21 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
     // .............................................................................
 
     else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-      TRI_col_info_t info;
-      int res = TRI_LoadCollectionInfo(collection->_path, &info, true);
+      try {
+        triagens::arango::VocbaseCollectionInfo info = triagens::arango::VocbaseCollectionInfo::fromFile(collection->_path, vocbase, newName, true);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        return TRI_set_errno(res);
+        int res = info.saveToFile(collection->_path,
+                                  vocbase->_settings.forceSyncProperties);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          return TRI_set_errno(res);
+        }
+
+      }
+      catch (triagens::basics::Exception const& e) {
+        return TRI_set_errno(e.code());
       }
 
-      TRI_CopyString(info._name, newName, sizeof(info._name) - 1);
-
-      res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
-
-      TRI_FreeCollectionInfoOptions(&info);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return TRI_set_errno(res);
-      }
       // fall-through intentional
     }
 
@@ -812,11 +798,9 @@ static int ScanPath (TRI_vocbase_t* vocbase,
                      char const* path,
                      bool isUpgrade,
                      bool iterateMarkers) {
-  TRI_vector_string_t files;
   regmatch_t matches[2];
   regex_t re;
   int res;
-  size_t i, n;
 
   res = regcomp(&re, "^collection-([0-9][0-9]*)$", REG_EXTENDED);
 
@@ -826,23 +810,21 @@ static int ScanPath (TRI_vocbase_t* vocbase,
     return res;
   }
 
-  files = TRI_FilesDirectory(path);
-  n = files._length;
+  std::vector<std::string> files = TRI_FilesDirectory(path);
 
   if (iterateMarkers) {
     LOG_TRACE("scanning all collection markers in database '%s", vocbase->_name);
   }
 
-  for (i = 0;  i < n;  ++i) {
-    char* name = files._buffer[i];
-    TRI_ASSERT(name != nullptr);
+  for (auto const& name : files) {
+    TRI_ASSERT(! name.empty());
 
-    if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+    if (regexec(&re, name.c_str(), sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // no match, ignore this file
       continue;
     }
 
-    char* filePtr = TRI_Concatenate2File(path, name);
+    char* filePtr = TRI_Concatenate2File(path, name.c_str());
 
     if (filePtr == nullptr) {
       LOG_FATAL_AND_EXIT("out of memory");
@@ -852,7 +834,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
     TRI_FreeString(TRI_CORE_MEM_ZONE, filePtr);
 
     if (TRI_IsDirectory(file.c_str())) {
-      TRI_col_info_t info;
 
       if (! TRI_IsWritable(file.c_str())) {
         // the collection directory we found is not writable for the current user
@@ -860,20 +841,98 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         // encounter this situation
         LOG_ERROR("database subdirectory '%s' is not writable for current user", file.c_str());
 
-        TRI_DestroyVectorString(&files);
         regfree(&re);
 
         return TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE);
       }
 
-      // no need to lock as we are scanning
-      res = TRI_LoadCollectionInfo(file.c_str(), &info, true);
+      int res = TRI_ERROR_NO_ERROR;
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        TRI_UpdateTickServer(info._cid);
+      try {
+        triagens::arango::VocbaseCollectionInfo info = triagens::arango::VocbaseCollectionInfo::fromFile(file.c_str(),
+                                                                                                         vocbase,
+                                                                                                         "", // Name is unused
+                                                                                                         true);
+        TRI_UpdateTickServer(info.id());
+
+        if (info.deleted()) {
+          // we found a collection that is marked as deleted.
+          // deleted collections should be removed on startup. this is the default
+          LOG_DEBUG("collection '%s' was deleted, wiping it", name.c_str());
+
+          res = TRI_RemoveDirectory(file.c_str());
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
+          }
+        }
+        else {
+          // we found a collection that is still active
+          TRI_col_type_e type = info.type();
+          TRI_vocbase_col_t* c;
+
+          if (info.version() < TRI_COL_VERSION) {
+            // collection is too "old"
+
+            if (! isUpgrade) {
+              LOG_ERROR("collection '%s' has a too old version. Please start the server with the --upgrade option.",
+                        info.namec_str());
+
+              regfree(&re);
+
+              return TRI_set_errno(res);
+            }
+            else {
+              if (info.version() < TRI_COL_VERSION_13) {
+                LOG_ERROR("collection '%s' is too old to be upgraded with this ArangoDB version.", info.namec_str());
+                res = TRI_ERROR_ARANGO_ILLEGAL_STATE;
+              }
+              else {
+                LOG_INFO("upgrading collection '%s'", info.namec_str());
+                res = TRI_ERROR_NO_ERROR;
+              }
+
+              if (res == TRI_ERROR_NO_ERROR && info.version() < TRI_COL_VERSION_20) {
+                res = TRI_UpgradeCollection20(vocbase, file.c_str(), info);
+              }
+
+              if (res != TRI_ERROR_NO_ERROR) {
+                LOG_ERROR("upgrading collection '%s' failed.", info.namec_str());
+
+                regfree(&re);
+
+                return TRI_set_errno(res);
+              }
+            }
+          }
+
+          c = AddCollection(vocbase, type, info.namec_str(), info.id(), file.c_str());
+
+          if (c == nullptr) {
+            LOG_ERROR("failed to add document collection from '%s'", file.c_str());
+
+            regfree(&re);
+
+            return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
+          }
+
+          c->_planId = info.planId();
+          c->_status = TRI_VOC_COL_STATUS_UNLOADED;
+
+          if (iterateMarkers) {
+            // iterating markers may be time-consuming. we'll only do it if
+            // we have to
+            TRI_voc_tick_t tick;
+            TRI_IterateTicksCollection(file.c_str(), StartupTickIterator, &tick);
+
+            TRI_UpdateTickServer(tick);
+          }
+
+          LOG_DEBUG("added document collection from '%s'", file.c_str());
+        }
+
       }
-
-      if (res != TRI_ERROR_NO_ERROR) {
+      catch (triagens::basics::Exception const& e) {
         char* tmpfile = TRI_Concatenate2File(file.c_str(), ".tmp");
 
         if (TRI_ExistsFile(tmpfile)) {
@@ -881,101 +940,16 @@ static int ScanPath (TRI_vocbase_t* vocbase,
           TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
           // temp file still exists. this means the collection was not created fully
           // and needs to be ignored
-          TRI_FreeCollectionInfoOptions(&info);
-
           continue; // ignore this directory
         }
         
         TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
+        res = e.code();
 
         LOG_ERROR("cannot read collection info file in directory '%s': %s", file.c_str(), TRI_errno_string(res));
-        TRI_DestroyVectorString(&files);
-        TRI_FreeCollectionInfoOptions(&info);
         regfree(&re);
         return TRI_set_errno(res);
       }
-      else if (info._deleted) {
-        // we found a collection that is marked as deleted.
-        // deleted collections should be removed on startup. this is the default
-        LOG_DEBUG("collection '%s' was deleted, wiping it", name);
-
-        res = TRI_RemoveDirectory(file.c_str());
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
-        }
-      }
-      else {
-        // we found a collection that is still active
-        TRI_col_type_e type = info._type;
-        TRI_vocbase_col_t* c;
-
-        if (info._version < TRI_COL_VERSION) {
-          // collection is too "old"
-
-          if (! isUpgrade) {
-            LOG_ERROR("collection '%s' has a too old version. Please start the server with the --upgrade option.",
-                      info._name);
-
-            TRI_DestroyVectorString(&files);
-            TRI_FreeCollectionInfoOptions(&info);
-            regfree(&re);
-
-            return TRI_set_errno(res);
-          }
-          else {
-            if (info._version < TRI_COL_VERSION_13) {
-              LOG_ERROR("collection '%s' is too old to be upgraded with this ArangoDB version.", info._name);
-              res = TRI_ERROR_ARANGO_ILLEGAL_STATE;
-            }
-            else {
-              LOG_INFO("upgrading collection '%s'", info._name);
-              res = TRI_ERROR_NO_ERROR;
-            }
-
-            if (res == TRI_ERROR_NO_ERROR && info._version < TRI_COL_VERSION_20) {
-              res = TRI_UpgradeCollection20(vocbase, file.c_str(), &info);
-            }
-
-            if (res != TRI_ERROR_NO_ERROR) {
-              LOG_ERROR("upgrading collection '%s' failed.", info._name);
-
-              TRI_DestroyVectorString(&files);
-              TRI_FreeCollectionInfoOptions(&info);
-              regfree(&re);
-
-              return TRI_set_errno(res);
-            }
-          }
-        }
-
-        c = AddCollection(vocbase, type, info._name, info._cid, file.c_str());
-
-        if (c == nullptr) {
-          LOG_ERROR("failed to add document collection from '%s'", file.c_str());
-
-          TRI_DestroyVectorString(&files);
-          TRI_FreeCollectionInfoOptions(&info);
-          regfree(&re);
-
-          return TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_COLLECTION);
-        }
-
-        c->_planId = info._planId;
-        c->_status = TRI_VOC_COL_STATUS_UNLOADED;
-
-        if (iterateMarkers) {
-          // iterating markers may be time-consuming. we'll only do it if
-          // we have to
-          TRI_voc_tick_t tick;
-          TRI_IterateTicksCollection(file.c_str(), StartupTickIterator, &tick);
-
-          TRI_UpdateTickServer(tick);
-        }
-
-        LOG_DEBUG("added document collection from '%s'", file.c_str());
-      }
-      TRI_FreeCollectionInfoOptions(&info);
     }
     else {
       LOG_DEBUG("ignoring non-directory '%s'", file.c_str());
@@ -983,8 +957,6 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   }
 
   regfree(&re);
-
-  TRI_DestroyVectorString(&files);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1177,31 +1149,33 @@ static int DropCollection (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    TRI_col_info_t info;
+    try {
+      triagens::arango::VocbaseCollectionInfo info =
+        triagens::arango::VocbaseCollectionInfo::fromFile(collection->_path,
+                                                          collection->_vocbase,
+                                                          collection->_name,
+                                                          true);
+      if (! info.deleted()) {
+        info.setDeleted(true);
 
-    int res = TRI_LoadCollectionInfo(collection->_path, &info, true);
+        // we don't need to fsync if we are in the recovery phase
+        bool doSync = (vocbase->_settings.forceSyncProperties &&
+                       ! triagens::wal::LogfileManager::instance()->isInRecovery());
 
-    if (res != TRI_ERROR_NO_ERROR) {
+        int res = info.saveToFile(collection->_path, doSync);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+          return TRI_set_errno(res);
+        }
+      }
+
+    }
+    catch (triagens::basics::Exception const& e) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-      return TRI_set_errno(res);
-    }
-
-    if (! info._deleted) {
-      info._deleted = true;
-
-      // we don't need to fsync if we are in the recovery phase
-      bool doSync = (vocbase->_settings.forceSyncProperties &&
-                     ! triagens::wal::LogfileManager::instance()->isInRecovery());
-
-      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync);
-      TRI_FreeCollectionInfoOptions(&info);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-        return TRI_set_errno(res);
-      }
+      return TRI_set_errno(e.code());
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
@@ -1236,12 +1210,12 @@ static int DropCollection (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
-    collection->_collection->_info._deleted = true;
+    collection->_collection->_info.setDeleted(true);
       
     bool doSync = (vocbase->_settings.forceSyncProperties &&
                    ! triagens::wal::LogfileManager::instance()->isInRecovery());
-
-    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr, doSync);
+    VPackSlice slice;
+    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, slice, doSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -1273,56 +1247,6 @@ static int DropCollection (TRI_vocbase_t* vocbase,
 
     return TRI_set_errno(TRI_ERROR_INTERNAL);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief filter callback function for indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
-                                  char const* filename,
-                                  void* data) {
-  index_json_helper_t* ij = (index_json_helper_t*) data;
-
-  TRI_json_t* indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
-
-  if (indexJson == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  // compare index id with tick value
-  TRI_json_t* id = TRI_LookupObjectJson(indexJson, "id");
-
-  // index id is numeric
-  if (TRI_IsNumberJson(id)) {
-    uint64_t iid = (uint64_t) id->_value._number;
-
-    if (iid > (uint64_t) ij->_maxTick) {
-      // index too new
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
-    }
-    else {
-      // convert "id" to string
-      char* idString = TRI_StringUInt64(iid);
-      TRI_InitStringJson(id, idString, strlen(idString));
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
-    }
-  }
-
-  // index id is a string
-  else if (TRI_IsStringJson(id)) {
-    uint64_t iid = TRI_UInt64String2(id->_value._string.data, id->_value._string.length - 1);
-
-    if (iid > (uint64_t) ij->_maxTick) {
-      // index too new
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, indexJson);
-    }
-    else {
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1394,6 +1318,137 @@ void TRI_FreeCollectionVocBase (TRI_vocbase_col_t* collection) {
   TRI_DestroyReadWriteLock(&collection->_lock);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the numeric part from a filename
+/// the filename must look like this: /.*type-abc\.ending$/, where abc is
+/// a number, and type and ending are arbitrary letters
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t GetNumericFilenamePart (const char* filename) {
+  const char* pos1 = strrchr(filename, '.');
+
+  if (pos1 == nullptr) {
+    return 0;
+  }
+
+  const char* pos2 = strrchr(filename, '-');
+
+  if (pos2 == nullptr || pos2 > pos1) {
+    return 0;
+  }
+
+  return TRI_UInt64String2(pos2 + 1, pos1 - pos2 - 1);
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two filenames, based on the numeric part contained in
+/// the filename. this is used to sort datafile filenames on startup
+////////////////////////////////////////////////////////////////////////////////
+
+static bool FilenameStringComparator (std::string const& lhs, std::string const& rhs) {
+
+  const uint64_t numLeft  = GetNumericFilenamePart(lhs.c_str());
+  const uint64_t numRight = GetNumericFilenamePart(rhs.c_str());
+  return numLeft < numRight;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                           class TRI_vocbase_col_t
+// -----------------------------------------------------------------------------
+
+void TRI_vocbase_col_t::toVelocyPack (VPackBuilder& builder,
+                                      bool includeIndexes,
+                                      TRI_voc_tick_t maxTick) {
+  TRI_ASSERT(! builder.isClosed());
+  char* filename = TRI_Concatenate2File(_path, TRI_VOC_PARAMETER_FILE);
+  std::string path = std::string(filename, strlen(filename));
+
+  std::shared_ptr<VPackBuilder> fileInfoBuilder = triagens::basics::VelocyPackHelper::velocyPackFromFile(path);
+  builder.add("parameters", fileInfoBuilder->slice());
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  if (includeIndexes) {
+    builder.add("indexes", VPackValue(VPackValueType::Array));
+    toVelocyPackIndexes(builder, maxTick);
+    builder.close();
+  }
+
+}
+
+std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPack (bool includeIndexes,
+                                                               TRI_voc_tick_t maxTick) {
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder b(builder.get());
+    toVelocyPack(*builder, includeIndexes, maxTick);
+  }
+
+  return builder;
+}
+
+void TRI_vocbase_col_t::toVelocyPackIndexes (VPackBuilder& builder,
+                                             TRI_voc_tick_t maxTick) {
+  TRI_ASSERT(! builder.isClosed());
+  regex_t re;
+
+  if (regcomp(&re, "^index-[0-9][0-9]*\\.json$", REG_EXTENDED | REG_NOSUB) != 0) {
+    LOG_ERROR("unable to compile regular expression");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  std::vector<std::string> files = TRI_FilesDirectory(_path);
+
+  // sort by index id
+  std::sort(files.begin(), files.end(), FilenameStringComparator);
+
+  for (auto const& file : files) {
+    if (regexec(&re, file.c_str(), (size_t) 0, nullptr, 0) == 0) {
+      // TODO: fix memleak
+      char* fqn = TRI_Concatenate2File(_path, file.c_str());
+      std::string path = std::string(fqn, strlen(fqn));
+      std::shared_ptr<VPackBuilder> indexVPack = triagens::basics::VelocyPackHelper::velocyPackFromFile(path);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, fqn);
+
+      VPackSlice const indexSlice = indexVPack->slice();
+      VPackSlice const id = indexSlice.get("id");
+
+      if (id.isNumber()) {
+        uint64_t iid = id.getNumericValue<uint64_t>();
+        if (iid <= static_cast<uint64_t>(maxTick)) {
+          // convert "id" to string
+          VPackBuilder toMerge;
+          {
+            VPackObjectBuilder b(&toMerge);
+            char* idString = TRI_StringUInt64(iid);
+            toMerge.add("id", VPackValue(idString));
+          }
+          VPackBuilder mergedBuilder = VPackCollection::merge(indexSlice, toMerge.slice(), false);
+          builder.add(mergedBuilder.slice());
+        }
+      }
+      else if (id.isString()) {
+        std::string data = id.copyString();
+        uint64_t iid = TRI_UInt64String2(data.c_str(), data.length());
+        if (iid <= static_cast<uint64_t>(maxTick)) {
+          builder.add(indexSlice);
+        }
+      }
+    }
+  }
+
+  regfree(&re);
+}
+
+std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes (TRI_voc_tick_t maxTick) {
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openArray();
+  toVelocyPackIndexes(*builder, maxTick);
+  builder->close();
+  return builder;
 }
 
 // -----------------------------------------------------------------------------
@@ -1649,17 +1704,15 @@ std::vector<std::string> TRI_CollectionNamesVocBase (TRI_vocbase_t* vocbase) {
 /// and indexes, up to a specific tick value
 /// while the collections are iterated over, there will be a global lock so
 /// that there will be consistent view of collections & their properties
+/// The list of collections will be sorted if sort function is given
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
-                                             TRI_voc_tick_t maxTick,
-                                             bool (*filter)(TRI_vocbase_col_t*, void*),
-                                             void* data) {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-  if (json == nullptr) {
-    return nullptr;
-  }
+std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
+                                                               TRI_voc_tick_t maxTick,
+                                                               bool (*filter)(TRI_vocbase_col_t*, void*),
+                                                               void* data,
+                                                               bool shouldSort,
+                                                               std::function<bool (TRI_vocbase_col_t* , TRI_vocbase_col_t*)> sortCallback) {
 
   std::vector<TRI_vocbase_col_t*> collections;
 
@@ -1673,55 +1726,47 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
     collections = vocbase->_collections;
   }
 
-  for (auto& collection : collections) {
-    TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-
-    if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
-        collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
-      // we do not need to care about deleted or corrupted collections
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      continue;
-    }
-
-    if (collection->_cid > maxTick) {
-      // collection is too new
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      continue;
-    }
-
-    // check if we want this collection
-    if (filter != nullptr && ! filter(collection, data)) {
-      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-      continue;
-    }
-
-    TRI_json_t* result = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
-
-    if (result != nullptr) {
-      TRI_json_t* collectionInfo = TRI_ReadJsonCollectionInfo(collection);
-
-      if (collectionInfo != nullptr) {
-        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
-
-        TRI_json_t* indexesInfo = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-
-        if (indexesInfo != nullptr) {
-          index_json_helper_t ij;
-          ij._list    = indexesInfo;
-          ij._maxTick = maxTick;
-
-          TRI_IterateJsonIndexesCollectionInfo(collection, &FilterCollectionIndex, &ij);
-          TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, result, "indexes", indexesInfo);
-        }
-      }
-
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, json, result);
-    }
-
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+  if (shouldSort && collections.size() > 1) {
+    std::sort(collections.begin(), collections.end(), sortCallback);
   }
 
-  return json;
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder b(builder.get());
+
+    for (auto& collection : collections) {
+      TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
+
+      if (collection->_status == TRI_VOC_COL_STATUS_DELETED ||
+          collection->_status == TRI_VOC_COL_STATUS_CORRUPTED) {
+        // we do not need to care about deleted or corrupted collections
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        continue;
+      }
+
+      if (collection->_cid > maxTick) {
+        // collection is too new
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        continue;
+      }
+
+      // check if we want this collection
+      if (filter != nullptr && ! filter(collection, data)) {
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        continue;
+      }
+      try {
+        VPackObjectBuilder b(builder.get());
+        collection->toVelocyPack(*builder, true, maxTick);
+      } 
+      catch (...) {
+        TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+        throw;
+      }
+      TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+    }
+  }
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1833,17 +1878,13 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
   }
   else {
     // collection not found. now create it
-    TRI_col_info_t parameter;
-
-    TRI_InitCollectionInfo(vocbase,
-                           &parameter,
-                           name,
-                           (TRI_col_type_e) type,
-                           (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize,
-                           nullptr);
-
-    TRI_vocbase_col_t* collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, true);
-    TRI_FreeCollectionInfoOptions(&parameter);
+    VPackBuilder builder; // DO NOT FILL IT
+    triagens::arango::VocbaseCollectionInfo parameter(vocbase,
+                                                      name,
+                                                      (TRI_col_type_e) type,
+                                                      (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize,
+                                                      builder.slice());
+    TRI_vocbase_col_t* collection = TRI_CreateCollectionVocBase(vocbase, parameter, 0, true);
 
     return collection;
   }
@@ -1859,13 +1900,12 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
-                                                TRI_col_info_t* parameters,
+                                                triagens::arango::VocbaseCollectionInfo& parameters,
                                                 TRI_voc_cid_t cid,
                                                 bool writeMarker) {
-  TRI_ASSERT(parameters != nullptr);
 
   // check that the name does not contain any strange characters
-  if (! TRI_IsAllowedNameCollection(parameters->_isSystem, parameters->_name)) {
+  if (! TRI_IsAllowedNameCollection(parameters.isSystem(), parameters.namec_str())) {
     TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
 
     return nullptr;
@@ -1873,30 +1913,29 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   READ_LOCKER(vocbase->_inventoryLock);
 
-  TRI_json_t* json = nullptr;
-  auto collection = CreateCollection(vocbase, parameters, cid, writeMarker, json);
+  TRI_vocbase_col_t* collection;
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder b(&builder);
+    collection = CreateCollection(vocbase, parameters, cid, writeMarker,
+                                  builder);
+  }
 
   if (! writeMarker) {
-    TRI_ASSERT(json == nullptr);
     return collection;
   }
-
-  if (json == nullptr) {
-    // TODO: what to do here?
-    return collection;
-  }
+  VPackSlice const slice = builder.slice();
 
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::CreateCollectionMarker marker(vocbase->_id, cid, triagens::basics::JsonHelper::toString(json));
+    triagens::wal::CreateCollectionMarker marker(vocbase->_id, cid, slice.toJson());
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return collection;
   }
   catch (triagens::basics::Exception const& ex) {
@@ -1906,7 +1945,6 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
     res = TRI_ERROR_INTERNAL;
   }
 
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
   LOG_WARNING("could not save collection create marker in log: %s", TRI_errno_string(res));
 
   // TODO: what to do here?
@@ -2399,7 +2437,7 @@ TRI_vocbase_t::TRI_vocbase_t (TRI_server_t* server,
   _name = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
     
   // use the defaults provided
-  TRI_ApplyVocBaseDefaults(this, defaults);
+  defaults->applyToVocBase(this);
     
   // init collections
   _collections.reserve(32);

@@ -31,11 +31,12 @@
 #define ARANGODB_ADMIN_REST_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "HttpServer/HttpHandler.h"
-
 #include "Basics/json.h"
+#include "HttpServer/HttpHandler.h"
 #include "Rest/HttpResponse.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class RestBaseHandler
@@ -94,6 +95,19 @@ namespace triagens {
                                      TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateResult (VPackSlice const& slice);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a result from VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateResult (rest::HttpResponse::HttpResponseCode,
+                                     VPackSlice const& slice);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a cancel message
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,6 +127,12 @@ namespace triagens {
         virtual void generateError (rest::HttpResponse::HttpResponseCode,
                                     int,
                                     std::string const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates an OUT_OF_MEMORY error
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void generateOOMError ();
 
     };
   }

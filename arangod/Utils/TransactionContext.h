@@ -31,8 +31,10 @@
 #define ARANGODB_UTILS_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
-
 #include "Utils/CollectionNameResolver.h"
+
+#include <velocypack/Options.h>
+#include <velocypack/velocypack-aliases.h>
 
 struct TRI_transaction_s;
 
@@ -81,6 +83,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual CollectionNameResolver const* getResolver () const = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the vpack options
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual VPackOptions const* getVPackOptions () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get parent transaction (if any)

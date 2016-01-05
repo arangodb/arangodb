@@ -43,10 +43,10 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_replication_applier_configuration_t;
+class TRI_replication_applier_configuration_t;
 struct TRI_transaction_collection_s;
 struct TRI_vocbase_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 namespace triagens {
 
@@ -61,6 +61,7 @@ namespace triagens {
   }
 
   namespace arango {
+    class Transaction;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Syncer
@@ -73,13 +74,16 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+        
+        Syncer (Syncer const&) = delete;
+        Syncer& operator= (Syncer const&) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
         Syncer (TRI_vocbase_t*,
-                struct TRI_replication_applier_configuration_t const*);
+                TRI_replication_applier_configuration_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -131,7 +135,8 @@ namespace triagens {
 /// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDumpMarker (struct TRI_transaction_collection_s*,
+        int applyCollectionDumpMarker (triagens::arango::Transaction*,
+                                       struct TRI_transaction_collection_s*,
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        const TRI_voc_rid_t,
@@ -143,7 +148,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int createCollection (struct TRI_json_t const*,
-                              struct TRI_vocbase_col_s**);
+                              TRI_vocbase_col_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection, based on the JSON provided

@@ -70,14 +70,17 @@ namespace triagens {
     class SortCondition;
   }
   namespace arango {
+    class Transaction;
 
     class HashIndexIterator final : public IndexIterator {
 
       public:
 
-        HashIndexIterator (HashIndex const* index,
+        HashIndexIterator (triagens::arango::Transaction* trx,
+                           HashIndex const* index,
                            std::vector<TRI_hash_index_search_value_t*>& keys)
-        : _index(index),
+        : _trx(trx),
+          _index(index),
           _keys(keys),
           _position(0),
           _buffer(),
@@ -96,6 +99,7 @@ namespace triagens {
 
       private:
 
+        triagens::arango::Transaction*               _trx;
         HashIndex const*                             _index;
         std::vector<TRI_hash_index_search_value_t*>  _keys;
         size_t                                       _position;
@@ -149,14 +153,15 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
          
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
         
-        int batchInsert (std::vector<TRI_doc_mptr_t const*> const*,
+        int batchInsert (triagens::arango::Transaction*, 
+                         std::vector<TRI_doc_mptr_t const*> const*,
                          size_t) override final;
 
-        int sizeHint (size_t) override final;
+        int sizeHint (triagens::arango::Transaction*, size_t) override final;
 
         bool hasBatchInsert () const override final {
           return true;
@@ -170,14 +175,16 @@ namespace triagens {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_hash_index_search_value_t*,
+        int lookup (triagens::arango::Transaction*,
+                    TRI_hash_index_search_value_t*,
                     std::vector<TRI_doc_mptr_t*>&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (TRI_hash_index_search_value_t*,
+        int lookup (triagens::arango::Transaction*,
+                    TRI_hash_index_search_value_t*,
                     std::vector<TRI_doc_mptr_copy_t>&,
                     TRI_index_element_t*&,
                     size_t batchSize) const;
@@ -188,7 +195,8 @@ namespace triagens {
                                       size_t&,
                                       double&) const override;
 
-        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                             IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
@@ -203,21 +211,37 @@ namespace triagens {
 
       private:
 
-        int insertUnique (struct TRI_doc_mptr_t const*, bool);
+        int insertUnique (triagens::arango::Transaction*,
+                          struct TRI_doc_mptr_t const*, 
+                          bool);
 
-        int batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const*, size_t);
+        int batchInsertUnique (triagens::arango::Transaction*, 
+                               std::vector<TRI_doc_mptr_t const*> const*, 
+                               size_t);
 
-        int insertMulti (struct TRI_doc_mptr_t const*, bool);
+        int insertMulti (triagens::arango::Transaction*,
+                         struct TRI_doc_mptr_t const*, 
+                         bool);
 
-        int batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const*, size_t);
+        int batchInsertMulti (triagens::arango::Transaction*, 
+                              std::vector<TRI_doc_mptr_t const*> const*, 
+                              size_t);
 
-        int removeUniqueElement (TRI_index_element_t*, bool);
+        int removeUniqueElement (triagens::arango::Transaction*,
+                                 TRI_index_element_t*, 
+                                 bool);
 
-        int removeUnique (struct TRI_doc_mptr_t const*, bool);
+        int removeUnique (triagens::arango::Transaction*,
+                          struct TRI_doc_mptr_t const*, 
+                          bool);
 
-        int removeMultiElement (TRI_index_element_t*, bool);
+        int removeMultiElement (triagens::arango::Transaction*,
+                                TRI_index_element_t*, 
+                                bool);
 
-        int removeMulti (struct TRI_doc_mptr_t const*, bool);
+        int removeMulti (triagens::arango::Transaction*,
+                         struct TRI_doc_mptr_t const*, 
+                         bool);
 
         bool accessFitsIndex (triagens::aql::AstNode const* access,
                               triagens::aql::AstNode const* other,
@@ -244,7 +268,8 @@ namespace triagens {
               : _numFields(n) {
             }
 
-            uint64_t operator() (TRI_index_element_t const* element,
+            uint64_t operator() (void* userData, 
+                                 TRI_index_element_t const* element,
                                  bool byKey = true) {
               uint64_t hash = 0x0123456789abcdef;
 
@@ -282,7 +307,8 @@ namespace triagens {
               : _numFields(n) {
             }
 
-            bool operator() (TRI_index_element_t const* left,
+            bool operator() (void* userData,
+                             TRI_index_element_t const* left,
                              TRI_index_element_t const* right) {
               TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
               TRI_ASSERT_EXPENSIVE(right->document() != nullptr);

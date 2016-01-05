@@ -61,9 +61,11 @@ namespace triagens {
 
         void reset () override;
 
-        EdgeIndexIterator (TRI_EdgeIndexHash_t const* index,
+        EdgeIndexIterator (triagens::arango::Transaction* trx,
+                           TRI_EdgeIndexHash_t const* index,
                            std::vector<TRI_edge_header_t>& searchValues) 
-        : _index(index),
+        : _trx(trx),
+          _index(index),
           _keys(std::move(searchValues)),
           _position(0),
           _last(nullptr),
@@ -79,6 +81,7 @@ namespace triagens {
 
       private:
 
+        triagens::arango::Transaction*     _trx;
         TRI_EdgeIndexHash_t const*         _index;
         std::vector<TRI_edge_header_t>     _keys;
         size_t                             _position;
@@ -144,28 +147,34 @@ namespace triagens {
         
         size_t memory () const override final;
 
+
+        std::shared_ptr<VPackBuilder> toVelocyPack (bool, bool) const override final;
+        std::shared_ptr<VPackBuilder> toVelocyPackFigures (bool) const override final;
+
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
          
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
-        
-        int batchInsert (std::vector<TRI_doc_mptr_t const*> const*,
-                         size_t) override final;
+        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges using the index, restarting at the edge pointed at
 /// by next
 ////////////////////////////////////////////////////////////////////////////////
       
-        void lookup (TRI_edge_index_iterator_t const*,
+        void lookup (triagens::arango::Transaction*,
+                     TRI_edge_index_iterator_t const*,
                      std::vector<TRI_doc_mptr_copy_t>&,
                      TRI_doc_mptr_copy_t*&,
                      size_t);
-
-        int sizeHint (size_t) override final;
         
+        int batchInsert (triagens::arango::Transaction*,
+                         std::vector<TRI_doc_mptr_t const*> const*,
+                         size_t) override final;
+
+        int sizeHint (triagens::arango::Transaction*, size_t) override final;
+
         bool hasBatchInsert () const override final {
           return true;
         }
@@ -184,7 +193,8 @@ namespace triagens {
                                       size_t&,
                                       double&) const override;
 
-        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                             IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,
@@ -203,7 +213,8 @@ namespace triagens {
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
     
-        IndexIterator* createIterator (IndexIteratorContext*,
+        IndexIterator* createIterator (triagens::arango::Transaction*,
+                                       IndexIteratorContext*,
                                        triagens::aql::AstNode const*,
                                        std::vector<triagens::aql::AstNode const*> const&) const;
 

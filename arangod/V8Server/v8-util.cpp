@@ -95,7 +95,7 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
     return false;
   }
 
-  // the handle must always be an ASCII string. These is no need to normalise it first
+  // the handle must always be an ASCII string. These is no need to normalize it first
   v8::String::Utf8Value str(arg);
 
   if (*str == nullptr) {
@@ -134,7 +134,7 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
 
 bool ExtractDocumentHandle (v8::Isolate* isolate,
                             v8::Handle<v8::Value> const val,
-                            string& collectionName,
+                            std::string& collectionName,
                             std::unique_ptr<char[]>& key,
                             TRI_voc_rid_t& rid) {
   // reset the collection identifier and the revision

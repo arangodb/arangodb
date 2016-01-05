@@ -32,11 +32,12 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_t;
 struct TRI_vocbase_t;
 
 // -----------------------------------------------------------------------------
@@ -47,15 +48,56 @@ struct TRI_vocbase_t;
 /// @brief authentication and authorization
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_vocbase_auth_s {
-  char* _username;
-  char* _passwordMethod;
-  char* _passwordSalt;
-  char* _passwordHash;
-  bool _active;
-  bool _mustChange;
-}
-TRI_vocbase_auth_t;
+class VocbaseAuthInfo {
+  private:
+    std::string const _username;
+    std::string const _passwordMethod;
+    std::string const _passwordSalt;
+    std::string const _passwordHash;
+    bool const _active;
+    bool const _mustChange;
+
+  public:
+    VocbaseAuthInfo (std::string const& username,
+                     std::string const& passwordMethod,
+                     std::string const& passwordSalt,
+                     std::string const& passwordHash,
+                     bool active,
+                     bool mustChange)
+    : _username(username),
+      _passwordMethod(passwordMethod),
+      _passwordSalt(passwordSalt),
+      _passwordHash(passwordHash),
+      _active(active), 
+      _mustChange(mustChange) {
+    }
+
+    ~VocbaseAuthInfo () {}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hashes the auth info
+////////////////////////////////////////////////////////////////////////////////
+
+    uint64_t hash () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the given string is equal to the username
+////////////////////////////////////////////////////////////////////////////////
+
+    bool isEqualName (char const*) const;
+
+    bool isEqualPasswordHash (char const*) const;
+
+    char const* username () const;
+
+    char const* passwordSalt () const;
+
+    char const* passwordMethod () const;
+
+    bool isActive () const;
+
+    bool mustChange () const;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief header to username cache
@@ -101,7 +143,7 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_PopulateAuthInfo (TRI_vocbase_t*,
-                           struct TRI_json_t const*);
+                           VPackSlice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the authentication info

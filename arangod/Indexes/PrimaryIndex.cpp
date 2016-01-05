@@ -44,11 +44,13 @@ using namespace triagens::arango;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-static inline uint64_t HashKey (char const* key) {
+static inline uint64_t HashKey (void* userData,
+                                char const* key) {
   return TRI_FnvHashString(key);
 }
 
-static inline uint64_t HashElement (TRI_doc_mptr_t const* element) {
+static inline uint64_t HashElement (void* userData,
+                                    TRI_doc_mptr_t const* element) {
   return element->_hash;
 }
 
@@ -56,7 +58,8 @@ static inline uint64_t HashElement (TRI_doc_mptr_t const* element) {
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (char const* key,
+static bool IsEqualKeyElement (void* userData,
+                               char const* key,
                                uint64_t const hash,
                                TRI_doc_mptr_t const* element) {
 
@@ -68,7 +71,8 @@ static bool IsEqualKeyElement (char const* key,
 /// @brief determines if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementElement (TRI_doc_mptr_t const* left,
+static bool IsEqualElementElement (void* userData,
+                                   TRI_doc_mptr_t const* left,
                                    TRI_doc_mptr_t const* right) {
   return left->_hash == right->_hash
          && strcmp(TRI_EXTRACT_MARKER_KEY(left), TRI_EXTRACT_MARKER_KEY(right)) == 0;
@@ -89,7 +93,7 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next () {
       return nullptr;
     }
 
-    auto result = _index->lookupKey(_keys[_position++]);
+    auto result = _index->lookupKey(_trx, _keys[_position++]);
 
     if (result != nullptr) {
       // found a result
@@ -120,7 +124,7 @@ PrimaryIndex::PrimaryIndex (TRI_document_collection_t* collection)
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info._indexBuckets;
+    indexBuckets = collection->_info.indexBuckets();
   }
 
   _primaryIndex = new TRI_PrimaryIndex_t(HashKey,
@@ -168,6 +172,36 @@ size_t PrimaryIndex::memory () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the index
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPack (bool withFigures,
+                                                          bool closeToplevel) const {
+  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPack(withFigures, false);
+
+  // hard-coded
+  builder->add("unique", VPackValue(true));
+  builder->add("sparse", VPackValue(false));
+
+  if (closeToplevel) {
+    builder->close();
+  }
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> PrimaryIndex::toVelocyPackFigures (bool closeToplevel) const {
+  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
+  _primaryIndex->appendToVelocyPack(builder);
+  return builder;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -195,12 +229,14 @@ triagens::basics::Json PrimaryIndex::toJsonFigures (TRI_memory_zone_t* zone) con
   return json;
 }
 
-int PrimaryIndex::insert (TRI_doc_mptr_t const*, 
+int PrimaryIndex::insert (triagens::arango::Transaction*,
+                          TRI_doc_mptr_t const*, 
                           bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
          
-int PrimaryIndex::remove (TRI_doc_mptr_t const*, 
+int PrimaryIndex::remove (triagens::arango::Transaction*,
+                          TRI_doc_mptr_t const*, 
                           bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
@@ -209,8 +245,9 @@ int PrimaryIndex::remove (TRI_doc_mptr_t const*,
 /// @brief looks up an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
-  return _primaryIndex->findByKey(key);
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction* trx,
+                                         char const* key) const {
+  return _primaryIndex->findByKey(trx, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,10 +256,11 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key) const {
 /// parameter. also returns the hash value for the object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
+TRI_doc_mptr_t* PrimaryIndex::lookupKey (triagens::arango::Transaction* trx,
+                                         char const* key,
                                          triagens::basics::BucketPosition& position,
                                          uint64_t& hash) const {
-  return _primaryIndex->findByKey(key, position, hash);
+  return _primaryIndex->findByKey(trx, key, position, hash);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,11 +270,12 @@ TRI_doc_mptr_t* PrimaryIndex::lookupKey (char const* key,
 ///        Convention: step === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupRandom (triagens::basics::BucketPosition& initialPosition,
+TRI_doc_mptr_t* PrimaryIndex::lookupRandom (triagens::arango::Transaction* trx,
+                                            triagens::basics::BucketPosition& initialPosition,
                                             triagens::basics::BucketPosition& position,
                                             uint64_t& step,
                                             uint64_t& total) {
-  return _primaryIndex->findRandom(initialPosition, position, step, total);
+  return _primaryIndex->findRandom(trx, initialPosition, position, step, total);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,9 +285,10 @@ TRI_doc_mptr_t* PrimaryIndex::lookupRandom (triagens::basics::BucketPosition& in
 ///        Convention: position === 0 indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupSequential (triagens::basics::BucketPosition& position,
+TRI_doc_mptr_t* PrimaryIndex::lookupSequential (triagens::arango::Transaction* trx,
+                                                triagens::basics::BucketPosition& position,
                                                 uint64_t& total) {
-  return _primaryIndex->findSequential(position, total);
+  return _primaryIndex->findSequential(trx, position, total);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,8 +298,9 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequential (triagens::basics::BucketPosition
 ///        Convention: position === UINT64_MAX indicates a new start.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::basics::BucketPosition& position) {
-  return _primaryIndex->findSequentialReverse(position);
+TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::arango::Transaction* trx,
+                                                       triagens::basics::BucketPosition& position) {
+  return _primaryIndex->findSequentialReverse(trx, position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,13 +308,14 @@ TRI_doc_mptr_t* PrimaryIndex::lookupSequentialReverse (triagens::basics::BucketP
 /// returns a status code, and *found will contain a found element (if any)
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
+int PrimaryIndex::insertKey (triagens::arango::Transaction* trx,
+                             TRI_doc_mptr_t* header,
                              void const** found) {
   *found = nullptr;
-  int res = _primaryIndex->insert(header);
+  int res = _primaryIndex->insert(trx, header);
 
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    *found = _primaryIndex->find(header);
+    *found = _primaryIndex->find(trx, header);
   }
 
   return res;
@@ -285,32 +327,37 @@ int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
 /// from a previous lookupKey call
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::insertKey (TRI_doc_mptr_t* header,
+int PrimaryIndex::insertKey (triagens::arango::Transaction* trx,
+                             TRI_doc_mptr_t* header,
                              triagens::basics::BucketPosition const& position) {
-  return _primaryIndex->insertAtPosition(header, position);
+  return _primaryIndex->insertAtPosition(trx, header, position);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an key/element from the index
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* PrimaryIndex::removeKey (char const* key) {
-  return _primaryIndex->removeByKey(key);
+TRI_doc_mptr_t* PrimaryIndex::removeKey (triagens::arango::Transaction* trx,
+                                         char const* key) {
+  return _primaryIndex->removeByKey(trx, key);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the index
 ////////////////////////////////////////////////////////////////////////////////
 
-int PrimaryIndex::resize (size_t targetSize) {
-  return _primaryIndex->resize(targetSize);
+int PrimaryIndex::resize (triagens::arango::Transaction* trx,
+                          size_t targetSize) {
+  return _primaryIndex->resize(trx, targetSize);
 }
 
-uint64_t PrimaryIndex::calculateHash (char const* key) {
-  return HashKey(key);
+uint64_t PrimaryIndex::calculateHash (triagens::arango::Transaction* trx,
+                                      char const* key) {
+  return HashKey(trx, key);
 }
 
-uint64_t PrimaryIndex::calculateHash (char const* key,
+uint64_t PrimaryIndex::calculateHash (triagens::arango::Transaction* trx,
+                                      char const* key,
                                       size_t length) {
   return TRI_FnvHashPointer(static_cast<void const*>(key), length);
 }
@@ -340,7 +387,8 @@ bool PrimaryIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context,
+IndexIterator* PrimaryIndex::iteratorForCondition (triagens::arango::Transaction* trx,
+                                                   IndexIteratorContext* context,
                                                    triagens::aql::Ast* ast,
                                                    triagens::aql::AstNode const* node,
                                                    triagens::aql::Variable const* reference,
@@ -369,7 +417,7 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
     
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
+    return createIterator(trx, context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
   }
   else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
@@ -387,7 +435,7 @@ IndexIterator* PrimaryIndex::iteratorForCondition (IndexIteratorContext* context
       }
     }
 
-    return createIterator(context, attrNode, valNodes);
+    return createIterator(trx, context, attrNode, valNodes);
   }
 
   // operator type unsupported
@@ -416,7 +464,8 @@ triagens::aql::AstNode* PrimaryIndex::specializeCondition (triagens::aql::AstNod
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
     
-IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
+IndexIterator* PrimaryIndex::createIterator (triagens::arango::Transaction* trx,
+                                             IndexIteratorContext* context,
                                              triagens::aql::AstNode const* attrNode,
                                              std::vector<triagens::aql::AstNode const*> const& valNodes) const {
 
@@ -452,13 +501,13 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
       TRI_ASSERT(cid != 0);
       TRI_ASSERT(key != nullptr);
 
-      if (! context->isCluster() && cid != _collection->_info._cid) {
+      if (! context->isCluster() && cid != _collection->_info.id()) {
         // only continue lookup if the id value is syntactically correct and
         // refers to "our" collection, using local collection id
         continue;
       }
 
-      if (context->isCluster() && cid != _collection->_info._planId) {
+      if (context->isCluster() && cid != _collection->_info.planId()) {
         // only continue lookup if the id value is syntactically correct and
         // refers to "our" collection, using cluster collection id
         continue;
@@ -468,7 +517,7 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
       keys.push_back(key);
     }
     else {
-      keys.push_back(valNode->getStringValue());
+      keys.emplace_back(valNode->getStringValue());
     }
   }
 
@@ -480,7 +529,7 @@ IndexIterator* PrimaryIndex::createIterator (IndexIteratorContext* context,
   TRI_IF_FAILURE("PrimaryIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new PrimaryIndexIterator(this, keys);
+  return new PrimaryIndexIterator(trx, this, keys);
 }
 
 // -----------------------------------------------------------------------------

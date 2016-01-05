@@ -31,9 +31,7 @@
 #define ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/json.h"
 #include "Basics/logging.h"
-#include "Basics/json-utilities.h"
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
@@ -44,7 +42,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_document_collection_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 class VocShaper;
 
@@ -225,7 +223,7 @@ namespace triagens {
             statusCode = rest::HttpResponse::ACCEPTED;
           }
 
-          TRI_col_type_e type = trx.documentCollection()->_info._type;
+          TRI_col_type_e type = trx.documentCollection()->_info.type();
           generate20x(statusCode, trx.resolver()->getCollectionName(cid), (TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(&mptr), mptr._rid, type);  // PROTECTED by trx here
         }
 
@@ -246,7 +244,7 @@ namespace triagens {
             statusCode = rest::HttpResponse::ACCEPTED;
           }
 
-          TRI_col_type_e type = trx.documentCollection()->_info._type;
+          TRI_col_type_e type = trx.documentCollection()->_info.type();
           generate20x(statusCode, trx.resolver()->getCollectionName(cid), key, rid, type);
         }
 
@@ -369,19 +367,10 @@ namespace triagens {
         bool extractWaitForSync () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body
+/// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* parseJsonBody ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a string attribute from a JSON array
-///
-/// if the attribute is not there or not a string, this returns 0
-////////////////////////////////////////////////////////////////////////////////
-
-        char const* extractJsonStringValue (TRI_json_t const*,
-                                            char const*);
+        std::shared_ptr<VPackBuilder> parseVelocyPackBody (VPackOptions const*, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle, on a cluster this will parse the

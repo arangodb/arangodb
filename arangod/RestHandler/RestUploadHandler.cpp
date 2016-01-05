@@ -132,15 +132,16 @@ HttpHandler::status_t RestUploadHandler::execute () {
   createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
-  TRI_json_t json;
-
-  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "filename", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, fullName, strlen(fullName)));
+  VPackBuilder b;
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("filename", VPackValue(fullName));
   TRI_Free(TRI_CORE_MEM_ZONE, fullName);
 
-  generateResult(HttpResponse::CREATED, &json);
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+  b.close();
+  VPackSlice s = b.slice();
 
+
+  generateResult(HttpResponse::CREATED, s);
   // success
   return status_t(HttpHandler::HANDLER_DONE);
 }

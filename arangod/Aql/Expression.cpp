@@ -1271,7 +1271,6 @@ AqlValue Expression::executeSimpleExpressionArithmetic (AstNode const* node,
     return AqlValue(new Json(Json::Null));
   }
 
-  // TODO Optimize. Right now we always use double precission
   bool failed = false;
   double l = lhs.toNumber(failed);
   lhs.destroy();

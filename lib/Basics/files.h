@@ -148,7 +148,7 @@ char* TRI_Concatenate3File (char const* path1, char const* path2, char const* na
 /// @brief returns a list of files in path
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t TRI_FilesDirectory (char const* path);
+std::vector<std::string> TRI_FilesDirectory (char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists the directory tree including files and directories

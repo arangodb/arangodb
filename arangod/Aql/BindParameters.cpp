@@ -32,6 +32,12 @@
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
@@ -118,6 +124,34 @@ void BindParameters::process () {
   }
   
   _processed = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief strip collection name prefixes from the parameters
+/// the values must be a VelocyPack array
+////////////////////////////////////////////////////////////////////////////////
+
+VPackBuilder BindParameters::StripCollectionNames (VPackSlice const& keys, 
+                                                   char const* collectionName) {
+  TRI_ASSERT(keys.isArray());
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Array));
+  for (auto const& element : VPackArrayIterator(keys)) {
+    if (element.isString()) {
+      VPackValueLength l;
+      char const* s = element.getString(l);
+      char search = '/';
+      auto p = static_cast<char const*>(memchr(s, search, l));
+      if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
+        // key begins with collection name + '/', now strip it in place for further comparisons
+        result.add(VPackValue(std::string(p + 1, l - static_cast<ptrdiff_t>(p - s)- 1)));
+        continue;
+      }
+    }
+    result.add(element);
+  }
+  result.close();
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

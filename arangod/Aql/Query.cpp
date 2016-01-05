@@ -27,13 +27,13 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Query.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
-#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/ShortStringStorage.h"
@@ -144,6 +144,21 @@ void Profile::setDone (ExecutionState state) {
 
   // set timestamp
   stamp = now;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the profile to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+VPackBuilder Profile::toVelocyPack () {
+  VPackBuilder result;
+  {
+    VPackObjectBuilder b(&result);
+    for (auto const& it : results) {
+      result.add(StateNames[static_cast<int>(it.first)], VPackValue(it.second));
+    }
+  }
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -659,7 +674,6 @@ QueryResult Query::execute (QueryRegistry* registry) {
         QueryResult res(TRI_ERROR_NO_ERROR);
         res.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
         res.json     = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, cacheEntry->_queryResult);
-        res.stats    = nullptr;
         res.cached   = true;
 
         return res;
@@ -677,7 +691,6 @@ QueryResult Query::execute (QueryRegistry* registry) {
     }
 
     triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
-    triagens::basics::Json stats;
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
@@ -743,7 +756,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
       throw;
     }
 
-    stats = _engine->_stats.toJson();
+    VPackBuilder stats = _engine->_stats.toVelocyPack();
 
     _trx->commit();
     
@@ -754,7 +767,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
     QueryResult result(TRI_ERROR_NO_ERROR);
     result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
     result.json     = jsonResult.steal();
-    result.stats    = stats.steal(); 
+    result.stats    = stats;
 
     if (_profile != nullptr && profiling()) {
       result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
@@ -822,7 +835,6 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
 
     QueryResultV8 result(TRI_ERROR_NO_ERROR);
     result.result = v8::Array::New(isolate);
-    triagens::basics::Json stats;
     
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
@@ -891,7 +903,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
       throw;
     }
 
-    stats = _engine->_stats.toJson();
+    VPackBuilder stats = _engine->_stats.toVelocyPack();
 
     _trx->commit();
     
@@ -900,7 +912,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate,
     enterState(FINALIZATION); 
 
     result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
-    result.stats    = stats.steal(); 
+    result.stats    = stats;
 
     if (_profile != nullptr && profiling()) {
       result.profile = _profile->toJson(TRI_UNKNOWN_MEM_ZONE);
@@ -1036,7 +1048,7 @@ QueryResult Query::explain () {
     _trx->commit();
       
     result.warnings = warningsToJson(TRI_UNKNOWN_MEM_ZONE);
-    result.stats = opt._stats.toJson(TRI_UNKNOWN_MEM_ZONE);
+    result.stats = opt._stats.toVelocyPack();
 
     return result;
   }
@@ -1519,17 +1531,22 @@ triagens::arango::TransactionContext* Query::createTransactionContext () {
 ///        collection
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph const* Query::lookupGraphByName (std::string &name) {
+Graph const* Query::lookupGraphByName (std::string const& name) {
   auto it = _graphs.find(name);
+
   if (it != _graphs.end()) {
     return it->second;
   }
 
-  auto g = triagens::arango::lookupGraphByName (_vocbase, name);
-  if (g != nullptr) {
-    _graphs.emplace(name, g);
+  std::unique_ptr<triagens::aql::Graph> g(triagens::arango::lookupGraphByName(_vocbase, name));
+
+  if (g == nullptr) {
+    return nullptr;
   }
-  return g;
+
+  _graphs.emplace(name, g.get());
+
+  return g.release();
 }
 
 // -----------------------------------------------------------------------------

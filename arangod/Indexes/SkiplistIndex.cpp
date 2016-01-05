@@ -745,7 +745,7 @@ TRI_doc_mptr_t* SkiplistIndexIterator::next () {
       return nullptr;
     }
     // We restart the lookup
-    _iterator = _index->lookup(_operators[_currentOperator], _reverse);
+    _iterator = _index->lookup(_trx, _operators[_currentOperator], _reverse);
     if (_iterator == nullptr) {
       // This iterator was not created.
       _currentOperator++;
@@ -762,7 +762,7 @@ TRI_doc_mptr_t* SkiplistIndexIterator::next () {
     }
     // Free the former iterator and get the next one
     delete _iterator;
-    _iterator = _index->lookup(_operators[_currentOperator], _reverse);
+    _iterator = _index->lookup(_trx, _operators[_currentOperator], _reverse);
     res = _iterator->next();
   }
   return res->document();
@@ -834,7 +834,7 @@ size_t SkiplistIndex::memory () const {
 ////////////////////////////////////////////////////////////////////////////////
         
 triagens::basics::Json SkiplistIndex::toJson (TRI_memory_zone_t* zone,
-                                               bool withFigures) const {
+                                              bool withFigures) const {
   auto json = Index::toJson(zone, withFigures);
 
   json("unique", triagens::basics::Json(zone, _unique))
@@ -859,8 +859,9 @@ triagens::basics::Json SkiplistIndex::toJsonFigures (TRI_memory_zone_t* zone) co
 /// @brief inserts a document into a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
   
-int SkiplistIndex::insert (TRI_doc_mptr_t const* doc, 
-                            bool) {
+int SkiplistIndex::insert (triagens::arango::Transaction*, 
+                           TRI_doc_mptr_t const* doc, 
+                           bool) {
 
   std::vector<TRI_index_element_t*> elements;
 
@@ -909,7 +910,8 @@ int SkiplistIndex::insert (TRI_doc_mptr_t const* doc,
 /// @brief removes a document from a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
          
-int SkiplistIndex::remove (TRI_doc_mptr_t const* doc, 
+int SkiplistIndex::remove (triagens::arango::Transaction*,
+                           TRI_doc_mptr_t const* doc, 
                            bool) {
 
   std::vector<TRI_index_element_t*> elements;
@@ -935,7 +937,8 @@ int SkiplistIndex::remove (TRI_doc_mptr_t const* doc,
 /// the TRI_index_operator_t* and the SkiplistIterator* results
 ////////////////////////////////////////////////////////////////////////////////
 
-SkiplistIterator* SkiplistIndex::lookup (TRI_index_operator_t* slOperator,
+SkiplistIterator* SkiplistIndex::lookup (triagens::arango::Transaction* trx,
+                                         TRI_index_operator_t* slOperator,
                                          bool reverse) const {
   TRI_ASSERT(slOperator != nullptr);
 
@@ -990,8 +993,6 @@ int SkiplistIndex::KeyElementComparator::operator() (TRI_skiplist_index_key_t co
 
   return 0;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares two elements in a skip list, this is the generic callback
@@ -1318,7 +1319,8 @@ bool SkiplistIndex::supportsSortCondition (triagens::aql::SortCondition const* s
   return false;
 }        
 
-IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* context,
+IndexIterator* SkiplistIndex::iteratorForCondition (triagens::arango::Transaction* trx,
+                                                    IndexIteratorContext* context,
                                                     triagens::aql::Ast* ast,
                                                     triagens::aql::AstNode const* node,
                                                     triagens::aql::Variable const* reference,
@@ -1342,7 +1344,7 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    return new SkiplistIndexIterator(this, searchValues, reverse);
+    return new SkiplistIndexIterator(trx, this, searchValues, reverse);
   }
 
   std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>> found;
@@ -1593,7 +1595,11 @@ IndexIterator* SkiplistIndex::iteratorForCondition (IndexIteratorContext* contex
     throw;
   }
 
-  return new SkiplistIndexIterator(this, searchValues, reverse);
+  TRI_IF_FAILURE("SkiplistIndex::noIterator")  {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return new SkiplistIndexIterator(trx, this, searchValues, reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

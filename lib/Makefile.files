@@ -69,8 +69,10 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp \
 	lib/Basics/vector.cpp \
+	lib/Basics/VelocyPackHelper.cpp \
 	lib/Basics/voc-errors.cpp \
 	lib/Basics/voc-mimetypes.cpp \
+	lib/Basics/VPackStringBufferAdapter.cpp \
 	lib/Basics/WorkMonitor.cpp \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
@@ -146,6 +148,7 @@ lib_libarango_v8_a_SOURCES = \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-shell.cpp \
 	lib/V8/v8-utils.cpp \
+	lib/V8/v8-vpack.cpp \
 	lib/V8/v8-environment.cpp \
 	lib/SimpleHttpClient/GeneralClientConnection.cpp \
 	lib/SimpleHttpClient/ClientConnection.cpp \
@@ -153,7 +156,6 @@ lib_libarango_v8_a_SOURCES = \
 	lib/SimpleHttpClient/SimpleHttpClient.cpp \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp \
 	lib/SimpleHttpClient/ConnectionManager.cpp
-
 
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER

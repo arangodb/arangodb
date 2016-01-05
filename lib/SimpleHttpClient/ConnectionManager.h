@@ -33,6 +33,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
+#include <list>
+
 // TODO: change to constexpr when feasible
 #define CONNECTION_MANAGER_BUCKETS 8 
 

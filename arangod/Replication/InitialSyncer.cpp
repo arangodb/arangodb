@@ -502,7 +502,8 @@ bool InitialSyncer::checkAborted () {
 /// @brief apply the data from a collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollection,
+int InitialSyncer::applyCollectionDump (triagens::arango::Transaction* trx,
+                                        TRI_transaction_collection_t* trxCollection,
                                         SimpleHttpResult* response,
                                         uint64_t& markersProcessed,
                                         string& errorMsg) {
@@ -595,7 +596,7 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
     }
 
     ++markersProcessed;
-    int res = applyCollectionDumpMarker(trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
+    int res = applyCollectionDumpMarker(trx, trxCollection, type, (const TRI_voc_key_t) key, rid, doc, errorMsg);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -610,7 +611,8 @@ int InitialSyncer::applyCollectionDump (TRI_transaction_collection_t* trxCollect
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleCollectionDump (string const& cid,
+int InitialSyncer::handleCollectionDump (triagens::arango::Transaction* trx,
+                                         string const& cid,
                                          TRI_transaction_collection_t* trxCollection,
                                          string const& collectionName,
                                          TRI_voc_tick_t maxTick,
@@ -654,7 +656,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     url += "&serverId=" + _localServerIdString;
     url += "&chunkSize=" + StringUtils::itoa(chunkSize);
   
-    std::string const typeString = (trxCollection->_collection->_collection->_info._type == TRI_COL_TYPE_EDGE ? "edge" : "document");
+    std::string const typeString = (trxCollection->_collection->_collection->_info.type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
 
     // send request
     string const progress = "fetching master collection dump for collection '" + collectionName +
@@ -789,7 +791,7 @@ int InitialSyncer::handleCollectionDump (string const& cid,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = applyCollectionDump(trxCollection, response.get(), markersProcessed, errorMsg);
+      res = applyCollectionDump(trx, trxCollection, response.get(), markersProcessed, errorMsg);
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1006,7 +1008,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
   TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
   auto shaper = trx.documentCollection()->getShaper();
           
-  bool const isEdge = (trx.documentCollection()->_info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdge = (trx.documentCollection()->_info.type() == TRI_COL_TYPE_EDGE);
    
   string progress = "collecting local keys for collection '" + collectionName + "'";
   setProgress(progress);
@@ -1022,7 +1024,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
     uint64_t total = 0;
     while (true) {
-      auto ptr = idx->lookupSequential(position, total);
+      auto ptr = idx->lookupSequential(&trx, position, total);
 
       if (ptr == nullptr) {
         // done
@@ -1114,7 +1116,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         break;
       }
 
-      TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) key, 0, nullptr, &policy, false, false);
+      TRI_RemoveShapedJsonDocumentCollection(&trx, trx.trxCollection(), (TRI_voc_key_t) key, 0, nullptr, &policy, false, false);
     }
     
     // last high
@@ -1131,7 +1133,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         break;
       }
 
-      TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) key, 0, nullptr, &policy, false, false);
+      TRI_RemoveShapedJsonDocumentCollection(&trx, trx.trxCollection(), (TRI_voc_key_t) key, 0, nullptr, &policy, false, false);
     }
   }
 
@@ -1253,7 +1255,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
         if (res < 0) {
           // we have a local key that is not present remotely
-          TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) localKey, 0, nullptr, &policy, false, false);
+          TRI_RemoveShapedJsonDocumentCollection(&trx, trx.trxCollection(), (TRI_voc_key_t) localKey, 0, nullptr, &policy, false, false);
           ++nextStart;
         }
         else {
@@ -1298,7 +1300,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 
           if (res < 0) {
             // we have a local key that is not present remotely
-            TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) localKey, 0, nullptr, &policy, false, false);
+            TRI_RemoveShapedJsonDocumentCollection(&trx, trx.trxCollection(), (TRI_voc_key_t) localKey, 0, nullptr, &policy, false, false);
             ++nextStart;
           }
           else if (res >= 0) {
@@ -1308,7 +1310,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
         }
 
         auto ridJson = static_cast<TRI_json_t const*>(TRI_AtVector(&chunk->_value._objects, 1));
-        auto mptr = idx->lookupKey(keyJson->_value._string.data);
+        auto mptr = idx->lookupKey(&trx, keyJson->_value._string.data);
 
         if (mptr == nullptr) {
           // key not found locally
@@ -1438,7 +1440,7 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
           TRI_doc_mptr_copy_t result;
 
           int res = TRI_ERROR_NO_ERROR;
-          auto mptr = idx->lookupKey(documentKey.c_str());
+          auto mptr = idx->lookupKey(&trx, documentKey.c_str());
 
           if (mptr == nullptr || isEdge) {
             // in case of an edge collection we must always update
@@ -1468,15 +1470,15 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
             if (res == TRI_ERROR_NO_ERROR) {
               if (mptr != nullptr && isEdge) {
                 // must remove existing edge first
-                TRI_RemoveShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), 0, nullptr, &policy, false, false);
+                TRI_RemoveShapedJsonDocumentCollection(&trx, trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), 0, nullptr, &policy, false, false);
               }
 
-              res = TRI_InsertShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), rid, nullptr, &result, shaped, e, false, false, true);
+              res = TRI_InsertShapedJsonDocumentCollection(&trx, trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), rid, nullptr, &result, shaped, e, false, false, true);
             }
           }
           else {
             // UPDATE
-            res = TRI_UpdateShapedJsonDocumentCollection(trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), rid, nullptr, &result, shaped, &policy, false, false);
+            res = TRI_UpdateShapedJsonDocumentCollection(&trx, trx.trxCollection(), (TRI_voc_key_t) documentKey.c_str(), rid, nullptr, &result, shaped, &policy, false, false);
           }
             
           TRI_FreeShapedJson(shaper->memoryZone(), shaped);
@@ -1500,24 +1502,11 @@ int InitialSyncer::handleSyncKeys (std::string const& keysId,
 int InitialSyncer::changeCollection (TRI_vocbase_col_t* col,
                                      TRI_json_t const* json) {
 
-  bool waitForSync      = JsonHelper::getBooleanValue(json, "waitForSync", false);
-  bool doCompact        = JsonHelper::getBooleanValue(json, "doCompact", true);
-  int maximalSize       = JsonHelper::getNumericValue<int>(json, "maximalSize", TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE);
-  uint32_t indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", TRI_DEFAULT_INDEX_BUCKETS);
-
   try {
+    std::shared_ptr<VPackBuilder> tmp = triagens::basics::JsonHelper::toVelocyPack(json);
     triagens::arango::CollectionGuard guard(_vocbase, col->_cid);
-
-    TRI_col_info_t parameters;
-
-    // only need to set these three properties as the others cannot be updated on the fly
-    parameters._doCompact    = doCompact;
-    parameters._maximalSize  = maximalSize;
-    parameters._waitForSync  = waitForSync;
-    parameters._indexBuckets = indexBuckets;
-
     bool doSync = _vocbase->_settings.forceSyncProperties;
-    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters, doSync);
+    return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, tmp->slice(), doSync);
   }
   catch (triagens::basics::Exception const& ex) {
     return ex.code();
@@ -1719,81 +1708,78 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
           res = handleCollectionSync(StringUtils::itoa(cid), trx, masterName, _masterInfo._lastLogTick, errorMsg);
         }
         else {
-          res = handleCollectionDump(StringUtils::itoa(cid), trxCollection, masterName, _masterInfo._lastLogTick, errorMsg);
+          res = handleCollectionDump(&trx, StringUtils::itoa(cid), trxCollection, masterName, _masterInfo._lastLogTick, errorMsg);
         } 
       }
 
-      res = trx.finish(res);
-    }
+      if (res == TRI_ERROR_NO_ERROR) {
+        // now create indexes
+        size_t const n = TRI_LengthVector(&indexes->_value._objects);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      // now create indexes
-      size_t const n = TRI_LengthVector(&indexes->_value._objects);
+        if (n > 0) {
+          string const progress = "creating " + std::to_string(n) + " index(es) for " + collectionMsg;
+          setProgress(progress);
 
-      if (n > 0) {
-        string const progress = "creating " + std::to_string(n) + " index(es) for " + collectionMsg;
-        setProgress(progress);
+          READ_LOCKER(_vocbase->_inventoryLock);
 
-        READ_LOCKER(_vocbase->_inventoryLock);
+          try {
+            triagens::arango::CollectionGuard guard(_vocbase, col->_cid, false);
+            TRI_vocbase_col_t* col = guard.collection();
 
-        try {
-          triagens::arango::CollectionGuard guard(_vocbase, col->_cid, false);
-          TRI_vocbase_col_t* col = guard.collection();
+            if (col == nullptr) {
+              res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+            }
+            else {
+              TRI_document_collection_t* document = col->_collection;
+              TRI_ASSERT(document != nullptr);
 
-          if (col == nullptr) {
-            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-          }
-          else {
-            TRI_document_collection_t* document = col->_collection;
-            TRI_ASSERT(document != nullptr);
+              for (size_t i = 0; i < n; ++i) {
+                TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
+                triagens::arango::Index* idx = nullptr;
+  
+                if (TRI_IsObjectJson(idxDef)) {
+                  TRI_json_t const* type = TRI_LookupObjectJson(idxDef, "type");
+                  if (TRI_IsStringJson(type)) {
+                    string const progress = "creating index of type " + std::string(type->_value._string.data, type->_value._string.length - 1) + " for " + collectionMsg;
+                    setProgress(progress);
+                  } 
+                }
 
-            // create a fake transaction object to avoid assertions
-            TransactionBase trx(true);
-            TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
-            for (size_t i = 0; i < n; ++i) {
-              TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
-              triagens::arango::Index* idx = nullptr;
-        
-              if (TRI_IsObjectJson(idxDef)) {
-                TRI_json_t const* type = TRI_LookupObjectJson(idxDef, "type");
-                if (TRI_IsStringJson(type)) {
-                  string const progress = "creating index of type " + std::string(type->_value._string.data, type->_value._string.length - 1) + " for " + collectionMsg;
-                  setProgress(progress);
-                } 
-              }
-
-              // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
-    
-              res = TRI_FromJsonIndexDocumentCollection(document, idxDef, &idx);
-
-              if (res != TRI_ERROR_NO_ERROR) {
-                errorMsg = "could not create index: " + string(TRI_errno_string(res));
-                break;
-              }
-              else {
-                TRI_ASSERT(idx != nullptr);
-
-                res = TRI_SaveIndex(document, idx, true);
+                // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+      
+                res = TRI_FromJsonIndexDocumentCollection(&trx, document, idxDef, &idx);
 
                 if (res != TRI_ERROR_NO_ERROR) {
-                  errorMsg = "could not save index: " + string(TRI_errno_string(res));
+                  errorMsg = "could not create index: " + string(TRI_errno_string(res));
                   break;
                 }
+                else {
+                  TRI_ASSERT(idx != nullptr);
+
+                  res = TRI_SaveIndex(document, idx, true);
+
+                  if (res != TRI_ERROR_NO_ERROR) {
+                    errorMsg = "could not save index: " + string(TRI_errno_string(res));
+                    break;
+                  }
+                }
               }
+
+              TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
             }
-
-            TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
           }
-        }
-        catch (triagens::basics::Exception const& ex) {
-          res = ex.code();
-        }
-        catch (...) {
-          res = TRI_ERROR_INTERNAL;
-        }
+          catch (triagens::basics::Exception const& ex) {
+            res = ex.code();
+          }
+          catch (...) {
+            res = TRI_ERROR_INTERNAL;
+          }
 
+        }
       }
+      
+      res = trx.finish(res);
+
     }
 
     return res;

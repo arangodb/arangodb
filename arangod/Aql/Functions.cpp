@@ -622,6 +622,7 @@ static void RequestEdges (triagens::basics::Json const& vertexJson,
 
   char* key = const_cast<char*>(parts[1].c_str());
   std::vector<TRI_doc_mptr_copy_t> edges = TRI_LookupEdgesDocumentCollection(
+    trx,
     collection,
     direction,
     startCid,
@@ -2542,6 +2543,7 @@ AqlValue Functions::Neighbors (triagens::aql::Query* query,
   auto wc = [](TRI_doc_mptr_copy_t&) -> double { return 1; };
 
   auto eci = std::make_unique<EdgeCollectionInfo>(
+    trx,
     eCid,
     trx->documentCollection(eCid),
     wc
@@ -2694,6 +2696,7 @@ AqlValue Functions::Near (triagens::aql::Query* query,
   }
   
   GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->nearQuery(
+    trx,
     latitude.json()->_value._number, 
     longitude.json()->_value._number, 
     limitValue
@@ -2840,7 +2843,7 @@ AqlValue Functions::Within (triagens::aql::Query* query,
   auto document = trx->documentCollection(cid);
     
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND); /// TODO
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   triagens::arango::Index* index = nullptr;
@@ -2862,6 +2865,7 @@ AqlValue Functions::Within (triagens::aql::Query* query,
   }
 
   GeoCoordinates* cors = static_cast<triagens::arango::GeoIndex2*>(index)->withinQuery(
+    trx,
     latitude.json()->_value._number, 
     longitude.json()->_value._number, 
     radius.json()->_value._number

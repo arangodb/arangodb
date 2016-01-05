@@ -43,6 +43,9 @@
 #include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
@@ -106,6 +109,12 @@ namespace triagens {
       ~Profile ();
 
       void setDone (ExecutionState);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the profile to VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+      VPackBuilder toVelocyPack ();
 
       TRI_json_t* toJson (TRI_memory_zone_t*);
 
@@ -488,7 +497,7 @@ namespace triagens {
 /// @brief look up a graph in the _graphs collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        Graph const* lookupGraphByName (std::string &name);
+        Graph const* lookupGraphByName (std::string const& name);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

@@ -49,7 +49,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 struct TRI_vocbase_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 TRANSACTION TYPES
@@ -124,13 +124,15 @@ typedef uint32_t TRI_transaction_hint_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_TRANSACTION_HINT_NONE              = 0,
-  TRI_TRANSACTION_HINT_SINGLE_OPERATION  = 1,
-  TRI_TRANSACTION_HINT_LOCK_ENTIRELY     = 2,
-  TRI_TRANSACTION_HINT_LOCK_NEVER        = 4,
-  TRI_TRANSACTION_HINT_NO_BEGIN_MARKER   = 8,
-  TRI_TRANSACTION_HINT_NO_ABORT_MARKER   = 16,
-  TRI_TRANSACTION_HINT_NO_THROTTLING     = 32
+  TRI_TRANSACTION_HINT_NONE               = 0,
+  TRI_TRANSACTION_HINT_SINGLE_OPERATION   = 1,
+  TRI_TRANSACTION_HINT_LOCK_ENTIRELY      = 2,
+  TRI_TRANSACTION_HINT_LOCK_NEVER         = 4,
+  TRI_TRANSACTION_HINT_NO_BEGIN_MARKER    = 8,
+  TRI_TRANSACTION_HINT_NO_ABORT_MARKER    = 16,
+  TRI_TRANSACTION_HINT_NO_THROTTLING      = 32,
+  TRI_TRANSACTION_HINT_TRY_LOCK           = 64,
+  TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK = 128
 }
 TRI_transaction_hint_e;
 
@@ -162,7 +164,7 @@ typedef struct TRI_transaction_collection_s {
   TRI_voc_cid_t                        _cid;               // collection id
   TRI_transaction_type_e               _accessType;        // access type (read|write)
   int                                  _nestingLevel;      // the transaction level that added this collection
-  struct TRI_vocbase_col_s*            _collection;        // vocbase collection pointer
+  TRI_vocbase_col_t*                   _collection;        // vocbase collection pointer
   triagens::arango::DocumentDitch*     _ditch;
   std::vector<triagens::wal::DocumentOperation*>* _operations;
   TRI_voc_rid_t                        _originalRevision;  // collection revision at trx start

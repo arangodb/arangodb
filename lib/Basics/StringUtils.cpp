@@ -32,8 +32,6 @@
 #include <math.h>
 #include <time.h>
 
-#include <iostream>
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
@@ -439,120 +437,6 @@ namespace triagens {
         return result;
       }
 
-
-
-      string escape (string const& name, string const& special, char quote) {
-        size_t len = name.length();
-
-        if (len == 0) {
-          return name;
-        }
-
-        if (len >= (SIZE_MAX - 1) / 2) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-
-        char * buffer = new char [2 * len + 1];
-        char * qtr = buffer;
-        char const * ptr = name.c_str();
-        char const * end = ptr + len;
-
-        if (special.length() == 0) {
-          for (;  ptr < end;  ptr++, qtr++) {
-            if (*ptr == quote) {
-              *qtr++ = quote;
-            }
-
-            *qtr = *ptr;
-          }
-        }
-        else if (special.length() == 1) {
-          char s = special[0];
-
-          for (;  ptr < end;  ptr++, qtr++) {
-            if (*ptr == quote || *ptr == s) {
-              *qtr++ = quote;
-            }
-
-            *qtr = *ptr;
-          }
-        }
-        else {
-          for (;  ptr < end;  ptr++, qtr++) {
-            if (*ptr == quote || special.find(*ptr) != string::npos) {
-              *qtr++ = quote;
-            }
-
-            *qtr = *ptr;
-          }
-        }
-
-        *qtr = '\0';
-
-        string result(buffer, qtr - buffer);
-
-        delete[] buffer;
-
-        return result;
-      }
-
-
-
-      string escape (string const& name, size_t len, string const& special, char quote) {
-        if (len == 0) {
-          return name;
-        }
-
-        if (len >= (SIZE_MAX - 1) / 2) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-
-        char * buffer = new char [2 * len + 1];
-        char * qtr = buffer;
-        char const * ptr = name.c_str();
-        char const * end = ptr + len;
-
-        if (special.length() == 0) {
-          for (;  ptr < end;  ptr++, qtr++) {
-            if (*ptr == quote) {
-              *qtr++ = quote;
-            }
-
-            *qtr = *ptr;
-          }
-        }
-        else if (special.length() == 1) {
-          char s = special[0];
-
-          for (;  ptr < end;  ptr++, qtr++) {
-            if (*ptr == quote || *ptr == s) {
-              *qtr++ = quote;
-            }
-
-            *qtr = *ptr;
-          }
-        }
-        else {
-          for (;  ptr < end;  ptr++, qtr++) {
-            if (*ptr == quote || special.find(*ptr) != string::npos) {
-              *qtr++ = quote;
-            }
-
-            *qtr = *ptr;
-          }
-        }
-
-        *qtr = '\0';
-
-        string result(buffer, qtr - buffer);
-
-        delete[] buffer;
-
-        return result;
-      }
-
-
-
       string escapeUnicode (string const& name, bool escapeSlash) {
         size_t len = name.length();
 
@@ -698,13 +582,8 @@ namespace triagens {
                         uint8_t e = (uint8_t) *(ptr + 2);
 
                         // correct unicode
-                        if ((e & 0xC0) == 0x80) {
-                          // TODO: if & else branch are the same
-                          *qtr = *ptr;
-                        }
-                        // corrupted unicode
-                        else {
-                          *qtr = *ptr;
+                        *qtr = *ptr;
+                        if ((e & 0xC0) != 0x80) {
                           corrupted = true;
                         }
                       }

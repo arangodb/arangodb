@@ -44,6 +44,8 @@
 #include <iostream>
 #endif
 
+#include <array>
+
 using namespace triagens::aql;
 using JsonHelper = triagens::basics::JsonHelper;
 using Json = triagens::basics::Json;
@@ -1028,9 +1030,6 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
         return TRI_CreateNumberJson(zone, value.value._double);
       case VALUE_TYPE_STRING:
         return TRI_CreateStringCopyJson(zone, value.value._string, value.length);
-        // TODO: can we get away with a string reference only??
-        // this would speed things up considerably!
-        // return TRI_CreateStringReferenceJson(zone, value.value._string, strlen(value.value._string));
     }
   }
   

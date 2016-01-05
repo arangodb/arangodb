@@ -43,6 +43,10 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/prime-numbers.h"
 
+#include <thread>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace triagens {
   namespace basics {
 
@@ -136,15 +140,21 @@ namespace triagens {
               bool useHashCache = true>
     class AssocMulti {
 
+      private:
+
+        typedef void UserData;
+
       public:
         static IndexType const INVALID_INDEX = ((IndexType)0)-1;
 
-        typedef std::function<uint64_t(Key const*)> HashKeyFuncType;
-        typedef std::function<uint64_t(Element const*, bool)> HashElementFuncType;
-        typedef std::function<bool(Key const*,
+        typedef std::function<uint64_t(UserData*, Key const*)> HashKeyFuncType;
+        typedef std::function<uint64_t(UserData*, Element const*, bool)> HashElementFuncType;
+        typedef std::function<bool(UserData*,
+                                   Key const*,
                                    Element const*)>
                 IsEqualKeyElementFuncType;
-        typedef std::function<bool(Element const*,
+        typedef std::function<bool(UserData*,
+                                   Element const*,
                                    Element const*)>
                 IsEqualElementElementFuncType;
         typedef std::function<void(Element*)>
@@ -183,7 +193,6 @@ namespace triagens {
         uint64_t _nrProbesF; // statistics: number of misses while looking up
         uint64_t _nrProbesD; // statistics: number of misses while removing
 #endif
-
 
         HashKeyFuncType const _hashKey;
         HashElementFuncType const _hashElement;
@@ -283,7 +292,6 @@ namespace triagens {
           }
         }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -313,6 +321,23 @@ namespace triagens {
             res += static_cast<size_t>(b._nrUsed);
           }
           return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Appends information about statistics in the given VPackBuilder
+////////////////////////////////////////////////////////////////////////////////
+          
+        void appendToVelocyPack (std::shared_ptr<VPackBuilder> builder) {
+          builder->add("buckets", VPackValue(VPackValueType::Array));
+          for (auto& b : _buckets) {
+            builder->add(VPackValue(VPackValueType::Object));
+            builder->add("nrAlloc", VPackValue(b._nrAlloc));
+            builder->add("nrUsed", VPackValue(b._nrUsed));
+            builder->close();
+          }
+          builder->close(); // buckets
+          builder->add("nrBuckets", VPackValue(_buckets.size()));
+          builder->add("totalUsed", VPackValue(size()));
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,7 +382,8 @@ namespace triagens {
 /// @brief adds a key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        Element* insert (Element* element,
+        Element* insert (UserData* userData,
+                         Element* element,
                          bool overwrite,
                          bool checkEquality) {
 
@@ -367,17 +393,17 @@ namespace triagens {
           // for sure no duplicate elements will be inserted
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
 
           // compute the hash by the key only first
-          uint64_t hashByKey = _hashElement(element, true);
+          uint64_t hashByKey = _hashElement(userData, element, true);
           Bucket& b = _buckets[hashByKey & _bucketsMask];
 
-          auto result = doInsert(element, hashByKey, b, overwrite, checkEquality);
+          auto result = doInsert(userData, element, hashByKey, b, overwrite, checkEquality);
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
 
           return result;
@@ -387,10 +413,11 @@ namespace triagens {
 /// @brief adds multiple elements to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        int batchInsert (std::vector<Element*> const* data,
+        int batchInsert (UserData* userData, 
+                         std::vector<Element*> const* data,
                          size_t numThreads) {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
           std::atomic<int> res(TRI_ERROR_NO_ERROR);
 
@@ -419,7 +446,7 @@ namespace triagens {
                 std::unordered_map<uint64_t, DocumentsPerBucket> partitions;
 
                 for (size_t i = lower; i < upper; ++i) {
-                  uint64_t hashByKey = _hashElement(elements[i], true);
+                  uint64_t hashByKey = _hashElement(userData, elements[i], true);
                   auto bucketId = hashByKey & _bucketsMask;
 
                   auto it = partitions.find(bucketId);
@@ -428,7 +455,7 @@ namespace triagens {
                     it = partitions.emplace(bucketId, DocumentsPerBucket()).first;
                   }
 
-                  (*it).second.emplace_back(std::make_pair(elements[i], hashByKey));
+                  (*it).second.emplace_back(elements[i], hashByKey);
                 }
 
                 // transfer ownership to the central map
@@ -501,7 +528,7 @@ namespace triagens {
 
                   for (auto const& it2 : it.second) {
                     for (auto const& it3 : it2) {
-                      doInsert(it3.first, it3.second, b, true, false);
+                      doInsert(userData, it3.first, it3.second, b, true, false);
                     }
                   }
                 }
@@ -530,8 +557,18 @@ namespace triagens {
           }
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
+          if (res.load() != TRI_ERROR_NO_ERROR) {
+            // Rollback such that the data can be deleted outside
+            try {
+              for (auto const& d : *data) {
+                remove(userData, d);
+              }
+            }
+            catch (...) {
+            }
+          }
           return res.load();
         }
 
@@ -541,12 +578,15 @@ namespace triagens {
 
         void invokeOnAllElements (CallbackElementFuncType callback) {
           for (auto& b : _buckets) {
-            if (b._table != nullptr) {
-              for (size_t i = 0; i < b._nrAlloc; ++i) {
-                if (b._table[i].ptr != nullptr) {
-                  callback(b._table[i].ptr);
-                }
+            if (b._table == nullptr) {
+              continue;
+            }
+
+            for (size_t i = 0; i < b._nrAlloc; ++i) {
+              if (b._table[i].ptr == nullptr) {
+                continue;
               }
+              callback(b._table[i].ptr);
             }
           }
         }
@@ -557,7 +597,8 @@ namespace triagens {
 /// @brief adds a key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        Element* doInsert (Element* element,
+        Element* doInsert (UserData* userData,
+                           Element* element,
                            uint64_t hashByKey,
                            Bucket& b,
                            bool const overwrite,
@@ -570,7 +611,7 @@ namespace triagens {
 
           // if we were adding and the table is more than 2/3 full, extend it
           if (2 * b._nrAlloc < 3 * b._nrUsed) {
-            resizeInternal(b, 2 * b._nrAlloc + 1);
+            resizeInternal(userData, b, 2 * b._nrAlloc + 1);
           }
 
 #ifdef TRI_INTERNAL_STATS
@@ -599,7 +640,7 @@ namespace triagens {
           while (b._table[i].ptr != nullptr &&
                  (b._table[i].prev != INVALID_INDEX ||
                   (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-                  ! _isEqualElementElementByKey(element, b._table[i].ptr))
+                  ! _isEqualElementElementByKey(userData, element, b._table[i].ptr))
                 ) {
             i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
@@ -628,7 +669,7 @@ namespace triagens {
           // list of which we want to make element a member. Perhaps an
           // equal element is right here:
           if (checkEquality &&
-              _isEqualElementElement(element, b._table[i].ptr)) {
+              _isEqualElementElement(userData, element, b._table[i].ptr)) {
             old = b._table[i].ptr;
             if (overwrite) {
               TRI_ASSERT(! useHashCache ||
@@ -640,7 +681,7 @@ namespace triagens {
 
           // Now find a new home for element in this linked list:
           uint64_t hashByElm;
-          IndexType j = findElementPlace(b, element, checkEquality, hashByElm);
+          IndexType j = findElementPlace(userData, b, element, checkEquality, hashByElm);
 
           old = b._table[j].ptr;
 
@@ -679,10 +720,13 @@ namespace triagens {
 /// is already known. This is for example the case when resizing.
 ////////////////////////////////////////////////////////////////////////////////
 
-        IndexType insertFirst (Bucket& b, Element* element, uint64_t hashByKey) {
+        IndexType insertFirst (UserData* userData, 
+                               Bucket& b, 
+                               Element* element, 
+                               uint64_t hashByKey) {
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
 
 #ifdef TRI_INTERNAL_STATS
@@ -704,7 +748,7 @@ namespace triagens {
             b._nrUsed++;
             // no collision generated here!
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-            check(true, true);
+            check(userData, true, true);
 #endif
             return i;
           }
@@ -729,7 +773,7 @@ namespace triagens {
           b._nrUsed++;
           // no collision generated here either!
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
           return i;
         }
@@ -741,11 +785,14 @@ namespace triagens {
 /// example the case when resizing.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void insertFurther (Bucket& b, Element* element, 
-                            uint64_t hashByKey, uint64_t hashByElm,
+        void insertFurther (UserData* userData,
+                            Bucket& b, 
+                            Element* element, 
+                            uint64_t hashByKey, 
+                            uint64_t hashByElm,
                             IndexType firstPosition) {
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
 
 #ifdef TRI_INTERNAL_STATS
@@ -782,7 +829,7 @@ namespace triagens {
           b._nrCollisions++;
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
         }
 
@@ -792,7 +839,8 @@ namespace triagens {
 
       public:
 
-        Element* lookup (Element const* element) const {
+        Element* lookup (UserData* userData,
+                         Element const* element) const {
           IndexType i;
 
 #ifdef TRI_INTERNAL_STATS
@@ -801,7 +849,7 @@ namespace triagens {
 #endif
 
           Bucket* b;
-          i = lookupByElement(element, b);
+          i = lookupByElement(userData, element, b);
           return b->_table[i].ptr;
         }
 
@@ -809,13 +857,14 @@ namespace triagens {
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Element*>* lookupByKey (Key const* key,
+        std::vector<Element*>* lookupByKey (UserData* userData,
+                                            Key const* key,
                                             size_t limit = 0) const {
           std::unique_ptr<std::vector<Element*>> result
                 (new std::vector<Element*>());
 
           // compute the hash
-          uint64_t hashByKey = _hashKey(key);
+          uint64_t hashByKey = _hashKey(userData, key);
           Bucket const& b = _buckets[hashByKey & _bucketsMask];
           IndexType hashIndex = hashToIndex(hashByKey);
           IndexType i = hashIndex % b._nrAlloc;
@@ -829,7 +878,7 @@ namespace triagens {
           while (b._table[i].ptr != nullptr &&
                  (b._table[i].prev != INVALID_INDEX ||
                   (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-                  ! _isEqualKeyElement(key, b._table[i].ptr))
+                  ! _isEqualKeyElement(userData, key, b._table[i].ptr))
                 ) {
             i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
@@ -857,13 +906,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Element*>* lookupWithElementByKey (
+                                    UserData* userData,
                                     Element const* element,
                                     size_t limit = 0) const {
           std::unique_ptr<std::vector<Element*>> result
                 (new std::vector<Element*>());
 
           // compute the hash
-          uint64_t hashByKey = _hashElement(element, true);
+          uint64_t hashByKey = _hashElement(userData, element, true);
           Bucket const& b = _buckets[hashByKey & _bucketsMask];
           IndexType hashIndex = hashToIndex(hashByKey);
           IndexType i = hashIndex % b._nrAlloc;
@@ -877,7 +927,7 @@ namespace triagens {
           while (b._table[i].ptr != nullptr &&
                  (b._table[i].prev != INVALID_INDEX ||
                   (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-                  ! _isEqualElementElementByKey(element, b._table[i].ptr))
+                  ! _isEqualElementElementByKey(userData, element, b._table[i].ptr))
                 ) {
             i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
@@ -906,15 +956,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Element*>* lookupWithElementByKeyContinue (
+                                    UserData* userData,
                                     Element const* element,
                                     size_t limit = 0) const {
           std::unique_ptr<std::vector<Element*>> result
                 (new std::vector<Element*>());
 
-          uint64_t hashByKey = _hashElement(element, true);
+          uint64_t hashByKey = _hashElement(userData, element, true);
           Bucket const& b = _buckets[hashByKey & _bucketsMask];
           uint64_t hashByElm;
-          IndexType i = findElementPlace(b, element, true, hashByElm);
+          IndexType i = findElementPlace(userData, b, element, true, hashByElm);
           if (b._table[i].ptr == nullptr) {
             // This can only happen if the element was the first in its doubly
             // linked list (after all, the caller guaranteed that element was
@@ -927,7 +978,7 @@ namespace triagens {
             while (b._table[i].ptr != nullptr &&
                    (b._table[i].prev != INVALID_INDEX ||
                     (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-                    ! _isEqualElementElementByKey(element, b._table[i].ptr))) {
+                    ! _isEqualElementElementByKey(userData, element, b._table[i].ptr))) {
               i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
               _nrProbes++;
@@ -959,16 +1010,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Element*>* lookupByKeyContinue (
+                                    UserData* userData,
                                     Element const* element,
                                     size_t limit = 0) const {
-          return lookupWithElementByKeyContinue(element, limit);
+          return lookupWithElementByKeyContinue(userData, element, limit);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an element from the array, caller is responsible to free it
 ////////////////////////////////////////////////////////////////////////////////
 
-        Element* remove (Element const* element) {
+        Element* remove (UserData* userData,
+                         Element const* element) {
           IndexType j = 0;
 
 #ifdef TRI_INTERNAL_STATS
@@ -977,10 +1030,10 @@ namespace triagens {
 #endif
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
           Bucket* b;
-          IndexType i = lookupByElement(element, b);
+          IndexType i = lookupByElement(userData, element, b);
           if (b->_table[i].ptr == nullptr) {
             return nullptr;
           }
@@ -995,9 +1048,9 @@ namespace triagens {
               // the hole:
               invalidateEntry(*b, i);
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-              check(false, false);
+              check(userData, false, false);
 #endif
-              healHole(*b, i);
+              healHole(userData, *b, i);
               // this element did not create a collision
             }
             else {
@@ -1007,12 +1060,12 @@ namespace triagens {
               if (useHashCache) {
                 // We need to exchange the hashCache value by that of the key:
                 b->_table[i].writeHashCache(
-                                  _hashElement(b->_table[i].ptr, true));
+                                  _hashElement(userData, b->_table[i].ptr, true));
               }
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-              check(false, false);
+              check(userData, false, false);
 #endif
-              healHole(*b, j);
+              healHole(userData, *b, j);
               b->_nrCollisions--;   // one collision less
             }
           }
@@ -1027,14 +1080,14 @@ namespace triagens {
             }
             invalidateEntry(*b, i);
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-            check(false, false);
+            check(userData, false, false);
 #endif
-            healHole(*b, i);
+            healHole(userData, *b, i);
             b->_nrCollisions--;
           }
           b->_nrUsed--;
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
-          check(true, true);
+          check(userData, true, true);
 #endif
           // return success
           return old;
@@ -1044,7 +1097,7 @@ namespace triagens {
 /// @brief resize the array
 ////////////////////////////////////////////////////////////////////////////////
 
-        int resize (size_t size) noexcept {
+        int resize (UserData* userData, size_t size) noexcept {
           size /= _buckets.size();
           for (auto& b : _buckets) {
             if (2 * (2 * size + 1) < 3 * b._nrUsed) {
@@ -1052,7 +1105,7 @@ namespace triagens {
             }
 
             try {
-              resizeInternal(b, 2 * size + 1);
+              resizeInternal(userData, b, 2 * size + 1);
             }
             catch (...) {
               return TRI_ERROR_OUT_OF_MEMORY;
@@ -1086,11 +1139,11 @@ namespace triagens {
 /// function is called on the Element* for each thingy stored in the hash
 ////////////////////////////////////////////////////////////////////////////////
 
-        void iterate (std::function<void(Element*)> callback) {
+        void iterate (UserData* userData, std::function<void(Element*)> callback) {
           for (auto& b : _buckets) {
             for (IndexType i = 0; i < b._nrAlloc; i++) {
               if (b._table[i].ptr != nullptr) {
-                callback(b._table[i].ptr);
+                callback(userData, b._table[i].ptr);
               }
             }
           }
@@ -1115,7 +1168,7 @@ namespace triagens {
 /// @brief resize the array, internal method
 ////////////////////////////////////////////////////////////////////////////////
 
-        void resizeInternal (Bucket& b, size_t size) {
+        void resizeInternal (UserData* userData, Bucket& b, size_t size) {
           LOG_ACTION("index-resize %s, target size: %llu",
                      _contextCallback().c_str(),
                      (unsigned long long) size);
@@ -1167,9 +1220,9 @@ namespace triagens {
                 hashByKey = oldTable[j].readHashCache();
               }
               else {
-                hashByKey = _hashElement(oldTable[j].ptr, true);
+                hashByKey = _hashElement(userData, oldTable[j].ptr, true);
               }
-              IndexType insertPosition = insertFirst(b, oldTable[j].ptr, hashByKey);
+              IndexType insertPosition = insertFirst(userData, b, oldTable[j].ptr, hashByKey);
               // Now walk to the end of the list:
               IndexType k = j;
               while (oldTable[k].next != INVALID_INDEX) {
@@ -1182,9 +1235,9 @@ namespace triagens {
                   hashByElm = oldTable[k].readHashCache();
                 }
                 else {
-                  hashByElm = _hashElement(oldTable[k].ptr, false);
+                  hashByElm = _hashElement(userData, oldTable[k].ptr, false);
                 }
-                insertFurther(b, oldTable[k].ptr, hashByKey, hashByElm, insertPosition);
+                insertFurther(userData, b, oldTable[k].ptr, hashByKey, hashByElm, insertPosition);
                 k = oldTable[k].prev;
               }
             }
@@ -1204,7 +1257,9 @@ namespace triagens {
 /// @brief internal debugging check function
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool check (bool checkCount, bool checkPositions) const {
+        bool check (UserData* userData, 
+                    bool checkCount, 
+                    bool checkPositions) const {
           std::cout << "Performing AssocMulti check " << checkCount
                     << checkPositions << std::endl;
           bool ok = true;
@@ -1253,7 +1308,7 @@ namespace triagens {
                   IndexType hashIndex;
                   if (b._table[i].prev == INVALID_INDEX) {
                     // We are the first in a linked list.
-                    uint64_t hashByKey = _hashElement(b._table[i].ptr, true);
+                    uint64_t hashByKey = _hashElement(userData, b._table[i].ptr, true);
                     hashIndex = hashToIndex(hashByKey);
                     j = hashIndex % b._nrAlloc;
                     if (useHashCache && b._table[i].readHashCache() != hashByKey) {
@@ -1262,7 +1317,8 @@ namespace triagens {
                     for (k = j; k != i; ) {
                       if (b._table[k].ptr == nullptr ||
                           (b._table[k].prev == INVALID_INDEX &&
-                           _isEqualElementElementByKey(b._table[i].ptr,
+                           _isEqualElementElementByKey(userData,
+                                                       b._table[i].ptr,
                                                        b._table[k].ptr))) {
                         ok = false;
                         std::cout << "Alarm pos bykey: " << i << std::endl;
@@ -1272,7 +1328,7 @@ namespace triagens {
                   }
                   else {
                     // We are not the first in a linked list.
-                    uint64_t hashByElm = _hashElement(b._table[i].ptr, false);
+                    uint64_t hashByElm = _hashElement(userData, b._table[i].ptr, false);
                     hashIndex = hashToIndex(hashByElm);
                     j = hashIndex % b._nrAlloc;
                     if (useHashCache && b._table[i].readHashCache() != hashByElm) {
@@ -1280,7 +1336,8 @@ namespace triagens {
                     }
                     for (k = j; k != i; ) {
                       if (b._table[k].ptr == nullptr ||
-                          _isEqualElementElement(b._table[i].ptr,
+                          _isEqualElementElement(userData,
+                                                 b._table[i].ptr,
                                                  b._table[k].ptr)) {
                         ok = false;
                         std::cout << "Alarm unique: " << k << ", "
@@ -1305,7 +1362,8 @@ namespace triagens {
 /// @brief find an element or its place using the element hash function
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline IndexType findElementPlace (Bucket const& b,
+        inline IndexType findElementPlace (UserData* userData,
+                                           Bucket const& b,
                                            Element const* element,
                                            bool checkEquality,
                                            uint64_t& hashByElm) const {
@@ -1318,14 +1376,14 @@ namespace triagens {
           // pointer into the table, which is either empty or points to
           // an entry that compares equal to element.
 
-          hashByElm = _hashElement(element, false);
+          hashByElm = _hashElement(userData, element, false);
           IndexType hashindex = hashToIndex(hashByElm);
           IndexType i = hashindex % b._nrAlloc;
 
           while (b._table[i].ptr != nullptr &&
                  (! checkEquality ||
                   (useHashCache && b._table[i].readHashCache() != hashByElm) ||
-                  ! _isEqualElementElement(element, b._table[i].ptr))) {
+                  ! _isEqualElementElement(userData, element, b._table[i].ptr))) {
             i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
             _nrProbes++;
@@ -1338,12 +1396,13 @@ namespace triagens {
 /// @brief find an element or its place by key or element identity
 ////////////////////////////////////////////////////////////////////////////////
 
-        IndexType lookupByElement (Element const* element,
+        IndexType lookupByElement (UserData* userData,
+                                   Element const* element,
                                    Bucket*& buck) const {
           // This performs a complete lookup for an element. It returns a slot
           // number. This slot is either empty or contains an element that
           // compares equal to element.
-          uint64_t hashByKey = _hashElement(element, true);
+          uint64_t hashByKey = _hashElement(userData, element, true);
           Bucket const& b = _buckets[hashByKey & _bucketsMask];
           buck = const_cast<Bucket*>(&b);
           IndexType hashIndex = hashToIndex(hashByKey);
@@ -1354,7 +1413,7 @@ namespace triagens {
           while (b._table[i].ptr != nullptr &&
                  (b._table[i].prev != INVALID_INDEX ||
                   (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-                  ! _isEqualElementElementByKey(element, b._table[i].ptr))) {
+                  ! _isEqualElementElementByKey(userData, element, b._table[i].ptr))) {
             i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
             _nrProbes++;
@@ -1363,13 +1422,13 @@ namespace triagens {
 
           if (b._table[i].ptr != nullptr) {
             // It might be right here!
-            if (_isEqualElementElement(element, b._table[i].ptr)) {
+            if (_isEqualElementElement(userData, element, b._table[i].ptr)) {
               return i;
             }
 
             // Now we have to look for it in its hash position:
             uint64_t hashByElm;
-            IndexType j = findElementPlace(b, element, true, hashByElm);
+            IndexType j = findElementPlace(userData, b, element, true, hashByElm);
 
             // We have either found an equal element or nothing:
             return j;
@@ -1430,14 +1489,15 @@ namespace triagens {
 /// @brief helper to heal a hole where we deleted something
 ////////////////////////////////////////////////////////////////////////////////
 
-        void healHole (Bucket& b, IndexType i) {
+        void healHole (UserData* userData, Bucket& b, IndexType i) {
           IndexType j = incr(b, i);
 
           while (b._table[j].ptr != nullptr) {
             // Find out where this element ought to be:
             // If it is the start of one of the linked lists, we need to hash
             // by key, otherwise, we hash by the full identity of the element:
-            uint64_t hash = _hashElement(b._table[j].ptr,
+            uint64_t hash = _hashElement(userData,
+                                         b._table[j].ptr,
                                          b._table[j].prev == INVALID_INDEX);
             IndexType hashIndex = hashToIndex(hash);
             IndexType k = hashIndex % b._nrAlloc;

@@ -36,13 +36,14 @@
 #include "Basics/json.h"
 #include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/vocbase.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterMethods.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -80,24 +81,36 @@ bool RestQueryHandler::isDirect () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestQueryHandler::execute () {
-
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
   // execute one of the CRUD methods
-  switch (type) {
-    case HttpRequest::HTTP_REQUEST_DELETE: deleteQuery(); break;
-    case HttpRequest::HTTP_REQUEST_GET:    readQuery(); break;
-    case HttpRequest::HTTP_REQUEST_PUT:    replaceProperties(); break;
-    case HttpRequest::HTTP_REQUEST_POST:   parseQuery(); break;
+  try {
+    switch (type) {
+      case HttpRequest::HTTP_REQUEST_DELETE: deleteQuery(); break;
+      case HttpRequest::HTTP_REQUEST_GET:    readQuery(); break;
+      case HttpRequest::HTTP_REQUEST_PUT:    replaceProperties(); break;
+      case HttpRequest::HTTP_REQUEST_POST:   parseQuery(); break;
 
-    case HttpRequest::HTTP_REQUEST_HEAD:
-    case HttpRequest::HTTP_REQUEST_PATCH:
-    case HttpRequest::HTTP_REQUEST_ILLEGAL:
-    default: {
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
-      break;
+      case HttpRequest::HTTP_REQUEST_HEAD:
+      case HttpRequest::HTTP_REQUEST_PATCH:
+      case HttpRequest::HTTP_REQUEST_ILLEGAL:
+      default: {
+        generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+        break;
+      }
     }
+  }
+  catch (Exception const& err) {
+    handleError(err);
+  }
+  catch (std::exception const& ex) {
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+    handleError(err);
+  }
+  catch (...) {
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    handleError(err);
   }
 
   // this handler is done
@@ -155,18 +168,19 @@ bool RestQueryHandler::readQueryProperties () {
   try {
     auto queryList = static_cast<QueryList*>(_vocbase->_queries);
 
-    Json result(Json::Object);
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.add("enabled", VPackValue(queryList->enabled()));
+    result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
+    result.add("maxSlowQueries", VPackValue(queryList->maxSlowQueries()));
+    result.add("slowQueryThreshold", VPackValue(queryList->slowQueryThreshold()));
+    result.add("maxQueryStringLength", VPackValue(queryList->maxQueryStringLength()));
+    result.close();
+    VPackSlice slice = result.slice();
 
-    result
-    .set("error", Json(false))
-    .set("code", Json(HttpResponse::OK))
-    .set("enabled", Json(queryList->enabled()))
-    .set("trackSlowQueries", Json(queryList->trackSlowQueries()))
-    .set("maxSlowQueries", Json(static_cast<double>(queryList->maxSlowQueries())))
-    .set("slowQueryThreshold", Json(queryList->slowQueryThreshold()))
-    .set("maxQueryStringLength", Json(static_cast<double>(queryList->maxQueryStringLength())));
-
-    generateResult(HttpResponse::OK, result.json());
+    generateResult(slice);
   }
   catch (Exception const& err) {
     handleError(err);
@@ -252,25 +266,26 @@ bool RestQueryHandler::readQueryProperties () {
 bool RestQueryHandler::readQuery (bool slow) {
   try {
     auto queryList = static_cast<QueryList*>(_vocbase->_queries);
-    auto const&& queries = slow ? queryList->listSlow() : queryList->listCurrent(); 
-    Json result(Json::Array);
+    auto queries = slow ? queryList->listSlow() : queryList->listCurrent(); 
 
-    for (auto it : queries) {
-      const auto&& timeString = TRI_StringTimeStamp(it.started);
-      const auto& queryString = it.queryString;
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Array));
 
-      Json entry(Json::Object);
+    for (auto const& it : queries) {
+      auto const& timeString = TRI_StringTimeStamp(it.started);
+      auto const& queryString = it.queryString;
 
-      entry
-      .set("id", Json(StringUtils::itoa(it.id)))
-      .set("query", Json(queryString))
-      .set("started", Json(timeString))
-      .set("runTime", Json(it.runTime));
-
-      result.add(entry);
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("id", VPackValue(StringUtils::itoa(it.id)));
+      result.add("query", VPackValue(queryString));
+      result.add("started", VPackValue(timeString));
+      result.add("runTime", VPackValue(it.runTime));
+      result.close();
     }
+    result.close();
+    VPackSlice s = result.slice();
 
-    generateResult(HttpResponse::OK, result.json());
+    generateResult(s);
   }
   catch (Exception const& err) {
     handleError(err);
@@ -301,7 +316,7 @@ bool RestQueryHandler::readQuery () {
     return true;
   }
 
-  const auto& name = suffix[0];
+  auto const& name = suffix[0];
 
   if (name == "slow") {
     return readQuery(true);
@@ -343,15 +358,14 @@ bool RestQueryHandler::deleteQuerySlow () {
   auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
   queryList->clearSlow();
 
-  Json result(Json::Object);
-
-  // added a "generateOk"?
-
-  result
-  .set("error", Json(false))
-  .set("code", Json(HttpResponse::OK));
-
-  generateResult(HttpResponse::OK, result.json());
+  VPackBuilder result;
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("error", VPackValue(false));
+  result.add("code", VPackValue(HttpResponse::OK));
+  result.close();
+  VPackSlice slice = result.slice();
+  generateResult(slice);
+  
   return true;
 }
 
@@ -393,13 +407,13 @@ bool RestQueryHandler::deleteQuery (const string& name) {
   auto res = queryList->kill(id);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    Json result(Json::Object);
-
-    result
-    .set("error", Json(false))
-    .set("code", Json(HttpResponse::OK));
-
-    generateResult(HttpResponse::OK, result.json());
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("error", VPackValue(false));
+    result.add("code", VPackValue(HttpResponse::OK));
+    result.close();
+    VPackSlice slice = result.slice();
+    generateResult(slice);
   }
   else {
     generateError(HttpResponse::BAD, res, "cannot kill query '" + name + "'");
@@ -422,14 +436,12 @@ bool RestQueryHandler::deleteQuery () {
     return true;
   }
 
-  const auto& name = suffix[0];
+  auto const& name = suffix[0];
 
   if (name == "slow") {
     return deleteQuerySlow();
   }
-  else {
-    return deleteQuery(name);
-  }
+  return deleteQuery(name);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,12 +505,20 @@ bool RestQueryHandler::replaceProperties () {
     return true;
   }
 
-  unique_ptr<TRI_json_t> body(parseJsonBody());
-
-  if (body == nullptr) {
-    // error message generated in parseJsonBody
+  bool parseSuccess = true;
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+  if (! parseSuccess) {
+    // error message generated in parseVelocyPackBody
     return true;
   }
+
+  VPackSlice body = parsedBody.get()->slice();
+  if (! body.isObject()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON object as body");
+  };
 
   auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
 
@@ -509,26 +529,30 @@ bool RestQueryHandler::replaceProperties () {
     double slowQueryThreshold = queryList->slowQueryThreshold();
     size_t maxQueryStringLength = queryList->maxQueryStringLength();
 
-    // TODO(fc) add a "hasSomething" to JsonHelper?
-
-    if (JsonHelper::getObjectElement(body.get(), "enabled") != nullptr) {
-      enabled = JsonHelper::checkAndGetBooleanValue(body.get(), "enabled");
+    VPackSlice attribute;
+    attribute = body.get("enabled");
+    if (attribute.isBool()) {
+      enabled = attribute.getBool();
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "trackSlowQueries") != nullptr) {
-      trackSlowQueries = JsonHelper::checkAndGetBooleanValue(body.get(), "trackSlowQueries");
+    attribute = body.get("trackSlowQueries");
+    if (attribute.isBool()) {
+      trackSlowQueries = attribute.getBool();
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "maxSlowQueries") != nullptr) {
-      maxSlowQueries = JsonHelper::checkAndGetNumericValue<size_t>(body.get(), "maxSlowQueries");
+    attribute = body.get("maxSlowQueries");
+    if (attribute.isInteger()) {
+      maxSlowQueries = static_cast<size_t>(attribute.getUInt());
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "slowQueryThreshold") != nullptr) {
-      slowQueryThreshold = JsonHelper::checkAndGetNumericValue<double>(body.get(), "slowQueryThreshold");
+    attribute = body.get("slowQueryThreshold");
+    if (attribute.isNumber()) {
+      slowQueryThreshold = attribute.getNumber<double>();
     }
 
-    if (JsonHelper::getObjectElement(body.get(), "maxQueryStringLength") != nullptr) {
-      maxQueryStringLength = JsonHelper::checkAndGetNumericValue<size_t>(body.get(), "maxQueryStringLength");
+    attribute = body.get("maxQueryStringLength");
+    if (attribute.isInteger()) {
+      maxQueryStringLength = static_cast<size_t>(attribute.getUInt());
     }
 
     queryList->enabled(enabled);
@@ -623,15 +647,24 @@ bool RestQueryHandler::parseQuery () {
     return true;
   }
 
-  unique_ptr<TRI_json_t> body(parseJsonBody());
-
-  if (body.get() == nullptr) {
-    // error message generated in parseJsonBody
+  bool parseSuccess = true;
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+  if (! parseSuccess) {
+    // error message generated in parseVelocyPackBody
     return true;
   }
 
+  VPackSlice body = parsedBody.get()->slice();
+
+  if (! body.isObject()) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting a JSON object as body");
+  };
+
   try {
-    const string&& queryString = JsonHelper::checkAndGetStringValue(body.get(), "query");
+    const string&& queryString = VelocyPackHelper::checkAndGetStringValue(body, "query");
 
     Query query(_applicationV8, true, _vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr, PART_MAIN);
     
@@ -644,36 +677,36 @@ bool RestQueryHandler::parseQuery () {
       return true;
     }
 
-    Json collections(Json::Array);
+    VPackBuilder result;
+    {
+      VPackObjectBuilder b(&result);
+      result.add("error", VPackValue(false));
+      result.add("code", VPackValue(HttpResponse::OK));
+      result.add("parsed", VPackValue(true));
 
-    for (const auto& it : parseResult.collectionNames) {
-      collections.add(Json(it));
+      result.add("collections", VPackValue(VPackValueType::Array));
+      for (const auto& it : parseResult.collectionNames) {
+        result.add(VPackValue(it));
+      }
+      result.close(); // Collections
+
+      result.add("bindVars", VPackValue(VPackValueType::Array));
+      for (const auto& it : parseResult.bindParameters) {
+        result.add(VPackValue(it));
+      }
+      result.close(); // bindVars
+
+      auto tmp = VPackParser::fromJson(triagens::basics::JsonHelper::toString(parseResult.json));
+      result.add("ast", tmp->slice());
+      
+      if (parseResult.warnings != nullptr) {
+        auto tmp = VPackParser::fromJson(triagens::basics::JsonHelper::toString(parseResult.warnings));
+        result.add("warnings", tmp->slice());
+      }
     }
 
-    Json bindVars(Json::Array);
-
-    for (const auto& it : parseResult.bindParameters) {
-      bindVars.add(Json(it));
-    }
-
-    Json result(Json::Object);
-
-    result
-    .set("error", Json(false))
-    .set("code", Json(HttpResponse::OK))
-    .set("parsed", Json(true))
-    .set("collections", collections)
-    .set("bindVars", bindVars)
-    .set("ast", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.json, Json::NOFREE).copy());
-
-    if (parseResult.warnings == nullptr) {
-      result.set("warnings", Json(Json::Array));
-    }
-    else {
-      result.set("warnings", Json(TRI_UNKNOWN_MEM_ZONE, parseResult.warnings, Json::NOFREE).copy());
-    }
-
-    generateResult(HttpResponse::OK, result.json());
+    VPackSlice slice = result.slice();
+    generateResult(slice);
   }
   catch (Exception const& err) {
     handleError(err);

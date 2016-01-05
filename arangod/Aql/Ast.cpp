@@ -1070,8 +1070,6 @@ AstNode* Ast::createNodeIntersectedArray (AstNode const* lhs,
     auto it = cache.find(json);
 
     if (it != cache.end()) {
-      // TODO: check if the node needs cloning or if we can get away without
-      // node->addMember(clone((*it).second));
       node->addMember((*it).second); 
     }
   }
@@ -1081,7 +1079,6 @@ AstNode* Ast::createNodeIntersectedArray (AstNode const* lhs,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST unique array node, OR-merged from two other arrays
-/// TODO: optimize this function
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeUnionizedArray (AstNode const* lhs, 
@@ -2031,7 +2028,6 @@ AstNode const* Ast::deduplicateArray (AstNode const* node) {
   copy->members.reserve(cache.size());
 
   for (auto& it : cache) {
-    // TODO: check if the node needs cloning or if we can get away without
     copy->addMember(it.second);
   }
   copy->sort();

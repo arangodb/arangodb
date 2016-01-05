@@ -29,13 +29,19 @@
 
 #include "RestImportHandler.h"
 
-#include "Basics/JsonHelper.h"
+#include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -212,32 +218,25 @@ std::string RestImportHandler::buildParseError (size_t i,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process a single JSON document
+/// @brief process a single VelocyPack document
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
                                              RestImportResult& result,
                                              char const* lineStart,
-                                             TRI_json_t const* json,
+                                             VPackSlice const& slice,
                                              bool isEdgeCollection,
                                              bool waitForSync,
                                              size_t i) {
 
-  if (! TRI_IsObjectJson(json)) {
-    std::string errorMsg;
-
-    if (json != nullptr) {
-      string part = JsonHelper::toString(json);
-      if (part.size() > 255) {
-        // UTF-8 chars in string will be escaped so we can truncate it at any point
-        part = part.substr(0, 255) + "...";
-      }
+  if (! slice.isObject()) {
+    string part = VPackDumper::toString(slice);
+    if (part.size() > 255) {
+      // UTF-8 chars in string will be escaped so we can truncate it at any point
+      part = part.substr(0, 255) + "...";
+    }
     
-      errorMsg = positionise(i) + "invalid JSON type (expecting object), offending document: " + part;
-    }
-    else {
-      errorMsg = buildParseError(i, lineStart);
-    }
+    std::string errorMsg = positionise(i) + "invalid JSON type (expecting object), offending document: " + part;
 
     registerError(result, errorMsg);
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -248,11 +247,15 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
   int res = TRI_ERROR_NO_ERROR;
 
   if (isEdgeCollection) {
-    char const* from = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_FROM);
-    char const* to   = extractJsonStringValue(json, TRI_VOC_ATTRIBUTE_TO);
+    std::string from;
+    std::string to;
 
-    if (from == nullptr || to == nullptr) {
-      string part = JsonHelper::toString(json);
+    try {
+      from = triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice, TRI_VOC_ATTRIBUTE_FROM);
+      to = triagens::basics::VelocyPackHelper::checkAndGetStringValue(slice, TRI_VOC_ATTRIBUTE_TO);
+    }
+    catch (triagens::basics::Exception const&) {
+      string part = VPackDumper::toString(slice);
       if (part.size() > 255) {
         // UTF-8 chars in string will be escaped so we can truncate it at any point
         part = part.substr(0, 255) + "...";
@@ -278,7 +281,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 
     if (res1 == TRI_ERROR_NO_ERROR && 
         res2 == TRI_ERROR_NO_ERROR) {
-      res = trx.createEdge(&document, json, waitForSync, &edge);
+      res = trx.createEdge(&document, slice, waitForSync, &edge);
     }
     else {
       res = (res1 != TRI_ERROR_NO_ERROR ? res1 : res2);
@@ -293,8 +296,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
   }
   else {
     // do not acquire an extra lock
-      
-    res = trx.createDocument(&document, json, waitForSync);
+    res = trx.createDocument(&document, slice, waitForSync);
   }
    
         
@@ -302,20 +304,20 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
     ++result._numCreated;
   }
 
-
   // special behavior in case of unique constraint violation . . .
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
       _onDuplicateAction != DUPLICATE_ERROR) {
 
-    auto keyJson = TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY);
+    VPackSlice const keySlice = slice.get(TRI_VOC_ATTRIBUTE_KEY);
 
-    if (TRI_IsStringJson(keyJson)) {
+    if (keySlice.isString()) {
       // insert failed. now try an update/replace
 
+      std::string keyString = keySlice.copyString();
       if (_onDuplicateAction == DUPLICATE_UPDATE) {
         // update: first read existing document
         TRI_doc_mptr_copy_t previous;
-        int res2 = trx.read(&previous, keyJson->_value._string.data);
+        int res2 = trx.read(&previous, keyString);
 
         if (res2 == TRI_ERROR_NO_ERROR) {
           auto shaper = trx.documentCollection()->getShaper();  // PROTECTED by trx here
@@ -328,10 +330,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
           res = TRI_ERROR_OUT_OF_MEMORY;
 
           if (old != nullptr) {
-            std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old.get(), json, false, true));
+            std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+            std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old.get(), json.get(), false, true));
 
             if (patchedJson != nullptr) {
-              res = trx.updateDocument(keyJson->_value._string.data, &document, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
+              res = trx.updateDocument(keyString, &document, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
             }
           }
 
@@ -342,7 +345,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
       }
       else if (_onDuplicateAction == DUPLICATE_REPLACE) {
         // replace
-        res = trx.updateDocument(keyJson->_value._string.data, &document, json, TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
+        res = trx.updateDocument(keyString, &document, slice, TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
           
         if (res == TRI_ERROR_NO_ERROR) {
           ++result._numUpdated;
@@ -359,7 +362,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 
 
   if (res != TRI_ERROR_NO_ERROR) {
-    string part = JsonHelper::toString(json);
+    string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any point
       part = part.substr(0, 255) + "...";
@@ -818,7 +821,7 @@ bool RestImportHandler::createFromJson (string const& type) {
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  bool const isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
 
@@ -853,7 +856,9 @@ bool RestImportHandler::createFromJson (string const& type) {
       char const* pos = strchr(ptr, '\n');
       char const* oldPtr = nullptr;
 
-      TRI_json_t* json = nullptr;
+      std::shared_ptr<VPackBuilder> builder;
+
+      bool success = false;
 
       if (pos == ptr) {
         // line starting with \n, i.e. empty line
@@ -866,7 +871,7 @@ bool RestImportHandler::createFromJson (string const& type) {
         *(const_cast<char*>(pos)) = '\0';
         TRI_ASSERT(ptr != nullptr);
         oldPtr = ptr;
-        json = parseJsonLine(ptr, pos);
+        builder = parseVelocyPackLine(ptr, pos, success);
         ptr = pos + 1;
       }
       else {
@@ -874,16 +879,23 @@ bool RestImportHandler::createFromJson (string const& type) {
         TRI_ASSERT(pos == nullptr);
         TRI_ASSERT(ptr != nullptr);
         oldPtr = ptr;
-        json = parseJsonLine(ptr);
+        builder = parseVelocyPackLine(ptr, success);
         ptr = end;
       }
 
-      res = handleSingleDocument(trx, result, oldPtr, json, isEdgeCollection, waitForSync, i);
-
-      if (json != nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      if (! success) {
+        std::string errorMsg = buildParseError(i, oldPtr);
+        registerError(result, errorMsg);
+        if (complete) {
+          // only perform a full import: abort
+          break;
+        }
+        // Do not try to store illegal document
+        continue;
       }
-      
+
+      res = handleSingleDocument(trx, result, oldPtr, builder->slice(), isEdgeCollection, waitForSync, i);
+
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
           // only perform a full import: abort
@@ -897,25 +909,32 @@ bool RestImportHandler::createFromJson (string const& type) {
 
   else {
     // the entire request body is one JSON document
-    TRI_json_t* documents = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, _request->body(), nullptr);
-
-    if (! TRI_IsArrayJson(documents)) {
-      if (documents != nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
-      }
-
+    std::shared_ptr<VPackBuilder> parsedDocuments;
+    try {
+      parsedDocuments = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(_request->body()), _request->bodySize());
+    }
+    catch (VPackException const& e) {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
       return false;
     }
 
-    size_t const n = TRI_LengthArrayJson(documents);
+    VPackSlice const documents = parsedDocuments->slice();
 
-    for (size_t i = 0; i < n; ++i) {
-      TRI_json_t const* json = static_cast<TRI_json_t const*>(TRI_AtVector(&documents->_value._objects, i));
+    if (! documents.isArray()) {
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "expecting a JSON array in the request");
+      return false;
+    }
 
-      res = handleSingleDocument(trx, result, nullptr, json, isEdgeCollection, waitForSync, i + 1);
+    VPackValueLength const n = documents.length();
+
+    for (VPackValueLength i = 0; i < n; ++i) {
+      VPackSlice const slice = documents.at(i);
+
+      res = handleSingleDocument(trx, result, nullptr, slice, isEdgeCollection, waitForSync, i + 1);
       
       if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
@@ -926,8 +945,6 @@ bool RestImportHandler::createFromJson (string const& type) {
         res = TRI_ERROR_NO_ERROR;
       }
     }
-
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, documents);
   }
 
 
@@ -1300,16 +1317,24 @@ bool RestImportHandler::createFromKeyValueList () {
   }
 
   *(const_cast<char*>(lineEnd)) = '\0';
-  TRI_json_t* keys = parseJsonLine(lineStart, lineEnd);
-
-  if (! checkKeys(keys)) {
+  bool success = false;
+  std::shared_ptr<VPackBuilder> parsedKeys;
+  try {
+    parsedKeys = parseVelocyPackLine(lineStart, lineEnd, success);
+  }
+  catch (...) {
+    // This throws if the body is not parseable
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "no JSON string array found in first line");
+    return false;
+  }
+  VPackSlice const keys = parsedKeys->slice();
 
-    if (keys != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
-    }
+  if (! success || ! checkKeys(keys)) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON string array found in first line");
     return false;
   }
 
@@ -1326,13 +1351,12 @@ bool RestImportHandler::createFromKeyValueList () {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
     generateTransactionError(collection, res);
     return false;
   }
 
   TRI_document_collection_t* document = trx.documentCollection();
-  bool const isEdgeCollection = (document->_info._type == TRI_COL_TYPE_EDGE);
+  bool const isEdgeCollection = (document->_info.type() == TRI_COL_TYPE_EDGE);
 
   trx.lockWrite();
 
@@ -1378,44 +1402,41 @@ bool RestImportHandler::createFromKeyValueList () {
       continue;
     }
 
-    TRI_json_t* values = parseJsonLine(lineStart, lineEnd);
+    bool success;
+    std::shared_ptr<VPackBuilder> parsedValues = parseVelocyPackLine(lineStart, lineEnd, success);
 
-    if (values != nullptr) {
-      // build the json object from the array
-      string errorMsg;
-
-      TRI_json_t* json = createJsonObject(keys, values, errorMsg, i);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
-
-      if (json != nullptr) {
-        res = handleSingleDocument(trx, result, lineStart, json, isEdgeCollection, waitForSync, i);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    // build the json object from the array
+    string errorMsg;
+    if (! success) {
+      errorMsg = buildParseError(i, lineStart);
+      registerError(result, errorMsg);
+      res = TRI_ERROR_INTERNAL;
+    }
+    else {
+      VPackSlice const values = parsedValues->slice();
+      try {
+        std::shared_ptr<VPackBuilder> objectBuilder = createVelocyPackObject(keys, values, errorMsg, i);
+        res = handleSingleDocument(trx, result, lineStart, objectBuilder->slice(), isEdgeCollection, waitForSync, i);
       }
-      else {
+      catch (...) {
         // raise any error
         res = TRI_ERROR_INTERNAL;
         registerError(result, errorMsg);
       }
-      
-      if (res != TRI_ERROR_NO_ERROR) {
-        if (complete) {
-          // only perform a full import: abort
-          break;
-        }
-
-        res = TRI_ERROR_NO_ERROR;
-      }
     }
-    else {
-      string errorMsg = buildParseError(i, lineStart);
-      registerError(result, errorMsg);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (complete) {
+        // only perform a full import: abort
+        break;
+      }
+
+      res = TRI_ERROR_NO_ERROR;
     }
   }
 
   // we'll always commit, even if previous errors occurred
   res = trx.finish(res);
-
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
 
   // .............................................................................
   // outside write transaction
@@ -1440,113 +1461,138 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
   createResponse(HttpResponse::CREATED);
   _response->setContentType("application/json; charset=utf-8");
 
-  TRI_json_t json;
+  try {
+    VPackBuilder json;
+    json.add(VPackValue(VPackValueType::Object));
+    json.add("error", VPackValue(false));
+    json.add("created", VPackValue(result._numCreated));
+    json.add("errors", VPackValue(result._numErrors));
+    json.add("empty", VPackValue(result._numEmpty));
+    json.add("updated", VPackValue(result._numUpdated));
+    json.add("ignored", VPackValue(result._numIgnored));
 
-  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "error", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "created", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numCreated));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "errors", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numErrors));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "empty", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numEmpty));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "updated", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numUpdated));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "ignored", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numIgnored));
+    bool found;
+    char const* detailsStr = _request->value("details", found);
 
-  bool found;
-  char const* detailsStr = _request->value("details", found);
+    // include failure details?
+    if (found && StringUtils::boolean(detailsStr)) {
+      json.add("details", VPackValue(VPackValueType::Array));
 
-  // include failure details?
-  if (found && StringUtils::boolean(detailsStr)) {
-    TRI_json_t* messages = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
-
-    for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
-      string const& msg = result._errors[i];
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, messages, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, msg.c_str(), msg.size()));
+      for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
+        json.add(VPackValue(result._errors[i]));
+      }
+      json.close();
     }
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "details", messages);
+    json.close();
+    VPackSlice s = json.slice();
+    generateResult(HttpResponse::CREATED, s);
   }
-
-  generateResult(HttpResponse::CREATED, &json);
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
+  catch (...) {
+    // Ignore the error
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestImportHandler::parseJsonLine (string const& line) {
-  return parseJsonLine(line.c_str(), line.c_str() + line.size());
+std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine (string const& line,
+                                                                      bool& success) {
+  try {
+    success = true;
+    return VPackParser::fromJson(line);
+  }
+  catch (VPackException const& e) {
+    success = false;
+    VPackParser p;
+    return p.steal();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a single document line
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestImportHandler::parseJsonLine (char const* start,
-                                              char const* end) {
-  return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, start, nullptr);
+std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine (char const* start,
+                                                                      char const* end,
+                                                                      bool& success) {
+  try {
+    std::string tmp(start, end);
+    return parseVelocyPackLine(tmp, success);
+  }
+  catch (std::exception const&) {
+    // The line is invalid and could not be transformed into a string
+    success = false;
+    VPackParser p;
+    return p.steal();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a JSON object from a line containing a document
+/// @brief create a VelocyPack object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
-                                                 TRI_json_t const* values,
-                                                 string& errorMsg,
-                                                 size_t lineNumber) {
+std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject (VPackSlice const& keys,
+                                                                         VPackSlice const& values,
+                                                                         string& errorMsg,
+                                                                         size_t lineNumber) {
 
-  if (values->_type != TRI_JSON_ARRAY) {
+  if (! values.isArray()) {
     errorMsg = positionise(lineNumber) + "no valid JSON array data";
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
-  size_t const n = TRI_LengthArrayJson(keys);
-  size_t const m = TRI_LengthArrayJson(values);
+  TRI_ASSERT(keys.isArray());
+  VPackValueLength const n = keys.length();
+  VPackValueLength const m = values.length();
 
   if (n != m) {
     errorMsg = positionise(lineNumber) + "wrong number of JSON values (got " 
              + to_string(m) + ", expected " + to_string(n) + ")";
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errorMsg);
   }
 
-  TRI_json_t* result = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, n);
+  try {
+    auto result = std::make_shared<VPackBuilder>();
+    result->openObject();
 
-  if (result == nullptr) {
-    LOG_ERROR("out of memory");
-    return nullptr;
-  }
+    for (size_t i = 0;  i < n;  ++i) {
+      VPackSlice const key = keys.at(i);
+      VPackSlice const value = values.at(i);
 
-  for (size_t i = 0;  i < n;  ++i) {
-
-    TRI_json_t const* key   = static_cast<TRI_json_t const*>(TRI_AtVector(&keys->_value._objects, i));
-    TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&values->_value._objects, i));
-
-    if (JsonHelper::isString(key) && value->_type > TRI_JSON_NULL) {
-      TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, result, key->_value._string.data, value);
+      if (key.isString() && ! value.isNone() && ! value.isNull()) {
+        std::string tmp = key.copyString();
+        result->add(tmp, value);
+      }
     }
-  }
+    result->close();
 
-  return result;
+    return result;
+  }
+  catch (std::bad_alloc const&) {
+    LOG_ERROR("out of memory");
+    throw;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate keys
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::checkKeys (TRI_json_t const* keys) const {
-  if (! TRI_IsArrayJson(keys)) {
+bool RestImportHandler::checkKeys (VPackSlice const& keys) const {
+  if (! keys.isArray()) {
     return false;
   }
 
-  size_t const n = TRI_LengthArrayJson(keys);
+  VPackValueLength const n = keys.length();
 
   if (n == 0) {
     return false;
   }
 
-  for (size_t i = 0;  i < n;  ++i) {
-    TRI_json_t const* key = static_cast<TRI_json_t* const>(TRI_AtVector(&keys->_value._objects, i));
+  for (VPackSlice const& key : VPackArrayIterator(keys)) {
 
-    if (! JsonHelper::isString(key)) {
+    if (! key.isString()) {
       return false;
     }
   }

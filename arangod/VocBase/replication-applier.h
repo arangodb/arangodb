@@ -57,30 +57,62 @@ struct TRI_vocbase_t;
 /// @brief struct containing a replication apply configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_replication_applier_configuration_t {
-  char*         _endpoint;
-  char*         _database;
-  char*         _username;
-  char*         _password;
-  double        _requestTimeout;
-  double        _connectTimeout;
-  uint64_t      _ignoreErrors;
-  uint64_t      _maxConnectRetries;
-  uint64_t      _chunkSize;
-  uint64_t      _connectionRetryWaitTime;  
-  uint64_t      _idleMinWaitTime;          // 500 * 1000
-  uint64_t      _idleMaxWaitTime;          // 5 * 500 * 1000
-  uint64_t      _initialSyncMaxWaitTime;
-  uint64_t      _autoResyncRetries;
-  uint32_t      _sslProtocol;
-  bool          _autoStart;
-  bool          _adaptivePolling;
-  bool          _autoResync;
-  bool          _includeSystem;
-  bool          _requireFromPresent;
-  bool          _verbose;
-  std::string   _restrictType;
-  std::unordered_map<std::string, bool> _restrictCollections;
+class TRI_replication_applier_configuration_t {
+
+  // leftover from struct
+  public:
+    char*         _endpoint;
+    char*         _database;
+    char*         _username;
+    char*         _password;
+    double        _requestTimeout;
+    double        _connectTimeout;
+    uint64_t      _ignoreErrors;
+    uint64_t      _maxConnectRetries;
+    uint64_t      _chunkSize;
+    uint64_t      _connectionRetryWaitTime;  
+    uint64_t      _idleMinWaitTime;          // 500 * 1000
+    uint64_t      _idleMaxWaitTime;          // 5 * 500 * 1000
+    uint64_t      _initialSyncMaxWaitTime;
+    uint64_t      _autoResyncRetries;
+    uint32_t      _sslProtocol;
+    bool          _autoStart;
+    bool          _adaptivePolling;
+    bool          _autoResync;
+    bool          _includeSystem;
+    bool          _requireFromPresent;
+    bool          _verbose;
+    std::string   _restrictType;
+    std::unordered_map<std::string, bool> _restrictCollections;
+
+  public:
+
+    TRI_replication_applier_configuration_t () {
+    }
+
+    ~TRI_replication_applier_configuration_t () {
+      freeInternalStrings();
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frees all internal CORE_MEM_ZONE strings
+////////////////////////////////////////////////////////////////////////////////
+
+    void freeInternalStrings ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+///        Expects builder to be in an open Object state
+////////////////////////////////////////////////////////////////////////////////
+
+    void toVelocyPack (bool, VPackBuilder&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+////////////////////////////////////////////////////////////////////////////////
+
+    std::shared_ptr<VPackBuilder> toVelocyPack (bool) const;
+
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,6 +253,19 @@ class TRI_replication_applier_t {
     int setError (int,
                   char const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+///        Expects builder to be in an open Object state
+////////////////////////////////////////////////////////////////////////////////
+
+    void toVelocyPack (VPackBuilder& builder) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a VelocyPack representation
+////////////////////////////////////////////////////////////////////////////////
+
+    std::shared_ptr<VPackBuilder> toVelocyPack () const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -281,7 +326,7 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t*,
 /// @brief get the current replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StateReplicationApplier (TRI_replication_applier_t*,
+int TRI_StateReplicationApplier (TRI_replication_applier_t const*,
                                  TRI_replication_applier_state_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,12 +373,6 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy an apply configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyConfigurationReplicationApplier (TRI_replication_applier_configuration_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy an apply configuration

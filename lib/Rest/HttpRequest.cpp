@@ -36,6 +36,11 @@
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -512,6 +517,16 @@ void HttpRequest::setHeader (char const* key,
 
     _headers.insert(key, keyLength, value);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the request body as VPackBuilder
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack (VPackOptions const* options) {
+  VPackParser parser(options);
+  parser.parse(body());
+  return parser.steal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

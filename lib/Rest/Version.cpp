@@ -39,6 +39,7 @@
 #include "Basics/Utf8Helper.h"
 
 #include <openssl/ssl.h>
+#include <sstream>
 
 using namespace triagens::rest;
 
@@ -309,6 +310,23 @@ void Version::getJson (TRI_memory_zone_t* zone, TRI_json_t* dst) {
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief VelocyPack all data
+////////////////////////////////////////////////////////////////////////////////
+
+void Version::getVPack (VPackBuilder& dst) {
+  for (auto& it : Values) {
+    std::string value = it.second;
+    triagens::basics::StringUtils::trimInPlace(value);
+
+    if (! value.empty()) {
+      dst.add(it.first, VPackValue(value));
+    }
+  }
+}
+
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           public static variables

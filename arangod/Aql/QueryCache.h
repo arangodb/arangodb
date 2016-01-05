@@ -35,6 +35,9 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 struct TRI_json_t;
 struct TRI_vocbase_t;
 
@@ -298,7 +301,7 @@ namespace triagens {
 /// @brief return the query cache properties
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json properties ();
+        VPackBuilder properties ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the cache properties

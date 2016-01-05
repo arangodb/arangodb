@@ -367,7 +367,6 @@ int TRI_ZipFile (const char* filename,
                                 password,
                                 (unsigned long) crc,
                                 isLarge) != ZIP_OK) {
-      // TODO FIXME
       res = TRI_ERROR_INTERNAL;
       TRI_FreeString(TRI_CORE_MEM_ZONE, fullfile);
       break;

@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Traverser.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/json-utilities.h"
 #include "VocBase/KeyGenerator.h"
 
@@ -60,14 +61,12 @@ triagens::arango::traverser::VertexId triagens::arango::traverser::IdStringToVer
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates an expression from a TRI_json_t*
+/// @brief Creates an expression from a VelocyPackSlice
 ////////////////////////////////////////////////////////////////////////////////
 
-TraverserExpression::TraverserExpression (TRI_json_t const* json) {
-  isEdgeAccess = basics::JsonHelper::checkAndGetBooleanValue(json, "isEdgeAccess");
-
-  comparisonType = static_cast<aql::AstNodeType>(basics::JsonHelper::checkAndGetNumericValue<uint32_t>(json, "comparisonType"));
-
+TraverserExpression::TraverserExpression (VPackSlice const& slice) {
+  isEdgeAccess = slice.get("isEdgeAccess").getBool();
+  comparisonType = static_cast<aql::AstNodeType>(slice.get("comparisonType").getNumber<uint32_t>());
   auto registerNode = [&](aql::AstNode const* node) -> void {
     _nodeRegister.emplace_back(node);
   };
@@ -82,13 +81,9 @@ TraverserExpression::TraverserExpression (TRI_json_t const* json) {
     return p->c_str(); // should never change its position, even if vector grows/shrinks
   };
 
-  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE,
-                                 basics::JsonHelper::checkAndGetObjectValue(json, "varAccess"),
-                                 triagens::basics::Json::NOFREE);
+  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")), triagens::basics::Json::NOFREE);
 
-  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE,
-                                             basics::JsonHelper::getObjectElement(json, "compareTo"),
-                                             triagens::basics::Json::NOFREE));
+  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::VelocyPackHelper::velocyPackToJson(slice.get("compareTo")), triagens::basics::Json::NOFREE));
 
   if (compareTo->json() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid compareTo value");
@@ -197,6 +192,15 @@ bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TraverserExpression::matchesCheck (TRI_json_t const* element) const {
+  DocumentAccessor accessor(element);
+  return matchesCheck(accessor);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief evalutes if an element matches the given expression
+////////////////////////////////////////////////////////////////////////////////
+
+bool TraverserExpression::matchesCheck (VPackSlice const& element) const {
   DocumentAccessor accessor(element);
   return matchesCheck(accessor);
 }

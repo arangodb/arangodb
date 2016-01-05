@@ -45,6 +45,8 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 struct TRI_json_t;
 struct TRI_vector_pointer_s;
 
@@ -123,7 +125,23 @@ namespace triagens {
                  std::string const& dbname,
                  std::string const& collname,
                  bool waitForSync,
-                 TRI_json_t* json,
+                 VPackSlice const& slice,
+                 std::map<std::string, std::string> const& headers,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 std::map<std::string, std::string>& resultHeaders,
+                 std::string& resultBody);
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int createDocumentOnCoordinator (
+                 std::string const& dbname,
+                 std::string const& collname,
+                 bool waitForSync,
+                 std::unique_ptr<TRI_json_t>& json,
                  std::map<std::string, std::string> const& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::map<std::string, std::string>& resultHeaders,
@@ -228,7 +246,27 @@ namespace triagens {
                  bool isPatch,
                  bool keepNull,   // only counts for isPatch == true
                  bool mergeObjects,   // only counts for isPatch == true
-                 TRI_json_t* json,
+                 VPackSlice const& slice,
+                 std::unique_ptr<std::map<std::string, std::string>>& headers,
+                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+                 std::map<std::string, std::string>& resultHeaders,
+                 std::string& resultBody);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modify a document in a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+    int modifyDocumentOnCoordinator (
+                 std::string const& dbname,
+                 std::string const& collname,
+                 std::string const& key,
+                 TRI_voc_rid_t const rev,
+                 TRI_doc_update_policy_e policy,
+                 bool waitForSync,
+                 bool isPatch,
+                 bool keepNull,   // only counts for isPatch == true
+                 bool mergeObjects,   // only counts for isPatch == true
+                 std::unique_ptr<TRI_json_t>& json,
                  std::unique_ptr<std::map<std::string, std::string>>& headers,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  std::map<std::string, std::string>& resultHeaders,
@@ -242,7 +280,7 @@ namespace triagens {
                  std::string const& dbname,
                  std::string const& collname,
                  bool waitForSync,
-                 TRI_json_t* json,
+                 std::unique_ptr<TRI_json_t>& json,
                  char const* from,
                  char const* to,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,

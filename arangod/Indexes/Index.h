@@ -38,6 +38,10 @@
 #include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
+#include <iosfwd>
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -54,6 +58,9 @@ namespace triagens {
     struct AstNode;
     class SortCondition;
     struct Variable;
+  }
+  namespace arango {
+    class Transaction;
   }
 }
 
@@ -368,18 +375,22 @@ namespace triagens {
         virtual size_t memory () const = 0;
         virtual triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const;
         virtual triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const;
+
+        virtual std::shared_ptr<VPackBuilder> toVelocyPack (bool, bool) const;
+        virtual std::shared_ptr<VPackBuilder> toVelocyPackFigures (bool) const;
+
         virtual bool dumpFields () const = 0;
   
-        virtual int insert (struct TRI_doc_mptr_t const*, bool) = 0;
-        virtual int remove (struct TRI_doc_mptr_t const*, bool) = 0;
-        virtual int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*);
-        virtual int batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t);
+        virtual int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) = 0;
+        virtual int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) = 0;
+        virtual int postInsert (triagens::arango::Transaction*, struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*);
+        virtual int batchInsert (triagens::arango::Transaction*, std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
         // a garbage collection function for the index
         virtual int cleanup ();
 
         // give index a hint about the expected size
-        virtual int sizeHint (size_t);
+        virtual int sizeHint (triagens::arango::Transaction*, size_t);
 
         virtual bool hasBatchInsert () const;
 
@@ -394,7 +405,8 @@ namespace triagens {
                                             size_t,
                                             double&) const;
 
-        virtual IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        virtual IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                                     IndexIteratorContext*,
                                                      triagens::aql::Ast*,
                                                      triagens::aql::AstNode const*,
                                                      triagens::aql::Variable const*,

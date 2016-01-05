@@ -37,6 +37,8 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/WorkItem.h"
 
+#include <deque>
+
 namespace triagens {
   namespace rest {
     class HttpCommTask;

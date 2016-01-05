@@ -49,7 +49,8 @@ using namespace triagens::arango;
 /// @brief hashes an edge key
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementKey (void const* data) {
+static uint64_t HashElementKey (void* userData,
+                                TRI_edge_header_t const* data) {
   TRI_ASSERT_EXPENSIVE(data != nullptr);
 
   TRI_edge_header_t const* h = static_cast<TRI_edge_header_t const*>(data);
@@ -65,7 +66,8 @@ static uint64_t HashElementKey (void const* data) {
 /// @brief hashes an edge (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdgeFrom (void const* data,
+static uint64_t HashElementEdgeFrom (void* userData,
+                                     TRI_doc_mptr_t const* data,
                                      bool byKey) {
   TRI_ASSERT_EXPENSIVE(data != nullptr);
 
@@ -76,7 +78,7 @@ static uint64_t HashElementEdgeFrom (void const* data,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -105,7 +107,8 @@ static uint64_t HashElementEdgeFrom (void const* data,
 /// @brief hashes an edge (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementEdgeTo (void const* data,
+static uint64_t HashElementEdgeTo (void* userData,
+                                   TRI_doc_mptr_t const* data,
                                    bool byKey) {
   TRI_ASSERT_EXPENSIVE(data != nullptr);
 
@@ -116,7 +119,7 @@ static uint64_t HashElementEdgeTo (void const* data,
   }
   else {
     TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(data);
-    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* edge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -145,8 +148,9 @@ static uint64_t HashElementEdgeTo (void const* data,
 /// @brief checks if key and element match (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyEdgeFrom (void const* left,
-                                void const* right) {
+static bool IsEqualKeyEdgeFrom (void* userData,
+                                TRI_edge_header_t const* left,
+                                TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 
@@ -156,7 +160,7 @@ static bool IsEqualKeyEdgeFrom (void const* left,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -181,8 +185,9 @@ static bool IsEqualKeyEdgeFrom (void const* left,
 /// @brief checks if key and element match (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyEdgeTo (void const* left,
-                              void const* right) {
+static bool IsEqualKeyEdgeTo (void* userData,
+                              TRI_edge_header_t const* left,
+                              TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 
@@ -192,7 +197,7 @@ static bool IsEqualKeyEdgeTo (void const* left,
   char const* lKey = l->_key;
 
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -218,8 +223,9 @@ static bool IsEqualKeyEdgeTo (void const* left,
 /// @brief checks for elements are equal (_from and _to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdge (void const* left,
-                                void const* right) {
+static bool IsEqualElementEdge (void* userData,
+                                TRI_doc_mptr_t const* left,
+                                TRI_doc_mptr_t const* right) {
   return left == right;
 }
 
@@ -227,8 +233,9 @@ static bool IsEqualElementEdge (void const* left,
 /// @brief checks for elements are equal (_from case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeFromByKey (void const* left,
-                                         void const* right) {
+static bool IsEqualElementEdgeFromByKey (void* userData,
+                                         TRI_doc_mptr_t const* left,
+                                         TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 
@@ -240,7 +247,7 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 
   // left element
   TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* lEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -255,7 +262,7 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 
   // right element
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -281,8 +288,9 @@ static bool IsEqualElementEdgeFromByKey (void const* left,
 /// @brief checks for elements are equal (_to case)
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementEdgeToByKey (void const* left,
-                                       void const* right) {
+static bool IsEqualElementEdgeToByKey (void* userData,
+                                       TRI_doc_mptr_t const* left,
+                                       TRI_doc_mptr_t const* right) {
   TRI_ASSERT_EXPENSIVE(left != nullptr);
   TRI_ASSERT_EXPENSIVE(right != nullptr);
 
@@ -294,7 +302,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
   // left element
   TRI_doc_mptr_t const* lMptr = static_cast<TRI_doc_mptr_t const*>(left);
-  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(lMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* lEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -309,7 +317,7 @@ static bool IsEqualElementEdgeToByKey (void const* left,
 
   // right element
   TRI_doc_mptr_t const* rMptr = static_cast<TRI_doc_mptr_t const*>(right);
-  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtrUnchecked());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  marker = static_cast<TRI_df_marker_t const*>(rMptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* rEdge = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -351,7 +359,7 @@ TRI_doc_mptr_t* EdgeIndexIterator::next () {
       TRI_ASSERT(_position == 0);
       _posInBuffer = 0;
       _last = nullptr;
-      _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+      _buffer = _index->lookupByKey(_trx, &_keys[_position], _batchSize);
       // fallthrough intentional
     }
     else if (_posInBuffer >= _buffer->size()) {
@@ -361,10 +369,10 @@ TRI_doc_mptr_t* EdgeIndexIterator::next () {
 
       _posInBuffer = 0;
       if (_last != nullptr) {
-        _buffer = _index->lookupByKeyContinue(_last, _batchSize);
+        _buffer = _index->lookupByKeyContinue(_trx, _last, _batchSize);
       }
       else {
-        _buffer = _index->lookupByKey(&_keys[_position], _batchSize);
+        _buffer = _index->lookupByKey(_trx, &_keys[_position], _batchSize);
       }
     }
 
@@ -405,7 +413,7 @@ EdgeIndex::EdgeIndex (TRI_idx_iid_t iid,
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    _numBuckets = static_cast<size_t>(collection->_info._indexBuckets);
+    _numBuckets = static_cast<size_t>(collection->_info.indexBuckets());
   }
 
   auto context = [this] () -> std::string {
@@ -479,6 +487,40 @@ size_t EdgeIndex::memory () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a VelocyPack representation of the index
+////////////////////////////////////////////////////////////////////////////////
+      
+std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPack (bool withFigures,
+                                                       bool closeToplevel) const {
+  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPack(withFigures, false);
+  
+  // hard-coded
+  builder->add("unique", VPackValue(false));
+  builder->add("sparse", VPackValue(false));
+
+  if (closeToplevel) {
+    builder->close();
+  }
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the index figures
+////////////////////////////////////////////////////////////////////////////////
+      
+std::shared_ptr<VPackBuilder> EdgeIndex::toVelocyPackFigures (bool closeToplevel) const {
+  std::shared_ptr<VPackBuilder> builder = Index::toVelocyPackFigures(false);
+  builder->add("buckets", VPackValue(_numBuckets));
+
+  if (closeToplevel) {
+    builder->close();
+  }
+  return builder;
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
       
@@ -506,34 +548,37 @@ triagens::basics::Json EdgeIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
   return json;
 }
 
-int EdgeIndex::insert (TRI_doc_mptr_t const* doc, 
+int EdgeIndex::insert (triagens::arango::Transaction* trx,
+                       TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
   auto element = const_cast<TRI_doc_mptr_t*>(doc);
-  _edgesFrom->insert(element, true, isRollback);
+  _edgesFrom->insert(trx, element, true, isRollback);
 
   try {
-    _edgesTo->insert(element, true, isRollback);
+    _edgesTo->insert(trx, element, true, isRollback);
   }
   catch (...) {
-    _edgesFrom->remove(element);
+    _edgesFrom->remove(trx, element);
     throw;
   }
   
   return TRI_ERROR_NO_ERROR;
 }
          
-int EdgeIndex::remove (TRI_doc_mptr_t const* doc, 
+int EdgeIndex::remove (triagens::arango::Transaction* trx,
+                       TRI_doc_mptr_t const* doc, 
                        bool) {
-  _edgesFrom->remove(doc);
-  _edgesTo->remove(doc);
+  _edgesFrom->remove(trx, doc);
+  _edgesTo->remove(trx, doc);
   
   return TRI_ERROR_NO_ERROR;
 }
         
-int EdgeIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int EdgeIndex::batchInsert (triagens::arango::Transaction* trx,
+                            std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
-  _edgesFrom->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
-  _edgesTo->batchInsert(reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
+  _edgesFrom->batchInsert(trx, reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
+  _edgesTo->batchInsert(trx, reinterpret_cast<std::vector<TRI_doc_mptr_t *> const*>(documents), numThreads);
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -543,7 +588,8 @@ int EdgeIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents,
 /// by next
 ////////////////////////////////////////////////////////////////////////////////
       
-void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
+void EdgeIndex::lookup (triagens::arango::Transaction* trx,
+                        TRI_edge_index_iterator_t const* edgeIndexIterator,
                         std::vector<TRI_doc_mptr_copy_t>& result,
                         TRI_doc_mptr_copy_t*& next,
                         size_t batchSize) {
@@ -555,10 +601,10 @@ void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
   std::vector<TRI_doc_mptr_t*>* found = nullptr;
   if (next == nullptr) {
     if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-      found = _edgesFrom->lookupByKey(&(edgeIndexIterator->_edge), batchSize);
+      found = _edgesFrom->lookupByKey(trx, &(edgeIndexIterator->_edge), batchSize);
     }
     else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-      found = _edgesTo->lookupByKey(&(edgeIndexIterator->_edge), batchSize);
+      found = _edgesTo->lookupByKey(trx, &(edgeIndexIterator->_edge), batchSize);
     }
     else {
       TRI_ASSERT(false);
@@ -569,10 +615,10 @@ void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
   }
   else {
     if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
-      found = _edgesFrom->lookupByKeyContinue(next, batchSize);
+      found = _edgesFrom->lookupByKeyContinue(trx, next, batchSize);
     }
     else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
-      found = _edgesTo->lookupByKeyContinue(next, batchSize);
+      found = _edgesTo->lookupByKeyContinue(trx, next, batchSize);
     }
     else {
       TRI_ASSERT(false);
@@ -598,14 +644,15 @@ void EdgeIndex::lookup (TRI_edge_index_iterator_t const* edgeIndexIterator,
 /// @brief provides a size hint for the edge index
 ////////////////////////////////////////////////////////////////////////////////
         
-int EdgeIndex::sizeHint (size_t size) {
+int EdgeIndex::sizeHint (triagens::arango::Transaction* trx,
+                         size_t size) {
   // we assume this is called when setting up the index and the index
   // is still empty
   TRI_ASSERT(_edgesFrom->size() == 0);
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  int err = _edgesFrom->resize(static_cast<uint32_t>(size + 2049));
+  int err = _edgesFrom->resize(trx, static_cast<uint32_t>(size + 2049));
 
   if (err != TRI_ERROR_NO_ERROR) {
     return err;
@@ -617,7 +664,7 @@ int EdgeIndex::sizeHint (size_t size) {
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  return _edgesTo->resize(static_cast<uint32_t>(size + 2049));
+  return _edgesTo->resize(trx, static_cast<uint32_t>(size + 2049));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -640,7 +687,8 @@ bool EdgeIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
+IndexIterator* EdgeIndex::iteratorForCondition (triagens::arango::Transaction* trx,
+                                                IndexIteratorContext* context,
                                                 triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference,
@@ -669,9 +717,10 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createIterator(context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
+    return createIterator(trx, context, attrNode, std::vector<triagens::aql::AstNode const*>({ valNode }));
   }
-  else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+
+  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (! valNode->isArray()) {
       return nullptr;
@@ -687,7 +736,7 @@ IndexIterator* EdgeIndex::iteratorForCondition (IndexIteratorContext* context,
       }
     }
 
-    return createIterator(context, attrNode, valNodes);
+    return createIterator(trx, context, attrNode, valNodes);
   }
 
   // operator type unsupported
@@ -716,7 +765,8 @@ triagens::aql::AstNode* EdgeIndex::specializeCondition (triagens::aql::AstNode* 
 /// @brief create the iterator
 ////////////////////////////////////////////////////////////////////////////////
     
-IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
+IndexIterator* EdgeIndex::createIterator (triagens::arango::Transaction* trx,
+                                          IndexIteratorContext* context,
                                           triagens::aql::AstNode const* attrNode,
                                           std::vector<triagens::aql::AstNode const*> const& valNodes) const {
 
@@ -763,7 +813,8 @@ IndexIterator* EdgeIndex::createIterator (IndexIteratorContext* context,
   TRI_IF_FAILURE("EdgeIndex::noIterator")  {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new EdgeIndexIterator(isFrom ? _edgesFrom : _edgesTo, keys);
+
+  return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
 }
 
 // -----------------------------------------------------------------------------

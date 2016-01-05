@@ -39,6 +39,8 @@
 
 #include "VocBase/vocbase.h"
 
+#include <array>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -301,7 +303,7 @@ bool TraditionalKeyGenerator::validateKey (char const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TraditionalKeyGenerator::generate (TRI_voc_tick_t tick) {
-  return triagens::basics::StringUtils::itoa(tick);
+  return std::move(triagens::basics::StringUtils::itoa(tick));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,14 +419,7 @@ std::string AutoIncrementKeyGenerator::generate (TRI_voc_tick_t tick) {
       keyValue = _offset;
     }
     else {
-      uint64_t next = _lastValue + _increment - ((_lastValue - _offset) % _increment);
-
-      // TODO: check if we can remove the following if
-      if (next < _offset) {
-        next = _offset;
-      }
-
-      keyValue = next;
+      keyValue = _lastValue + _increment - ((_lastValue - _offset) % _increment);
     }
 
     // bounds and sanity checks
@@ -437,7 +432,7 @@ std::string AutoIncrementKeyGenerator::generate (TRI_voc_tick_t tick) {
     _lastValue = keyValue;
   }
 
-  return triagens::basics::StringUtils::itoa(keyValue);
+  return std::move(triagens::basics::StringUtils::itoa(keyValue));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

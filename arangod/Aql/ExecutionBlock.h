@@ -31,6 +31,8 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
 
+#include <deque>
+
 namespace triagens {
   namespace arango {
     class AqlTransaction;

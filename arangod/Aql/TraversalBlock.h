@@ -211,8 +211,6 @@ namespace triagens {
         
         std::vector<std::vector<RegisterId>> _inRegs;
 
-        triagens::basics::Json _AccessP;
-        triagens::basics::Json _currentJsonPath;/// TODO: wech!
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------

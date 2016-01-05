@@ -63,6 +63,19 @@ DocumentAccessor::DocumentAccessor (TRI_json_t const* json)
   TRI_ASSERT(_current != nullptr);
 }
 
+DocumentAccessor::DocumentAccessor (VPackSlice const& slice)
+  : _resolver(nullptr),
+    _document(nullptr),
+    _mptr(nullptr),
+    _json(),
+    _current(nullptr) {
+
+  _current = triagens::basics::VelocyPackHelper::velocyPackToJson(slice);
+  TRI_ASSERT(_current != nullptr);
+}
+
+
+
 DocumentAccessor::~DocumentAccessor () {
 }
 
@@ -190,7 +203,7 @@ triagens::basics::Json DocumentAccessor::toJson () {
 
     // _id, _key, _rev
     char const* key = TRI_EXTRACT_MARKER_KEY(_mptr);
-    std::string id(_resolver->getCollectionName(_document->_info._cid));
+    std::string id(_resolver->getCollectionName(_document->_info.id()));
     id.push_back('/');
     id.append(key);
     json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
@@ -296,7 +309,7 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
     if (name[1] == 'i' && nameLength == 3 && memcmp(name, TRI_VOC_ATTRIBUTE_ID, nameLength) == 0) {
       // _id
       char buffer[512]; // big enough for max key length + max collection name length
-      size_t pos = _resolver->getCollectionName(&buffer[0], _document->_info._cid);
+      size_t pos = _resolver->getCollectionName(&buffer[0], _document->_info.id());
       buffer[pos++] = '/';
       char const* key = TRI_EXTRACT_MARKER_KEY(_mptr);
       if (key == nullptr) {

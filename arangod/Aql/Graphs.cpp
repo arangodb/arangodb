@@ -27,8 +27,9 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/JsonHelper.h"
 #include "Aql/Graphs.h"
+#include "Basics/JsonHelper.h"
+
 using namespace triagens::basics;
 using namespace triagens::aql;
 
@@ -60,11 +61,11 @@ std::unordered_set<std::string> const& Graph::edgeCollections () const {
   return _edgeColls;
 }
 
-void Graph::addEdgeCollection (std::string name) {
+void Graph::addEdgeCollection (std::string const& name) {
   _edgeColls.insert(name);
 }
 
-void Graph::addVertexCollection (std::string name) {
+void Graph::addVertexCollection (std::string const& name) {
   _vertexColls.insert(name);
 }
 
@@ -91,10 +92,9 @@ triagens::basics::Json Graph::toJson (TRI_memory_zone_t* z,
   return json;
 }
 
-Graph::Graph(triagens::basics::Json j) : 
-  _vertexColls(),
-  _edgeColls()
-{
+Graph::Graph (triagens::basics::Json j) 
+  : _vertexColls(),
+    _edgeColls() {
   auto jsonDef = j.get(_attrEdgeDefs);
 
   for (size_t i = 0; i < jsonDef.size(); ++i) {

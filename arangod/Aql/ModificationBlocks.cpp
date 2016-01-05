@@ -213,7 +213,7 @@ bool ModificationBlock::isShardKeyChange (TRI_json_t const* oldJson,
                                           bool isPatch) const {
   TRI_ASSERT(_isDBServer);
 
-  auto planId = _collection->documentCollection()->_info._planId;
+  auto planId = _collection->documentCollection()->_info.planId();
   auto vocbase = static_cast<ModificationNode const*>(_exeNode)->_vocbase;
   return triagens::arango::shardKeysChanged(vocbase->_name, std::to_string(planId), oldJson, newJson, isPatch);
 }

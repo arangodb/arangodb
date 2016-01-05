@@ -363,8 +363,8 @@ bool HttpServer::handleRequest(HttpCommTask *task,
 /// @brief opens a listen port
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::openEndpoint(Endpoint *endpoint) {
-  ListenTask *task = new HttpListenTask(this, endpoint);
+bool HttpServer::openEndpoint(Endpoint* endpoint) {
+  ListenTask* task = new HttpListenTask(this, endpoint);
 
   // ...................................................................
   // For some reason we have failed in our endeavour to bind to the socket -

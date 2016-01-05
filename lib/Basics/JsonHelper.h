@@ -34,6 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/StringBuffer.h"
+#include <iosfwd>
 
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"

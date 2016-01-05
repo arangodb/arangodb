@@ -578,11 +578,6 @@ void TRI_GlobalEntryFunction () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_GlobalExitFunction (int exitCode, void* data) {
-  // ...........................................................................
-  // TODO: need a terminate function for windows to be called and cleanup
-  // any windows specific stuff.
-  // ...........................................................................
-
   int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {

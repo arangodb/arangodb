@@ -362,7 +362,7 @@ void TraversalBlock::initializePaths (AqlItemBlock const* items) {
     auto in = items->getValueReference(_pos, _reg);
     if (in.isShaped()) {
       auto col = items->getDocumentCollection(_reg);
-      VertexId v(col->_info._cid, TRI_EXTRACT_MARKER_KEY(in.getMarker()));
+      VertexId v(col->_info.id(), TRI_EXTRACT_MARKER_KEY(in.getMarker()));
       _traverser->setStartVertex(v);
     }
     else if (in.isObject()) {

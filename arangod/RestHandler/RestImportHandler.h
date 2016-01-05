@@ -146,13 +146,13 @@ namespace triagens {
                                      char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process a single JSON document
+/// @brief process a single VelocyPack document
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleSingleDocument (RestImportTransaction&,
                                   RestImportResult&, 
                                   char const*,
-                                  TRI_json_t const*,
+                                  VPackSlice const&,
                                   bool,
                                   bool,
                                   size_t);
@@ -187,29 +187,31 @@ namespace triagens {
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* parseJsonLine (std::string const&);
+        std::shared_ptr<VPackBuilder> parseVelocyPackLine (std::string const&,
+                                                           bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* parseJsonLine (char const*,
-                                   char const*);
+        std::shared_ptr<VPackBuilder> parseVelocyPackLine (char const*,
+                                                           char const*,
+                                                           bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds a TRI_json_t object from a key and value list
+/// @brief builds a VPackBuilder object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* createJsonObject (TRI_json_t const*,
-                                      TRI_json_t const*,
-                                      std::string&,
-                                      size_t);
+        std::shared_ptr<VPackBuilder> createVelocyPackObject (VPackSlice const&,
+                                                              VPackSlice const&,
+                                                              std::string&,
+                                                              size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the keys, returns true if all values in the list are strings.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool checkKeys (TRI_json_t const*) const;
+        bool checkKeys (VPackSlice const&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

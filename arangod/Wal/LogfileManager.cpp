@@ -1810,7 +1810,7 @@ int LogfileManager::readShutdownInfo () {
     lastSealedId = lastCollectedId;
   }
 
-  std::string const shutdownTime(basics::JsonHelper::getStringValue(json.get(), "shutdownTime"));
+  std::string const shutdownTime(basics::JsonHelper::getStringValue(json.get(), "shutdownTime", ""));
   if (shutdownTime.empty()) {
     LOG_TRACE("no previous shutdown time found");
   }

@@ -35,11 +35,14 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
-#include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -685,69 +688,49 @@ namespace triagens {
         return;
       }
 
-      std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().c_str()));
-
-      if (json == nullptr) {
+      std::shared_ptr<VPackBuilder> parsedBody;
+      try {
+        parsedBody = result->getBodyVelocyPack();
+      }
+      catch (...) {
+        // No action required
         return;
       }
+      VPackSlice const body = parsedBody->slice();
 
       // error details
-      TRI_json_t const* details = TRI_LookupObjectJson(json.get(), "details");
+      VPackSlice const details = body.get("details");
 
-      if (TRI_IsArrayJson(details)) {
-        size_t const n = TRI_LengthArrayJson(details);
-
-        for (size_t i = 0; i < n; ++i) {
-          TRI_json_t const* detail = static_cast<TRI_json_t const*>(TRI_AtVector(&details->_value._objects, i));
-
-          if (TRI_IsStringJson(detail)) {
-            LOG_WARNING("%s", detail->_value._string.data);
+      if (details.isArray()) {
+        for (VPackSlice const& detail : VPackArrayIterator(details)) {
+          if (detail.isString()) {
+            LOG_WARNING("%s", detail.copyString().c_str());
           }
         }
       }
 
       // get the "error" flag. This returns a pointer, not a copy
-      TRI_json_t const* error = TRI_LookupObjectJson(json.get(), "error");
-
-      if (TRI_IsBooleanJson(error) &&
-          error->_value._boolean) {
+      if (triagens::basics::VelocyPackHelper::getBooleanValue(body, "error", false)) {
         _hasError = true;
 
         // get the error message
-        TRI_json_t const* errorMessage = TRI_LookupObjectJson(json.get(), "errorMessage");
-
-        if (TRI_IsStringJson(errorMessage)) {
-          _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length - 1);
+        VPackSlice const errorMessage = body.get("errorMessage");
+        if (errorMessage.isString()) {
+          _errorMessage = errorMessage.copyString();
         }
       }
 
       // look up the "created" flag
-      TRI_json_t const* importResult = TRI_LookupObjectJson(json.get(), "created");
-
-      if (TRI_IsNumberJson(importResult)) {
-        _numberCreated += (size_t) importResult->_value._number;
-      }
+      _numberCreated += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(body, "created", 0);
 
       // look up the "errors" flag
-      importResult = TRI_LookupObjectJson(json.get(), "errors");
-
-      if (TRI_IsNumberJson(importResult)) {
-        _numberErrors += (size_t) importResult->_value._number;
-      }
+      _numberErrors += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(body, "errors", 0);
       
       // look up the "updated" flag
-      importResult = TRI_LookupObjectJson(json.get(), "updated");
-
-      if (TRI_IsNumberJson(importResult)) {
-        _numberUpdated += (size_t) importResult->_value._number;
-      }
+      _numberUpdated += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(body, "updated", 0);
       
       // look up the "ignored" flag
-      importResult = TRI_LookupObjectJson(json.get(), "ignored");
-
-      if (TRI_IsNumberJson(importResult)) {
-        _numberIgnored += (size_t) importResult->_value._number;
-      }
+      _numberIgnored += triagens::basics::VelocyPackHelper::getNumericValue<size_t>(body, "ignored", 0);
     }
 
   }

@@ -118,21 +118,21 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
          
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up all points within a given radius
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeoCoordinates* withinQuery (double, double, double) const;
+        GeoCoordinates* withinQuery (triagens::arango::Transaction*, double, double, double) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up the nearest points
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeoCoordinates* nearQuery (double, double, size_t) const;
+        GeoCoordinates* nearQuery (triagens::arango::Transaction*, double, double, size_t) const;
 
         bool isSame (TRI_shape_pid_t location, bool geoJson) const {
           return (_location != 0 && _location == location && _geoJson == geoJson);

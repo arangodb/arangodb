@@ -146,7 +146,6 @@ Syncer::~Syncer () {
   delete _connection;
   delete _endpoint;
 
-  TRI_DestroyConfigurationReplicationApplier(&_configuration);
   TRI_DestroyMasterInfoReplication(&_masterInfo);
 }
 
@@ -225,7 +224,8 @@ char const* Syncer::getCName (TRI_json_t const* json) const {
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollection,
+int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
+                                       TRI_transaction_collection_t* trxCollection,
                                        TRI_replication_operation_e type,
                                        const TRI_voc_key_t key,
                                        const TRI_voc_rid_t rid,
@@ -252,14 +252,14 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
       TRI_doc_mptr_copy_t mptr;
 
       bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
-      int res = TRI_ReadShapedJsonDocumentCollection(trxCollection, key, &mptr, ! isLocked);
+      int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key, &mptr, ! isLocked);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
 
         if (type == REPLICATION_MARKER_EDGE) {
           // edge
-          if (document->_info._type != TRI_COL_TYPE_EDGE) {
+          if (document->_info.type() != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
@@ -283,22 +283,22 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, ! isLocked, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge, ! isLocked, false, true);
           }
         }
         else {
           // document
-          if (document->_info._type != TRI_COL_TYPE_DOCUMENT) {
+          if (document->_info.type() != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, ! isLocked, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, ! isLocked, false, true);
           }
         }
       }
       else {
         // update
-        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! isLocked, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! isLocked, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -322,7 +322,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
 
       if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
@@ -397,29 +397,17 @@ int Syncer::createCollection (TRI_json_t const* json,
     keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::getObjectElement(json, "keyOptions"));
   }
 
-  TRI_col_info_t params;
-  TRI_InitCollectionInfo(_vocbase,
-                         &params,
-                         name.c_str(),
-                         type,
-                         (TRI_voc_size_t) JsonHelper::getNumericValue<int64_t>(json, "maximalSize", (int64_t) TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
-                         keyOptions);
+  std::shared_ptr<VPackBuilder> opts = JsonHelper::toVelocyPack(keyOptions);
 
   if (keyOptions != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
 
-  params._doCompact    = JsonHelper::getBooleanValue(json, "doCompact", true);
-  params._waitForSync  = JsonHelper::getBooleanValue(json, "waitForSync", _vocbase->_settings.defaultWaitForSync);
-  params._isVolatile   = JsonHelper::getBooleanValue(json, "isVolatile", false);
-  params._isSystem     = (name[0] == '_');
-  params._planId       = 0;
-  params._indexBuckets = JsonHelper::getNumericValue<uint32_t>(json, "indexBuckets", (uint32_t) TRI_DEFAULT_INDEX_BUCKETS);
+  std::shared_ptr<VPackBuilder> builder = triagens::basics::JsonHelper::toVelocyPack(json);
 
-  TRI_voc_cid_t planId = JsonHelper::stringUInt64(json, "planId");
-  if (planId > 0) {
-    params._planId = planId;
-  }
+  VocbaseCollectionInfo params(_vocbase,
+                               name.c_str(),
+                               builder->slice());
 
   // wait for "old" collection to be dropped
   char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
@@ -443,8 +431,7 @@ int Syncer::createCollection (TRI_json_t const* json,
     TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
   }
 
-  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, true);
-  TRI_FreeCollectionInfoOptions(&params);
+  col = TRI_CreateCollectionVocBase(_vocbase, params, cid, true);
 
   if (col == nullptr) {
     return TRI_errno();
@@ -516,7 +503,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
     }
 
     triagens::arango::Index* idx = nullptr;
-    res = TRI_FromJsonIndexDocumentCollection(document, indexJson, &idx);
+    res = TRI_FromJsonIndexDocumentCollection(&trx, document, indexJson, &idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
       res = TRI_SaveIndex(document, idx, true);
@@ -562,7 +549,6 @@ int Syncer::dropIndex (TRI_json_t const* json) {
     bool result = TRI_DropIndexDocumentCollection(document, iid, true);
 
     if (! result) {
-      // TODO: index not found, should we care??
       return TRI_ERROR_NO_ERROR;
     }
 

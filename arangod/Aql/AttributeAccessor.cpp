@@ -210,7 +210,7 @@ AqlValue AttributeAccessor::extractId (AqlValue const& src,
                                        triagens::arango::AqlTransaction* trx,
                                        TRI_document_collection_t const* document) {
   if (_nameCache.value.empty()) {
-    _nameCache.value = trx->resolver()->getCollectionName(document->_info._cid);
+    _nameCache.value = trx->resolver()->getCollectionName(document->_info.id());
   }
 
   _buffer.reset();

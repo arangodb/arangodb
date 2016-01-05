@@ -35,6 +35,7 @@
 #include "v8-buffer.h"
 
 #include <regex.h>
+#include <fstream>
 #include <iostream>
 
 #include "Basics/Dictionary.h"
@@ -250,32 +251,27 @@ static bool LoadJavaScriptDirectory (v8::Isolate* isolate,
                                      bool execute,
                                      bool useGlobalContext) {
   v8::HandleScope scope(isolate);
-  TRI_vector_string_t files;
   bool result;
   regex_t re;
-  size_t i;
 
   LOG_TRACE("loading JavaScript directory: '%s'", path);
 
-  files = TRI_FilesDirectory(path);
+  std::vector<std::string> files = TRI_FilesDirectory(path);
 
   regcomp(&re, "^(.*)\\.js$", REG_ICASE | REG_EXTENDED);
 
   result = true;
 
-  for (i = 0;  i < files._length;  ++i) {
+  for (auto const& filename : files) {
     v8::TryCatch tryCatch;
     bool ok;
-    char const* filename;
     char* full;
 
-    filename = files._buffer[i];
-
-    if (regexec(&re, filename, 0, 0, 0) != 0) {
+    if (regexec(&re, filename.c_str(), 0, 0, 0) != 0) {
       continue;
     }
 
-    full = TRI_Concatenate2File(path, filename);
+    full = TRI_Concatenate2File(path, filename.c_str());
 
     ok = LoadJavaScriptFile(isolate, full, execute, useGlobalContext);
     TRI_FreeString(TRI_CORE_MEM_ZONE, full);
@@ -292,8 +288,6 @@ static bool LoadJavaScriptDirectory (v8::Isolate* isolate,
       }
     }
   }
-
-  TRI_DestroyVectorString(&files);
   regfree(&re);
 
   return result;
@@ -1193,8 +1187,8 @@ static void JS_Getline (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  string line;
-  getline(cin, line);
+  std::string line;
+  getline(std::cin, line);
 
   TRI_V8_RETURN_STD_STRING(line);
   TRI_V8_TRY_CATCH_END
@@ -1427,16 +1421,13 @@ static void JS_List (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // constructed listing
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
-  TRI_vector_string_t list = TRI_FilesDirectory(*name);
+  std::vector<std::string> list = TRI_FilesDirectory(*name);
 
   uint32_t j = 0;
 
-  for (size_t i = 0;  i < list._length;  ++i) {
-    const char* f = list._buffer[i];
-    result->Set(j++, TRI_V8_STRING(f));
+  for (auto const& f : list) {
+    result->Set(j++, TRI_V8_STD_STRING(f));
   }
-
-  TRI_DestroyVectorString(&list);
 
   // return result
   TRI_V8_RETURN(result);
@@ -3104,9 +3095,14 @@ static void JS_Sleep (const v8::FunctionCallbackInfo<v8::Value>& args) {
   double n = TRI_ObjectToDouble(args[0]);
   double until = TRI_microtime() + n;
 
-  // TODO: use select etc. to wait until point in time
-  while (TRI_microtime() < until) {
-    usleep(10000);
+  while (true) {
+    double now = TRI_microtime();
+    if (now >= until) {
+      break;
+    }
+    uint64_t duration = (until - now >= 0.5) ?
+                        500000 : static_cast<uint64_t>((until - now) * 1000000);
+    usleep(duration);
   }
 
   TRI_V8_RETURN_UNDEFINED();

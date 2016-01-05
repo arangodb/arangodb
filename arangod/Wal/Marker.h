@@ -37,6 +37,9 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 namespace triagens {
   namespace wal {
 
@@ -222,6 +225,28 @@ namespace triagens {
 
       // char* key
       // char* shapedJson
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal vpack document marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct vpack_document_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_cid_t   _collectionId;
+      TRI_voc_tid_t   _transactionId;
+      // uint8_t* vpack
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal vpack remove marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct vpack_remove_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_cid_t   _collectionId;
+      TRI_voc_tid_t   _transactionId;
+      // uint8_t* vpack
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,6 +781,73 @@ namespace triagens {
         void dump () const;
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               VPackDocumentMarker
+// -----------------------------------------------------------------------------
+
+    class VPackDocumentMarker : public Marker {
+
+      public:
+
+        VPackDocumentMarker (TRI_voc_tick_t,
+                             TRI_voc_cid_t,
+                             TRI_voc_tid_t,
+                             VPackSlice const*);
+        
+        ~VPackDocumentMarker ();
+
+      public:
+
+        inline TRI_voc_tid_t transactionId () const {
+          auto const* m = reinterpret_cast<vpack_document_marker_t const*>(begin());
+          return m->_transactionId;
+        }
+
+        inline uint8_t* vpack () const {
+          // pointer to vpack
+          return reinterpret_cast<uint8_t*>(begin()) + sizeof(vpack_document_marker_t);
+        }
+
+        inline size_t vpackLength () const {
+          VPackSlice slice(vpack());
+          return slice.byteSize();
+        }
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 VPackRemoveMarker
+// -----------------------------------------------------------------------------
+
+    class VPackRemoveMarker : public Marker {
+
+      public:
+
+        VPackRemoveMarker (TRI_voc_tick_t,
+                           TRI_voc_cid_t,
+                           TRI_voc_tid_t,
+                           VPackSlice const*);
+        
+        ~VPackRemoveMarker ();
+
+      public:
+
+        inline TRI_voc_tid_t transactionId () const {
+          auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(begin());
+          return m->_transactionId;
+        }
+
+        inline uint8_t* vpack () const {
+          // pointer to vpack
+          return reinterpret_cast<uint8_t*>(begin()) + sizeof(vpack_remove_marker_t);
+        }
+
+        inline size_t vpackLength () const {
+          VPackSlice slice(vpack());
+          return slice.byteSize();
+        }
+
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    DocumentMarker

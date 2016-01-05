@@ -58,6 +58,7 @@ namespace triagens {
   }
 
   namespace arango {
+    class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
@@ -179,10 +180,12 @@ namespace triagens {
 
       public:
         
-        SkiplistIndexIterator (SkiplistIndex const* index,
+        SkiplistIndexIterator (triagens::arango::Transaction* trx,
+                               SkiplistIndex const* index,
                                std::vector<TRI_index_operator_t*> op,
                                bool reverse)
-        : _index(index),
+        : _trx(trx),
+          _index(index),
           _operators(op),
           _reverse(reverse),
           _currentOperator(0),
@@ -203,6 +206,7 @@ namespace triagens {
 
       private:
 
+        triagens::arango::Transaction*       _trx; 
         SkiplistIndex const*                 _index;
         std::vector<TRI_index_operator_t*>   _operators;
         bool                                 _reverse;
@@ -290,9 +294,9 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
          
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attempts to locate an entry in the skip list index
@@ -302,7 +306,7 @@ namespace triagens {
 /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
 ////////////////////////////////////////////////////////////////////////////////
 
-        SkiplistIterator* lookup (TRI_index_operator_t*, bool) const;
+        SkiplistIterator* lookup (triagens::arango::Transaction*, TRI_index_operator_t*, bool) const;
 
         bool supportsFilterCondition (triagens::aql::AstNode const*,
                                       triagens::aql::Variable const*,
@@ -315,7 +319,8 @@ namespace triagens {
                                     size_t,
                                     double&) const override;
 
-        IndexIterator* iteratorForCondition (IndexIteratorContext*,
+        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
+                                             IndexIteratorContext*,
                                              triagens::aql::Ast*,
                                              triagens::aql::AstNode const*,
                                              triagens::aql::Variable const*,

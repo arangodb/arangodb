@@ -29,11 +29,11 @@
 
 #include "RestDocumentHandler.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
-#include "Basics/json.h"
-#include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
+#include "Basics/string-buffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
@@ -302,20 +302,23 @@ bool RestDocumentHandler::createDocument () {
 
   bool const waitForSync = extractWaitForSync();
 
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
-
-  if (json == nullptr) {
+  bool parseSuccess = true;
+  VPackOptions options;
+  options.checkAttributeUniqueness = true;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+  if (! parseSuccess) {
     return false;
   }
 
-  if (json->_type != TRI_JSON_OBJECT) {
+  VPackSlice body = parsedBody->slice();
+
+  if (! body.isObject()) {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    // json will be freed inside!
-    return createDocumentCoordinator(collection, waitForSync, json.release());
+    return createDocumentCoordinator(collection, waitForSync, body);
   }
 
   if (! checkCreateCollection(collection, getCollectionType())) {
@@ -336,7 +339,7 @@ bool RestDocumentHandler::createDocument () {
     return false;
   }
 
-  if (trx.documentCollection()->_info._type != TRI_COL_TYPE_DOCUMENT) {
+  if (trx.documentCollection()->_info.type() != TRI_COL_TYPE_DOCUMENT) {
     // check if we are inserting with the DOCUMENT handler into a non-DOCUMENT collection
     generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
@@ -345,7 +348,7 @@ bool RestDocumentHandler::createDocument () {
   TRI_voc_cid_t const cid = trx.cid();
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx.createDocument(&mptr, json.get(), waitForSync);
+  res = trx.createDocument(&mptr, body, waitForSync);
   res = trx.finish(res);
 
   // .............................................................................
@@ -368,7 +371,7 @@ bool RestDocumentHandler::createDocument () {
 
 bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
                                                      bool waitForSync,
-                                                     TRI_json_t* json) {
+                                                     VPackSlice const& document) {
   string const& dbname = _request->databaseName();
   string const collname(collection);
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
@@ -377,7 +380,7 @@ bool RestDocumentHandler::createDocumentCoordinator (char const* collection,
   string resultBody;
 
   int res = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json, headers,
+            dbname, collname, waitForSync, document, headers,
             responseCode, resultHeaders, resultBody);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -644,7 +647,6 @@ bool RestDocumentHandler::getDocumentCoordinator (
   map<string, string> resultHeaders;
   string resultBody;
 
-  // TODO: check if this is ok
   TRI_voc_rid_t rev = 0;
   bool found;
   char const* revstr = _request->value("rev", found);
@@ -800,7 +802,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   res = trx.read(ids);
 
-  TRI_col_type_e type = trx.documentCollection()->_info._type;
+  TRI_col_type_e type = trx.documentCollection()->_info.type();
 
   res = trx.finish(res);
 
@@ -831,22 +833,27 @@ bool RestDocumentHandler::readAllDocuments () {
     }
   }
 
-  // generate result
-  triagens::basics::Json documents(triagens::basics::Json::Array);
-  documents.reserve(ids.size());
+  try {
+    // generate result
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("documents", VPackValue(VPackValueType::Array));
 
-  for (auto const& id : ids) {
-    std::string v(prefix);
-    v.append(id);
-    documents.add(triagens::basics::Json(v));
+    for (auto const& id : ids) {
+      std::string v(prefix);
+      v.append(id);
+      result.add(VPackValue(v));
+    }
+    result.close();
+    result.close();
+
+    VPackSlice s = result.slice();
+    // and generate a response
+    generateResult(s);
   }
-
-  triagens::basics::Json result(triagens::basics::Json::Object);
-  result("documents", documents);
-
-  // and generate a response
-  generateResult(result.json());
-
+  catch (...) {
+    // Ignore the error 
+  }
   return true;
 }
 
@@ -1390,14 +1397,16 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   string const& collection = suffix[0];
   string const& key = suffix[1];
 
-  TRI_json_t* json = parseJsonBody();
-
-  if (json == nullptr) {
+  bool parseSuccess = true;
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+  if (! parseSuccess) {
     return false;
   }
 
-  if (json->_type != TRI_JSON_OBJECT) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  VPackSlice body = parsedBody->slice();
+
+  if (! body.isObject()) {
     generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     return false;
   }
@@ -1406,7 +1415,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   bool isValidRevision;
   TRI_voc_rid_t const revision = extractRevision("if-match", "rev", isValidRevision);
   if (! isValidRevision) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid revision number");
@@ -1418,9 +1426,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   bool const waitForSync = extractWaitForSync();
 
   if (ServerState::instance()->isCoordinator()) {
-    // json will be freed inside
     return modifyDocumentCoordinator(collection, key, revision, policy,
-                                     waitForSync, isPatch, json);
+                                     waitForSync, isPatch, body);
   }
 
   TRI_doc_mptr_copy_t mptr;
@@ -1435,7 +1442,6 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collection, res);
     return false;
   }
@@ -1453,10 +1459,9 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   TRI_ASSERT(document != nullptr);
   auto shaper = document->getShaper();  // PROTECTED by trx here
 
-  string const&& cidString = StringUtils::itoa(document->_info._planId);
+  string const&& cidString = StringUtils::itoa(document->_info.planId());
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
     return false;
   }
@@ -1497,16 +1502,12 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
       generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
       return false;
     }
 
     if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
       trx.abort();
       generateTransactionError(collectionName, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
       return false;
     }
 
@@ -1517,16 +1518,14 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     if (old == nullptr) {
       trx.abort();
       generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
       return false;
     }
 
+    std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
     if (ServerState::instance()->isDBServer()) {
       // compare attributes in shardKeys
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json, true)) {
+      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(), true)) {
         TRI_FreeJson(shaper->memoryZone(), old);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
         generateTransactionError(collectionName, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
@@ -1535,9 +1534,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
     }
 
-    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json, nullMeansRemove, mergeObjects);
+    TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json.get(), nullMeansRemove, mergeObjects);
     TRI_FreeJson(shaper->memoryZone(), old);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
     if (patchedJson == nullptr) {
       trx.abort();
@@ -1566,16 +1564,12 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       if (res != TRI_ERROR_NO_ERROR) {
         trx.abort();
         generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
         return false;
       }
 
       if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
         trx.abort();
         generateTransactionError(collectionName, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
         return false;
       }
 
@@ -1583,9 +1577,9 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
       TRI_json_t* old = TRI_JsonShapedJson(shaper, &shapedJson);
 
-      if (shardKeysChanged(_request->databaseName(), cidString, old, json, false)) {
+      std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+      if (shardKeysChanged(_request->databaseName(), cidString, old, json.get(), false)) {
         TRI_FreeJson(shaper->memoryZone(), old);
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
         generateTransactionError(collectionName, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
@@ -1598,8 +1592,8 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       }
     }
 
-    res = trx.updateDocument(key, &mptr, json, policy, waitForSync, revision, &rid);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(body));
+    res = trx.updateDocument(key, &mptr, json.get(), policy, waitForSync, revision, &rid);
   }
 
   res = trx.finish(res);
@@ -1630,7 +1624,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
                               TRI_doc_update_policy_e policy,
                               bool waitForSync,
                               bool isPatch,
-                              TRI_json_t* json) {
+                              VPackSlice const& document) {
   string const& dbname = _request->databaseName();
   std::unique_ptr<std::map<std::string, std::string>> headers
       (new std::map<std::string, std::string>
@@ -1650,7 +1644,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 
   int error = triagens::arango::modifyDocumentOnCoordinator(
             dbname, collname, key, rev, policy, waitForSync, isPatch,
-            keepNull, mergeObjects, json, headers, responseCode, resultHeaders, resultBody);
+            keepNull, mergeObjects, document, headers, responseCode, resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);

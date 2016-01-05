@@ -43,6 +43,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
 #include "V8Server/v8-collection.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
@@ -664,11 +665,12 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex1DocumentCollection(document,
+        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex1DocumentCollection(&trx,
+                                                                                              document,
                                                                                               iid,
                                                                                               attributes[0],
                                                                                               geoJson,
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::GeoIndex2*>(TRI_LookupGeoIndex1DocumentCollection(document,
@@ -684,11 +686,12 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
       
       if (create) {
-        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex2DocumentCollection(document,
+        idx = static_cast<triagens::arango::GeoIndex2*>(TRI_EnsureGeoIndex2DocumentCollection(&trx,
+                                                                                              document,
                                                                                               iid,
                                                                                               attributes[0],
                                                                                               attributes[1],
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::GeoIndex2*>(TRI_LookupGeoIndex2DocumentCollection(document,
@@ -704,12 +707,13 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::HashIndex*>(TRI_EnsureHashIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::HashIndex*>(TRI_EnsureHashIndexDocumentCollection(&trx, 
+                                                                                              document,
                                                                                               iid,
                                                                                               attributes,
                                                                                               sparse,
                                                                                               unique,
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::HashIndex*>(TRI_LookupHashIndexDocumentCollection(document,
@@ -727,18 +731,19 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_EnsureSkiplistIndexDocumentCollection(document,
-                                                                                                       iid,
-                                                                                                       attributes,
-                                                                                                       sparse,
-                                                                                                       unique,
-                                                                                                       &created));
+        idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_EnsureSkiplistIndexDocumentCollection(&trx,
+                                                                                                      document,
+                                                                                                      iid,
+                                                                                                      attributes,
+                                                                                                      sparse,
+                                                                                                      unique,
+                                                                                                      created));
       }
       else {
         idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_LookupSkiplistIndexDocumentCollection(document,
-                                                                                                       attributes,
-                                                                                                       sparsity,
-                                                                                                       unique));
+                                                                                                      attributes,
+                                                                                                      sparsity,
+                                                                                                      unique));
       }
       break;
     }
@@ -759,11 +764,12 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::FulltextIndex*>(TRI_EnsureFulltextIndexDocumentCollection(document,
+        idx = static_cast<triagens::arango::FulltextIndex*>(TRI_EnsureFulltextIndexDocumentCollection(&trx,
+                                                                                                      document,
                                                                                                       iid,
                                                                                                       attributes[0],
                                                                                                       minWordLength,
-                                                                                                      &created));
+                                                                                                      created));
       }
       else {
         idx = static_cast<triagens::arango::FulltextIndex*>(TRI_LookupFulltextIndexDocumentCollection(document,
@@ -787,11 +793,12 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       }
 
       if (create) {
-        idx = static_cast<triagens::arango::Index*>(TRI_EnsureCapConstraintDocumentCollection(document,
+        idx = static_cast<triagens::arango::Index*>(TRI_EnsureCapConstraintDocumentCollection(&trx,
+                                                                                              document,
                                                                                               iid,
                                                                                               size,
                                                                                               byteSize,
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::Index*>(TRI_LookupCapConstraintDocumentCollection(document));
@@ -927,14 +934,14 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
 static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Value>& args,
                                          TRI_col_type_e collectionType,
                                          std::string const& databaseName,
-                                         TRI_col_info_t& parameters,
+                                         VocbaseCollectionInfo& parameters,
                                          TRI_vocbase_t* vocbase) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   string const name = TRI_ObjectToString(args[0]);
 
-  if (! TRI_IsAllowedNameCollection(parameters._isSystem, name.c_str())) {
+  if (! TRI_IsAllowedNameCollection(parameters.isSystem(), name.c_str())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1069,7 +1076,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     shards.insert(std::make_pair(shardId, serverId));
   }
 
-  // now create the JSON for the collection
+  // now create the VelocyPack for the collection
   arangodb::velocypack::Builder velocy;
   using arangodb::velocypack::Value;
   using arangodb::velocypack::ValueType;
@@ -1082,13 +1089,13 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
           ("name",         Value(name))
           ("type",         Value((int) collectionType))
           ("status",       Value((int) TRI_VOC_COL_STATUS_LOADED))
-          ("deleted",      Value(parameters._deleted))
-          ("doCompact",    Value(parameters._doCompact))
-          ("isSystem",     Value(parameters._isSystem))
-          ("isVolatile",   Value(parameters._isVolatile))
-          ("waitForSync",  Value(parameters._waitForSync))
-          ("journalSize",  Value(parameters._maximalSize))
-          ("indexBuckets", Value(parameters._indexBuckets))
+          ("deleted",      Value(parameters.deleted()))
+          ("doCompact",    Value(parameters.doCompact()))
+          ("isSystem",     Value(parameters.isSystem()))
+          ("isVolatile",   Value(parameters.isVolatile()))
+          ("waitForSync",  Value(parameters.waitForSync()))
+          ("journalSize",  Value(parameters.maximalSize()))
+          ("indexBuckets", Value(parameters.indexBuckets()))
           ("keyOptions",   Value(ValueType::Object))
               ("type",          Value("traditional"))
               ("allowUserKeys", Value(allowUserKeys))
@@ -1568,130 +1575,39 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
   }
 
-
   PREVENT_EMBEDDED_TRANSACTION();
 
-
-  // set default journal size
-  TRI_voc_size_t effectiveSize = vocbase->_settings.defaultMaximalSize;
-
   // extract the name
-  string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
-  // extract the parameters
-  TRI_col_info_t parameters;
-  TRI_voc_cid_t cid = 0;
-
+  VPackBuilder builder;
+  VPackSlice infoSlice;
   if (2 <= args.Length()) {
     if (! args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
 
-    v8::Handle<v8::Object> p = args[1]->ToObject();
-    TRI_GET_GLOBALS();
+    int res = TRI_V8ToVPack(isolate, builder, args[1], false);
 
-    TRI_GET_GLOBAL_STRING(JournalSizeKey);
-    if (p->Has(JournalSizeKey)) {
-      double s = TRI_ObjectToDouble(p->Get(JournalSizeKey));
-
-      if (s < TRI_JOURNAL_MINIMAL_SIZE) {
-        TRI_V8_THROW_EXCEPTION_PARAMETER("<properties>.journalSize is too small");
-      }
-
-      // overwrite journal size with user-specified value
-      effectiveSize = (TRI_voc_size_t) s;
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
     }
 
-    // get optional values
-    TRI_json_t* keyOptions = nullptr;
-    TRI_GET_GLOBAL_STRING(KeyOptionsKey);
-    if (p->Has(KeyOptionsKey)) {
-      keyOptions = TRI_ObjectToJson(isolate, p->Get(KeyOptionsKey));
-    }
-
-    // TRI_InitCollectionInfo will copy keyOptions
-    TRI_InitCollectionInfo(vocbase, &parameters, name.c_str(), collectionType, effectiveSize, keyOptions);
-
-    if (keyOptions != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("planId"))) {
-      parameters._planId = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("planId")), true);
-    }
-
-    TRI_GET_GLOBAL_STRING(WaitForSyncKey);
-    if (p->Has(WaitForSyncKey)) {
-      parameters._waitForSync = TRI_ObjectToBoolean(p->Get(WaitForSyncKey));
-    }
-
-    TRI_GET_GLOBAL_STRING(DoCompactKey);
-    if (p->Has(DoCompactKey)) {
-      parameters._doCompact = TRI_ObjectToBoolean(p->Get(DoCompactKey));
-    }
-    else {
-      // default value for compaction
-      parameters._doCompact = true;
-    }
-
-    TRI_GET_GLOBAL_STRING(IsSystemKey);
-    if (p->Has(IsSystemKey)) {
-      parameters._isSystem = TRI_ObjectToBoolean(p->Get(IsSystemKey));
-      if (name.empty() || name[0] != '_') {
-        parameters._isSystem = false;
-      }
-    }
-
-    TRI_GET_GLOBAL_STRING(IsVolatileKey);
-    if (p->Has(IsVolatileKey)) {
-#ifdef TRI_HAVE_ANONYMOUS_MMAP
-      parameters._isVolatile = TRI_ObjectToBoolean(p->Get(IsVolatileKey));
-#else
-      TRI_FreeCollectionInfoOptions(&parameters);
-      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections are not supported on this platform");
-#endif
-    }
-
-    if (parameters._isVolatile && parameters._waitForSync) {
-      // the combination of waitForSync and isVolatile makes no sense
-      TRI_FreeCollectionInfoOptions(&parameters);
-      TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
-    }
-    
-    TRI_GET_GLOBAL_STRING(IdKey);
-    if (p->Has(IdKey)) {
-      // specify collection id - used for testing only
-      cid = TRI_ObjectToUInt64(p->Get(IdKey), true);
-    }
-
-    if (p->Has(TRI_V8_ASCII_STRING("indexBuckets"))) {
-      parameters._indexBuckets
-        = static_cast<uint32_t>(TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("indexBuckets")), true));
-      if (parameters._indexBuckets < 1 ||
-          parameters._indexBuckets > 1024) {
-        TRI_FreeCollectionInfoOptions(&parameters);
-        TRI_V8_THROW_EXCEPTION_PARAMETER("indexBuckets must be a two-power between 1 and 1024");
-      }
-    }
-  }
-  else {
-    TRI_InitCollectionInfo(vocbase, &parameters, name.c_str(), collectionType, effectiveSize, nullptr);
+    infoSlice = builder.slice();
   }
 
+  VocbaseCollectionInfo parameters(vocbase, name.c_str(), collectionType, infoSlice);
 
   if (ServerState::instance()->isCoordinator()) {
     CreateCollectionCoordinator(args, collectionType, vocbase->_name, parameters, vocbase);
-    TRI_FreeCollectionInfoOptions(&parameters);
-
     return;
   }
-
+  
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
-                                                                    &parameters,
-                                                                    cid, 
+                                                                    parameters,
+                                                                    parameters.id(), 
                                                                     true);
 
-  TRI_FreeCollectionInfoOptions(&parameters);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
@@ -1889,7 +1805,6 @@ void TRI_InitV8indexArangoDB (v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_createEdgeCollection"), JS_CreateEdgeCollectionVocbase);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_createDocumentCollection"), JS_CreateDocumentCollectionVocbase);
 }
-
 
 void TRI_InitV8indexCollection (v8::Isolate* isolate,
                                 v8::Handle<v8::ObjectTemplate> rt) {

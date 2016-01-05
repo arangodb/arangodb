@@ -35,15 +35,18 @@
 #include "Basics/RandomGenerator.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/ssl-helper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpsServer.h"
 #include "Rest/Version.h"
 #include "Scheduler/ApplicationScheduler.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace triagens::basics;
 using namespace triagens::rest;
@@ -306,35 +309,36 @@ bool ApplicationEndpointServer::loadEndpoints () {
 
   LOG_TRACE("loading endpoint list from file '%s'", filename.c_str());
 
-  std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename.c_str(), nullptr));
+  std::shared_ptr<VPackBuilder> builder;
+  try {
+    builder = triagens::basics::VelocyPackHelper::velocyPackFromFile(filename);
+  }
+  catch (...) {
+    // Silently fail
+    return false;
+  }
+  VPackSlice const slice = builder->slice();
 
-  if (! TRI_IsObjectJson(json.get())) {
+  if (! slice.isObject()) {
     return false;
   }
 
   std::map<std::string, std::vector<std::string>> endpoints;
 
-  size_t const n = TRI_LengthVector(&json->_value._objects);
+  for (auto const& it : VPackObjectIterator(slice)) {
 
-  for (size_t i = 0; i < n; i += 2) {
-    auto const* e = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-    auto const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
-
-    if (! TRI_IsStringJson(e) || ! TRI_IsArrayJson(v)) {
+    if (! it.key.isString() || ! it.value.isArray()) {
       return false;
     }
-
-    std::string const endpoint = string(e->_value._string.data, e->_value._string.length - 1);
+    std::string const endpoint = it.key.copyString();
 
     std::vector<std::string> dbNames;
-    for (size_t j = 0; j < TRI_LengthVector(&v->_value._objects); ++j) {
-      auto d = static_cast<TRI_json_t const*>(TRI_AtVector(&v->_value._objects, j));
-
-      if (! TRI_IsStringJson(d)) {
+    for (VPackSlice const& d : VPackArrayIterator(it.value)) {
+      if (! d.isString()) {
         return false;
       }
 
-      std::string const dbName = string(d->_value._string.data, d->_value._string.length - 1);
+      std::string const dbName = d.copyString();
       dbNames.emplace_back(dbName);
     }
 

@@ -29,7 +29,6 @@
 
 #include "RestVocbaseBaseHandler.h"
 
-#include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/string-buffer.h"
@@ -38,6 +37,12 @@
 #include "Utils/DocumentHelper.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/VocShaper.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Exception.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace std;
 using namespace triagens::basics;
@@ -568,41 +573,29 @@ bool RestVocbaseBaseHandler::extractWaitForSync () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body
+/// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
-  char* errmsg = nullptr;
-  TRI_json_t* json = _request->toJson(&errmsg);
-
-  if (json == nullptr) {
-    if (errmsg == nullptr) {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    "cannot parse json object");
-    }
-    else {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    errmsg);
-
-      TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
-    }
-
-    return nullptr;
+std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody (
+    VPackOptions const* options,
+    bool& success) {
+  try {
+    success = true;
+    return _request->toVelocyPack(options);
   }
-
-  TRI_ASSERT(errmsg == nullptr);
-
-  if (TRI_HasDuplicateKeyJson(json)) {
+  catch (std::bad_alloc const& e) {
+    generateOOMError();
+  }
+  catch (VPackException const& e) {
+    std::string errmsg ("Parse error: ");
+    errmsg.append(e.what());
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "cannot parse json object");
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    return nullptr;
+                  errmsg);
   }
-
-  return json;
+  success = false;
+  VPackParser p;
+  return p.steal();
 }
 
 // -----------------------------------------------------------------------------
@@ -612,26 +605,6 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a string attribute from a JSON array
-///
-/// if the attribute is not there or not a string, this returns 0
-////////////////////////////////////////////////////////////////////////////////
-
-char const* RestVocbaseBaseHandler::extractJsonStringValue (TRI_json_t const* json,
-                                                            char const* name) {
-  if (! TRI_IsObjectJson(json)) {
-    return nullptr;
-  }
-
-  TRI_json_t const* value = TRI_LookupObjectJson(json, name);
-  if (! TRI_IsStringJson(value)) {
-    return nullptr;
-  }
-
-  return value->_value._string.data;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle

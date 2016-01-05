@@ -31,9 +31,9 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
-#include "Basics/json.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
 #include "V8Server/ApplicationV8.h"
@@ -173,20 +173,22 @@ HttpHandler::status_t RestSimpleQueryHandler::execute () {
 
 void RestSimpleQueryHandler::allDocuments () {
   try { 
-    std::unique_ptr<TRI_json_t> json(parseJsonBody());
+    bool parseSuccess = true;
+    VPackOptions options;
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
 
-    if (json.get() == nullptr) {
+    if (! parseSuccess) {
       return;
     }
+    VPackSlice body = parsedBody.get()->slice();
 
-    auto const value = TRI_LookupObjectJson(json.get(), "collection");
+    VPackSlice const value = body.get("collection");
 
-    if (! TRI_IsStringJson(value)) {
+    if (! value.isString()) {
       generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting string for <collection>");
       return;
     }
-    
-    std::string collectionName = std::string(value->_value._string.data, value->_value._string.length - 1);
+    std::string collectionName = value.copyString();
 
     if (! collectionName.empty()) {
       auto const* col = TRI_LookupCollectionByNameVocBase(_vocbase, collectionName.c_str());
@@ -198,56 +200,57 @@ void RestSimpleQueryHandler::allDocuments () {
       }
     }
 
-    triagens::basics::Json bindVars(triagens::basics::Json::Object, 3);
-    bindVars("@collection", triagens::basics::Json(collectionName));
+    VPackBuilder bindVars;
+    bindVars.openObject();
+    bindVars.add("@collection", VPackValue(collectionName));
 
     std::string aql("FOR doc IN @@collection ");
       
-    auto const skip  = TRI_LookupObjectJson(json.get(), "skip");
-    auto const limit = TRI_LookupObjectJson(json.get(), "limit");
-
-    if (TRI_IsNumberJson(skip) || TRI_IsNumberJson(limit)) {
+    VPackSlice const skip = body.get("skip");
+    VPackSlice const limit = body.get("limit");
+    if (skip.isNumber() || limit.isNumber()) {
       aql.append("LIMIT @skip, @limit ");
 
-      if (TRI_IsNumberJson(skip)) {
-        bindVars("skip", triagens::basics::Json(skip->_value._number));
+      if (skip.isNumber()) {
+        bindVars.add("skip", skip);
       }
       else {
-        bindVars("skip", triagens::basics::Json(triagens::basics::Json::Null));
+        bindVars.add("skip", VPackValue(VPackValueType::Null));
       }
 
-      if (TRI_IsNumberJson(limit)) {
-        bindVars("limit", triagens::basics::Json(limit->_value._number));
+      if (limit.isNumber()) {
+        bindVars.add("limit", limit);
       }
       else {
-        bindVars("limit", triagens::basics::Json(triagens::basics::Json::Null));
+        bindVars.add("limit", VPackValue(VPackValueType::Null));
       }
     }
-
+    bindVars.close();
     aql.append("RETURN doc");
 
-    triagens::basics::Json data(triagens::basics::Json::Object, 5);
-    data("query", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, aql));
-    data("bindVars", bindVars);
-    data("count", triagens::basics::Json(true));
+    VPackBuilder data;
+    data.openObject();
+    data.add("query", VPackValue(aql));
+    data.add("bindVars", bindVars.slice());
+    data.add("count", VPackValue(true));
 
     // pass on standard options
     {
-      auto value = TRI_LookupObjectJson(json.get(), "ttl");
-
-      if (value != nullptr) {
-        data("ttl", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value)));
+      VPackSlice ttl = body.get("ttl");
+      if (! ttl.isNone()) {
+        data.add("ttl", ttl);
       }
 
-      value = TRI_LookupObjectJson(json.get(), "batchSize");
-
-      if (value != nullptr) {
-        data("batchSize", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value)));
+      VPackSlice batchSize = body.get("batchSize");
+      if (! batchSize.isNone()) {
+        data.add("batchSize", batchSize);
       }
     }
-  
+    data.close();
+
+    VPackSlice s = data.slice();
     // now run the actual query and handle the result
-    processQuery(data.json());
+    processQuery(s);
   }
   catch (triagens::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());

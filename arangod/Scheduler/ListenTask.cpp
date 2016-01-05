@@ -182,8 +182,6 @@ bool ListenTask::handleEvent (EventToken token,
         LOG_ERROR("too many accept failures, stopping logging");
       }
 
-      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-
       return true;
     }
 
@@ -200,8 +198,6 @@ bool ListenTask::handleEvent (EventToken token,
 
       LOG_WARNING("getsockname failed with %d (%s)", errno, strerror(errno));
 
-      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
-
       return true;
     }
 
@@ -210,8 +206,6 @@ bool ListenTask::handleEvent (EventToken token,
 
     if (! result) {
       TRI_CLOSE_SOCKET(connectionSocket);
-
-      // TODO GeneralFigures::incCounter<GeneralFigures::GeneralServerStatistics::connectErrorsAccessor>();
 
       return true;
     }

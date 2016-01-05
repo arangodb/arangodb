@@ -128,7 +128,6 @@ void IndexBlock::executeExpressions () {
     auto jsonified = a.toJson(_trx, myCollection, true);
     a.destroy();
     AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
-    // TODO: if we use the IN operator, we must make the resulting array unique
     _condition->getMember(toReplace->orMember)
               ->getMember(toReplace->andMember)
               ->changeMember(toReplace->operatorMember, evaluatedNode);
@@ -341,11 +340,11 @@ triagens::arango::IndexIterator* IndexBlock::createIterator () {
   auto ast = node->_plan->getAst();
 
   if (_condition == nullptr) {
-    return _indexes[_currentIndex]->getIterator(_context, ast, nullptr, outVariable, node->_reverse);
+    return _indexes[_currentIndex]->getIterator(_trx, _context, ast, nullptr, outVariable, node->_reverse);
   }
 
   TRI_ASSERT(_indexes.size() == _condition->numMembers());
-  return _indexes[_currentIndex]->getIterator(_context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
+  return _indexes[_currentIndex]->getIterator(_trx, _context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

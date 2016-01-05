@@ -28,10 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationV8.h"
-#include <libplatform/libplatform.h>
-
-#include <thread>
-
 #include "Actions/actions.h"
 #include "Aql/QueryRegistry.h"
 #include "ApplicationServer/ApplicationServer.h"
@@ -63,8 +59,9 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 
-#include <libplatform/libplatform.h>
 #include "3rdParty/valgrind/valgrind.h"
+#include <libplatform/libplatform.h>
+#include <thread>
 
 using namespace triagens;
 using namespace triagens::basics;

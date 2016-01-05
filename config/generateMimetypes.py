@@ -97,6 +97,7 @@ def genCFile(types, filename):
 
   impl = prologue\
          + "#include \"Basics/Common.h\"\n"\
+         + "#include \"Basics/mimetypes.h\"\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\

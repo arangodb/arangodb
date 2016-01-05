@@ -38,10 +38,9 @@
 #include "VocBase/edge-collection.h"
 #include "VocBase/replication-common.h"
 
-struct TRI_json_t;
 struct TRI_replication_log_state_s;
 struct TRI_transaction_collection_s;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            RestReplicationHandler
@@ -49,6 +48,7 @@ struct TRI_vocbase_col_s;
 
 namespace triagens {
   namespace arango {
+    class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication request handler
@@ -98,14 +98,14 @@ namespace triagens {
 /// because edges depend on vertices being there), then name
 ////////////////////////////////////////////////////////////////////////////////
 
-        static int sortCollections (const void*,
-                                    const void*);
+        static bool sortCollections (TRI_vocbase_col_t const*,
+                                     TRI_vocbase_col_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief filter a collection based on collection attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool filterCollection (struct TRI_vocbase_col_s*, void*);
+        static bool filterCollection (TRI_vocbase_col_t*, void*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -193,17 +193,17 @@ namespace triagens {
         void handleCommandClusterInventory ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id from JSON TODO: move
+/// @brief extract the collection id from VelocyPack TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_voc_cid_t getCid (struct TRI_json_t const*) const;
+        TRI_voc_cid_t getCid (VPackSlice const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection, based on the JSON provided TODO: move
+/// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createCollection (struct TRI_json_t const*,
-                              struct TRI_vocbase_col_s**,
+        int createCollection (VPackSlice const&,
+                              TRI_vocbase_col_t**,
                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +222,7 @@ namespace triagens {
 /// @brief restores the structure of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreCollection (struct TRI_json_t const*,
+        int processRestoreCollection (VPackSlice const&,
                                       bool,
                                       bool,
                                       bool,
@@ -232,7 +232,7 @@ namespace triagens {
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreCollectionCoordinator (struct TRI_json_t const*,
+        int processRestoreCollectionCoordinator (VPackSlice const&,
                                                  bool,
                                                  bool,
                                                  bool,
@@ -242,7 +242,7 @@ namespace triagens {
 /// @brief restores the indexes of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreIndexes (struct TRI_json_t const*,
+        int processRestoreIndexes (VPackSlice const&,
                                    bool,
                                    std::string&);
 
@@ -250,7 +250,7 @@ namespace triagens {
 /// @brief restores the indexes of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreIndexesCoordinator (struct TRI_json_t const*,
+        int processRestoreIndexesCoordinator (VPackSlice const&,
                                               bool,
                                               std::string&);
 
@@ -258,26 +258,28 @@ namespace triagens {
 /// @brief apply a single marker from the collection dump
 ////////////////////////////////////////////////////////////////////////////////
 
-        int applyCollectionDumpMarker (CollectionNameResolver const&,
+        int applyCollectionDumpMarker (triagens::arango::Transaction*,
+                                       CollectionNameResolver const&,
                                        struct TRI_transaction_collection_s*,
                                        TRI_replication_operation_e,
                                        const TRI_voc_key_t,
                                        const TRI_voc_rid_t,
-                                       struct TRI_json_t const*,
+                                       VPackSlice const&,
                                        std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
-        int processRestoreDataBatch (CollectionNameResolver const&,
+        int processRestoreDataBatch (triagens::arango::Transaction*,
+                                     CollectionNameResolver const&,
                                      struct TRI_transaction_collection_s*,
                                      bool,
                                      bool,
                                      std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief restores the data of a collection TODO
+/// @brief restores the data of a collection TODO MOVE
 ////////////////////////////////////////////////////////////////////////////////
 
         int processRestoreData (CollectionNameResolver const&,

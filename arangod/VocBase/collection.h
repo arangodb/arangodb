@@ -35,6 +35,10 @@
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Data is stored in datafiles. A set of datafiles forms a collection. A
 /// datafile can be read-only and sealed or read-write. All datafiles of a
@@ -62,7 +66,14 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
-struct TRI_vocbase_col_s;
+class TRI_vocbase_col_t;
+
+namespace triagens {
+  namespace arango {
+    class CollectionInfo;
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -169,53 +180,206 @@ typedef enum {
 }
 TRI_col_type_e;
 
+
+namespace triagens {
+  namespace arango {
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection info block saved to disk as json
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_col_info_s {
-  TRI_col_version_t  _version;         // collection version
-  TRI_col_type_e     _type;            // collection type
-  TRI_voc_cid_t      _cid;             // local collection identifier
-  TRI_voc_cid_t      _planId;          // cluster-wide collection identifier
-  TRI_voc_rid_t      _revision;        // last revision id written
-  TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
-  int64_t            _initialCount;    // initial count, used when loading a collection
-  uint32_t           _indexBuckets;    // number of buckets used in hash tables for indexes
+    class VocbaseCollectionInfo {
 
-  char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
-  struct TRI_json_t* _keyOptions;      // options for key creation
+      private:
+        TRI_col_version_t                     _version;         // collection version
+        TRI_col_type_e                        _type;            // collection type
+        TRI_voc_rid_t                         _revision;        // last revision id written
+        TRI_voc_cid_t                         _cid;             // local collection identifier
+        TRI_voc_cid_t                         _planId;          // cluster-wide collection identifier
+        TRI_voc_size_t                        _maximalSize;     // maximal size of memory mapped file
+        int64_t                               _initialCount;    // initial count, used when loading a collection
+        uint32_t                              _indexBuckets;    // number of buckets used in hash tables for indexes
 
-  // flags
-  bool               _deleted;         // if true, collection has been deleted
-  bool               _doCompact;       // if true, collection will be compacted
-  bool               _isSystem;        // if true, this is a system collection
-  bool               _isVolatile;      // if true, collection is memory-only
-  bool               _waitForSync;     // if true, wait for msync
-}
-TRI_col_info_t;
+        char                                  _name[TRI_COL_PATH_LENGTH];  // name of the collection()
+        std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> _keyOptions;      // options for key creation
+
+        // flags
+        bool                                  _isSystem;        // if true, this is a system collection
+        bool                                  _deleted;         // if true, collection has been deleted
+        bool                                  _doCompact;       // if true, collection will be compacted
+        bool                                  _isVolatile;      // if true, collection is memory-only
+        bool                                  _waitForSync;     // if true, wait for msync
+
+      public:
+
+        VocbaseCollectionInfo () {};
+
+        explicit VocbaseCollectionInfo (CollectionInfo const&);
+
+
+        VocbaseCollectionInfo (TRI_vocbase_t*,
+                               char const*,
+                               TRI_col_type_e,
+                               TRI_voc_size_t,
+                               VPackSlice const&);
+
+        VocbaseCollectionInfo (TRI_vocbase_t*,
+                               char const*,
+                               VPackSlice const&);
+
+        VocbaseCollectionInfo (TRI_vocbase_t*,
+                               char const*,
+                               TRI_col_type_e,
+                               VPackSlice const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Creates a new VocbaseCollectionInfo from the json content of a file
+/// This function throws if the file cannot be parsed.
+///
+/// You must hold the @ref TRI_READ_LOCK_STATUS_VOCBASE_COL when calling this
+/// function.
+////////////////////////////////////////////////////////////////////////////////
+
+        static VocbaseCollectionInfo fromFile (char const*,
+                                               TRI_vocbase_t*,
+                                               char const*,
+                                               bool);
+
+        // collection version
+        virtual TRI_col_version_t version () const;
+
+        // collection type
+        virtual TRI_col_type_e type () const;
+
+        // local collection identifier
+        virtual TRI_voc_cid_t id () const;
+
+        // cluster-wide collection identifier
+        virtual TRI_voc_cid_t planId () const;
+
+        // last revision id written
+        virtual TRI_voc_rid_t revision () const;
+
+        // maximal size of memory mapped file
+        virtual TRI_voc_size_t maximalSize () const;
+
+        // initial count, used when loading a collection
+        virtual int64_t initialCount () const;
+
+        // number of buckets used in hash tables for indexes
+        virtual uint32_t indexBuckets () const;
+
+        // name of the collection
+        virtual std::string name () const;
+
+        // name of the collection as c string
+        virtual char const* namec_str () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a copy of the key options
+/// the caller is responsible for freeing it
+////////////////////////////////////////////////////////////////////////////////
+        virtual std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> keyOptions () const;
+
+        // If true, collection has been deleted
+        virtual bool deleted () const;
+
+        // If true, collection will be compacted
+        virtual bool doCompact () const;
+        
+        // If true, collection is a system collection
+        virtual bool isSystem () const;
+
+        // If true, collection is memory-only
+        virtual bool isVolatile () const;
+
+        // If true waits for mysnc
+        virtual bool waitForSync () const;
+
+        void setVersion (TRI_col_version_t);
+
+        // Changes the name. Should only be called by TRI_RenameCollection
+        // Use with caution!
+        void rename (char const*);
+        
+        void setIsSystem (bool value) { 
+          _isSystem = value;
+        }
+
+        void setRevision (TRI_voc_rid_t,
+                          bool);
+
+        void setCollectionId (TRI_voc_cid_t);
+
+        void updateCount (size_t);
+
+        void setPlanId (TRI_voc_cid_t);
+
+        void setDeleted (bool);
+
+        void clearKeyOptions ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief saves a parameter info block to file
+////////////////////////////////////////////////////////////////////////////////
+
+        int saveToFile (char const*,
+                        bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates settings for this collection info.
+///        If the second parameter is false it will only
+///        update the values explicitly contained in the slice.
+///        If the second parameter is true and the third is a nullptr,
+///        it will use global default values for all missing options in the slice.
+///        If the third parameter is not nullptr and the second is true, it will
+///        use the defaults stored in the vocbase.
+////////////////////////////////////////////////////////////////////////////////
+
+        void update (VPackSlice const&,
+                     bool,
+                     TRI_vocbase_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates settings for this collection info with the content of the other
+////////////////////////////////////////////////////////////////////////////////
+        void update (VocbaseCollectionInfo const&);
+
+    };
+
+  } // namespace arango
+} // namespace triagens
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_collection_t {
-  TRI_col_info_t       _info;
+  triagens::arango::VocbaseCollectionInfo _info;
 
-  TRI_vocbase_t*       _vocbase;
-  TRI_voc_tick_t       _tickMax;
+  TRI_vocbase_t*                   _vocbase;
+  TRI_voc_tick_t                   _tickMax;
 
-  TRI_col_state_e      _state;        // state of the collection
-  int                  _lastError;    // last (critical) error
+  TRI_col_state_e                  _state;        // state of the collection
+  int                              _lastError;    // last (critical) error
 
-  char*                _directory;    // directory of the collection
+  char*                            _directory;    // directory of the collection
 
-  TRI_vector_pointer_t _datafiles;    // all datafiles
-  TRI_vector_pointer_t _journals;     // all journals
-  TRI_vector_pointer_t _compactors;   // all compactor files
-  TRI_vector_string_t  _indexFiles;   // all index filenames
+  TRI_vector_pointer_t             _datafiles;    // all datafiles
+  TRI_vector_pointer_t             _journals;     // all journals
+  TRI_vector_pointer_t             _compactors;   // all compactor files
+  TRI_vector_string_t              _indexFiles;   // all index filenames
 
-  TRI_collection_t () {
+  int64_t                          _followerInfoIndex;  // short-cut to find
+                                                        // FollowerInfo in
+                                                        // ClusterInfo quickly
+  TRI_collection_t (
+  ) : _followerInfoIndex(-1) {
+  }
+
+  explicit TRI_collection_t (
+    triagens::arango::VocbaseCollectionInfo const& info
+  ) : _info(info) {
   }
 
   ~TRI_collection_t () {
@@ -223,39 +387,8 @@ struct TRI_collection_t {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a collection info block
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitCollectionInfo (TRI_vocbase_t*,
-                             TRI_col_info_t*,
-                             char const*,
-                             TRI_col_type_e,
-                             TRI_voc_size_t,
-                             struct TRI_json_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fill a collection info struct from the JSON passed
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FromJsonCollectionInfo (TRI_col_info_t*,
-                                 struct TRI_json_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy a collection info block
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CopyCollectionInfo (TRI_col_info_t*,
-                             const TRI_col_info_t* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free a collection info block
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeCollectionInfoOptions (TRI_col_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the full directory name for a collection
@@ -276,7 +409,7 @@ char* TRI_GetDirectoryCollection (char const*,
 TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t*,
                                         TRI_collection_t*,
                                         char const*,
-                                        TRI_col_info_t const*);
+                                        triagens::arango::VocbaseCollectionInfo const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -304,7 +437,7 @@ void TRI_FreeCollection (TRI_collection_t*);
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_t* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
+struct TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the index (JSON) files of a collection, using a callback
@@ -314,31 +447,21 @@ struct TRI_json_t* TRI_ReadJsonCollectionInfo (struct TRI_vocbase_col_s*);
 /// function is called.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_IterateJsonIndexesCollectionInfo (struct TRI_vocbase_col_s*,
-                                          int (*)(struct TRI_vocbase_col_s*, char const*, void*),
+int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t*,
+                                          int (*)(TRI_vocbase_col_t*, char const*, void*),
                                           void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const*);
+struct TRI_json_t* TRI_CreateJsonCollectionInfo (triagens::arango::VocbaseCollectionInfo const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a parameter info block from file
-////////////////////////////////////////////////////////////////////////////////
+std::shared_ptr<VPackBuilder> TRI_CreateVelocyPackCollectionInfo (triagens::arango::VocbaseCollectionInfo const&);
 
-int TRI_LoadCollectionInfo (char const*,
-                            TRI_col_info_t*,
-                            bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a parameter info block to file
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_SaveCollectionInfo (char const*,
-                            TRI_col_info_t const* const,
-                            bool);
+// Expects the builder to be in an open Object state
+void TRI_CreateVelocyPackCollectionInfo (triagens::arango::VocbaseCollectionInfo const&,
+                                         VPackBuilder&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the parameter info block
@@ -346,7 +469,7 @@ int TRI_SaveCollectionInfo (char const*,
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t*,
                               TRI_collection_t*,
-                              TRI_col_info_t const*,
+                              VPackSlice const&,
                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -417,7 +540,7 @@ void TRI_DestroyFileStructureCollection (TRI_col_file_structure_t*);
 
 int TRI_UpgradeCollection20 (TRI_vocbase_t*,
                              char const*,
-                             TRI_col_info_t*);
+                             triagens::arango::VocbaseCollectionInfo&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over the markers in the collection's journals

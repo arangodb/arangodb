@@ -102,11 +102,17 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
         triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
   
-        int insert (struct TRI_doc_mptr_t const*, bool) override final;
+        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
          
-        int remove (struct TRI_doc_mptr_t const*, bool) override final;
+        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
         
-        int postInsert (struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*) override final;
+        int postInsert (triagens::arango::Transaction*, struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*) override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize the cap constraint
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize (triagens::arango::Transaction*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -115,16 +121,11 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-        int initialize ();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the cap constraint for the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int apply (TRI_document_collection_t*,
+        int apply (triagens::arango::Transaction*,
+                   TRI_document_collection_t*,
                    struct TRI_transaction_collection_s*);
         
 // -----------------------------------------------------------------------------

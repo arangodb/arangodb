@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/PrimaryIndex.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionReadLocker.h"
@@ -103,7 +104,7 @@ CollectionKeys::~CollectionKeys () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CollectionKeys::create (TRI_voc_tick_t maxTick) {
-  triagens::wal::LogfileManager::instance()->waitForCollectorQueue(_document->_info._cid, 30.0);
+  triagens::wal::LogfileManager::instance()->waitForCollectorQueue(_document->_info.id(), 30.0);
 
   // try to acquire the exclusive lock on the compaction
   while (! TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
@@ -144,7 +145,7 @@ void CollectionKeys::create (TRI_voc_tick_t maxTick) {
     uint64_t total = 0;
 
     while (true) {
-      auto ptr = idx->lookupSequential(position, total);
+      auto ptr = idx->lookupSequential(&trx, position, total);
 
       if (ptr == nullptr) {
         // done
@@ -310,6 +311,18 @@ void CollectionKeys::dumpDocs (triagens::basics::Json& json,
 
     json.transfer(doc);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dumps documents into the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+void CollectionKeys::dumpDocs (triagens::basics::Json& json, 
+                               size_t chunk,
+                               size_t chunkSize,
+                               VPackSlice const& ids) const {
+  std::unique_ptr<TRI_json_t> jsonIds(triagens::basics::VelocyPackHelper::velocyPackToJson(ids));
+  dumpDocs(json, chunk, chunkSize, jsonIds.get());
 }
 
 // -----------------------------------------------------------------------------

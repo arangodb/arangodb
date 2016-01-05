@@ -39,7 +39,8 @@
 #include "Basics/StringUtils.h"
 #include "VocBase/server.h"
 #include "VocBase/VocShaper.h"
-#include <iostream>
+
+#include <ostream>
 
 using namespace triagens::arango;
 
@@ -377,7 +378,7 @@ std::string Index::context () const {
   result << "index { id: " << id() 
          << ", type: " << typeName() 
          << ", collection: " << _collection->_vocbase->_name 
-         << "/" <<  _collection->_info._name
+         << "/" <<  _collection->_info.name()
          << ", unique: " <<  (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
@@ -390,6 +391,58 @@ std::string Index::context () const {
   result << "] }";
 
   return result.str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeToplevel) const {
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openObject();
+  builder->add("id", VPackValue(std::to_string(_iid)));
+  builder->add("type", VPackValue(typeName()));
+
+  if (dumpFields()) {
+    builder->add(VPackValue("fields"));
+    VPackArrayBuilder b1(builder.get());
+
+    for (auto const& field : fields()) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder->add(VPackValue(fieldString));
+    }
+  }
+
+  if (hasSelectivityEstimate()) {
+    builder->add("selectivityEstimate", VPackValue(selectivityEstimate()));
+  }
+
+  if (withFigures) {
+    std::shared_ptr<VPackBuilder> figuresBuilder = toVelocyPackFigures(true);
+    VPackSlice const figures = figuresBuilder->slice();
+    builder->add("figures", figures);
+  }
+  if (closeToplevel) {
+    builder->close();
+  }
+  return builder;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a VelocyPack representation of the index figures
+/// base functionality (called from derived classes)
+////////////////////////////////////////////////////////////////////////////////
+
+std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures (bool closeToplevel) const {
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openObject();
+  builder->add("memory", VPackValue(memory()));
+  if (closeToplevel) {
+    builder->close();
+  }
+  return builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,7 +503,9 @@ double Index::selectivityEstimate () const {
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t) {
+int Index::batchInsert (triagens::arango::Transaction*,
+                        std::vector<TRI_doc_mptr_t const*> const*, 
+                        size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -458,7 +513,8 @@ int Index::batchInsert (std::vector<TRI_doc_mptr_t const*> const*, size_t) {
 /// @brief default implementation for postInsert
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::postInsert (struct TRI_transaction_collection_s*,
+int Index::postInsert (triagens::arango::Transaction*,
+                       struct TRI_transaction_collection_s*,
                        struct TRI_doc_mptr_t const*) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
@@ -477,7 +533,7 @@ int Index::cleanup () {
 /// @brief default implementation for sizeHint
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::sizeHint (size_t) {
+int Index::sizeHint (triagens::arango::Transaction*, size_t) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }
@@ -527,7 +583,8 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
 /// @brief default iterator factory method. does not create an iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* Index::iteratorForCondition (IndexIteratorContext*,
+IndexIterator* Index::iteratorForCondition (triagens::arango::Transaction*,
+                                            IndexIteratorContext*,
                                             triagens::aql::Ast*,
                                             triagens::aql::AstNode const*,
                                             triagens::aql::Variable const*,

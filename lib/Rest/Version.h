@@ -32,13 +32,15 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
-
 
 namespace triagens {
   namespace rest {
@@ -158,6 +160,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static void getJson (struct TRI_memory_zone_s*, struct TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief VelocyPack all data
+////////////////////////////////////////////////////////////////////////////////
+
+        static void getVPack (VPackBuilder&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           public static variables

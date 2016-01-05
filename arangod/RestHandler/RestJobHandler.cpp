@@ -316,11 +316,18 @@ void RestJobHandler::putJobMethod () {
       generateError(HttpResponse::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     }
     else {
-      TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
+      try {
+        VPackBuilder json;
+        json.add(VPackValue(VPackValueType::Object));
+        json.add("result", VPackValue(true));
+        json.close();
 
-      TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-      generateResult(json);
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+        VPackSlice slice(json.start());
+        generateResult(slice);
+      }
+      catch (...) {
+        // Ignore the error
+      }
     }
     return;
   }
@@ -562,22 +569,21 @@ void RestJobHandler::getJobByType (std::string const& type) {
     return;
   }
 
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE, ids.size());
-
-  if (json != nullptr) {
+  try {
+    VPackBuilder json;
+    json.add(VPackValue(VPackValueType::Array));
     size_t const n = ids.size();
     for (size_t i = 0; i < n; ++i) {
       char* idString = TRI_StringUInt64(ids[i]);
-
       if (idString != nullptr) {
-        TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, json, TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
+        json.add(VPackValue(idString));
       }
     }
-
-    generateResult(json);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+    json.close();
+    VPackSlice slice(json.start());
+    generateResult(slice);
   }
-  else {
+  catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }
@@ -730,15 +736,15 @@ void RestJobHandler::deleteJob () {
     }
   }
 
-  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
-
-  if (json != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
-
-    generateResult(json);
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  try {
+    VPackBuilder json;
+    json.add(VPackValue(VPackValueType::Object));
+    json.add("result", VPackValue(true));
+    json.close();
+    VPackSlice slice(json.start());
+    generateResult(slice);
   }
-  else {
+  catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
   }
 }

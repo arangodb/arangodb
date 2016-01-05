@@ -32,6 +32,9 @@
 #include "Cluster/ClusterMethods.h"
 #include "VocBase/Traverser.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace triagens::rest;
 using namespace triagens::arango;
 
@@ -110,6 +113,7 @@ bool RestEdgesHandler::getEdgesForVertex (std::string const& id,
   TRI_document_collection_t* docCol = trx.trxCollection()->_collection->_collection;
 
   std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(
+    &trx,
     docCol,
     direction,
     start.cid,
@@ -418,13 +422,17 @@ bool RestEdgesHandler::readEdgesForMultipleVertices () {
     return false;
   }
 
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
-  if (json == nullptr) {
+  bool parseSuccess = true;
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+
+  if (! parseSuccess) {
     // A body is required
     return false;
   }
+  VPackSlice body = parsedBody->slice();
 
-  if (! TRI_IsArrayJson(json.get())) {
+  if (! body.isArray()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Expected an array of vertex _id's in body parameter");
@@ -496,24 +504,27 @@ bool RestEdgesHandler::readEdgesForMultipleVertices () {
     collectionName = trx.resolver()->getCollectionName(trx.cid());
   }
   
-  std::vector<std::string> ids = triagens::basics::JsonHelper::stringArray(json.get());
-  triagens::basics::Json documents(triagens::basics::Json::Array);
   size_t filtered = 0;
   size_t scannedIndex = 0;
   std::vector<traverser::TraverserExpression*> const expressions;
 
-  for (auto const& vertex : ids) {
-    bool ok = getEdgesForVertex(vertex,
-                                expressions,
-                                direction,
-                                trx,
-                                documents,
-                                scannedIndex,
-                                filtered);
-    if (! ok) {
-      // Ignore the error
+  triagens::basics::Json documents(triagens::basics::Json::Array);
+  for (auto const& vertexSlice : VPackArrayIterator(body)) {
+    if (vertexSlice.isString()) {
+      std::string vertex = vertexSlice.copyString();
+      bool ok = getEdgesForVertex(vertex,
+                                  expressions,
+                                  direction,
+                                  trx,
+                                  documents,
+                                  scannedIndex,
+                                  filtered);
+      if (! ok) {
+        // Ignore the error
+      }
     }
   }
+
   res = trx.finish(res);
   if (res != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collectionName, res);
@@ -544,7 +555,17 @@ bool RestEdgesHandler::readEdgesForMultipleVertices () {
 
 bool RestEdgesHandler::readFilteredEdges () {
   std::vector<traverser::TraverserExpression*> expressions;
-  std::unique_ptr<TRI_json_t> json(parseJsonBody());
+  bool parseSuccess = true;
+  VPackOptions options;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
+  if (! parseSuccess) {
+    // We continue unfiltered
+    // Filter could be done by caller
+    delete _response;
+    _response = nullptr;
+    return readEdges(expressions);
+  }
+  VPackSlice body = parsedBody->slice();
   triagens::basics::ScopeGuard guard{
     []() -> void { },
     [&expressions]() -> void {
@@ -553,25 +574,18 @@ bool RestEdgesHandler::readFilteredEdges () {
       }
     }
   };
-  if (json == nullptr) {
-    delete _response;
-    _response = nullptr;
-    return readEdges(expressions);
-  }
 
-  if (! TRI_IsArrayJson(json.get())) {
+  if (! body.isArray()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Expected an array of traverser expressions as body parameter");
     return false;
   }
 
-  size_t length = TRI_LengthArrayJson(json.get()); 
-  expressions.reserve(length);
+  expressions.reserve(body.length());
 
-  for (size_t i = 0; i < length; ++i) {
-    TRI_json_t* exp = TRI_LookupArrayJson(json.get(), i);
-    if (TRI_IsObjectJson(exp)) {
+  for (auto const& exp : VPackArrayIterator(body)) {
+    if (exp.isObject()) {
       auto expression = std::make_unique<traverser::TraverserExpression>(exp);
       expressions.emplace_back(expression.get());
       expression.release();

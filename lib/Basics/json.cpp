@@ -705,7 +705,6 @@ void TRI_InsertObjectJson (TRI_memory_zone_t* zone,
   }
 
   if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
-    // TODO: signal OOM here
     return;
   }
 
@@ -714,7 +713,6 @@ void TRI_InsertObjectJson (TRI_memory_zone_t* zone,
   char* att = TRI_DuplicateString2Z(zone, name, length);
 
   if (att == nullptr) {
-    // TODO: signal OOM here
     return;
   }
 
@@ -747,7 +745,6 @@ void TRI_Insert2ObjectJson (TRI_memory_zone_t* zone,
   }
 
   if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
-    // TODO: signal OOM here
     return;
   }
 
@@ -755,7 +752,6 @@ void TRI_Insert2ObjectJson (TRI_memory_zone_t* zone,
   char* att = TRI_DuplicateString2Z(zone, name, length);
 
   if (att == nullptr) {
-    // TODO: signal OOM here
     return;
   }
 
@@ -1171,7 +1167,6 @@ int64_t TRI_ToInt64Json (TRI_json_t const* json) {
       break;
   }
   
-  // TODO: must convert to null here
   return 0;
 }
 
@@ -1219,7 +1214,6 @@ double TRI_ToDoubleJson (TRI_json_t const* json, bool& failed) {
   }
 
   failed = true;
-  // TODO: must convert to null here
   return 0.0;
 }
 

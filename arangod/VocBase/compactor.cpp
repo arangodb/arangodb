@@ -39,6 +39,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/memory-map.h"
 #include "Indexes/PrimaryIndex.h"
+#include "Utils/StandaloneTransactionContext.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -144,36 +145,35 @@ compaction_blocker_t;
 /// @brief auxiliary struct used when initializing compaction
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct compaction_intial_context_s {
+struct compaction_initial_context_t {
+  triagens::arango::Transaction* _trx;
   TRI_document_collection_t* _document;
   int64_t                    _targetSize;
   TRI_voc_fid_t              _fid;
   bool                       _keepDeletions;
   bool                       _failed;
-}
-compaction_initial_context_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction state
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct compaction_context_s {
-  TRI_document_collection_t* _document;
-  TRI_datafile_t*            _compactor;
-  TRI_doc_datafile_info_t    _dfi;
-  bool                       _keepDeletions;
-}
-compaction_context_t;
+struct compaction_context_t {
+  triagens::arango::Transaction* _trx;
+  TRI_document_collection_t*     _document;
+  TRI_datafile_t*                _compactor;
+  TRI_doc_datafile_info_t        _dfi;
+  bool                           _keepDeletions;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction instruction for a single datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct compaction_info_s {
+struct compaction_info_t {
   TRI_datafile_t* _datafile;
   bool            _keepDeletions;
-}
-compaction_info_t;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -351,7 +351,7 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
 
 static void RenameDatafileCallback (TRI_datafile_t* datafile,
                                     void* data) {
-  compaction_context_t* context   = (compaction_context_t*) data;
+  compaction_context_t* context = static_cast<compaction_context_t*>(data);
   TRI_datafile_t* compactor = context->_compactor;
 
   TRI_document_collection_t* document = context->_document;
@@ -464,7 +464,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
 
-    auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
+    auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(context->_trx, key));
     bool deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
@@ -684,7 +684,7 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
 
     // check if the document is still active
     auto primaryIndex = document->primaryIndex();
-    auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key));
+    auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(context->_trx, key));
     deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
@@ -725,11 +725,13 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
 /// @brief calculate the target size for the compactor to be created
 ////////////////////////////////////////////////////////////////////////////////
 
-static compaction_initial_context_t InitCompaction (TRI_document_collection_t* document,
+static compaction_initial_context_t InitCompaction (triagens::arango::Transaction* trx,
+                                                    TRI_document_collection_t* document,
                                                     TRI_vector_t const* compactions) {
   compaction_initial_context_t context;
 
   memset(&context, 0, sizeof(compaction_initial_context_t));
+  context._trx    = trx;
   context._failed = false;
   context._document = document;
 
@@ -788,18 +790,18 @@ static compaction_initial_context_t InitCompaction (TRI_document_collection_t* d
 static void CompactifyDatafiles (TRI_document_collection_t* document,
                                  TRI_vector_t const* compactions) {
   TRI_datafile_t* compactor;
-  compaction_initial_context_t initial;
   compaction_context_t context;
   size_t i, j;
 
   size_t const n = TRI_LengthVector(compactions);
   TRI_ASSERT(n > 0);
+  
+  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), document->_vocbase, document->_info.id());
+  trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
+  trx.addHint(TRI_TRANSACTION_HINT_NO_COMPACTION_LOCK, true);
 
-  // create a fake transaction
-  triagens::arango::TransactionBase trx(true);
-
-
-  initial = InitCompaction(document, compactions);
+  compaction_initial_context_t initial = InitCompaction(&trx, document, compactions);
 
   if (initial._failed) {
     LOG_ERROR("could not create initialize compaction");
@@ -808,7 +810,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   }
 
   LOG_TRACE("compactify called for collection '%llu' for %d datafiles of total size %llu",
-            (unsigned long long) document->_info._cid,
+            (unsigned long long) document->_info.id(),
             (int) n,
             (unsigned long long) initial._targetSize);
 
@@ -825,11 +827,20 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 
   LOG_DEBUG("created new compactor file '%s'", compactor->getName(compactor));
 
+
   memset(&context._dfi, 0, sizeof(TRI_doc_datafile_info_t));
   // these attributes remain the same for all datafiles we collect
   context._document  = document;
   context._compactor = compactor;
   context._dfi._fid  = compactor->_fid;
+  context._trx       = &trx;
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("error during compaction: %s", TRI_errno_string(res));
+    return;
+  }
 
   // now compact all datafiles
   for (i = 0; i < n; ++i) {
@@ -846,21 +857,19 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     // deletion markers
     context._keepDeletions = compaction->_keepDeletions;
 
-    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-   
     // run the actual compaction of a single datafile
     bool ok = TRI_IterateDatafile(df, Compactifier, &context);
    
-    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
-
     if (! ok) {
       LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
       // compactor file does not need to be removed now. will be removed on next startup
-      // TODO: Remove
+      // TODO: Remove file
       return;
     }
+
   } // next file
 
+  trx.commit();
 
   // locate the compactor
   // must acquire a write-lock as we're about to change the datafiles vector
@@ -1015,7 +1024,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   uint64_t const numDocuments = document->size();
 
   // get maximum size of result file
-  uint64_t maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) document->_info._maximalSize;
+  uint64_t maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) document->_info.maximalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
@@ -1467,7 +1476,7 @@ void TRI_CompactorVocBase (void* data) {
         }
 
         bool worked    = false;
-        bool doCompact = document->_info._doCompact;
+        bool doCompact = document->_info.doCompact();
 
         // for document collection, compactify datafiles
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {

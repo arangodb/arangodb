@@ -54,7 +54,8 @@ static void FreeElement(TRI_index_element_t* element) {
 /// @brief determines if two elements are equal
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualElementElement (TRI_index_element_t const* left,
+static bool IsEqualElementElement (void* userData,
+                                   TRI_index_element_t const* left,
                                    TRI_index_element_t const* right) {
   return left->document() == right->document();
 }
@@ -63,7 +64,8 @@ static bool IsEqualElementElement (TRI_index_element_t const* left,
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_hash_index_search_value_t const* key) {
+static uint64_t HashKey (void* userData,
+                         TRI_hash_index_search_value_t const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < key->_length;  ++j) {
@@ -78,7 +80,8 @@ static uint64_t HashKey (TRI_hash_index_search_value_t const* key) {
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (TRI_hash_index_search_value_t const* left,
+static bool IsEqualKeyElement (void* userData,
+                               TRI_hash_index_search_value_t const* left,
                                TRI_index_element_t const* right) {
   TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
 
@@ -108,10 +111,11 @@ static bool IsEqualKeyElement (TRI_hash_index_search_value_t const* left,
   return true;
 }
 
-static bool IsEqualKeyElementHash (TRI_hash_index_search_value_t const* left,
+static bool IsEqualKeyElementHash (void* userData,
+                                   TRI_hash_index_search_value_t const* left,
                                    uint64_t const hash, // Has been computed but is not used here
                                    TRI_index_element_t const* right) {
-  return IsEqualKeyElement(left, right);
+  return IsEqualKeyElement(userData, left, right);
 }
 
 // -----------------------------------------------------------------------------
@@ -134,7 +138,7 @@ TRI_doc_mptr_t* HashIndexIterator::next () {
       _buffer.clear();
       _posInBuffer = 0;
 
-      int res = _index->lookup(_keys[_position++], _buffer);
+      int res = _index->lookup(_trx, _keys[_position++], _buffer);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -286,7 +290,7 @@ HashIndex::HashIndex (TRI_idx_iid_t iid,
 
   if (collection != nullptr) {
     // document is a nullptr in the coordinator case
-    indexBuckets = collection->_info._indexBuckets;
+    indexBuckets = collection->_info.indexBuckets();
   }
     
   auto func = std::make_unique<HashElementFunc>(_paths.size());
@@ -417,41 +421,48 @@ triagens::basics::Json HashIndex::toJsonFigures (TRI_memory_zone_t* zone) const 
   return json;
 }
   
-int HashIndex::insert (TRI_doc_mptr_t const* doc, 
+int HashIndex::insert (triagens::arango::Transaction* trx,
+                       TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
   if (_unique) {
-    return insertUnique(doc, isRollback);
+    return insertUnique(trx, doc, isRollback);
   }
-  return insertMulti(doc, isRollback);
+
+  return insertMulti(trx, doc, isRollback);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an entry from the hash array part of the hash index
 ////////////////////////////////////////////////////////////////////////////////
          
-int HashIndex::remove (TRI_doc_mptr_t const* doc, 
+int HashIndex::remove (triagens::arango::Transaction* trx,
+                       TRI_doc_mptr_t const* doc, 
                        bool isRollback) {
 
   if (_unique) {
-    return removeUnique(doc, isRollback);
+    return removeUnique(trx, doc, isRollback);
   }
-  return removeMulti(doc, isRollback);
+
+  return removeMulti(trx, doc, isRollback);
 }
 
 
-int HashIndex::batchInsert (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int HashIndex::batchInsert (triagens::arango::Transaction* trx,
+                            std::vector<TRI_doc_mptr_t const*> const* documents, 
                             size_t numThreads) {
   if (_unique) {
-    return batchInsertUnique(documents, numThreads);
+    return batchInsertUnique(trx, documents, numThreads);
   }
-  return batchInsertMulti(documents, numThreads);
+
+  return batchInsertMulti(trx, documents, numThreads);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief provides a size hint for the hash index
 ////////////////////////////////////////////////////////////////////////////////
   
-int HashIndex::sizeHint (size_t size) {
+int HashIndex::sizeHint (triagens::arango::Transaction* trx,
+                         size_t size) {
   if (_sparse) {
     // for sparse indexes, we assume that we will have less index entries
     // than if the index would be fully populated
@@ -459,10 +470,10 @@ int HashIndex::sizeHint (size_t size) {
   }
 
   if (_unique) {
-    return _uniqueArray->_hashArray->resize(size);
+    return _uniqueArray->_hashArray->resize(trx, size);
   }
   else {
-    return _multiArray->_hashArray->resize(size);
+    return _multiArray->_hashArray->resize(trx, size);
   }
 }
 
@@ -470,22 +481,24 @@ int HashIndex::sizeHint (size_t size) {
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
+int HashIndex::lookup (triagens::arango::Transaction* trx,
+                       TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_t*>& documents) const {
 
   if (_unique) {
-    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
+    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(trx, searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
       documents.emplace_back(found->document());
     }
+
     return TRI_ERROR_NO_ERROR;
   }
 
   std::vector<TRI_index_element_t*>* results = nullptr;
   try {
-    results = _multiArray->_hashArray->lookupByKey(searchValue);
+    results = _multiArray->_hashArray->lookupByKey(trx, searchValue);
   }
   catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -509,14 +522,15 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
 /// @brief locates entries in the hash index given shaped json objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
+int HashIndex::lookup (triagens::arango::Transaction* trx,
+                       TRI_hash_index_search_value_t* searchValue,
                        std::vector<TRI_doc_mptr_copy_t>& documents,
                        TRI_index_element_t*& next,
                        size_t batchSize) const {
 
   if (_unique) {
     next = nullptr;
-    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(searchValue);
+    TRI_index_element_t* found = _uniqueArray->_hashArray->findByKey(trx, searchValue);
 
     if (found != nullptr) {
       // unique hash index: maximum number is 1
@@ -529,7 +543,7 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
 
   if (next == nullptr) {
     try {
-      results = _multiArray->_hashArray->lookupByKey(searchValue, batchSize);
+      results = _multiArray->_hashArray->lookupByKey(trx, searchValue, batchSize);
     }
     catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -537,7 +551,7 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
   }
   else {
     try {
-      results = _multiArray->_hashArray->lookupByKeyContinue(next, batchSize);
+      results = _multiArray->_hashArray->lookupByKeyContinue(trx, next, batchSize);
     }
     catch (...) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -572,7 +586,8 @@ int HashIndex::lookup (TRI_hash_index_search_value_t* searchValue,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
+int HashIndex::insertUnique (triagens::arango::Transaction* trx,
+                             TRI_doc_mptr_t const* doc,
                              bool isRollback) {
 
   std::vector<TRI_index_element_t*> elements;
@@ -587,11 +602,11 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
     return res;
   }
   
-  auto work = [this] (TRI_index_element_t* element, bool isRollback) -> int {
+  auto work = [this, trx] (TRI_index_element_t* element, bool isRollback) -> int {
     TRI_IF_FAILURE("InsertHashIndex") {
       return TRI_ERROR_DEBUG;
     }
-    return _uniqueArray->_hashArray->insert(element);
+    return _uniqueArray->_hashArray->insert(trx, element);
   };
 
   size_t const n = elements.size();
@@ -612,7 +627,8 @@ int HashIndex::insertUnique (TRI_doc_mptr_t const* doc,
   return res;
 }
 
-int HashIndex::batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int HashIndex::batchInsertUnique (triagens::arango::Transaction* trx,
+                                  std::vector<TRI_doc_mptr_t const*> const* documents, 
                                   size_t numThreads) {
   std::vector<TRI_index_element_t*> elements;
   elements.reserve(documents->size());
@@ -629,10 +645,9 @@ int HashIndex::batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const* docu
     }
   }
 
-  int res = _uniqueArray->_hashArray->batchInsert(&elements, numThreads);
+  int res = _uniqueArray->_hashArray->batchInsert(trx, &elements, numThreads);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    // TODO check leaks
     for (auto& it : elements) {
       // free all elements to prevent leak
       FreeElement(it);
@@ -642,7 +657,8 @@ int HashIndex::batchInsertUnique (std::vector<TRI_doc_mptr_t const*> const* docu
   return res;
 }
 
-int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
+int HashIndex::insertMulti (triagens::arango::Transaction* trx,
+                            TRI_doc_mptr_t const* doc,
                             bool isRollback) {
 
   std::vector<TRI_index_element_t*> elements;
@@ -655,12 +671,12 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
     return res;
   }
 
-  auto work = [this] (TRI_index_element_t*& element, bool isRollback) {
+  auto work = [this, trx] (TRI_index_element_t*& element, bool isRollback) {
     TRI_IF_FAILURE("InsertHashIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   
-    TRI_index_element_t* found = _multiArray->_hashArray->insert(element, false, true);
+    TRI_index_element_t* found = _multiArray->_hashArray->insert(trx, element, false, true);
 
     if (found != nullptr) { 
       // already got the exact same index entry. now free our local element...
@@ -693,7 +709,7 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
       for (size_t j = 0; j < i; ++j) {
         // Remove all allready indexed elements and free them
         if (elements[j] != nullptr) {
-          removeMultiElement(elements[j], isRollback);
+          removeMultiElement(trx, elements[j], isRollback);
         }
       }
 
@@ -704,7 +720,8 @@ int HashIndex::insertMulti (TRI_doc_mptr_t const* doc,
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const* documents, 
+int HashIndex::batchInsertMulti (triagens::arango::Transaction* trx,
+                                 std::vector<TRI_doc_mptr_t const*> const* documents, 
                                  size_t numThreads) {
 
   std::vector<TRI_index_element_t*> elements;
@@ -721,14 +738,16 @@ int HashIndex::batchInsertMulti (std::vector<TRI_doc_mptr_t const*> const* docum
       return res;
     }
   }
-  return _multiArray->_hashArray->batchInsert(&elements, numThreads);
+  return _multiArray->_hashArray->batchInsert(trx, &elements, numThreads);
 }
 
-int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollback) {
+int HashIndex::removeUniqueElement (triagens::arango::Transaction* trx,
+                                    TRI_index_element_t* element, 
+                                    bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
-  TRI_index_element_t* old = _uniqueArray->_hashArray->remove(element);
+  TRI_index_element_t* old = _uniqueArray->_hashArray->remove(trx, element);
 
   // this might happen when rolling back
   if (old == nullptr) {
@@ -745,7 +764,9 @@ int HashIndex::removeUniqueElement (TRI_index_element_t* element, bool isRollbac
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
+int HashIndex::removeUnique (triagens::arango::Transaction* trx,
+                             TRI_doc_mptr_t const* doc, 
+                             bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
 
@@ -757,18 +778,20 @@ int HashIndex::removeUnique (TRI_doc_mptr_t const* doc, bool isRollback) {
   }
 
   for (auto& hashElement : elements) {
-    res = removeUniqueElement(hashElement, isRollback);
+    res = removeUniqueElement(trx, hashElement, isRollback);
     FreeElement(hashElement);
   }
   return res;
 }
 
-int HashIndex::removeMultiElement (TRI_index_element_t* element, bool isRollback) {
+int HashIndex::removeMultiElement (triagens::arango::Transaction* trx,
+                                   TRI_index_element_t* element, 
+                                   bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") {
     return TRI_ERROR_DEBUG;
   }
 
-  TRI_index_element_t* old = _multiArray->_hashArray->remove(element);
+  TRI_index_element_t* old = _multiArray->_hashArray->remove(trx, element);
       
   if (old == nullptr) {
     // not found
@@ -784,7 +807,9 @@ int HashIndex::removeMultiElement (TRI_index_element_t* element, bool isRollback
   return TRI_ERROR_NO_ERROR;
 }
 
-int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
+int HashIndex::removeMulti (triagens::arango::Transaction* trx,
+                            TRI_doc_mptr_t const* doc, 
+                            bool isRollback) {
   std::vector<TRI_index_element_t*> elements;
   int res = fillElement(elements, doc);
 
@@ -795,7 +820,7 @@ int HashIndex::removeMulti (TRI_doc_mptr_t const* doc, bool isRollback) {
   }
 
   for (auto& hashElement : elements) {
-    res = removeMultiElement(hashElement, isRollback);
+    res = removeMultiElement(trx, hashElement, isRollback);
     FreeElement(hashElement);
   }
                  
@@ -819,7 +844,8 @@ bool HashIndex::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief creates an IndexIterator for the given Condition
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
+IndexIterator* HashIndex::iteratorForCondition (triagens::arango::Transaction* trx,
+                                                IndexIteratorContext* context,
                                                 triagens::aql::Ast* ast,
                                                 triagens::aql::AstNode const* node,
                                                 triagens::aql::Variable const* reference,
@@ -974,7 +1000,7 @@ IndexIterator* HashIndex::iteratorForCondition (IndexIteratorContext* context,
     throw;
   }
 
-  return new HashIndexIterator(this, searchValues);
+  return new HashIndexIterator(trx, this, searchValues);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

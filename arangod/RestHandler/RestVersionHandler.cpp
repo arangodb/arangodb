@@ -28,8 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestVersionHandler.h"
-#include "Basics/json.h"
-#include "Basics/tri-strings.h"
 #include "Rest/AnyServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -130,39 +128,32 @@ bool RestVersionHandler::isDirect () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestVersionHandler::execute () {
-  TRI_json_t result;
+  try {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("server", VPackValue("arango"));
+    result.add("version", VPackValue(TRI_VERSION));
 
-  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, 3);
+    bool found;
+    char const* detailsStr = _request->value("details", found);
 
-  TRI_json_t server;
-  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "arango"), strlen("arango"));
-  TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "server", &server);
+    if (found && StringUtils::boolean(detailsStr)) {
+      result.add("details", VPackValue(VPackValueType::Object));
 
-  TRI_json_t version;
-  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION), strlen(TRI_VERSION));
-  TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "version", &version);
+      Version::getVPack(result);
 
-  bool found;
-  char const* detailsStr = _request->value("details", found);
-
-  if (found && StringUtils::boolean(detailsStr)) {
-    TRI_json_t details;
-
-    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &details);
-
-    Version::getJson(TRI_UNKNOWN_MEM_ZONE, &details);
-    
-    if (ArangoInstance != nullptr) {
-      std::string mode = ArangoInstance->modeString();
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &details, "mode", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, mode.c_str(), mode.size()));
+      if (ArangoInstance != nullptr) {
+        result.add("mode", VPackValue(ArangoInstance->modeString()));
+      }
+      result.close();
     }
-
-    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "details", &details);
+    result.close();
+    VPackSlice s = result.slice();
+    generateResult(s);
   }
-
-  generateResult(&result);
-  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
-
+  catch (...) {
+    // Ignore this error
+  }
   return status_t(HANDLER_DONE);
 }
 

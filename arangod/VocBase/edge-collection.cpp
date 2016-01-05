@@ -80,7 +80,8 @@ static bool IsReflexive (TRI_doc_mptr_t const* mptr) {
 /// opposite direction (with matchType 2 or 3) to find all counterparts
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool FindEdges (TRI_edge_direction_e direction,
+static bool FindEdges (triagens::arango::Transaction* trx,
+                       TRI_edge_direction_e direction,
                        triagens::arango::EdgeIndex* edgeIndex,
                        std::vector<TRI_doc_mptr_copy_t>& result,
                        TRI_edge_header_t const* entry,
@@ -88,10 +89,10 @@ static bool FindEdges (TRI_edge_direction_e direction,
   std::unique_ptr<std::vector<TRI_doc_mptr_t*>> found;
 
   if (direction == TRI_EDGE_OUT) {
-    found.reset(edgeIndex->from()->lookupByKey(entry));
+    found.reset(edgeIndex->from()->lookupByKey(trx, entry));
   }
   else if (direction == TRI_EDGE_IN) {
-    found.reset(edgeIndex->to()->lookupByKey(entry));
+    found.reset(edgeIndex->to()->lookupByKey(trx, entry));
   }
   else {
     TRI_ASSERT(false);   // TRI_EDGE_ANY not supported here
@@ -145,6 +146,7 @@ static bool FindEdges (TRI_edge_direction_e direction,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
+                                        triagens::arango::Transaction* trx,
                                         TRI_document_collection_t* document,
                                         TRI_edge_direction_e direction,
                                         TRI_voc_cid_t cid,
@@ -164,17 +166,17 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
 
   if (direction == TRI_EDGE_IN) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, edgeIndex, result, &entry, 1);
+    FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, &entry, 1);
   }
   else if (direction == TRI_EDGE_OUT) {
     // get all edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, edgeIndex, result, &entry, 1);
+    FindEdges(trx, TRI_EDGE_OUT, edgeIndex, result, &entry, 1);
   }
   else if (direction == TRI_EDGE_ANY) {
     // get all edges with a matching IN vertex
-    FindEdges(TRI_EDGE_IN, edgeIndex, result, &entry, 1);
+    FindEdges(trx, TRI_EDGE_IN, edgeIndex, result, &entry, 1);
     // add all non-reflexive edges with a matching OUT vertex
-    FindEdges(TRI_EDGE_OUT, edgeIndex, result, &entry, 3);
+    FindEdges(trx, TRI_EDGE_OUT, edgeIndex, result, &entry, 3);
   }
 
   return result;

@@ -172,6 +172,10 @@ HttpHandler::status_t HttpHandler::executeFull() {
     } catch (Exception const &ex) {
       requestStatisticsAgentSetExecuteError();
       handleError(ex);
+    } catch (std::bad_alloc const &ex) {
+      requestStatisticsAgentSetExecuteError();
+      Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+      handleError(err);
     } catch (std::exception const &ex) {
       requestStatisticsAgentSetExecuteError();
       Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);

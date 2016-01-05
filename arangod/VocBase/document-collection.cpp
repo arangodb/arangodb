@@ -66,51 +66,6 @@
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the beginning of the marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-void const* TRI_doc_mptr_t::getDataPtr () const {
-  TransactionBase::assertCurrentTrxActive();
-  return _dataptr;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the pointer to the beginning of the memory for the marker
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-void TRI_doc_mptr_t::setDataPtr (void const* d) {
-  TransactionBase::assertCurrentTrxActive();
-  _dataptr = d;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the beginning of the marker, copy object
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-void const* TRI_doc_mptr_copy_t::getDataPtr () const {
-  TransactionBase::assertSomeTrxInScope();
-  return _dataptr;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the pointer to the beginning of the memory for the marker,
-/// copy object
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
-  TransactionBase::assertSomeTrxInScope();
-  _dataptr = d;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -179,7 +134,7 @@ void TRI_document_collection_t::getCompactionStatus (char const*& reason, char* 
 
 int TRI_document_collection_t::beginRead () {
   if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info._name);
+    std::string collName(_info.name());
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
@@ -201,7 +156,7 @@ int TRI_document_collection_t::beginRead () {
 
 int TRI_document_collection_t::endRead () {
   if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info._name);
+    std::string collName(_info.name());
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
@@ -223,7 +178,7 @@ int TRI_document_collection_t::endRead () {
 
 int TRI_document_collection_t::beginWrite () {
   if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info._name);
+    std::string collName(_info.name());
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
@@ -248,7 +203,7 @@ int TRI_document_collection_t::beginWrite () {
 
 int TRI_document_collection_t::endWrite () {
   if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info._name);
+    std::string collName(_info.name());
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
@@ -274,7 +229,7 @@ int TRI_document_collection_t::endWrite () {
 int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
                                                uint64_t sleepPeriod) {
   if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info._name);
+    std::string collName(_info.name());
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
@@ -352,7 +307,7 @@ int TRI_document_collection_t::beginReadTimed (uint64_t timeout,
 int TRI_document_collection_t::beginWriteTimed (uint64_t timeout,
                                                 uint64_t sleepPeriod) {
   if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
-    std::string collName(_info._name);
+    std::string collName(_info.name());
     auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
     if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
       // do not lock by command
@@ -639,7 +594,6 @@ triagens::arango::Index* TRI_document_collection_t::lookupIndex (TRI_idx_iid_t i
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 VocShaper* TRI_document_collection_t::getShaper () const {
   if (! _ditches.contains(triagens::arango::Ditch::TRI_DITCH_DOCUMENT)) {
-    TransactionBase::assertSomeTrxInScope();
   }
   return _shaper;
 }
@@ -649,36 +603,42 @@ VocShaper* TRI_document_collection_t::getShaper () const {
 /// @brief add a WAL operation for a transaction collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddOperationTransaction (triagens::wal::DocumentOperation&, bool&);
+int TRI_AddOperationTransaction (TRI_transaction_t*, triagens::wal::DocumentOperation&, bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static int FillIndex (TRI_document_collection_t*,
+static int FillIndex (triagens::arango::Transaction*,
+                      TRI_document_collection_t*,
                       triagens::arango::Index*);
 
-static int CapConstraintFromJson (TRI_document_collection_t*,
+static int CapConstraintFromJson (triagens::arango::Transaction*,
+                                  TRI_document_collection_t*,
                                   TRI_json_t const*,
                                   TRI_idx_iid_t,
                                   triagens::arango::Index**);
 
-static int GeoIndexFromJson (TRI_document_collection_t*,
+static int GeoIndexFromJson (triagens::arango::Transaction*,
+                             TRI_document_collection_t*,
                              TRI_json_t const*,
                              TRI_idx_iid_t,
                              triagens::arango::Index**);
 
-static int HashIndexFromJson (TRI_document_collection_t*,
+static int HashIndexFromJson (triagens::arango::Transaction*,
+                              TRI_document_collection_t*,
                               TRI_json_t const*,
                               TRI_idx_iid_t,
                               triagens::arango::Index**);
 
-static int SkiplistIndexFromJson (TRI_document_collection_t*,
+static int SkiplistIndexFromJson (triagens::arango::Transaction*,
+                                  TRI_document_collection_t*,
                                   TRI_json_t const*,
                                   TRI_idx_iid_t,
                                   triagens::arango::Index**);
 
-static int FulltextIndexFromJson (TRI_document_collection_t*,
+static int FulltextIndexFromJson (triagens::arango::Transaction*,
+                                  TRI_document_collection_t*,
                                   TRI_json_t const*,
                                   TRI_idx_iid_t,
                                   triagens::arango::Index**);
@@ -737,11 +697,7 @@ static void FreeDatafileInfo (TRI_doc_datafile_info_t* dfi) {
 static inline void SetRevision (TRI_document_collection_t* document,
                                 TRI_voc_rid_t rid,
                                 bool force) {
-  TRI_col_info_t* info = &document->_info;
-
-  if (force || rid > info->_revision) {
-    info->_revision = rid;
-  }
+  document->_info.setRevision(rid, force);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -762,7 +718,8 @@ static void EnsureErrorCode (int code) {
 /// @brief creates a new entry in the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertPrimaryIndex (TRI_document_collection_t* document,
+static int InsertPrimaryIndex (triagens::arango::Transaction* trx,
+                               TRI_document_collection_t* document,
                                TRI_doc_mptr_t* header,
                                bool isRollback) {
   TRI_IF_FAILURE("InsertPrimaryIndex") {
@@ -777,7 +734,7 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 
   // insert into primary index
   auto primaryIndex = document->primaryIndex();
-  int res = primaryIndex->insertKey(header, (void const**) &found);
+  int res = primaryIndex->insertKey(trx, header, (void const**) &found);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -802,7 +759,8 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 /// @brief creates a new entry in the secondary indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertSecondaryIndexes (TRI_document_collection_t* document,
+static int InsertSecondaryIndexes (triagens::arango::Transaction* trx,
+                                   TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
                                    bool isRollback) {
   TRI_IF_FAILURE("InsertSecondaryIndexes") {
@@ -820,7 +778,7 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
-    int res = idx->insert(header, isRollback);
+    int res = idx->insert(trx, header, isRollback);
 
     // in case of no-memory, return immediately
     if (res == TRI_ERROR_OUT_OF_MEMORY) {
@@ -842,7 +800,8 @@ static int InsertSecondaryIndexes (TRI_document_collection_t* document,
 /// @brief deletes an entry from the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeletePrimaryIndex (TRI_document_collection_t* document,
+static int DeletePrimaryIndex (triagens::arango::Transaction* trx,
+                               TRI_document_collection_t* document,
                                TRI_doc_mptr_t const* header,
                                bool isRollback) {
   TRI_IF_FAILURE("DeletePrimaryIndex") {
@@ -850,7 +809,7 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
   }
 
   auto primaryIndex = document->primaryIndex();
-  auto found = primaryIndex->removeKey(TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto found = primaryIndex->removeKey(trx, TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (found == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -863,7 +822,8 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
 /// @brief deletes an entry from the secondary indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
+static int DeleteSecondaryIndexes (triagens::arango::Transaction* trx,
+                                   TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
                                    bool isRollback) {
   if (! document->useSecondaryIndexes()) {
@@ -881,7 +841,7 @@ static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
-    int res = idx->remove(header, isRollback);
+    int res = idx->remove(trx, header, isRollback);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // an error occurred
@@ -1037,7 +997,8 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
 /// @brief post-insert operation
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PostInsertIndexes (TRI_transaction_collection_t* trxCollection,
+static int PostInsertIndexes (triagens::arango::Transaction* trx,
+                              TRI_transaction_collection_t* trxCollection,
                               TRI_doc_mptr_t* header) {
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
@@ -1050,7 +1011,7 @@ static int PostInsertIndexes (TRI_transaction_collection_t* trxCollection,
 
   for (size_t i = 1; i < n; ++i) {
     auto idx = indexes[i];
-    idx->postInsert(trxCollection, header);
+    idx->postInsert(trx, trxCollection, header);
   }
 
   // post-insert will never return an error
@@ -1074,7 +1035,8 @@ static inline TRI_voc_rid_t GetRevisionId (TRI_voc_rid_t previous) {
 /// @brief insert a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int InsertDocument (TRI_transaction_collection_t* trxCollection,
+static int InsertDocument (triagens::arango::Transaction* trx,
+                           TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* header,
                            triagens::wal::DocumentOperation& operation,
                            TRI_doc_mptr_copy_t* mptr,
@@ -1089,7 +1051,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
   // .............................................................................
 
   // insert into primary index first
-  int res = InsertPrimaryIndex(document, header, false);
+  int res = InsertPrimaryIndex(trx, document, header, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // insert has failed
@@ -1097,11 +1059,11 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
   }
 
   // insert into secondary indexes
-  res = InsertSecondaryIndexes(document, header, false);
+  res = InsertSecondaryIndexes(trx, document, header, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    DeleteSecondaryIndexes(document, header, true);
-    DeletePrimaryIndex(document, header, true);
+    DeleteSecondaryIndexes(trx, document, header, true);
+    DeletePrimaryIndex(trx, document, header, true);
     return res;
   }
 
@@ -1117,7 +1079,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  res = TRI_AddOperationTransaction(operation, waitForSync);
+  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, waitForSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1125,7 +1087,7 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 
   *mptr = *header;
 
-  res = PostInsertIndexes(trxCollection, header);
+  res = PostInsertIndexes(trx, trxCollection, header);
 
   return res;
 }
@@ -1135,12 +1097,13 @@ static int InsertDocument (TRI_transaction_collection_t* trxCollection,
 /// the caller must make sure the read lock on the collection is held
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LookupDocument (TRI_document_collection_t* document,
+static int LookupDocument (triagens::arango::Transaction* trx, 
+                           TRI_document_collection_t* document,
                            TRI_voc_key_t key,
                            TRI_doc_update_policy_t const* policy,
                            TRI_doc_mptr_t*& header) {
   auto primaryIndex = document->primaryIndex();
-  header = primaryIndex->lookupKey(key);
+  header = primaryIndex->lookupKey(trx, key);
 
   if (header == nullptr) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1157,7 +1120,8 @@ static int LookupDocument (TRI_document_collection_t* document,
 /// @brief updates an existing document
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
+static int UpdateDocument (triagens::arango::Transaction* trx,
+                           TRI_transaction_collection_t* trxCollection,
                            TRI_doc_mptr_t* oldHeader,
                            triagens::wal::DocumentOperation& operation,
                            TRI_doc_mptr_copy_t* mptr,
@@ -1174,11 +1138,11 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
 
-  int res = DeleteSecondaryIndexes(document, oldHeader, false);
+  int res = DeleteSecondaryIndexes(trx, document, oldHeader, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // re-enter the document in case of failure, ignore errors during rollback
-    InsertSecondaryIndexes(document, oldHeader, true);
+    InsertSecondaryIndexes(trx, document, oldHeader, true);
 
     return res;
   }
@@ -1194,16 +1158,16 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   newHeader->setDataPtr(operation.marker->mem());  // PROTECTED by trx in trxCollection
 
   // insert new document into secondary indexes
-  res = InsertSecondaryIndexes(document, newHeader, false);
+  res = InsertSecondaryIndexes(trx, document, newHeader, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // rollback
-    DeleteSecondaryIndexes(document, newHeader, true);
+    DeleteSecondaryIndexes(trx, document, newHeader, true);
 
     // copy back old header data
     oldHeader->copy(oldData);
 
-    InsertSecondaryIndexes(document, oldHeader, true);
+    InsertSecondaryIndexes(trx, document, oldHeader, true);
 
     return res;
   }
@@ -1218,7 +1182,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  res = TRI_AddOperationTransaction(operation, syncRequested);
+  res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, syncRequested);
 
   if (res == TRI_ERROR_NO_ERROR) {
     // write new header into result
@@ -1267,7 +1231,7 @@ static int CreateMarkerNoLegend (triagens::wal::Marker*& marker,
   if (edge == nullptr) {
     // document
     marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
-                                               document->_info._cid,
+                                               document->_info.id(),
                                                rid,
                                                TRI_MarkerIdTransaction(trxCollection->_transaction),
                                                keyString,
@@ -1277,7 +1241,7 @@ static int CreateMarkerNoLegend (triagens::wal::Marker*& marker,
   else {
     // edge
     marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
-                                           document->_info._cid,
+                                           document->_info.id(),
                                            rid,
                                            TRI_MarkerIdTransaction(trxCollection->_transaction),
                                            keyString,
@@ -1318,7 +1282,7 @@ static int CloneMarkerNoLegend (triagens::wal::Marker*& marker,
       original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     marker = triagens::wal::DocumentMarker::clone(original,
                                                   document->_vocbase->_id,
-                                                  document->_info._cid,
+                                                  document->_info.id(),
                                                   rid,
                                                   TRI_MarkerIdTransaction(trxCollection->_transaction),
                                                   8,
@@ -1330,7 +1294,7 @@ static int CloneMarkerNoLegend (triagens::wal::Marker*& marker,
            original->_type == TRI_DOC_MARKER_KEY_EDGE) {
     marker = triagens::wal::EdgeMarker::clone(original,
                                               document->_vocbase->_id,
-                                              document->_info._cid,
+                                              document->_info.id(),
                                               rid,
                                               TRI_MarkerIdTransaction(trxCollection->_transaction),
                                               8,
@@ -1371,6 +1335,7 @@ typedef struct open_iterator_state_s {
   TRI_doc_datafile_info_t*   _dfi;
   TRI_vector_t               _operations;
   TRI_vocbase_t*             _vocbase;
+  triagens::arango::Transaction* _trx;
   uint64_t                   _deletions;
   uint64_t                   _documents;
   int64_t                    _initialCount;
@@ -1417,6 +1382,7 @@ static int OpenIteratorNoteFailedTransaction (open_iterator_state_t const* state
 static int OpenIteratorApplyInsert (open_iterator_state_t* state,
                                     open_iterator_operation_t const* operation) {
   TRI_document_collection_t* document = state->_document;
+  triagens::arango::Transaction* trx = state->_trx;
 
   TRI_df_marker_t const* marker = operation->_marker;
   TRI_doc_document_key_marker_t const* d = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
@@ -1469,7 +1435,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   // no primary index lock required here because we are the only ones reading from the index ATM
   triagens::basics::BucketPosition slot;
   uint64_t hash;
-  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(key, slot, hash));
+  auto found = static_cast<TRI_doc_mptr_t const*>(primaryIndex->lookupKey(trx, key, slot, hash));
 
   // it is a new entry
   if (found == nullptr) {
@@ -1488,7 +1454,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     // insert into primary index
     if (state->_initialCount != -1) {
       // we can now use an optimized insert method
-      res = primaryIndex->insertKey(header, slot);
+      res = primaryIndex->insertKey(trx, header, slot);
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
@@ -1496,7 +1462,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     }
     else {
       // use regular insert method
-      res = InsertPrimaryIndex(document, header, false);
+      res = InsertPrimaryIndex(trx, document, header, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // insertion failed
@@ -1578,15 +1544,13 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 static int OpenIteratorApplyRemove (open_iterator_state_t* state,
                                     open_iterator_operation_t const* operation) {
 
-  TRI_df_marker_t const* marker;
-  TRI_doc_deletion_key_marker_t const* d;
   TRI_doc_mptr_t* found;
-  TRI_voc_key_t key;
 
   TRI_document_collection_t* document = state->_document;
+  triagens::arango::Transaction* trx = state->_trx;
 
-  marker = operation->_marker;
-  d = (TRI_doc_deletion_key_marker_t const*) marker;
+  TRI_df_marker_t const* marker = operation->_marker;
+  TRI_doc_deletion_key_marker_t const* d = (TRI_doc_deletion_key_marker_t const*) marker;
 
   SetRevision(document, d->_rid, false);
 
@@ -1598,7 +1562,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
     state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, operation->_fid, true);
   }
 
-  key = ((char*) d) + d->_offsetKey;
+  TRI_voc_key_t key = ((char*) d) + d->_offsetKey;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   LOG_TRACE("deletion: fid %llu, key %s, rid %llu, deletion %llu",
@@ -1612,7 +1576,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
 
   // no primary index lock required here because we are the only ones reading from the index ATM
   auto primaryIndex = document->primaryIndex();
-  found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(key));
+  found = static_cast<TRI_doc_mptr_t*>(primaryIndex->lookupKey(trx, key));
 
   // it is a new entry, so we missed the create
   if (found == nullptr) {
@@ -1650,7 +1614,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
       state->_dfi->_numberDeletion++;
     }
 
-    DeletePrimaryIndex(document, found, false);
+    DeletePrimaryIndex(trx, document, found, false);
     --document->_numberDocuments;
 
     // free the header
@@ -2122,6 +2086,11 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+struct OpenIndexIteratorContext {
+  triagens::arango::Transaction* trx;
+  TRI_document_collection_t*     collection;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
@@ -2129,21 +2098,19 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 static bool OpenIndexIterator (char const* filename,
                                void* data) {
   // load json description of the index
-  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
+  std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
 
   // json must be a index description
-  if (! TRI_IsObjectJson(json)) {
+  if (! TRI_IsObjectJson(json.get())) {
     LOG_ERROR("cannot read index definition from '%s'", filename);
-
-    if (json != nullptr) {
-      TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-    }
-
     return false;
   }
 
-  int res = TRI_FromJsonIndexDocumentCollection(static_cast<TRI_document_collection_t*>(data), json, nullptr);
-  TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
+  auto ctx = static_cast<OpenIndexIteratorContext*>(data);
+  triagens::arango::Transaction* trx = ctx->trx;
+  TRI_document_collection_t* collection = ctx->collection;
+
+  int res = TRI_FromJsonIndexDocumentCollection(trx, collection, json.get(), nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // error was already printed if we get here
@@ -2193,11 +2160,8 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 
   TRI_DestroyReadWriteLock(&document->_compactionLock);
 
-  {
-    TransactionBase trx(true);  // just to protect the following call
-    if (document->getShaper() != nullptr) {  // PROTECTED by trx here
-      delete document->getShaper();  // PROTECTED by trx here
-    }
+  if (document->getShaper() != nullptr) {  // PROTECTED by trx here
+    delete document->getShaper();  // PROTECTED by trx here
   }
 
   if (document->_headersPtr != nullptr) {
@@ -2227,6 +2191,9 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 
 static bool InitDocumentCollection (TRI_document_collection_t* document,
                                     VocShaper* shaper) {
+  // TODO: Here are leaks, in particular with _headersPtr etc., need sane
+  // convention of who frees what when. Do this in the context of the
+  // TRI_document_collection_t cleanup.
   TRI_ASSERT(document != nullptr);
 
   document->_cleanupIndexes     = false;
@@ -2266,10 +2233,10 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   }
 
   // create edges index
-  if (document->_info._type == TRI_COL_TYPE_EDGE) {
-    TRI_idx_iid_t iid = document->_info._cid;
-    if (document->_info._planId > 0) {
-      iid = document->_info._planId;
+  if (document->_info.type() == TRI_COL_TYPE_EDGE) {
+    TRI_idx_iid_t iid = document->_info.id();
+    if (document->_info.planId() > 0) {
+      iid = document->_info.planId();
     }
 
     try {
@@ -2298,13 +2265,15 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 /// @brief iterate all markers of the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int IterateMarkersCollection (TRI_collection_t* collection) {
+static int IterateMarkersCollection (triagens::arango::Transaction* trx,
+                                     TRI_collection_t* collection) {
   auto document = reinterpret_cast<TRI_document_collection_t*>(collection);
 
   // initialize state for iteration
   open_iterator_state_t openState;
   openState._document       = document;
   openState._vocbase        = collection->_vocbase;
+  openState._trx            = trx;
   openState._tid            = 0;
   openState._trxPrepared    = false;
   openState._trxCollections = 0;
@@ -2314,16 +2283,16 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   openState._dfi            = nullptr;
   openState._initialCount   = -1;
 
-  if (collection->_info._initialCount != -1) {
+  if (collection->_info.initialCount() != -1) {
     auto primaryIndex = document->primaryIndex();
 
-    int res = primaryIndex->resize(static_cast<size_t>(collection->_info._initialCount * 1.1));
+    int res = primaryIndex->resize(trx, static_cast<size_t>(collection->_info.initialCount() * 1.1));
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
 
-    openState._initialCount = collection->_info._initialCount;
+    openState._initialCount = collection->_info.initialCount();
   }
 
   int res = TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
@@ -2338,7 +2307,7 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   LOG_TRACE("found %llu document markers, %llu deletion markers for collection '%s'",
             (unsigned long long) openState._documents,
             (unsigned long long) openState._deletions,
-            collection->_info._name);
+            collection->_info.name().c_str());
 
   // abort any transaction that's unfinished after iterating over all markers
   OpenIteratorAbortTransaction(&openState);
@@ -2358,7 +2327,7 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
 
 TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
                                                          char const* path,
-                                                         TRI_col_info_t* parameters,
+                                                         VocbaseCollectionInfo& parameters,
                                                          TRI_voc_cid_t cid) {
   if (cid > 0) {
     TRI_UpdateTickServer(cid);
@@ -2367,10 +2336,17 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     cid = TRI_NewTickServer();
   }
 
-  parameters->_cid = cid;
+  parameters.setCollectionId(cid);
 
   // check if we can generate the key generator
-  KeyGenerator* keyGenerator = KeyGenerator::factory(parameters->_keyOptions);
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> buffer = parameters.keyOptions();
+
+  std::unique_ptr<TRI_json_t> json;
+  if (buffer != nullptr) {
+    VPackSlice const slice(buffer->data());
+    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  }
+  KeyGenerator* keyGenerator = KeyGenerator::factory(json.get());
 
   if (keyGenerator == nullptr) {
     TRI_set_errno(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR);
@@ -2414,6 +2390,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     LOG_ERROR("cannot initialize document collection");
 
     // TODO: shouldn't we free document->_headersPtr etc.?
+    // Yes, do this in the context of the TRI_document_collection_t cleanup.
     TRI_CloseCollection(collection);
     TRI_DestroyCollection(collection);
     delete document;
@@ -2424,10 +2401,11 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   // save the parameters block (within create, no need to lock)
   bool doSync = vocbase->_settings.forceSyncProperties;
-  int res = TRI_SaveCollectionInfo(collection->_directory, parameters, doSync);
+  int res = parameters.saveToFile(collection->_directory, doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // TODO: shouldn't we free document->_headersPtr etc.?
+    // Yes, do this in the context of the TRI_document_collection_t cleanup.
     LOG_ERROR("cannot save collection parameters in directory '%s': '%s'",
               collection->_directory,
               TRI_last_error());
@@ -2443,7 +2421,6 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_UnlinkFile(tmpfile);
   TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
 
-  TransactionBase trx(true);  // just to protect the following call
   TRI_ASSERT(document->getShaper() != nullptr);  // ONLY IN COLLECTION CREATION, PROTECTED by trx here
 
   return document;
@@ -2537,7 +2514,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
 
   TRI_datafile_t* journal;
 
-  if (document->_info._isVolatile) {
+  if (document->_info.isVolatile()) {
     // in-memory collection
     journal = TRI_CreateDatafile(nullptr, fid, journalSize, true);
   }
@@ -2626,8 +2603,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
   TRI_col_header_marker_t cm;
   TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
   cm.base._tick = static_cast<TRI_voc_tick_t>(fid);
-  cm._type = (TRI_col_type_t) document->_info._type;
-  cm._cid  = document->_info._cid;
+  cm._type = (TRI_col_type_t) document->_info.type();
+  cm._cid  = document->_info.id();
 
   res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
 
@@ -2704,10 +2681,10 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
 /// to ensure the collection is properly locked
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
-                                              TRI_document_collection_t* document,
-                                              void* data,
-                                              bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*, void*)) {
+size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::Transaction* trx,
+                                               TRI_document_collection_t* document,
+                                               void* data,
+                                               bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*, void*)) {
   // The first argument is only used to make the compiler prove that a
   // transaction is ongoing. We need this to prove that accesses to
   // master pointers and their data pointers in the callback are
@@ -2721,7 +2698,7 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
     uint64_t total = 0;
 
     while (true) {
-      TRI_doc_mptr_t const* mptr = idx->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = idx->lookupSequential(trx, position, total);
 
       if (mptr == nullptr || ! callback(mptr, document, data)) {
         break;
@@ -2733,10 +2710,23 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an index, based on a VelocyPack description
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FromVelocyPackIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                               TRI_document_collection_t* document,
+                                               VPackSlice const& slice,
+                                               triagens::arango::Index** idx) {
+  std::unique_ptr<TRI_json_t> json(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  return TRI_FromJsonIndexDocumentCollection(trx, document, json.get(), idx);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an index, based on a JSON description
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
+int TRI_FromJsonIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                         TRI_document_collection_t* document,
                                          TRI_json_t const* json,
                                          triagens::arango::Index** idx) {
   TRI_ASSERT(TRI_IsObjectJson(json));
@@ -2778,7 +2768,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   // ...........................................................................
 
   if (TRI_EqualString(typeStr, "cap")) {
-    return CapConstraintFromJson(document, json, iid, idx);
+    return CapConstraintFromJson(trx, document, json, iid, idx);
   }
 
   // ...........................................................................
@@ -2786,7 +2776,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   // ...........................................................................
 
   else if (TRI_EqualString(typeStr, "geo1") || TRI_EqualString(typeStr, "geo2")) {
-    return GeoIndexFromJson(document, json, iid, idx);
+    return GeoIndexFromJson(trx, document, json, iid, idx);
   }
 
   // ...........................................................................
@@ -2794,7 +2784,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   // ...........................................................................
 
   else if (TRI_EqualString(typeStr, "hash")) {
-    return HashIndexFromJson(document, json, iid, idx);
+    return HashIndexFromJson(trx, document, json, iid, idx);
   }
 
   // ...........................................................................
@@ -2802,7 +2792,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   // ...........................................................................
 
   else if (TRI_EqualString(typeStr, "skiplist")) {
-    return SkiplistIndexFromJson(document, json, iid, idx);
+    return SkiplistIndexFromJson(trx, document, json, iid, idx);
   }
 
   // ...........................................................................
@@ -2810,7 +2800,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   // ...........................................................................
 
   else if (TRI_EqualString(typeStr, "fulltext")) {
-    return FulltextIndexFromJson(document, json, iid, idx);
+    return FulltextIndexFromJson(trx, document, json, iid, idx);
   }
 
   // ...........................................................................
@@ -2831,15 +2821,16 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
 /// @brief rolls back a document operation
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document,
+int TRI_RollbackOperationDocumentCollection (triagens::arango::Transaction* trx,
+                                             TRI_document_collection_t* document,
                                              TRI_voc_document_operation_e type,
                                              TRI_doc_mptr_t* header,
                                              TRI_doc_mptr_copy_t const* oldData) {
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     // ignore any errors we're getting from this
-    DeletePrimaryIndex(document, header, true);
-    DeleteSecondaryIndexes(document, header, true);
+    DeletePrimaryIndex(trx, document, header, true);
+    DeleteSecondaryIndexes(trx, document, header, true);
 
     TRI_ASSERT(document->_numberDocuments > 0);
     document->_numberDocuments--;
@@ -2851,11 +2842,11 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
     TRI_doc_mptr_copy_t copy = *header;
     
     // remove the current values from the indexes
-    DeleteSecondaryIndexes(document, header, true);
+    DeleteSecondaryIndexes(trx,document, header, true);
     // revert to the old state
     header->copy(*oldData);
     // re-insert old state
-    int res = InsertSecondaryIndexes(document, header, true);
+    int res = InsertSecondaryIndexes(trx, document, header, true);
     // revert again to the new state, because other parts of the new state
     // will be reverted at some other place
     header->copy(copy);
@@ -2863,10 +2854,10 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
     return res;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-    int res = InsertPrimaryIndex(document, header, true);
+    int res = InsertPrimaryIndex(trx,document, header, true);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = InsertSecondaryIndexes(document, header, true);
+      res = InsertSecondaryIndexes(trx, document, header, true);
       document->_numberDocuments++;
     }
     else {
@@ -2958,20 +2949,21 @@ bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t* document,
 
 class IndexFiller {
   public:
-    IndexFiller (TRI_document_collection_t* document,
+    IndexFiller (triagens::arango::Transaction* trx,
+                 TRI_document_collection_t* document,
                  triagens::arango::Index* idx,
                  std::function<void(int)> callback) 
-      : _document(document),
+      : _trx(trx),
+        _document(document),
         _idx(idx),
         _callback(callback) {
     }
 
     void operator() () {
-      TransactionBase trx(true);
       int res = TRI_ERROR_INTERNAL;
 
       try {
-        res = FillIndex(_document, _idx);
+        res = FillIndex(_trx, _document, _idx);
       }
       catch (...) {
       }
@@ -2981,16 +2973,18 @@ class IndexFiller {
 
   private:
 
-    TRI_document_collection_t* _document;
-    triagens::arango::Index*   _idx;
-    std::function<void(int)>   _callback;
+    triagens::arango::Transaction* _trx;
+    TRI_document_collection_t*     _document;
+    triagens::arango::Index*       _idx;
+    std::function<void(int)>       _callback;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fill the additional (non-primary) indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
+int TRI_FillIndexesDocumentCollection (triagens::arango::Transaction* trx,
+                                       TRI_vocbase_col_t* collection,
                                        TRI_document_collection_t* document) {
   auto old = document->useSecondaryIndexes();
 
@@ -2999,8 +2993,11 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   document->useSecondaryIndexes(false);
 
   try {
-    TRI_collection_t* collection = reinterpret_cast<TRI_collection_t*>(document);
-    TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
+    OpenIndexIteratorContext ctx;
+    ctx.trx = trx;
+    ctx.collection = document;
+
+    TRI_IterateIndexCollection(reinterpret_cast<TRI_collection_t*>(document), OpenIndexIterator, static_cast<void*>(&ctx));
     document->useSecondaryIndexes(old);
   }
   catch (...) {
@@ -3021,7 +3018,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   if ((n > 1) && (primaryIndex->size() > NotificationSizeThreshold)) {
     LOG_ACTION("fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
                document->_vocbase->_name,
-               document->_info._name,
+               document->_info.name().c_str(),
                (int) (n - 1));
   }
 
@@ -3052,7 +3049,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
       // prevent distribution to threads
       if (indexPool != nullptr && i != (n - 1)) {
         // move task into thread pool
-        IndexFiller indexTask(document, idx, callback);
+        IndexFiller indexTask(trx, document, idx, callback);
 
         try {
           static_cast<triagens::basics::ThreadPool*>(indexPool)->enqueue(indexTask);
@@ -3070,7 +3067,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
         int res;
         
         try {
-          res = FillIndex(document, idx);
+          res = FillIndex(trx, document, idx);
         }
         catch (...) {
           res = TRI_ERROR_INTERNAL;
@@ -3091,7 +3088,7 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
   LOG_TIMER((TRI_microtime() - start),
             "fill-indexes-document-collection { collection: %s/%s }, indexes: %d", 
             document->_vocbase->_name,
-            document->_info._name, 
+            document->_info.name().c_str(), 
             (int) (n - 1)); 
 
   return result.load();
@@ -3146,7 +3143,15 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   }
 
   // check if we can generate the key generator
-  KeyGenerator* keyGenerator = KeyGenerator::factory(collection->_info._keyOptions);
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t> const> buffer = collection->_info.keyOptions();
+  std::unique_ptr<TRI_json_t> json;
+
+  if (buffer.get() != nullptr) {
+    VPackSlice const slice(buffer->data());
+    json.reset(triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
+  }
+
+  KeyGenerator* keyGenerator = KeyGenerator::factory(json.get());
 
   if (keyGenerator == nullptr) {
     TRI_CloseCollection(collection);
@@ -3158,8 +3163,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   document->_keyGenerator = keyGenerator;
 
-  // create a fake transaction for loading the collection
-  TransactionBase trx(true);
+  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX> trx(new triagens::arango::StandaloneTransactionContext(), vocbase, document->_info.id());
 
   // build the primary index
   {
@@ -3167,15 +3171,15 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
     LOG_ACTION("iterate-markers { collection: %s/%s }", 
                vocbase->_name,
-               document->_info._name);
+               document->_info.namec_str());
 
     // iterate over all markers of the collection
-    int res = IterateMarkersCollection(collection);
+    int res = IterateMarkersCollection(&trx, collection);
   
     LOG_TIMER((TRI_microtime() - start),
               "iterate-markers { collection: %s/%s }", 
               vocbase->_name,
-              document->_info._name);
+              document->_info.namec_str());
   
     if (res != TRI_ERROR_NO_ERROR) {
       if (document->_failedTransactions != nullptr) {
@@ -3194,13 +3198,13 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT(document->getShaper() != nullptr);  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
   if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
-    TRI_FillIndexesDocumentCollection(col, document);
+    TRI_FillIndexesDocumentCollection(&trx, col, document);
   }
 
   LOG_TIMER((TRI_microtime() - start),
             "open-document-collection { collection: %s/%s }", 
             vocbase->_name,
-            document->_info._name);
+            document->_info.namec_str());
 
   return document;
 }
@@ -3214,19 +3218,20 @@ int TRI_CloseDocumentCollection (TRI_document_collection_t* document,
   auto primaryIndex = document->primaryIndex();
   auto idxSize = primaryIndex->size();
 
-  if (! document->_info._deleted &&
-      document->_info._initialCount != static_cast<int64_t>(idxSize)) {
-    // update the document count
-    document->_info._initialCount = idxSize;
+  if (! document->_info.deleted() &&
+      document->_info.initialCount() != static_cast<int64_t>(idxSize)) {
+
+    document->_info.updateCount(idxSize);
     
     bool doSync = document->_vocbase->_settings.forceSyncProperties;
-    TRI_SaveCollectionInfo(document->_directory, &document->_info, doSync);
+    // Ignore the error?
+    document->_info.saveToFile(document->_directory,
+                               doSync);
   }
 
   // closes all open compactors, journals, datafiles
   int res = TRI_CloseCollection(document);
 
-  TransactionBase trx(true);  // just to protect the following call
   delete document->getShaper();  // ONLY IN CLOSECOLLECTION, PROTECTED by fake trx here
   document->setShaper(nullptr);
 
@@ -3291,7 +3296,8 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
 /// @brief fill an index in batches
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillIndexBatch (TRI_document_collection_t* document,
+static int FillIndexBatch (triagens::arango::Transaction* trx,
+                           TRI_document_collection_t* document,
                            triagens::arango::Index* idx) {
   auto indexPool = document->_vocbase->_server->_indexPool;
   TRI_ASSERT(indexPool != nullptr);
@@ -3300,17 +3306,17 @@ static int FillIndexBatch (TRI_document_collection_t* document,
   
   LOG_ACTION("fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d", 
             document->_vocbase->_name,
-            document->_info._name, 
+            document->_info.namec_str(), 
             idx->context().c_str(),
             (int) indexPool->numThreads(),
-            (int) document->_info._indexBuckets);
+            (int) document->_info.indexBuckets());
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
 
   auto nrUsed = primaryIndex->size();
 
-  idx->sizeHint(nrUsed);
+  idx->sizeHint(trx, nrUsed);
 
   // process documents a million at a time
   size_t blockSize = 1024 * 1024; 
@@ -3331,7 +3337,7 @@ static int FillIndexBatch (TRI_document_collection_t* document,
     triagens::basics::BucketPosition position;
     uint64_t total = 0;
     while (true) {
-      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(trx, position, total);
 
       if (mptr == nullptr) {
         break;
@@ -3340,7 +3346,7 @@ static int FillIndexBatch (TRI_document_collection_t* document,
       documents.emplace_back(mptr);
 
       if (documents.size() == blockSize) {
-        res = idx->batchInsert(&documents, indexPool->numThreads());
+        res = idx->batchInsert(trx, &documents, indexPool->numThreads());
         documents.clear();
 
         // some error occurred
@@ -3354,16 +3360,16 @@ static int FillIndexBatch (TRI_document_collection_t* document,
   // process the remainder of the documents
   if (res == TRI_ERROR_NO_ERROR &&
       ! documents.empty()) {
-    res = idx->batchInsert(&documents, indexPool->numThreads());
+    res = idx->batchInsert(trx, &documents, indexPool->numThreads());
   }
   
   LOG_TIMER((TRI_microtime() - start),
             "fill-index-batch { collection: %s/%s }, %s, threads: %d, buckets: %d", 
             document->_vocbase->_name,
-            document->_info._name, 
+            document->_info.namec_str(), 
             idx->context().c_str(),
             (int) indexPool->numThreads(),
-            (int) document->_info._indexBuckets);
+            (int) document->_info.indexBuckets());
 
   return res;
 }
@@ -3372,21 +3378,22 @@ static int FillIndexBatch (TRI_document_collection_t* document,
 /// @brief fill an index sequentially
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillIndexSequential (TRI_document_collection_t* document,
+static int FillIndexSequential (triagens::arango::Transaction* trx,
+                                TRI_document_collection_t* document,
                                 triagens::arango::Index* idx) {
   double start = TRI_microtime();
   
   LOG_ACTION("fill-index-sequential { collection: %s/%s }, %s, buckets: %d", 
             document->_vocbase->_name,
-            document->_info._name, 
+            document->_info.namec_str(), 
             idx->context().c_str(),
-            (int) document->_info._indexBuckets);
+            (int) document->_info.indexBuckets());
 
   // give the index a size hint
   auto primaryIndex = document->primaryIndex();
   size_t nrUsed = primaryIndex->size();
 
-  idx->sizeHint(nrUsed);
+  idx->sizeHint(trx, nrUsed);
 
   if (nrUsed > 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -3399,13 +3406,13 @@ static int FillIndexSequential (TRI_document_collection_t* document,
     uint64_t total = 0;
 
     while (true) {
-      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(position, total);
+      TRI_doc_mptr_t const* mptr = primaryIndex->lookupSequential(trx, position, total);
 
       if (mptr == nullptr) {
         break;
       }
 
-      int res = idx->insert(mptr, false);
+      int res = idx->insert(trx, mptr, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -3416,7 +3423,7 @@ static int FillIndexSequential (TRI_document_collection_t* document,
         ++loops;
         LOG_TRACE("indexed %llu documents of collection %llu",
                   (unsigned long long) (LoopSize * loops),
-                  (unsigned long long) document->_info._cid);
+                  (unsigned long long) document->_info.id());
       }
 #endif
     }
@@ -3425,9 +3432,9 @@ static int FillIndexSequential (TRI_document_collection_t* document,
   LOG_TIMER((TRI_microtime() - start),
             "fill-index-sequential { collection: %s/%s }, %s, buckets: %d", 
             document->_vocbase->_name,
-            document->_info._name, 
+            document->_info.namec_str(), 
             idx->context().c_str(),
-            (int) document->_info._indexBuckets);
+            (int) document->_info.indexBuckets());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3436,7 +3443,8 @@ static int FillIndexSequential (TRI_document_collection_t* document,
 /// @brief initializes an index with all existing documents
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FillIndex (TRI_document_collection_t* document,
+static int FillIndex (triagens::arango::Transaction* trx,
+                      TRI_document_collection_t* document,
                       triagens::arango::Index* idx) {
 
   if (! document->useSecondaryIndexes()) {
@@ -3452,14 +3460,14 @@ static int FillIndex (TRI_document_collection_t* document,
     if (indexPool != nullptr && 
         idx->hasBatchInsert() && 
         nrUsed > 256 * 1024 &&
-        document->_info._indexBuckets > 1) {
+        document->_info.indexBuckets() > 1) {
       // use batch insert if there is an index pool,
       // the collection has more than one index bucket
       // and it contains a significant amount of documents
-      res = FillIndexBatch(document, idx);
+      res = FillIndexBatch(trx, document, idx);
     }
     else {
-      res = FillIndexSequential(document, idx);
+      res = FillIndexSequential(trx, document, idx);
     }
 
     return res;
@@ -3601,15 +3609,17 @@ static triagens::arango::Index* LookupPathIndexDocumentCollection (TRI_document_
 /// @brief restores a path based index (template)
 ////////////////////////////////////////////////////////////////////////////////
 
-static int PathBasedIndexFromJson (TRI_document_collection_t* document,
+static int PathBasedIndexFromJson (triagens::arango::Transaction* trx,
+                                   TRI_document_collection_t* document,
                                    TRI_json_t const* definition,
                                    TRI_idx_iid_t iid,
-                                   triagens::arango::Index* (*creator) (TRI_document_collection_t*,
+                                   triagens::arango::Index* (*creator) (triagens::arango::Transaction*,
+                                                                        TRI_document_collection_t*,
                                                                         std::vector<std::string> const&,
                                                                         TRI_idx_iid_t,
                                                                         bool,
                                                                         bool,
-                                                                        bool*),
+                                                                        bool&),
                                    triagens::arango::Index** dst) {
 
   if (dst != nullptr) {
@@ -3676,14 +3686,15 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   }
 
   // create the index
-  auto idx = creator(document, attributes, iid, sparse, unique, nullptr);
+  bool created;
+  auto idx = creator(trx, document, attributes, iid, sparse, unique, created);
 
   if (dst != nullptr) {
     *dst = idx;
   }
 
   if (idx == nullptr) {
-    LOG_ERROR("cannot create index %llu in collection '%s'", (unsigned long long) iid, document->_info._name);
+    LOG_ERROR("cannot create index %llu in collection '%s'", (unsigned long long) iid, document->_info.namec_str());
     return TRI_errno();
   }
 
@@ -3757,7 +3768,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    triagens::wal::CreateIndexMarker marker(vocbase->_id, document->_info._cid, idx->id(), triagens::basics::JsonHelper::toString(json.json()));
+    triagens::wal::CreateIndexMarker marker(vocbase->_id, document->_info.id(), idx->id(), triagens::basics::JsonHelper::toString(json.json()));
     triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -3819,7 +3830,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
 
     WRITE_LOCKER(document->_lock);
   
-    triagens::aql::QueryCache::instance()->invalidate(vocbase, document->_info._name);
+    triagens::aql::QueryCache::instance()->invalidate(vocbase, document->_info.namec_str());
     found = document->removeIndex(iid);
   }
 
@@ -3834,7 +3845,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
       int res = TRI_ERROR_NO_ERROR;
 
       try {
-        triagens::wal::DropIndexMarker marker(vocbase->_id, document->_info._cid, iid);
+        triagens::wal::DropIndexMarker marker(vocbase->_id, document->_info.id(), iid);
         triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
         if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -3970,14 +3981,13 @@ static int PidNamesByAttributeNames (std::vector<std::string> const& attributes,
 /// @brief adds a cap constraint to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::arango::Index* CreateCapConstraintDocumentCollection (TRI_document_collection_t* document,
+static triagens::arango::Index* CreateCapConstraintDocumentCollection (triagens::arango::Transaction* trx,
+                                                                       TRI_document_collection_t* document,
                                                                        size_t count,
                                                                        int64_t size,
                                                                        TRI_idx_iid_t iid,
-                                                                       bool* created) {
-  if (created != nullptr) {
-    *created = false;
-  }
+                                                                       bool& created) {
+  created = false;
 
   // check if we already know a cap constraint
   auto existing = document->capConstraint();
@@ -3997,11 +4007,14 @@ static triagens::arango::Index* CreateCapConstraintDocumentCollection (TRI_docum
   }
 
   // create a new index
-  std::unique_ptr<triagens::arango::Index> capConstraint(new triagens::arango::CapConstraint(iid, document, count, size));
+  auto cc = new triagens::arango::CapConstraint(iid, document, count, size);
+  std::unique_ptr<triagens::arango::Index> capConstraint(cc);
+
+  cc->initialize(trx);
   triagens::arango::Index* idx = static_cast<triagens::arango::Index*>(capConstraint.get());
 
   // initializes the index with all existing documents
-  int res = FillIndex(document, idx);
+  int res = FillIndex(trx, document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -4020,9 +4033,7 @@ static triagens::arango::Index* CreateCapConstraintDocumentCollection (TRI_docum
     return nullptr;
   }
 
-  if (created != nullptr) {
-    *created = true;
-  }
+  created = true;
 
   return idx;
 }
@@ -4031,7 +4042,8 @@ static triagens::arango::Index* CreateCapConstraintDocumentCollection (TRI_docum
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CapConstraintFromJson (TRI_document_collection_t* document,
+static int CapConstraintFromJson (triagens::arango::Transaction* trx,
+                                  TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
                                   triagens::arango::Index** dst) {
@@ -4069,7 +4081,8 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  auto idx = CreateCapConstraintDocumentCollection(document, count, size, iid, nullptr);
+  bool created;
+  auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size, iid, created);
 
   if (dst != nullptr) {
     *dst = idx;
@@ -4094,24 +4107,25 @@ triagens::arango::Index* TRI_LookupCapConstraintDocumentCollection (TRI_document
 /// @brief ensures that a cap constraint exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_t* document,
+triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (triagens::arango::Transaction* trx,
+                                                                    TRI_document_collection_t* document,
                                                                     TRI_idx_iid_t iid,
                                                                     size_t count,
                                                                     int64_t size,
-                                                                    bool* created) {
+                                                                    bool& created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
   WRITE_LOCKER(document->_lock);
 
-  auto idx = CreateCapConstraintDocumentCollection(document, count, size, iid, created);
+  auto idx = CreateCapConstraintDocumentCollection(trx, document, count, size, iid, created);
 
   if (idx != nullptr) {
-    if (created && *created) {
-      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info._name);
+    if (created) {
+      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        // TODO: doesn't this leak idx?
+        delete idx;
         idx = nullptr;
       }
     }
@@ -4132,17 +4146,19 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (TRI_document
 /// @brief adds a geo index to a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_collection_t* document,
+static triagens::arango::Index* CreateGeoIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                  TRI_document_collection_t* document,
                                                                   std::string const& location,
                                                                   std::string const& latitude,
                                                                   std::string const& longitude,
                                                                   bool geoJson,
                                                                   TRI_idx_iid_t iid,
-                                                                  bool* created) {
+                                                                  bool& created) {
   TRI_shape_pid_t lat = 0;
   TRI_shape_pid_t lon = 0;
   TRI_shape_pid_t loc = 0;
 
+  created = false;
   auto shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (! location.empty()) {
@@ -4190,9 +4206,7 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
   if (idx != nullptr) {
     LOG_TRACE("geo-index already created for location '%s'", location.c_str());
 
-    if (created != nullptr) {
-      *created = false;
-    }
+    created = false;
 
     return idx;
   }
@@ -4228,7 +4242,7 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
   }
 
   // initializes the index with all existing documents
-  int res = FillIndex(document, idx);
+  int res = FillIndex(trx, document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -4247,9 +4261,7 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
     return nullptr;
   }
 
-  if (created != nullptr) {
-    *created = true;
-  }
+  created = true;
 
   return idx;
 }
@@ -4258,7 +4270,8 @@ static triagens::arango::Index* CreateGeoIndexDocumentCollection (TRI_document_c
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int GeoIndexFromJson (TRI_document_collection_t* document,
+static int GeoIndexFromJson (triagens::arango::Transaction* trx,
+                             TRI_document_collection_t* document,
                              TRI_json_t const* definition,
                              TRI_idx_iid_t iid,
                              triagens::arango::Index** dst) {
@@ -4297,14 +4310,16 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
     // need just one field
     if (fieldCount == 1) {
       auto loc = static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 0));
+      bool created;
 
-      idx = CreateGeoIndexDocumentCollection(document,
+      idx = CreateGeoIndexDocumentCollection(trx, 
+                                             document,
                                              std::string(loc->_value._string.data, loc->_value._string.length - 1),
                                              std::string(),
                                              std::string(),
                                              geoJson,
                                              iid,
-                                             nullptr);
+                                             created);
 
       if (dst != nullptr) {
         *dst = idx;
@@ -4325,14 +4340,16 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
     if (fieldCount == 2) {
       auto lat = static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 0));
       auto lon = static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 1));
+      bool created;
 
-      idx = CreateGeoIndexDocumentCollection(document,
+      idx = CreateGeoIndexDocumentCollection(trx, 
+                                             document,
                                              std::string(),
                                              std::string(lat->_value._string.data, lat->_value._string.length - 1),
                                              std::string(lon->_value._string.data, lon->_value._string.length - 1),
                                              false,
                                              iid,
-                                             nullptr);
+                                             created);
 
       if (dst != nullptr) {
         *dst = idx;
@@ -4420,20 +4437,21 @@ triagens::arango::Index* TRI_LookupGeoIndex2DocumentCollection (TRI_document_col
 /// @brief ensures that a geo index exists, list style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* document,
+triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (triagens::arango::Transaction* trx, 
+                                                                TRI_document_collection_t* document,
                                                                 TRI_idx_iid_t iid,
                                                                 std::string const& location,
                                                                 bool geoJson,
-                                                                bool* created) {
+                                                                bool& created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
   WRITE_LOCKER(document->_lock);
 
-  auto idx = CreateGeoIndexDocumentCollection(document, location, std::string(), std::string(), geoJson, iid, created);
+  auto idx = CreateGeoIndexDocumentCollection(trx, document, location, std::string(), std::string(), geoJson, iid, created);
 
   if (idx != nullptr) {
-    if (created && *created) {
-      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info._name);
+    if (created) {
+      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -4449,20 +4467,21 @@ triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_col
 /// @brief ensures that a geo index exists, attribute style
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* document,
+triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (triagens::arango::Transaction* trx,
+                                                                TRI_document_collection_t* document,
                                                                 TRI_idx_iid_t iid,
                                                                 std::string const& latitude,
                                                                 std::string const& longitude,
-                                                                bool* created) {
+                                                                bool& created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
   WRITE_LOCKER(document->_lock);
 
-  auto idx = CreateGeoIndexDocumentCollection(document, std::string(), latitude, longitude, false, iid, created);
+  auto idx = CreateGeoIndexDocumentCollection(trx, document, std::string(), latitude, longitude, false, iid, created);
 
   if (idx != nullptr) {
-    if (created && *created) {
-      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info._name);
+    if (created) {
+      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -4486,12 +4505,14 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_col
 /// @brief adds a hash index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_collection_t* document,
+static triagens::arango::Index* CreateHashIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                   TRI_document_collection_t* document,
                                                                    std::vector<std::string> const& attributes,
                                                                    TRI_idx_iid_t iid,
                                                                    bool sparse,
                                                                    bool unique,
-                                                                   bool* created) {
+                                                                   bool& created) {
+  created = false;
   std::vector<TRI_shape_pid_t> paths;
   std::vector<std::vector<triagens::basics::AttributeName>> fields;
 
@@ -4504,10 +4525,6 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
                                      true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (created != nullptr) {
-      *created = false;
-    }
-
     return nullptr;
   }
 
@@ -4523,10 +4540,6 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
   if (idx != nullptr) {
     LOG_TRACE("hash-index already created");
 
-    if (created != nullptr) {
-      *created = false;
-    }
-    
     return idx;
   }
 
@@ -4537,11 +4550,11 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
 
   // create the hash index. we'll provide it with the current number of documents
   // in the collection so the index can do a sensible memory preallocation
-  std::unique_ptr<triagens::arango::HashIndex> hashIndex(new triagens::arango::HashIndex(iid, document, fields, unique, sparse));
+  auto hashIndex = std::make_unique<triagens::arango::HashIndex>(iid, document, fields, unique, sparse);
   idx = static_cast<triagens::arango::Index*>(hashIndex.get());
 
   // initializes the index with all existing documents
-  res = FillIndex(document, idx);
+  res = FillIndex(trx, document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -4560,9 +4573,7 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
     return nullptr;
   }
 
-  if (created != nullptr) {
-    *created = true;
-  }
+  created = true;
 
   return idx;
 }
@@ -4571,11 +4582,12 @@ static triagens::arango::Index* CreateHashIndexDocumentCollection (TRI_document_
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int HashIndexFromJson (TRI_document_collection_t* document,
+static int HashIndexFromJson (triagens::arango::Transaction* trx,
+                              TRI_document_collection_t* document,
                               TRI_json_t const* definition,
                               TRI_idx_iid_t iid,
                               triagens::arango::Index** dst) {
-  return PathBasedIndexFromJson(document, definition, iid, CreateHashIndexDocumentCollection, dst);
+  return PathBasedIndexFromJson(trx, document, definition, iid, CreateHashIndexDocumentCollection, dst);
 }
 
 // -----------------------------------------------------------------------------
@@ -4613,21 +4625,22 @@ triagens::arango::Index* TRI_LookupHashIndexDocumentCollection (TRI_document_col
 /// @brief ensures that a hash index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
+triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                TRI_document_collection_t* document,
                                                                 TRI_idx_iid_t iid,
                                                                 std::vector<std::string> const& attributes,
                                                                 bool sparse,
                                                                 bool unique,
-                                                                bool* created) {
+                                                                bool& created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
   WRITE_LOCKER(document->_lock);
     
-  auto idx = CreateHashIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
+  auto idx = CreateHashIndexDocumentCollection(trx, document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
-    if (created && *created) {
-      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info._name);
+    if (created) {
+      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -4651,12 +4664,14 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (TRI_document_col
 /// @brief adds a skiplist index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
+static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                       TRI_document_collection_t* document,
                                                                        std::vector<std::string> const& attributes,
                                                                        TRI_idx_iid_t iid,
                                                                        bool sparse,
                                                                        bool unique,
-                                                                       bool* created) {
+                                                                       bool& created) {
+  created = false; 
   std::vector<TRI_shape_pid_t> paths;
   std::vector<std::vector<triagens::basics::AttributeName>> fields;
   
@@ -4668,10 +4683,6 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
                                      true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (created != nullptr) {
-      *created = false;
-    }
-
     return nullptr;
   }
 
@@ -4687,10 +4698,6 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
   if (idx != nullptr) {
     LOG_TRACE("skiplist-index already created");
 
-    if (created != nullptr) {
-      *created = false;
-    }
-
     return idx;
   }
   
@@ -4699,11 +4706,11 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
   }
 
   // Create the skiplist index
-  std::unique_ptr<triagens::arango::SkiplistIndex> skiplistIndex(new triagens::arango::SkiplistIndex(iid, document, fields, unique, sparse));
+  auto skiplistIndex = std::make_unique<triagens::arango::SkiplistIndex>(iid, document, fields, unique, sparse);
   idx = static_cast<triagens::arango::Index*>(skiplistIndex.get());
 
   // initializes the index with all existing documents
-  res = FillIndex(document, idx);
+  res = FillIndex(trx, document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -4722,9 +4729,7 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
     return nullptr;
   }
 
-  if (created != nullptr) {
-    *created = true;
-  }
+  created = true;
 
   return idx;
 }
@@ -4733,11 +4738,12 @@ static triagens::arango::Index* CreateSkiplistIndexDocumentCollection (TRI_docum
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SkiplistIndexFromJson (TRI_document_collection_t* document,
+static int SkiplistIndexFromJson (triagens::arango::Transaction* trx,
+                                  TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
                                   triagens::arango::Index** dst) {
-  return PathBasedIndexFromJson(document, definition, iid, CreateSkiplistIndexDocumentCollection, dst);
+  return PathBasedIndexFromJson(trx, document, definition, iid, CreateSkiplistIndexDocumentCollection, dst);
 }
 
 // -----------------------------------------------------------------------------
@@ -4775,21 +4781,22 @@ triagens::arango::Index* TRI_LookupSkiplistIndexDocumentCollection (TRI_document
 /// @brief ensures that a skiplist index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
+triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                    TRI_document_collection_t* document,
                                                                     TRI_idx_iid_t iid,
                                                                     std::vector<std::string> const& attributes,
                                                                     bool sparse,
                                                                     bool unique,
-                                                                    bool* created) {
+                                                                    bool& created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
   WRITE_LOCKER(document->_lock);
 
-  auto idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
+  auto idx = CreateSkiplistIndexDocumentCollection(trx, document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
-    if (created && *created) {
-      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info._name);
+    if (created) {
+      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -4829,11 +4836,14 @@ static triagens::arango::Index* LookupFulltextIndexDocumentCollection (TRI_docum
 /// @brief adds a fulltext index to the collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static triagens::arango::Index* CreateFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+static triagens::arango::Index* CreateFulltextIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                       TRI_document_collection_t* document,
                                                                        std::string const& attribute,
                                                                        int minWordLength,
                                                                        TRI_idx_iid_t iid,
-                                                                       bool* created) {
+                                                                       bool& created) {
+  created = false;
+
   // ...........................................................................
   // Attempt to find an existing index with the same attribute
   // If a suitable index is found, return that one otherwise we need to create
@@ -4844,10 +4854,7 @@ static triagens::arango::Index* CreateFulltextIndexDocumentCollection (TRI_docum
 
   if (idx != nullptr) {
     LOG_TRACE("fulltext-index already created");
-
-    if (created != nullptr) {
-      *created = false;
-    }
+    
     return idx;
   }
   
@@ -4856,11 +4863,11 @@ static triagens::arango::Index* CreateFulltextIndexDocumentCollection (TRI_docum
   }
 
   // Create the fulltext index
-  std::unique_ptr<triagens::arango::FulltextIndex> fulltextIndex(new triagens::arango::FulltextIndex(iid, document, attribute, minWordLength));
+  auto fulltextIndex = std::make_unique<triagens::arango::FulltextIndex>(iid, document, attribute, minWordLength);
   idx = static_cast<triagens::arango::Index*>(fulltextIndex.get());
 
   // initializes the index with all existing documents
-  int res = FillIndex(document, idx);
+  int res = FillIndex(trx, document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
@@ -4879,9 +4886,7 @@ static triagens::arango::Index* CreateFulltextIndexDocumentCollection (TRI_docum
     return nullptr;
   }
 
-  if (created != nullptr) {
-    *created = true;
-  }
+  created = true;
 
   return idx;
 }
@@ -4890,7 +4895,8 @@ static triagens::arango::Index* CreateFulltextIndexDocumentCollection (TRI_docum
 /// @brief restores an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int FulltextIndexFromJson (TRI_document_collection_t* document,
+static int FulltextIndexFromJson (triagens::arango::Transaction* trx,
+                                  TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
                                   triagens::arango::Index** dst) {
@@ -4936,7 +4942,7 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 
   if (idx == nullptr) {
     bool created;
-    idx = CreateFulltextIndexDocumentCollection(document, attribute, minWordLengthValue, iid, &created);
+    idx = CreateFulltextIndexDocumentCollection(trx, document, attribute, minWordLengthValue, iid, created);
   }
 
   if (dst != nullptr) {
@@ -4970,20 +4976,21 @@ triagens::arango::Index* TRI_LookupFulltextIndexDocumentCollection (TRI_document
 /// @brief ensures that a fulltext index exists
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
+triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (triagens::arango::Transaction* trx,
+                                                                    TRI_document_collection_t* document,
                                                                     TRI_idx_iid_t iid,
                                                                     std::string const& attribute,
                                                                     int minWordLength,
-                                                                    bool* created) {
+                                                                    bool& created) {
   READ_LOCKER(document->_vocbase->_inventoryLock);
 
   WRITE_LOCKER(document->_lock);
     
-  auto idx = CreateFulltextIndexDocumentCollection(document, attribute, minWordLength, iid, created);
+  auto idx = CreateFulltextIndexDocumentCollection(trx, document, attribute, minWordLength, iid, created);
 
   if (idx != nullptr) {
-    if (created && *created) {
-      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info._name);
+    if (created) {
+      triagens::aql::QueryCache::instance()->invalidate(document->_vocbase, document->_info.namec_str());
       int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -5034,10 +5041,12 @@ std::vector<TRI_doc_mptr_copy_t> TRI_SelectByExample (
 /// @brief deletes a document given by a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxCollection,
+int TRI_DeleteDocumentDocumentCollection (triagens::arango::Transaction* trx,
+                                          TRI_transaction_collection_t* trxCollection,
                                           TRI_doc_update_policy_t const* policy,
                                           TRI_doc_mptr_t* doc) {
-  return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+  return TRI_RemoveShapedJsonDocumentCollection(trx,
+                                                trxCollection,
                                                 (const TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc),
                                                 0,
                                                 nullptr,
@@ -5080,7 +5089,8 @@ int TRI_RotateJournalDocumentCollection (TRI_document_collection_t* document) {
 /// @brief reads an element from the document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+int TRI_ReadShapedJsonDocumentCollection (triagens::arango::Transaction* trx,
+                                          TRI_transaction_collection_t* trxCollection,
                                           const TRI_voc_key_t key,
                                           TRI_doc_mptr_copy_t* mptr,
                                           bool lock) {
@@ -5102,7 +5112,7 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxColle
     triagens::arango::CollectionReadLocker collectionLocker(document, lock);
 
     TRI_doc_mptr_t* header;
-    int res = LookupDocument(document, key, nullptr, header);
+    int res = LookupDocument(trx, document, key, nullptr, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -5122,7 +5132,8 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxColle
 /// @brief removes a shaped-json document (or edge)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+int TRI_RemoveShapedJsonDocumentCollection (triagens::arango::Transaction* trx,
+                                            TRI_transaction_collection_t* trxCollection,
                                             TRI_voc_key_t key,
                                             TRI_voc_rid_t rid,
                                             triagens::wal::Marker* marker,
@@ -5148,7 +5159,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
   if (marker == nullptr) {
     marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
-                                             document->_info._cid,
+                                             document->_info.id(),
                                              rid,
                                              TRI_MarkerIdTransaction(trxCollection->_transaction),
                                              std::string(key));
@@ -5171,9 +5182,9 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
-    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
+    triagens::wal::DocumentOperation operation(trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
 
-    res = LookupDocument(document, key, policy, header);
+    res = LookupDocument(trx, document, key, policy, header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -5185,17 +5196,17 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     operation.init();
 
     // delete from indexes
-    res = DeleteSecondaryIndexes(document, header, false);
+    res = DeleteSecondaryIndexes(trx, document, header, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      InsertSecondaryIndexes(document, header, true);
+      InsertSecondaryIndexes(trx, document, header, true);
       return res;
     }
 
-    res = DeletePrimaryIndex(document, header, false);
+    res = DeletePrimaryIndex(trx, document, header, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      InsertSecondaryIndexes(document, header, true);
+      InsertSecondaryIndexes(trx, document, header, true);
       return res;
     }
 
@@ -5212,7 +5223,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    res = TRI_AddOperationTransaction(operation, forceSync);
+    res = TRI_AddOperationTransaction(trxCollection->_transaction, operation, forceSync);
     
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
@@ -5235,7 +5246,8 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+int TRI_InsertShapedJsonDocumentCollection (triagens::arango::Transaction* trx,
+                                            TRI_transaction_collection_t* trxCollection,
                                             const TRI_voc_key_t key,
                                             TRI_voc_rid_t rid,
                                             triagens::wal::Marker* marker,
@@ -5278,7 +5290,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     keyString = key;
   }
 
-  uint64_t const hash = document->primaryIndex()->calculateHash(keyString.c_str(), keyString.size());
+  uint64_t const hash = document->primaryIndex()->calculateHash(trx, keyString.c_str(), keyString.size());
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -5312,7 +5324,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
-    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
+    triagens::wal::DocumentOperation operation(trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -5339,7 +5351,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     header->_hash = hash;
 
     // insert into indexes
-    res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
+    res = InsertDocument(trx, trxCollection, header, operation, mptr, forceSync);
 
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
@@ -5365,7 +5377,8 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 /// @brief updates a document in the collection from shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
+int TRI_UpdateShapedJsonDocumentCollection (triagens::arango::Transaction* trx,
+                                            TRI_transaction_collection_t* trxCollection,
                                             TRI_voc_key_t key,
                                             TRI_voc_rid_t rid,
                                             triagens::wal::Marker* marker,
@@ -5398,7 +5411,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     // get the header pointer of the previous revision
     TRI_doc_mptr_t* oldHeader;
-    res = LookupDocument(document, key, policy, oldHeader);
+    res = LookupDocument(trx, document, key, policy, oldHeader);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
@@ -5440,11 +5453,11 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     TRI_ASSERT(marker != nullptr);
 
-    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
+    triagens::wal::DocumentOperation operation(trx, marker, freeMarker, document, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
     operation.header = oldHeader;
     operation.init();
 
-    res = UpdateDocument(trxCollection, oldHeader, operation, mptr, forceSync);
+    res = UpdateDocument(trx, trxCollection, oldHeader, operation, mptr, forceSync);
     
     if (res != TRI_ERROR_NO_ERROR) {
       operation.revert();
@@ -5465,6 +5478,450 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inserts a document or edge into the collection
+////////////////////////////////////////////////////////////////////////////////
+  
+int TRI_document_collection_t::insert (Transaction* trx, 
+                                       VPackSlice const* slice, 
+                                       TRI_doc_mptr_copy_t* mptr, 
+                                       bool lock,
+                                       bool waitForSync) {
+
+  TRI_ASSERT(mptr != nullptr);
+  mptr->setDataPtr(nullptr); 
+
+  VPackSlice const key(slice->get(TRI_VOC_ATTRIBUTE_KEY));
+  std::string const keyString(key.copyString()); // TODO: use slice.hash()
+  uint64_t const hash = primaryIndex()->calculateHash(trx, keyString.c_str(), keyString.size()); // TODO: remove here
+
+  std::unique_ptr<triagens::wal::Marker> marker(createVPackInsertMarker(trx, slice));
+  
+  TRI_voc_tick_t markerTick = 0;
+  int res;
+  // now insert into indexes
+  {
+    TRI_IF_FAILURE("InsertDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    triagens::arango::CollectionWriteLocker collectionLocker(this, lock);
+
+    triagens::wal::DocumentOperation operation(trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_INSERT, 0 /*rid*/); // TODO: fix rid
+
+    TRI_IF_FAILURE("InsertDocumentNoHeader") {
+      // test what happens if no header can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("InsertDocumentNoHeaderExcept") {
+      // test what happens if no header can be acquired
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    // create a new header
+    TRI_doc_mptr_t* header = operation.header = _headersPtr->request(marker->size());  // PROTECTED by trx in trxCollection
+
+    if (header == nullptr) {
+      // out of memory. no harm done here. just return the error
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    // update the header we got
+    void* mem = operation.marker->mem();
+    header->_rid = 0; // TODO: fix revision id 
+    header->setDataPtr(mem);  // PROTECTED by trx in trxCollection
+    header->_hash = hash;
+    
+    // insert into indexes
+    res = insertDocument(trx, header, operation, mptr, waitForSync);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else {
+      TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
+
+      if (waitForSync) {
+        markerTick = operation.tick;
+      }
+    }
+  }
+
+  if (markerTick > 0) {
+    // need to wait for tick, outside the lock
+    triagens::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes a document or edge
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::remove (triagens::arango::Transaction* trx,
+                                       VPackSlice const* slice,
+                                       TRI_doc_update_policy_t const* policy,
+                                       bool lock,
+                                       bool waitForSync) {
+  TRI_IF_FAILURE("RemoveDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("RemoveDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  std::unique_ptr<triagens::wal::Marker> marker(createVPackRemoveMarker(trx, slice));
+
+  TRI_doc_mptr_t* header;
+  int res;
+  TRI_voc_tick_t markerTick = 0;
+  {
+    TRI_IF_FAILURE("RemoveDocumentNoLock") {
+      // test what happens if no lock can be acquired
+      return TRI_ERROR_DEBUG;
+    }
+
+    triagens::arango::CollectionWriteLocker collectionLocker(this, lock);
+
+    triagens::wal::DocumentOperation operation(trx, marker.get(), false, this, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0 /*rid*/); // TODO: fix rid
+
+    res = lookupDocument(trx, slice, policy, header);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    // we found a document to remove
+    TRI_ASSERT(header != nullptr);
+    operation.header = header;
+    operation.init();
+
+    // delete from indexes
+    res = deleteSecondaryIndexes(trx, header, false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, header, true);
+      return res;
+    }
+
+    res = deletePrimaryIndex(trx, header);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      insertSecondaryIndexes(trx, header, true);
+      return res;
+    }
+    
+    operation.indexed();
+
+    _headersPtr->unlink(header);  
+    _numberDocuments--;
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperation") {
+      return TRI_ERROR_DEBUG;
+    }
+
+    TRI_IF_FAILURE("RemoveDocumentNoOperationExcept") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    res = TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else if (waitForSync) {
+      markerTick = operation.tick;
+    }
+  }
+
+  if (markerTick > 0) {
+    // need to wait for tick, outside the lock
+    triagens::wal::LogfileManager::instance()->slots()->waitForTick(markerTick);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a vpack-based insert marker for documents / edges
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::wal::Marker* TRI_document_collection_t::createVPackInsertMarker (Transaction* trx,
+                                                                           VPackSlice const* slice) {
+  auto marker = new triagens::wal::VPackDocumentMarker(_vocbase->_id,
+                                                       _info.id(),
+                                                       trx->getInternals()->_id,
+                                                       slice);
+  return marker;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a vpack-based remove marker for documents / edges
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::wal::Marker* TRI_document_collection_t::createVPackRemoveMarker (Transaction* trx,
+                                                                           VPackSlice const* slice) {
+  auto marker = new triagens::wal::VPackRemoveMarker(_vocbase->_id,
+                                                     _info.id(),
+                                                     trx->getInternals()->_id,
+                                                     slice);
+  return marker;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up a document by key
+/// the caller must make sure the read lock on the collection is held
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::lookupDocument (triagens::arango::Transaction* trx,
+                                               VPackSlice const* slice,
+                                               TRI_doc_update_policy_t const* policy,
+                                               TRI_doc_mptr_t*& header) {
+  VPackSlice key = slice->get(TRI_VOC_ATTRIBUTE_KEY);
+
+  if (! key.isString()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // we need to have a null-terminated string for lookup, so copy the
+  // key from the slice to local memory
+  char buffer[TRI_VOC_KEY_MAX_LENGTH + 1];
+  uint64_t length;
+  char const* p = key.getString(length);
+  memcpy(&buffer[0], p, length);
+  buffer[length] = '\0';
+
+  header = primaryIndex()->lookupKey(trx, &buffer[0]);
+
+  if (header == nullptr) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  if (policy != nullptr) {
+    return policy->check(header->_rid);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert a document, low level worker
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::insertDocument (triagens::arango::Transaction* trx,
+                                               TRI_doc_mptr_t* header,
+                                               triagens::wal::DocumentOperation& operation,
+                                               TRI_doc_mptr_copy_t* mptr,
+                                               bool& waitForSync) {
+
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(mptr != nullptr);
+
+  // .............................................................................
+  // insert into indexes
+  // .............................................................................
+
+  // insert into primary index first
+  int res = insertPrimaryIndex(trx, header);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // insert has failed
+    return res;
+  }
+
+  // insert into secondary indexes
+  res = insertSecondaryIndexes(trx, header, false);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    deleteSecondaryIndexes(trx, header, true);
+    deletePrimaryIndex(trx, header);
+    return res;
+  }
+
+  _numberDocuments++;
+
+  operation.indexed();
+
+  TRI_IF_FAILURE("InsertDocumentNoOperation") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("InsertDocumentNoOperationExcept") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  res = TRI_AddOperationTransaction(trx->getInternals(), operation, waitForSync);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  *mptr = *header;
+
+  res = postInsertIndexes(trx, header);
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new entry in the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::insertPrimaryIndex (triagens::arango::Transaction* trx,
+                                                   TRI_doc_mptr_t* header) {
+  TRI_IF_FAILURE("InsertPrimaryIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_doc_mptr_t* found;
+
+  TRI_ASSERT(header != nullptr);
+  TRI_ASSERT(header->getDataPtr() != nullptr);  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  // insert into primary index
+  int res = primaryIndex()->insertKey(trx, header, (void const**) &found);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if (found == nullptr) {
+    // success
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  // we found a previous revision in the index
+  // the found revision is still alive
+  LOG_TRACE("document '%s' already existed with revision %llu while creating revision %llu",
+            TRI_EXTRACT_MARKER_KEY(header),  // ONLY IN INDEX, PROTECTED by RUNTIME
+            (unsigned long long) found->_rid,
+            (unsigned long long) header->_rid);
+
+  return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a new entry in the secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::insertSecondaryIndexes (triagens::arango::Transaction* trx,
+                                                       TRI_doc_mptr_t const* header,
+                                                       bool isRollback) {
+  TRI_IF_FAILURE("InsertSecondaryIndexes") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  if (! useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  int result = TRI_ERROR_NO_ERROR;
+
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    int res = idx->insert(trx, header, isRollback);
+
+    // in case of no-memory, return immediately
+    if (res == TRI_ERROR_OUT_OF_MEMORY) {
+      return res;
+    }
+    else if (res != TRI_ERROR_NO_ERROR) {
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ||
+          result == TRI_ERROR_NO_ERROR) {
+        // "prefer" unique constraint violated
+        result = res;
+      }
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an entry from the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::deletePrimaryIndex (triagens::arango::Transaction* trx,
+                                                   TRI_doc_mptr_t const* header) {
+  TRI_IF_FAILURE("DeletePrimaryIndex") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  auto found = primaryIndex()->removeKey(trx, TRI_EXTRACT_MARKER_KEY(header)); // ONLY IN INDEX, PROTECTED by RUNTIME
+
+  if (found == nullptr) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief deletes an entry from the secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::deleteSecondaryIndexes (triagens::arango::Transaction* trx,
+                                                       TRI_doc_mptr_t const* header,
+                                                       bool isRollback) {
+  if (! useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  TRI_IF_FAILURE("DeleteSecondaryIndexes") {
+    return TRI_ERROR_DEBUG;
+  }
+
+  int result = TRI_ERROR_NO_ERROR;
+
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    int res = idx->remove(trx, header, isRollback);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      // an error occurred
+      result = res;
+    }
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief post-insert operation
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_document_collection_t::postInsertIndexes (triagens::arango::Transaction* trx,
+                                                  TRI_doc_mptr_t* header) {
+  if (! useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  auto const& indexes = allIndexes();
+  size_t const n = indexes.size();
+  // TODO: remove usage of TRI_transaction_collection_t here
+  TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(trx->getInternals(), _info.id(), TRI_TRANSACTION_WRITE);
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    idx->postInsert(trx, trxCollection, header);
+  }
+  
+  // post-insert will never return an error
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------
