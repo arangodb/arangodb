@@ -10818,6 +10818,15 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 /// the number of documents in the collection, it is undefined which documents are
 /// updated.
 ///
+/// `collection.updateByExample(document, newValue, options)`
+///
+/// Using this variant, the options for the operation can be passed using
+/// an object with the following sub-attributes:
+/// - *keepNull*
+/// - *waitForSync*
+/// - *limit*
+/// - *mergeObjects*
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
@@ -22095,13 +22104,13 @@ if (typeof window === 'undefined') {
   initHelp();
 
   // these variables are not defined in the browser context
-  if (
+  if (! (
     global.IS_EXECUTE_SCRIPT ||
     global.IS_EXECUTE_STRING ||
     global.IS_CHECK_SCRIPT ||
     global.IS_UNIT_TESTS ||
     global.IS_JS_LINT
-  ) {
+  )) {
     try {
       // this will not work from within a browser
       var __fs__ = require("fs");

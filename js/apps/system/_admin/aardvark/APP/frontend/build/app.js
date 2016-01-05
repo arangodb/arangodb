@@ -15742,6 +15742,15 @@ ArangoCollection.prototype.replaceByExample = function(example,newValue,waitForS
 /// the number of documents in the collection, it is undefined which documents are
 /// updated.
 ///
+/// `collection.updateByExample(document, newValue, options)`
+///
+/// Using this variant, the options for the operation can be passed using
+/// an object with the following sub-attributes:
+/// - *keepNull*
+/// - *waitForSync*
+/// - *limit*
+/// - *mergeObjects*
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
@@ -20168,7 +20177,7 @@ var initHelp=function initHelp(){var internal=require("internal");if(internal.db
 ////////////////////////////////////////////////////////////////////////////////
 if(typeof window === 'undefined'){ // We're in arangosh
 initHelp(); // these variables are not defined in the browser context
-if(global.IS_EXECUTE_SCRIPT || global.IS_EXECUTE_STRING || global.IS_CHECK_SCRIPT || global.IS_UNIT_TESTS || global.IS_JS_LINT){try{ // this will not work from within a browser
+if(!(global.IS_EXECUTE_SCRIPT || global.IS_EXECUTE_STRING || global.IS_CHECK_SCRIPT || global.IS_UNIT_TESTS || global.IS_JS_LINT)){try{ // this will not work from within a browser
 var __fs__=require("fs");var __rcf__=__fs__.join(__fs__.home(),".arangosh.rc");if(__fs__.exists(__rcf__)){ /*jshint evil: true */var __content__=__fs__.read(__rcf__);eval(__content__);}}catch(e) {require("console").warn("arangosh.rc: %s",String(e));}}try{delete global.IS_EXECUTE_SCRIPT;delete global.IS_EXECUTE_STRING;delete global.IS_CHECK_SCRIPT;delete global.IS_UNIT_TESTS;delete global.IS_JS_LINT;}catch(e) {}} // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
