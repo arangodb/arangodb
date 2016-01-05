@@ -913,7 +913,7 @@ bool RestImportHandler::createFromJson (string const& type) {
     try {
       parsedDocuments = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(_request->body()), _request->bodySize());
     }
-    catch (VPackException const& e) {
+    catch (VPackException const&) {
       generateError(HttpResponse::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expecting a JSON array in the request");
@@ -1502,7 +1502,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine (string con
     success = true;
     return VPackParser::fromJson(line);
   }
-  catch (VPackException const& e) {
+  catch (VPackException const&) {
     success = false;
     VPackParser p;
     return p.steal();

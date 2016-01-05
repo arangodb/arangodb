@@ -40,6 +40,7 @@
 #include "Basics/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 
+#include <functional>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 

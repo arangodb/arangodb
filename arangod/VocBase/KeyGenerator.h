@@ -32,8 +32,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-
 #include "VocBase/vocbase.h"
+
+#include <array>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    KEY GENERATORS

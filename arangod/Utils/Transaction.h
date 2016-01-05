@@ -50,13 +50,8 @@
 #include "VocBase/VocShaper.h"
 #include "VocBase/voc-types.h"
 
-namespace arangodb {
-  namespace velocypack {
-    struct Options;
-  }
-}
-using VPackOptions = arangodb::velocypack::Options;
- 
+#include <velocypack/Options.h>
+
 namespace triagens {
   namespace arango {
 
@@ -65,6 +60,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       class Transaction {
+        using VPackOptions = arangodb::velocypack::Options;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transaction

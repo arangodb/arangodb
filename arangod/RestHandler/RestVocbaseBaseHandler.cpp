@@ -583,7 +583,7 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody (
     success = true;
     return _request->toVelocyPack(options);
   }
-  catch (std::bad_alloc const& e) {
+  catch (std::bad_alloc const&) {
     generateOOMError();
   }
   catch (VPackException const& e) {

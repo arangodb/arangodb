@@ -114,11 +114,11 @@ v8::Handle<v8::Value> TRI_VPackToV8 (v8::Isolate* isolate,
     case VPackValueType::Double:
       return v8::Number::New(isolate, slice.getDouble());
     case VPackValueType::Int:
-      return v8::Number::New(isolate, slice.getInt());
+      return v8::Number::New(isolate, static_cast<double>(slice.getInt()));
     case VPackValueType::UInt:
-      return v8::Number::New(isolate, slice.getUInt());
+      return v8::Number::New(isolate, static_cast<double>(slice.getUInt()));
     case VPackValueType::SmallInt:
-      return v8::Number::New(isolate, slice.getSmallInt());
+      return v8::Number::New(isolate, static_cast<double>(slice.getSmallInt()));
     case VPackValueType::String:
       return ObjectVPackString(isolate, slice);
     case VPackValueType::Object:

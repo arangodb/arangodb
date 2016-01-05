@@ -3102,7 +3102,12 @@ static void JS_Sleep (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
     uint64_t duration = (until - now >= 0.5) ?
                         500000 : static_cast<uint64_t>((until - now) * 1000000);
+
+#ifdef _WIN32
+    usleep(static_cast<unsigned long>(duration));
+#else
     usleep(duration);
+#endif
   }
 
   TRI_V8_RETURN_UNDEFINED();
