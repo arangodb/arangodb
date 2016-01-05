@@ -66,10 +66,14 @@ describe('Router', function () {
   let GET_HELLO_WORLD2;
   let GET_POTATO_SALAD1;
   let GET_POTATO_SALAD2;
+  let CHILD1;
+  let CHILD2;
 
   function prepareRouter(router, childRouter1, childRouter2) {
     router.use('/hello', childRouter1);
+    CHILD1 = router._routes[router._routes.length - 1];
     router.use(childRouter2);
+    CHILD2 = router._routes[router._routes.length - 1];
     GET_SLASH = router.get('/', function() {/*GET /*/});
     USE_SLASH = router.use(function() {/*middleware /*/});
     POST_HELLO = router.post('/hello', function() {/*POST /hello*/});
@@ -135,13 +139,13 @@ describe('Router', function () {
       expect(child2.get($_WILDCARD).get($_ROUTES)).toEqual([GET_ALL]);
     });
   });
-  describe('_findRoutes', function () {
+  describe('_resolve', function () {
     beforeEach(function () {
       router._buildRouteTree();
     });
     it('finds all routes for /', function () {
       const matches = [];
-      for (const route of router._findRoutes([])) {
+      for (const route of router._resolve([])) {
         matches.push(route);
       }
       expect(matches.length).toBe(3);
@@ -165,7 +169,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: []},
           {middleware: USE_SLASH, path: [], suffix: []},
-          {router: childRouter2, path: [], suffix: []},
+          {router: CHILD2, path: [], suffix: []},
           {endpoint: GET_SLASH2, path: [], suffix: []}
         ]);
         return true;
@@ -178,7 +182,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: []},
           {middleware: USE_SLASH, path: [], suffix: []},
-          {router: childRouter2, path: [], suffix: []},
+          {router: CHILD2, path: [], suffix: []},
           {endpoint: GET_ALL, path: [], suffix: []}
         ]);
         return true;
@@ -186,7 +190,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello', function () {
       const matches = [];
-      for (const route of router._findRoutes(['hello'])) {
+      for (const route of router._resolve(['hello'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(2);
@@ -210,7 +214,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['hello']},
           {middleware: USE_SLASH, path: [], suffix: ['hello']},
-          {router: childRouter2, path: [], suffix: ['hello']},
+          {router: CHILD2, path: [], suffix: ['hello']},
           {endpoint: GET_ALL, path: [], suffix: ['hello']}
         ]);
         return true;
@@ -218,7 +222,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello/world', function () {
       const matches = [];
-      for (const route of router._findRoutes(['hello', 'world'])) {
+      for (const route of router._resolve(['hello', 'world'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(5);
@@ -256,7 +260,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {router: childRouter1, path: ['hello'], suffix: ['world']},
+          {router: CHILD1, path: ['hello'], suffix: ['world']},
           {endpoint: GET_WORLD, path: ['world'], suffix: []}
         ]);
         return true;
@@ -269,7 +273,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {router: childRouter2, path: [], suffix: ['hello', 'world']},
+          {router: CHILD2, path: [], suffix: ['hello', 'world']},
           {endpoint: GET_HELLO_WORLD2, path: ['hello', 'world'], suffix: []}
         ]);
         return true;
@@ -282,7 +286,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['hello', 'world']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {router: childRouter2, path: [], suffix: ['hello', 'world']},
+          {router: CHILD2, path: [], suffix: ['hello', 'world']},
           {endpoint: GET_ALL, path: [], suffix: ['hello', 'world']}
         ]);
         return true;
@@ -290,7 +294,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello/mlady', function () {
       const matches = [];
-      for (const route of router._findRoutes(['hello', 'mlady'])) {
+      for (const route of router._resolve(['hello', 'mlady'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(2);
@@ -315,7 +319,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['hello', 'mlady']},
           {middleware: USE_SLASH, path: [], suffix: ['hello', 'mlady']},
-          {router: childRouter2, path: [], suffix: ['hello', 'mlady']},
+          {router: CHILD2, path: [], suffix: ['hello', 'mlady']},
           {endpoint: GET_ALL, path: [], suffix: ['hello', 'mlady']}
         ]);
         return true;
@@ -323,7 +327,7 @@ describe('Router', function () {
     });
     it('finds all routes for /potato/salad', function () {
       const matches = [];
-      for (const route of router._findRoutes(['potato', 'salad'])) {
+      for (const route of router._resolve(['potato', 'salad'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(3);
@@ -335,7 +339,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['potato', 'salad']},
           {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
-          {router: childRouter2, path: [], suffix: ['potato', 'salad']},
+          {router: CHILD2, path: [], suffix: ['potato', 'salad']},
           {endpoint: GET_POTATO_SALAD1, path: ['potato', 'salad'], suffix: []}
         ]);
         return true;
@@ -348,7 +352,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['potato', 'salad']},
           {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
-          {router: childRouter2, path: [], suffix: ['potato', 'salad']},
+          {router: CHILD2, path: [], suffix: ['potato', 'salad']},
           {endpoint: GET_POTATO_SALAD2, path: ['potato', 'salad'], suffix: []}
         ]);
         return true;
@@ -361,7 +365,7 @@ describe('Router', function () {
         expect(match).toEqual([
           {router: router, path: [], suffix: ['potato', 'salad']},
           {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
-          {router: childRouter2, path: [], suffix: ['potato', 'salad']},
+          {router: CHILD2, path: [], suffix: ['potato', 'salad']},
           {endpoint: GET_ALL, path: [], suffix: ['potato', 'salad']}
         ]);
         return true;
