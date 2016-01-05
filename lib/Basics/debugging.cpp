@@ -35,6 +35,7 @@
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
+#include <sstream>
 #ifdef _WIN32
 #include <DbgHelp.h>
 #else
