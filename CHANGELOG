@@ -6,6 +6,8 @@ v2.7.5 (XXXX-XX-XX)
 
 * Foxx: removed some incorrect deprecation warnings.
 
+* Foxx: mocha test paths with wildcard characters (asterisks) now work on Windows
+
 
 v2.7.4 (2015-12-21)
 -------------------
