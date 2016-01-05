@@ -4,7 +4,7 @@
 General graphs are completely managed by arangodb, and thus also [visible in the webinterface](../WebInterface/README.md#graphs-tab).
 They use the ful spectrum of ArangoDBs graph features. You may access them via several interfaces.
 
- - [AQL Graph Operations](../Aql/Graphs.md) with several flavous:
+ - [AQL Graph Operations](../Aql/Graphs.md) with several flavors:
    - [AQL Graph traversals](../Aql/GraphTraversals.md) on both managed and unmanaged graphs
    - [AQL operations on named Graphs](../Aql/GraphOperations.md)
    - [AQL operations on raw vertex & edge collections](../Aql/GraphFunctions.md)
