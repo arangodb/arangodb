@@ -123,7 +123,13 @@ int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   raw->setQueuePosition(pos);
 
   // add the job to the list of ready jobs
-  bool ok = _readyJobs.push(raw);
+  bool ok;
+  try {
+    ok = _readyJobs.push(raw);
+  }
+  catch (...) {
+    ok = false;
+  }
 
   if (ok) {
     ++_numberJobs;

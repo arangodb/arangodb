@@ -115,7 +115,7 @@ bool ServerJob::cancel() { return false; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerJob::cleanup(DispatcherQueue* queue) {
-  queue->cancelJob(_jobId);
+  queue->removeJob(this);
   delete this;
 }
 
