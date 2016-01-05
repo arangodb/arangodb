@@ -273,56 +273,55 @@ class Router extends SwaggerContext {
       }
     }
   }
-  * _findRoutes(pathParts, middleware, routers, append) {
-    if (!middleware) {
-      middleware = [];
+  * _findRoutes(suffix, result, pathParts) {
+    if (!result) {
+      result = [];
     }
-    if (!routers) {
-      routers = [this];
+    if (!pathParts) {
+      pathParts = [];
     }
-    for (let result of findRoutes(this._tree, pathParts, middleware, routers, append)) {
-      yield result;
+    result = result.concat({router: this, path: pathParts, suffix: suffix});
+    for (let route of findRoutes(this._tree, result, suffix, [])) {
+      yield route;
     }
   }
 }
 
-function* findRoutes(node, suffix, middleware, routers, append) {
+function* findRoutes(node, result, suffix, pathParts) {
   let wildcardNode = node.get($_WILDCARD);
   let nodeMiddleware = [];
   if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
     nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
-  }
-  if (append) {
-    let i = middleware.length - 1;
-    middleware[i] = middleware[i].concat(nodeMiddleware);
-  } else {
-    middleware = middleware.concat([nodeMiddleware]);
+    result = result.concat(nodeMiddleware.map(function (mw) {
+      return {middleware: mw, path: pathParts, suffix: suffix};
+    }));
   }
   if (!suffix.length) {
     let terminalNode = node.get($_TERMINAL);
     let terminalRoutes = terminalNode && terminalNode.get($_ROUTES) || [];
-    for (let route of terminalRoutes) {
-      yield {route: route, middleware: middleware, routers: routers, suffix: suffix};
+    for (let endpoint of terminalRoutes) {
+      yield result.concat({endpoint: endpoint, path: pathParts, suffix: suffix});
     }
   } else {
     let part = suffix[0];
+    let head = pathParts.concat(part);
     let tail = suffix.slice(1);
     for (let childNode of [node.get(part), node.get($_PARAM)]) {
       if (childNode) {
-        for (let result of findRoutes(childNode, tail, middleware, routers)) {
-          yield result;
+        for (let route of findRoutes(childNode, result, tail, head)) {
+          yield route;
         }
       }
     }
   }
   let wildcardRoutes = wildcardNode && wildcardNode.get($_ROUTES) || [];
-  for (let route of wildcardRoutes) {
-    if (route.router) {
-      for (let result of route.router._findRoutes(suffix, middleware, routers.concat(route.router), true)) {
-        yield result;
+  for (let endpoint of wildcardRoutes) {
+    if (endpoint.router) {
+      for (let route of endpoint.router._findRoutes(suffix, result, pathParts)) {
+        yield route;
       }
     } else {
-      yield {route: route, middleware: middleware, routers: routers, suffix: suffix};
+      yield result.concat({endpoint: endpoint, path: pathParts, suffix: suffix});
     }
   }
 }
