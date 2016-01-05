@@ -1952,7 +1952,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
   else {
     res = processRestoreCollection(json.get(), overwrite, recycleIds, force, errorMsg);
   }
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::responseCode(res), res);
   }
@@ -2140,7 +2140,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
                  bool reuseId,
                  bool force,
                  string& errorMsg) {
-
+  
   if (! JsonHelper::isObject(collection)) {
     errorMsg = "collection declaration is invalid";
 
@@ -2208,18 +2208,82 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   // dig out number of shards:
   uint64_t numberOfShards = 1;
   TRI_json_t const* shards = JsonHelper::getObjectElement(parameters, "shards");
-  if (nullptr != shards && TRI_IsObjectJson(shards)) {
+  if (TRI_IsObjectJson(shards)) {
     numberOfShards = TRI_LengthVector(&shards->_value._objects) / 2;
   }
+  else {
+    // not specified, so we'll be setting up our own shard list
+    auto dbServers = ci->getCurrentDBServers();
+    
+    if (dbServers.empty()) {
+      errorMsg = "no database servers found in cluster";
+      return TRI_ERROR_INTERNAL;
+    }
+
+    TRI_json_t* obj = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, numberOfShards);
+
+    if (obj == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    std::random_shuffle(dbServers.begin(), dbServers.end());
+
+    // get new unique ids for the shards
+    uint64_t const id = ci->uniqid(1 + numberOfShards);
+    // now create the shards
+    std::map<std::string, std::string> shards;
+    for (uint64_t i = 0; i < numberOfShards; ++i) {
+      // determine responsible server
+      std::string serverId = dbServers[i % dbServers.size()];
+
+      // determine shard id
+      std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
+
+      TRI_json_t* serverIdJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverId.c_str(), serverId.size());
+
+      if (serverIdJson == nullptr) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
+        return TRI_ERROR_OUT_OF_MEMORY;
+      }
+
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, shardId.c_str(), serverIdJson);
+    }
+
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "shards", obj);
+  }
+
   // We take one shard if "shards" was not given
 
+  // handle shard keys
+  TRI_json_t const* shardKeys = JsonHelper::getObjectElement(parameters, "shardKeys");
+
+  if (! TRI_IsArrayJson(shardKeys)) {
+    // assume default shard keys
+    TRI_json_t* shardKeys = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
+
+    if (shardKeys == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    TRI_json_t* key = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VOC_ATTRIBUTE_KEY, strlen(TRI_VOC_ATTRIBUTE_KEY));
+
+    if (key == nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, shardKeys);
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+
+    TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, shardKeys, key);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "shardKeys", shardKeys);
+  }
+   
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
   TRI_json_t* newId = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
                                                new_id.c_str(), new_id.size());
-  TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id", newId);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, newId);
+  TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id");
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id", newId);
 
+  
   // Now put in the primary and an edge index if needed:
   TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
@@ -2237,7 +2301,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, indexes, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson.json()));
   }
-
+  
   TRI_json_t* type = TRI_LookupObjectJson(parameters, "type");
   TRI_col_type_e collectionType;
   if (TRI_IsNumberJson(type)) {
@@ -2261,7 +2325,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
   int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards,
                                             parameters, errorMsg, 0.0);
-
+  
   if (res != TRI_ERROR_NO_ERROR) {
     errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
 
