@@ -3,23 +3,15 @@
 (function () {
 'use strict';
 
-// const _ = require('lodash');
 const createRouter = require('@arangodb/foxx/router');
 
 const $_WILDCARD = Symbol.for('@@wildcard'); // catch-all suffix
 const $_TERMINAL = Symbol.for('@@terminal'); // terminal -- routes be here
-//const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, like static part)
+const $_PARAM = Symbol.for('@@parameter'); // named parameter (no routes here, like static part)
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
-//const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including router.all)
+const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including router.all)
 
-const ONE = function() {/*one*/};
-const TWO = function() {/*two*/};
-const THREE = function() {/*three*/};
-const FOUR = function() {/*four*/};
-const FIVE = function() {/*five*/};
-const SIX = function() {/*six*/};
-const SEVEN = function() {/*seven*/};
-
+// const _ = require('lodash');
 // function log(something) {
 //   let seen = new Set();
 //   function objectify(thing) {
@@ -62,27 +54,35 @@ const SEVEN = function() {/*seven*/};
 describe('Router', function () {
   let router, childRouter1, childRouter2;
   let GET_SLASH;
+  let USE_SLASH;
   let POST_HELLO;
   let GET_HELLO_WORLD;
+  let USE_HELLO_WORLD;
+  let GET_HELLO_PARAM;
+  let USE_HELLO_PARAM;
   let GET_WORLD;
   let GET_SLASH2;
+  let GET_ALL;
   let GET_HELLO_WORLD2;
-  let GET_POTATO_SALAD;
+  let GET_POTATO_SALAD1;
+  let GET_POTATO_SALAD2;
 
   function prepareRouter(router, childRouter1, childRouter2) {
-    // TODO test wildcards
-    // TODO test multiple routes on the same URL on the same router
-    // TODO test params
-    // TODO test methods
     router.use('/hello', childRouter1);
     router.use(childRouter2);
-    GET_SLASH = router.get('/', ONE);
-    POST_HELLO = router.post('/hello', TWO);
-    GET_HELLO_WORLD = router.get('/hello/world', THREE);
-    GET_WORLD = childRouter1.get('/world', FOUR);
-    GET_SLASH2 = childRouter2.get(FIVE);
-    GET_HELLO_WORLD2 = childRouter2.get('/hello/world', SIX);
-    GET_POTATO_SALAD = childRouter2.get('/potato/salad', SEVEN);
+    GET_SLASH = router.get('/', function() {/*GET /*/});
+    USE_SLASH = router.use(function() {/*middleware /*/});
+    POST_HELLO = router.post('/hello', function() {/*POST /hello*/});
+    GET_HELLO_WORLD = router.get('/hello/world', function() {/*GET /hello/world*/});
+    USE_HELLO_WORLD = router.use('/hello/world', function () {/*middleware /hello/world*/});
+    GET_HELLO_PARAM = router.get('/hello/:symbol', function() {/*GET /hello/:symbol*/});
+    USE_HELLO_PARAM = router.use('/hello/:thang', function () {/*middleware /hello/:thang*/});
+    GET_WORLD = childRouter1.get('/world', function() {/*1>GET /world*/});
+    GET_SLASH2 = childRouter2.get(function() {/*2>GET /*/});
+    GET_ALL = childRouter2.get('/*', function() {/*2>GET /...*/});
+    GET_HELLO_WORLD2 = childRouter2.get('/hello/world', function() {/*2>GET /hello/world*/});
+    GET_POTATO_SALAD1 = childRouter2.get('/potato/salad', function() {/*2>GET /potato/salad 1*/});
+    GET_POTATO_SALAD2 = childRouter2.get('/potato/salad', function() {/*2>GET /potato/salad 2*/});
   }
   beforeEach(function () {
     router = createRouter();
@@ -97,12 +97,19 @@ describe('Router', function () {
       expect(tree.size).toBe(3);
       expect(tree.get($_TERMINAL).size).toBe(1);
       expect(tree.get($_TERMINAL).get($_ROUTES)).toEqual([GET_SLASH]);
-      expect(tree.get('hello').size).toBe(3);
+      expect(tree.get('hello').size).toBe(4);
       expect(tree.get('hello').get($_TERMINAL).size).toBe(1);
       expect(tree.get('hello').get($_TERMINAL).get($_ROUTES)).toEqual([POST_HELLO]);
-      expect(tree.get('hello').get('world').size).toBe(1);
+      expect(tree.get('hello').get('world').size).toBe(2);
       expect(tree.get('hello').get('world').get($_TERMINAL).size).toBe(1);
       expect(tree.get('hello').get('world').get($_TERMINAL).get($_ROUTES)).toEqual([GET_HELLO_WORLD]);
+      expect(tree.get('hello').get('world').get($_WILDCARD).size).toBe(1);
+      expect(tree.get('hello').get('world').get($_WILDCARD).get($_MIDDLEWARE)).toEqual([USE_HELLO_WORLD]);
+      expect(tree.get('hello').get($_PARAM).size).toBe(2);
+      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).size).toBe(1);
+      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).get($_ROUTES)).toEqual([GET_HELLO_PARAM]);
+      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).size).toBe(1);
+      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).get($_MIDDLEWARE)).toEqual([USE_HELLO_PARAM]);
       expect(tree.get('hello').get($_WILDCARD).size).toBe(1);
       expect(tree.get('hello').get($_WILDCARD).get($_ROUTES).length).toBe(1);
       const child1 = tree.get('hello').get($_WILDCARD).get($_ROUTES)[0].router._tree;
@@ -110,10 +117,10 @@ describe('Router', function () {
       expect(child1.get('world').size).toBe(1);
       expect(child1.get('world').get($_TERMINAL).size).toBe(1);
       expect(child1.get('world').get($_TERMINAL).get($_ROUTES)).toEqual([GET_WORLD]);
-      expect(tree.get($_WILDCARD).size).toBe(1);
-      expect(tree.get($_WILDCARD).get($_ROUTES).length).toBe(1);
+      expect(tree.get($_WILDCARD).size).toBe(2);
+      expect(tree.get($_WILDCARD).get($_MIDDLEWARE)).toEqual([USE_SLASH]);
       const child2 = tree.get($_WILDCARD).get($_ROUTES)[0].router._tree;
-      expect(child2.size).toBe(3);
+      expect(child2.size).toBe(4);
       expect(child2.get($_TERMINAL).size).toBe(1);
       expect(child2.get($_TERMINAL).get($_ROUTES)).toEqual([GET_SLASH2]);
       expect(child2.get('hello').size).toBe(1);
@@ -123,7 +130,9 @@ describe('Router', function () {
       expect(child2.get('potato').size).toBe(1);
       expect(child2.get('potato').get('salad').size).toBe(1);
       expect(child2.get('potato').get('salad').get($_TERMINAL).size).toBe(1);
-      expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES)).toEqual([GET_POTATO_SALAD]);
+      expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES)).toEqual([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
+      expect(child2.get($_WILDCARD).size).toBe(1);
+      expect(child2.get($_WILDCARD).get($_ROUTES)).toEqual([GET_ALL]);
     });
   });
   describe('_findRoutes', function () {
@@ -135,20 +144,32 @@ describe('Router', function () {
       for (const match of router._findRoutes([])) {
         matches.push(match);
       }
-      expect(matches.length).toBe(2);
+      expect(matches.length).toBe(3);
       expect(matches.some(function (match) {
         if (match.route !== GET_SLASH) {
           return false;
         }
         expect(match.routers).toEqual([router]);
+        expect(match.middleware).toEqual([[USE_SLASH]]);
+        expect(match.suffix).toEqual([]);
         return true;
       })).toBe(true);
       expect(matches.some(function (match) {
         if (match.route !== GET_SLASH2) {
           return false;
         }
-        expect(match.routers.length).toBe(2);
         expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH]]);
+        expect(match.suffix).toEqual([]);
+        return true;
+      })).toBe(true);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_ALL) {
+          return false;
+        }
+        expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH]]);
+        expect(match.suffix).toEqual([]);
         return true;
       })).toBe(true);
     });
@@ -157,12 +178,23 @@ describe('Router', function () {
       for (const match of router._findRoutes(['hello'])) {
         matches.push(match);
       }
-      expect(matches.length).toBe(1);
+      expect(matches.length).toBe(2);
       expect(matches.some(function (match) {
         if (match.route !== POST_HELLO) {
           return false;
         }
         expect(match.routers).toEqual([router]);
+        expect(match.middleware).toEqual([[USE_SLASH], []]);
+        expect(match.suffix).toEqual([]);
+        return true;
+      })).toBe(true);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_ALL) {
+          return false;
+        }
+        expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH]]);
+        expect(match.suffix).toEqual(['hello']);
         return true;
       })).toBe(true);
     });
@@ -171,12 +203,23 @@ describe('Router', function () {
       for (const match of router._findRoutes(['hello', 'world'])) {
         matches.push(match);
       }
-      expect(matches.length).toBe(3);
+      expect(matches.length).toBe(5);
       expect(matches.some(function (match) {
         if (match.route !== GET_HELLO_WORLD) {
           return false;
         }
         expect(match.routers).toEqual([router]);
+        expect(match.middleware).toEqual([[USE_SLASH], [], [USE_HELLO_WORLD]]);
+        expect(match.suffix).toEqual([]);
+        return true;
+      })).toBe(true);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_HELLO_PARAM) {
+          return false;
+        }
+        expect(match.routers).toEqual([router]);
+        expect(match.middleware).toEqual([[USE_SLASH], [], [USE_HELLO_PARAM]]);
+        expect(match.suffix).toEqual([]);
         return true;
       })).toBe(true);
       expect(matches.some(function (match) {
@@ -184,6 +227,8 @@ describe('Router', function () {
           return false;
         }
         expect(match.routers).toEqual([router, childRouter1]);
+        expect(match.middleware).toEqual([[USE_SLASH], [], []]);
+        expect(match.suffix).toEqual([]);
         return true;
       })).toBe(true);
       expect(matches.some(function (match) {
@@ -191,6 +236,42 @@ describe('Router', function () {
           return false;
         }
         expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH], [], []]);
+        expect(match.suffix).toEqual([]);
+        return true;
+      })).toBe(true);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_ALL) {
+          return false;
+        }
+        expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH]]);
+        expect(match.suffix).toEqual(['hello', 'world']);
+        return true;
+      })).toBe(true);
+    });
+    it('finds all routes for /hello/mlady', function () {
+      const matches = [];
+      for (const match of router._findRoutes(['hello', 'mlady'])) {
+        matches.push(match);
+      }
+      expect(matches.length).toBe(2);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_HELLO_PARAM) {
+          return false;
+        }
+        expect(match.routers).toEqual([router]);
+        expect(match.middleware).toEqual([[USE_SLASH], [], [USE_HELLO_PARAM]]);
+        expect(match.suffix).toEqual([]);
+        return true;
+      })).toBe(true);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_ALL) {
+          return false;
+        }
+        expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH]]);
+        expect(match.suffix).toEqual(['hello', 'mlady']);
         return true;
       })).toBe(true);
     });
@@ -199,12 +280,32 @@ describe('Router', function () {
       for (const match of router._findRoutes(['potato', 'salad'])) {
         matches.push(match);
       }
-      expect(matches.length).toBe(1);
+      expect(matches.length).toBe(3);
       expect(matches.some(function (match) {
-        if (match.route !== GET_POTATO_SALAD) {
+        if (match.route !== GET_POTATO_SALAD1) {
           return false;
         }
         expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH], [], []]);
+        expect(match.suffix).toEqual([]);
+        return true;
+      })).toBe(true);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_POTATO_SALAD2) {
+          return false;
+        }
+        expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH], [], []]);
+        expect(match.suffix).toEqual([]);
+        return true;
+      })).toBe(true);
+      expect(matches.some(function (match) {
+        if (match.route !== GET_ALL) {
+          return false;
+        }
+        expect(match.routers).toEqual([router, childRouter2]);
+        expect(match.middleware).toEqual([[USE_SLASH]]);
+        expect(match.suffix).toEqual(['potato', 'salad']);
         return true;
       })).toBe(true);
     });
