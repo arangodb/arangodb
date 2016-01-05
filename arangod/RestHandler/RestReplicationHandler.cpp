@@ -2096,12 +2096,13 @@ int RestReplicationHandler::processRestoreCollection (VPackSlice const& collecti
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
 int RestReplicationHandler::processRestoreCollectionCoordinator (
                  VPackSlice const& collection,
                  bool dropExisting,
                  bool reuseId,
                  bool force,
-                 string& errorMsg) {
+                 std::string& errorMsg) {
 
   if (! collection.isObject()) {
     errorMsg = "collection declaration is invalid";
@@ -2117,7 +2118,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  string const name = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+  std::string const name = triagens::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
@@ -2176,11 +2177,49 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   // We take one shard if "shards" was not given
   
   try {
-    TRI_voc_tick_t new_id_tick = ci->uniqid(1);
+    TRI_voc_tick_t newIdTick = ci->uniqid(1);
     VPackBuilder toMerge;
-    std::string new_id = StringUtils::itoa(new_id_tick);
+    std::string&& newId = StringUtils::itoa(newIdTick);
     toMerge.openObject();
-    toMerge.add("id", VPackValue(new_id));
+    toMerge.add("id", VPackValue(newId));
+  
+    // shard keys
+    VPackSlice const shardKeys = parameters.get("shardKeys");
+    if (! shardKeys.isObject()) {
+      // set default shard key
+      toMerge.add("shardKeys", VPackValue(VPackValueType::Array));
+      toMerge.add(VPackValue(std::string(TRI_VOC_ATTRIBUTE_KEY)));
+      toMerge.close(); // end of shardKeys
+    }
+  
+    // shards
+    if (! shards.isObject()) {
+      // if no shards were given, create a random list of shards
+      auto dbServers = ci->getCurrentDBServers();
+     
+      if (dbServers.empty()) {
+        errorMsg = "no database servers found in cluster";
+        return TRI_ERROR_INTERNAL;
+      }
+
+      std::random_shuffle(dbServers.begin(), dbServers.end());
+      
+      uint64_t const id = ci->uniqid(1 + numberOfShards);
+      toMerge.add("shards", VPackValue(VPackValueType::Object));
+      for (uint64_t i = 0; i < numberOfShards; ++i) {
+        // determine responsible server
+        std::string serverId = dbServers[i % dbServers.size()];
+  
+        // shard id
+        toMerge.add(VPackValue(std::string("s" + StringUtils::itoa(id + 1 + i))));
+
+        // server ids
+        toMerge.add(VPackValue(VPackValueType::Array));
+        toMerge.add(VPackValue(dbServers[i % dbServers.size()]));
+        toMerge.close(); // server ids
+      }
+      toMerge.close(); // end of shards
+    }
 
     // Now put in the primary and an edge index if needed:
     toMerge.add("indexes", VPackValue(VPackValueType::Array));
@@ -2205,7 +2244,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
 
     if (collectionType == TRI_COL_TYPE_EDGE) {
       // create a dummy edge index
-      std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(new_id_tick, nullptr));
+      std::unique_ptr<triagens::arango::EdgeIndex> edgeIndex(new triagens::arango::EdgeIndex(newIdTick, nullptr));
       std::shared_ptr<VPackBuilder> idxVPack = edgeIndex->toVelocyPack(false, true);
       toMerge.add(idxVPack->slice());
     }
@@ -2217,7 +2256,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
     VPackBuilder mergedBuilder = VPackCollection::merge(parameters, sliceToMerge, false);
     VPackSlice const merged = mergedBuilder.slice();
 
-    int res = ci->createCollectionCoordinator(dbName, new_id, numberOfShards,
+std::cout << "GOT MERGED VALUE: " << merged.toJson() << "\n";
+    int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards,
                                               merged, errorMsg, 0.0);
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "unable to create collection: " + string(TRI_errno_string(res));
