@@ -67,7 +67,7 @@ case "$TAG" in
     ;;
 
   *)
-    git rm -f EXPERIMENTAL
+    if test -f EXPERIMENTAL; then git rm -f EXPERIMENTAL; fi
     ;;
 esac
 
