@@ -125,8 +125,8 @@ class Route extends SwaggerContext {
       path = '/';
     }
     super(path);
-    this.methods = methods;
-    this.handler = handler;
+    this._methods = methods;
+    this._handler = handler;
     this.name = name;
     if (['POST', 'PUT', 'PATCH'].some(function (method) {
       return methods.indexOf(method) !== -1;
@@ -149,10 +149,10 @@ class Middleware extends SwaggerContext {
       path += '*';
     }
     super(path);
-    this.middleware = fn;
-    this.handler = fn;
+    this._middleware = fn;
+    this._handler = fn;
     if (typeof fn.register === 'function') {
-      this.handler = fn.register(this) || fn;
+      this._handler = fn.register(this) || fn;
     }
   }
 }
