@@ -14,6 +14,8 @@ v2.6.12 (2015-12-02)
 * Foxx: optional configuration options no longer log validation errors when assigned
   empty values (#1495)
 
+* Foxx: mocha test paths with wildcard characters (asterisks) now work on Windows
+
 
 v2.6.11 (2015-11-18)
 --------------------

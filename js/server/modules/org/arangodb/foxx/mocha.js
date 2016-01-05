@@ -35,6 +35,7 @@ var MochaSuite = require('mocha/lib/suite');
 var MochaRunner = require('mocha/lib/runner');
 var BaseReporter = require('mocha/lib/reporters/base');
 var DefaultReporter = require('mocha/lib/reporters/json');
+var isWindows = require('internal').platform.substr(0, 3) === 'win';
 
 function notIn(arr) {
   return function (item) {
@@ -127,7 +128,9 @@ function findTestFiles(app) {
   });
   return paths.filter(function (path) {
     return path && matchers.some(function (pattern) {
-      return pattern.match(path);
+      return pattern.match(
+        isWindows ? path.replace(/\\/g, '/') : path
+      );
     }) && fs.isFile(fs.join(basePath, path));
   });
 }
