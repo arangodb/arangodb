@@ -1129,7 +1129,7 @@ VocbaseCollectionInfo::VocbaseCollectionInfo (TRI_vocbase_t* vocbase,
 
   memset(_name, 0, sizeof(_name));
   
-  if (name != '\0') {
+  if (name != nullptr && *name != '\0') {
     TRI_CopyString(_name, name, sizeof(_name) - 1);
   }
 
