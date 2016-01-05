@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL SubqueryBlock
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -37,14 +37,12 @@ using namespace triagens::aql;
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class SubqueryBlock
 // -----------------------------------------------------------------------------
-        
-SubqueryBlock::SubqueryBlock (ExecutionEngine* engine,
-                              SubqueryNode const* en,
-                              ExecutionBlock* subquery)
-  : ExecutionBlock(engine, en), 
-    _outReg(ExecutionNode::MaxRegisterId),
-    _subquery(subquery) {
-  
+
+SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
+                             ExecutionBlock* subquery)
+    : ExecutionBlock(engine, en),
+      _outReg(ExecutionNode::MaxRegisterId),
+      _subquery(subquery) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
@@ -55,14 +53,13 @@ SubqueryBlock::SubqueryBlock (ExecutionEngine* engine,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-SubqueryBlock::~SubqueryBlock () {
-}
+SubqueryBlock::~SubqueryBlock() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, tell dependency and the subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-int SubqueryBlock::initialize () {
+int SubqueryBlock::initialize() {
   int res = ExecutionBlock::initialize();
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -76,15 +73,16 @@ int SubqueryBlock::initialize () {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
-                                      size_t atMost) {
-  std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+AqlItemBlock* SubqueryBlock::getSome(size_t atLeast, size_t atMost) {
+  std::unique_ptr<AqlItemBlock> res(
+      ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
   }
-      
-  bool const subqueryReturnsData = (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
+
+  bool const subqueryReturnsData =
+      (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
 
   // TODO: constant and deterministic subqueries only need to be executed once
   bool const subqueryIsConst = false;
@@ -102,8 +100,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
       // re-use already calculated subquery result
       TRI_ASSERT(subqueryResults != nullptr);
       res->setValue(i, _outReg, AqlValue(subqueryResults));
-    }
-    else {
+    } else {
       // initial subquery execution or subquery is not constant
 
       // execute the subquery
@@ -111,8 +108,8 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
 
       TRI_ASSERT(subqueryResults != nullptr);
 
-      if (! subqueryReturnsData) {
-        // remove all data from subquery result so only an 
+      if (!subqueryReturnsData) {
+        // remove all data from subquery result so only an
         // empty array remains
         for (auto& x : *subqueryResults) {
           delete x;
@@ -127,14 +124,13 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         res->setValue(i, _outReg, AqlValue(subqueryResults));
-      }
-      catch (...) {
+      } catch (...) {
         destroySubqueryResults(subqueryResults);
         throw;
       }
-    } 
-      
-    throwIfKilled(); // check if we were aborted
+    }
+
+    throwIfKilled();  // check if we were aborted
   }
 
   // Clear out registers no longer needed later:
@@ -146,7 +142,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
 /// @brief shutdown, tell dependency and the subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-int SubqueryBlock::shutdown (int errorCode) {
+int SubqueryBlock::shutdown(int errorCode) {
   int res = ExecutionBlock::shutdown(errorCode);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -160,12 +156,13 @@ int SubqueryBlock::shutdown (int errorCode) {
 /// @brief execute the subquery and return its results
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
+std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
   auto results = new std::vector<AqlItemBlock*>;
 
   try {
     do {
-      std::unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
+      std::unique_ptr<AqlItemBlock> tmp(
+          _subquery->getSome(DefaultBatchSize, DefaultBatchSize));
 
       if (tmp.get() == nullptr) {
         break;
@@ -177,11 +174,9 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
 
       results->emplace_back(tmp.get());
       tmp.release();
-    }
-    while (true);
+    } while (true);
     return results;
-  }
-  catch (...) {
+  } catch (...) {
     destroySubqueryResults(results);
     throw;
   }
@@ -191,7 +186,8 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
 /// @brief destroy the results of a subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-void SubqueryBlock::destroySubqueryResults (std::vector<AqlItemBlock*>* results) {
+void SubqueryBlock::destroySubqueryResults(
+    std::vector<AqlItemBlock*>* results) {
   for (auto& x : *results) {
     delete x;
   }
@@ -200,5 +196,6 @@ void SubqueryBlock::destroySubqueryResults (std::vector<AqlItemBlock*>* results)
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

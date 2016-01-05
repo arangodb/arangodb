@@ -39,12 +39,11 @@ namespace arangodb {
 ////////////////////////////////////////////////////////////////////////////////
 
 class WorkItem {
-
   // ---------------------------------------------------------------------------
   // --SECTION--                                                   inner classes
   // ---------------------------------------------------------------------------
 
-public:
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unique_ptr_deleter
   //////////////////////////////////////////////////////////////////////////////
@@ -52,14 +51,15 @@ public:
   struct deleter {
     deleter() = default;
 
-    void operator()(WorkItem *ptr) const { delete ptr; }
+    void operator()(WorkItem* ptr) const { delete ptr; }
   };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unique_ptr
   //////////////////////////////////////////////////////////////////////////////
 
-  template <typename X> using uptr = std::unique_ptr<X, deleter>;
+  template <typename X>
+  using uptr = std::unique_ptr<X, deleter>;
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                    constructors and destructors
@@ -69,7 +69,7 @@ public:
   /// @brief destructor
   //////////////////////////////////////////////////////////////////////////////
 
-protected:
+ protected:
   virtual ~WorkItem() {}
 };
 }

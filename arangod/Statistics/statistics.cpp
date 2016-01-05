@@ -54,13 +54,17 @@ static triagens::basics::Mutex RequestDataLock;
 /// @brief the request statistics queue
 ////////////////////////////////////////////////////////////////////////////////
 
-static boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> RequestFreeList;
+static boost::lockfree::queue<TRI_request_statistics_t*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    RequestFreeList;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the request statistics queue for finished requests
 ////////////////////////////////////////////////////////////////////////////////
 
-static boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> RequestFinishedList;
+static boost::lockfree::queue<TRI_request_statistics_t*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    RequestFinishedList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              private request statistics functions
@@ -70,7 +74,7 @@ static boost::lockfree::queue<TRI_request_statistics_t*, boost::lockfree::capaci
 /// @brief processes a statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessRequestStatistics (TRI_request_statistics_t* statistics) {
+static void ProcessRequestStatistics(TRI_request_statistics_t* statistics) {
   {
     MUTEX_LOCKER(RequestDataLock);
 
@@ -80,7 +84,7 @@ static void ProcessRequestStatistics (TRI_request_statistics_t* statistics) {
       TRI_AsyncRequestsStatistics.incCounter();
     }
 
-    TRI_MethodRequestsStatistics[(int) statistics->_requestType].incCounter();
+    TRI_MethodRequestsStatistics[(int)statistics->_requestType].incCounter();
 
     // check that the request was completely received and transmitted
     if (statistics->_readStart != 0.0 && statistics->_writeEnd != 0.0) {
@@ -104,14 +108,15 @@ static void ProcessRequestStatistics (TRI_request_statistics_t* statistics) {
       }
 
       TRI_BytesSentDistributionStatistics->addFigure(statistics->_sentBytes);
-      TRI_BytesReceivedDistributionStatistics->addFigure(statistics->_receivedBytes);
+      TRI_BytesReceivedDistributionStatistics->addFigure(
+          statistics->_receivedBytes);
     }
   }
 
   // clear statistics
-  statistics->reset(); 
+  statistics->reset();
 
-  // put statistics item back onto the freelist
+// put statistics item back onto the freelist
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   bool ok = RequestFreeList.push(statistics);
   TRI_ASSERT(ok);
@@ -124,7 +129,7 @@ static void ProcessRequestStatistics (TRI_request_statistics_t* statistics) {
 /// @brief processes finished statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t ProcessAllRequestStatistics () {
+static size_t ProcessAllRequestStatistics() {
   TRI_request_statistics_t* statistics = nullptr;
   size_t count = 0;
 
@@ -146,7 +151,7 @@ static size_t ProcessAllRequestStatistics () {
 /// @brief gets a new statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
+TRI_request_statistics_t* TRI_AcquireRequestStatistics() {
   TRI_request_statistics_t* statistics = nullptr;
 
   if (TRI_ENABLE_STATISTICS && RequestFreeList.pop(statistics)) {
@@ -160,21 +165,20 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
 /// @brief releases a statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
+void TRI_ReleaseRequestStatistics(TRI_request_statistics_t* statistics) {
   if (statistics == nullptr) {
     return;
   }
- 
-  if (! statistics->_ignore) {
+
+  if (!statistics->_ignore) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     bool ok = RequestFinishedList.push(statistics);
     TRI_ASSERT(ok);
 #else
     RequestFinishedList.push(statistics);
 #endif
-  }
-  else {
-    statistics->reset(); 
+  } else {
+    statistics->reset();
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     bool ok = RequestFreeList.push(statistics);
@@ -189,19 +193,19 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
 /// @brief fills the current statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
-                                StatisticsDistribution& requestTime,
-                                StatisticsDistribution& queueTime,
-                                StatisticsDistribution& ioTime,
-                                StatisticsDistribution& bytesSent,
-                                StatisticsDistribution& bytesReceived) {
+void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
+                               StatisticsDistribution& requestTime,
+                               StatisticsDistribution& queueTime,
+                               StatisticsDistribution& ioTime,
+                               StatisticsDistribution& bytesSent,
+                               StatisticsDistribution& bytesReceived) {
   MUTEX_LOCKER(RequestDataLock);
 
-  totalTime     = *TRI_TotalTimeDistributionStatistics;
-  requestTime   = *TRI_RequestTimeDistributionStatistics;
-  queueTime     = *TRI_QueueTimeDistributionStatistics;
-  ioTime        = *TRI_IoTimeDistributionStatistics;
-  bytesSent     = *TRI_BytesSentDistributionStatistics;
+  totalTime = *TRI_TotalTimeDistributionStatistics;
+  requestTime = *TRI_RequestTimeDistributionStatistics;
+  queueTime = *TRI_QueueTimeDistributionStatistics;
+  ioTime = *TRI_IoTimeDistributionStatistics;
+  bytesSent = *TRI_BytesSentDistributionStatistics;
   bytesReceived = *TRI_BytesReceivedDistributionStatistics;
 }
 
@@ -219,7 +223,9 @@ static triagens::basics::Mutex ConnectionDataLock;
 /// @brief free list
 ////////////////////////////////////////////////////////////////////////////////
 
-static boost::lockfree::queue<TRI_connection_statistics_t*, boost::lockfree::capacity<QUEUE_SIZE>> ConnectionFreeList;
+static boost::lockfree::queue<TRI_connection_statistics_t*,
+                              boost::lockfree::capacity<QUEUE_SIZE>>
+    ConnectionFreeList;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                            public connection statistics functions
@@ -229,7 +235,7 @@ static boost::lockfree::queue<TRI_connection_statistics_t*, boost::lockfree::cap
 /// @brief gets a new statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_connection_statistics_t* TRI_AcquireConnectionStatistics () {
+TRI_connection_statistics_t* TRI_AcquireConnectionStatistics() {
   TRI_connection_statistics_t* statistics = nullptr;
 
   if (TRI_ENABLE_STATISTICS && ConnectionFreeList.pop(statistics)) {
@@ -243,11 +249,11 @@ TRI_connection_statistics_t* TRI_AcquireConnectionStatistics () {
 /// @brief releases a statistics block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
+void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
   if (statistics == nullptr) {
     return;
   }
-  
+
   {
     MUTEX_LOCKER(ConnectionDataLock);
 
@@ -255,8 +261,7 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
       if (statistics->_connStart != 0.0) {
         if (statistics->_connEnd == 0.0) {
           TRI_HttpConnectionsStatistics.incCounter();
-        }
-        else {
+        } else {
           TRI_HttpConnectionsStatistics.decCounter();
 
           double totalTime = statistics->_connEnd - statistics->_connStart;
@@ -269,8 +274,8 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   // clear statistics
   statistics->reset();
 
-  // put statistics item back onto the freelist
-#ifdef TRI_ENABLE_MAINTAINER_MODE  
+// put statistics item back onto the freelist
+#ifdef TRI_ENABLE_MAINTAINER_MODE
   bool ok = ConnectionFreeList.push(statistics);
   TRI_ASSERT(ok);
 #else
@@ -282,18 +287,18 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
 /// @brief fills the current statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
-                                   StatisticsCounter& totalRequests,
-                                   vector<StatisticsCounter>& methodRequests,
-                                   StatisticsCounter& asyncRequests,
-                                   StatisticsDistribution& connectionTime) {
+void TRI_FillConnectionStatistics(StatisticsCounter& httpConnections,
+                                  StatisticsCounter& totalRequests,
+                                  vector<StatisticsCounter>& methodRequests,
+                                  StatisticsCounter& asyncRequests,
+                                  StatisticsDistribution& connectionTime) {
   MUTEX_LOCKER(ConnectionDataLock);
 
   httpConnections = TRI_HttpConnectionsStatistics;
-  totalRequests   = TRI_TotalRequestsStatistics;
-  methodRequests  = TRI_MethodRequestsStatistics;
-  asyncRequests   = TRI_AsyncRequestsStatistics;
-  connectionTime  = *TRI_ConnectionTimeDistributionStatistics;
+  totalRequests = TRI_TotalRequestsStatistics;
+  methodRequests = TRI_MethodRequestsStatistics;
+  asyncRequests = TRI_AsyncRequestsStatistics;
+  connectionTime = *TRI_ConnectionTimeDistributionStatistics;
 }
 
 // -----------------------------------------------------------------------------
@@ -304,11 +309,11 @@ void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
 /// @brief gets the global server statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_server_statistics_t TRI_GetServerStatistics () {
+TRI_server_statistics_t TRI_GetServerStatistics() {
   TRI_server_statistics_t server;
 
   server._startTime = TRI_ServerStatistics._startTime;
-  server._uptime    = TRI_microtime() - server._startTime;
+  server._uptime = TRI_microtime() - server._startTime;
 
   return server;
 }
@@ -337,12 +342,12 @@ static TRI_thread_t StatisticsThread;
 /// @brief checks for new statistics and process them
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StatisticsQueueWorker (void* data) {
+static void StatisticsQueueWorker(void* data) {
   uint64_t sleepTime = 100 * 1000;
   uint64_t const MaxSleepTime = 250 * 1000;
   int nothingHappened = 0;
 
-  while (! Shutdown.load(std::memory_order_relaxed) && TRI_ENABLE_STATISTICS) {
+  while (!Shutdown.load(std::memory_order_relaxed) && TRI_ENABLE_STATISTICS) {
     size_t count = ProcessAllRequestStatistics();
 
     if (count == 0) {
@@ -355,18 +360,16 @@ static void StatisticsQueueWorker (void* data) {
         }
       }
 #ifdef _WIN32
-      usleep((unsigned long) sleepTime);
+      usleep((unsigned long)sleepTime);
 #else
-      usleep((useconds_t) sleepTime);
+      usleep((useconds_t)sleepTime);
 #endif
-    }
-    else {
+    } else {
       nothingHappened = 0;
 
       if (count < 10) {
         usleep(10 * 1000);
-      }
-      else if (count < 100) {
+      } else if (count < 100) {
         usleep(1 * 1000);
       }
     }
@@ -516,9 +519,7 @@ TRI_server_statistics_t TRI_ServerStatistics;
 /// @brief gets the current wallclock time
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_StatisticsTime () {
-  return TRI_microtime();
-}
+double TRI_StatisticsTime() { return TRI_microtime(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             module initialization
@@ -528,7 +529,7 @@ double TRI_StatisticsTime () {
 /// @brief module init function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeStatistics () {
+void TRI_InitializeStatistics() {
   TRI_ServerStatistics._startTime = TRI_microtime();
 
   // .............................................................................
@@ -537,22 +538,33 @@ void TRI_InitializeStatistics () {
 
   TRI_ConnectionTimeDistributionVectorStatistics << (0.1) << (1.0) << (60.0);
 
-  TRI_BytesSentDistributionVectorStatistics << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
-  TRI_BytesReceivedDistributionVectorStatistics << (250) << (1000) << (2 * 1000) << (5 * 1000) << (10 * 1000);
-  TRI_RequestTimeDistributionVectorStatistics << (0.01) << (0.05) << (0.1) << (0.2) << (0.5) << (1.0);
+  TRI_BytesSentDistributionVectorStatistics << (250) << (1000) << (2 * 1000)
+                                            << (5 * 1000) << (10 * 1000);
+  TRI_BytesReceivedDistributionVectorStatistics << (250) << (1000) << (2 * 1000)
+                                                << (5 * 1000) << (10 * 1000);
+  TRI_RequestTimeDistributionVectorStatistics << (0.01) << (0.05) << (0.1)
+                                              << (0.2) << (0.5) << (1.0);
 
-  TRI_ConnectionTimeDistributionStatistics = new StatisticsDistribution(TRI_ConnectionTimeDistributionVectorStatistics);
-  TRI_TotalTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
-  TRI_RequestTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
-  TRI_QueueTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
-  TRI_IoTimeDistributionStatistics = new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
-  TRI_BytesSentDistributionStatistics = new StatisticsDistribution(TRI_BytesSentDistributionVectorStatistics);
-  TRI_BytesReceivedDistributionStatistics = new StatisticsDistribution(TRI_BytesReceivedDistributionVectorStatistics);
+  TRI_ConnectionTimeDistributionStatistics = new StatisticsDistribution(
+      TRI_ConnectionTimeDistributionVectorStatistics);
+  TRI_TotalTimeDistributionStatistics =
+      new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_RequestTimeDistributionStatistics =
+      new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_QueueTimeDistributionStatistics =
+      new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_IoTimeDistributionStatistics =
+      new StatisticsDistribution(TRI_RequestTimeDistributionVectorStatistics);
+  TRI_BytesSentDistributionStatistics =
+      new StatisticsDistribution(TRI_BytesSentDistributionVectorStatistics);
+  TRI_BytesReceivedDistributionStatistics =
+      new StatisticsDistribution(TRI_BytesReceivedDistributionVectorStatistics);
 
   // initialize counters for all HTTP request types
   TRI_MethodRequestsStatistics.clear();
 
-  for (int i = 0; i < ((int) triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
+  for (int i = 0;
+       i < ((int)triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) + 1; ++i) {
     StatisticsCounter c;
     TRI_MethodRequestsStatistics.emplace_back(c);
   }
@@ -563,21 +575,21 @@ void TRI_InitializeStatistics () {
 
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     auto entry = new TRI_request_statistics_t;
-#ifdef TRI_ENABLE_MAINTAINER_MODE    
+#ifdef TRI_ENABLE_MAINTAINER_MODE
     bool ok = RequestFreeList.push(entry);
     TRI_ASSERT(ok);
 #else
     RequestFreeList.push(entry);
-#endif    
+#endif
   }
 
   // .............................................................................
   // generate the connection statistics queue
   // .............................................................................
-  
+
   for (size_t i = 0; i < QUEUE_SIZE; ++i) {
     auto entry = new TRI_connection_statistics_t;
-#ifdef TRI_ENABLE_MAINTAINER_MODE    
+#ifdef TRI_ENABLE_MAINTAINER_MODE
     bool ok = ConnectionFreeList.push(entry);
     TRI_ASSERT(ok);
 #else
@@ -590,14 +602,15 @@ void TRI_InitializeStatistics () {
   // .............................................................................
 
   Shutdown = false;
-  TRI_StartThread(&StatisticsThread, nullptr, "[statistics]", StatisticsQueueWorker, 0);
+  TRI_StartThread(&StatisticsThread, nullptr, "[statistics]",
+                  StatisticsQueueWorker, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut down statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownStatistics (void) {
+void TRI_ShutdownStatistics(void) {
   Shutdown = true;
   int res TRI_UNUSED = TRI_JoinThread(&StatisticsThread);
   TRI_ASSERT(res == 0);
@@ -609,5 +622,6 @@ void TRI_ShutdownStatistics (void) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

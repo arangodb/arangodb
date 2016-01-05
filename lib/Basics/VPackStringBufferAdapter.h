@@ -30,25 +30,21 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
-    class VPackStringBufferAdapter final : public VPackSink {
+class VPackStringBufferAdapter final : public VPackSink {
+ public:
+  explicit VPackStringBufferAdapter(TRI_string_buffer_t* buffer)
+      : _buffer(buffer) {}
 
-      public: 
-        explicit VPackStringBufferAdapter (TRI_string_buffer_t* buffer) 
-          : _buffer(buffer) {
-        }
+  void push_back(char c) override final;
+  void append(std::string const& p) override final;
+  void append(char const* p) override final;
+  void append(char const* p, uint64_t len) override final;
+  void reserve(uint64_t len) override final;
 
-        void push_back (char c) override final;
-        void append (std::string const& p) override final;
-        void append (char const* p) override final;
-        void append (char const* p, uint64_t len) override final;
-        void reserve (uint64_t len) override final;
-
-      private:
-        TRI_string_buffer_t* _buffer;
-
-    };
-
-  }
+ private:
+  TRI_string_buffer_t* _buffer;
+};
+}
 }

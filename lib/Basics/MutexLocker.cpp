@@ -48,9 +48,8 @@ using namespace triagens::basics;
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
-  : _mutex(mutex), _file(file), _line(line), _time(0.0) {
-  
+MutexLocker::MutexLocker(Mutex* mutex, char const* file, int line)
+    : _mutex(mutex), _file(file), _line(line), _time(0.0) {
   double t = TRI_microtime();
   _mutex->lock();
   _time = TRI_microtime() - t;
@@ -58,11 +57,7 @@ MutexLocker::MutexLocker (Mutex* mutex, char const* file, int line)
 
 #else
 
-MutexLocker::MutexLocker (Mutex* mutex)
-  : _mutex(mutex) {
-  
-  _mutex->lock();
-}
+MutexLocker::MutexLocker(Mutex* mutex) : _mutex(mutex) { _mutex->lock(); }
 
 #endif
 
@@ -70,14 +65,14 @@ MutexLocker::MutexLocker (Mutex* mutex)
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-MutexLocker::~MutexLocker () {
+MutexLocker::~MutexLocker() {
   _mutex->unlock();
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
     LOG_WARNING("MutexLocker %s:%d took %f s", _file, _line, _time);
   }
-#endif  
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -86,5 +81,6 @@ MutexLocker::~MutexLocker () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

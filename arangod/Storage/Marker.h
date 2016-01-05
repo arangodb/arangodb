@@ -43,701 +43,609 @@ namespace arangodb {
 /// @brief available marker types. values must be < 128
 ////////////////////////////////////////////////////////////////////////////////
 
-  enum MarkerType : uint8_t {
-    MarkerTypeHeader               =  1,
-    MarkerTypeFooter               =  2,
+enum MarkerType : uint8_t {
+  MarkerTypeHeader = 1,
+  MarkerTypeFooter = 2,
 
-    MarkerTypeDocumentPreface      = 10,
-    MarkerTypeDocument             = 11,
-    MarkerTypeDocumentDeletion     = 12,
+  MarkerTypeDocumentPreface = 10,
+  MarkerTypeDocument = 11,
+  MarkerTypeDocumentDeletion = 12,
 
-    MarkerTypeTransactionBegin     = 20,
-    MarkerTypeTransactionCommit    = 21,
-    MarkerTypeTransactionAbort     = 22,
+  MarkerTypeTransactionBegin = 20,
+  MarkerTypeTransactionCommit = 21,
+  MarkerTypeTransactionAbort = 22,
 
-    MarkerTypeCollectionCreate     = 30,
-    MarkerTypeCollectionDrop       = 31,
-    MarkerTypeCollectionRename     = 32,
-    MarkerTypeCollectionProperties = 33,
+  MarkerTypeCollectionCreate = 30,
+  MarkerTypeCollectionDrop = 31,
+  MarkerTypeCollectionRename = 32,
+  MarkerTypeCollectionProperties = 33,
 
-    MarkerTypeIndexCreate          = 40,
-    MarkerTypeIndexDrop            = 41,
+  MarkerTypeIndexCreate = 40,
+  MarkerTypeIndexDrop = 41,
 
-    MarkerTypeDatabaseCreate       = 50,
-    MarkerTypeDatabaseDrop         = 51,
+  MarkerTypeDatabaseCreate = 50,
+  MarkerTypeDatabaseDrop = 51,
 
-    MarkerMax                      = 127
-  };
+  MarkerMax = 127
+};
 
-  static_assert(MarkerMax < 128, "invalid maximum marker type value");
+static_assert(MarkerMax < 128, "invalid maximum marker type value");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                        helper struct for reading / writing values
 // -----------------------------------------------------------------------------
 
-  struct MarkerHelper {
-    uint32_t alignedSize (uint32_t value) {
-      return ((value + 7) / 8) * 8;
+struct MarkerHelper {
+  uint32_t alignedSize(uint32_t value) { return ((value + 7) / 8) * 8; }
+
+  uint64_t alignedSize(uint64_t value) { return ((value + 7) / 8) * 8; }
+
+  template <typename T>
+  static inline uint32_t calculateNumberLength(T value) throw() {
+    uint32_t len = 1;
+    while (value > 0) {
+      ++len;
+      value >>= 8;
+      ++len;
     }
-    
-    uint64_t alignedSize (uint64_t value) {
-      return ((value + 7) / 8) * 8;
-    }
+    return len;
+  }
 
-    template<typename T>
-    static inline uint32_t calculateNumberLength (T value) throw() {
-      uint32_t len = 1;
-      while (value > 0) {
-        ++len;
-        value >>= 8;
-        ++len; 
-      }
-      return len;
-    }
-    
-    template<typename T>
-    static inline T readNumber (uint8_t const* source, uint32_t length) {
-      T result = 0;
-      uint8_t const* end = source + length;
-      do {
-        result <<= 8;
-        result += static_cast<T>(*source++);
-      }
-      while (source < end);
-      return result;
-    }
+  template <typename T>
+  static inline T readNumber(uint8_t const* source, uint32_t length) {
+    T result = 0;
+    uint8_t const* end = source + length;
+    do {
+      result <<= 8;
+      result += static_cast<T>(*source++);
+    } while (source < end);
+    return result;
+  }
 
-    template<typename T>
-    static inline void storeNumber (uint8_t* dest, T value, uint32_t length) {
-      uint8_t* end = dest + length;
-      do {
-        *dest++ = static_cast<uint8_t>(value & 0xff);
-        value >>= 8;
-      }
-      while (dest < end);
-    }
+  template <typename T>
+  static inline void storeNumber(uint8_t* dest, T value, uint32_t length) {
+    uint8_t* end = dest + length;
+    do {
+      *dest++ = static_cast<uint8_t>(value & 0xff);
+      value >>= 8;
+    } while (dest < end);
+  }
 
-    // returns a type name for a marker
-    static char const* typeName (MarkerType type);
+  // returns a type name for a marker
+  static char const* typeName(MarkerType type);
 
-    // returns the static length for the marker type
-    // the static length is the total length of the marker's static data fields,
-    // excluding the base marker's fields and excluding the marker's dynamic
-    // VPack data values
-    static uint64_t staticLength (MarkerType type);
+  // returns the static length for the marker type
+  // the static length is the total length of the marker's static data fields,
+  // excluding the base marker's fields and excluding the marker's dynamic
+  // VPack data values
+  static uint64_t staticLength(MarkerType type);
 
-    // calculate the required length for a marker of the specified type, given a
-    // payload of the specified length
-    static uint64_t calculateMarkerLength (MarkerType type, uint64_t payloadLength);
-    
-    // calculate the required length for the header of a marker, given a body
-    // of the specified length
-    static uint64_t calculateHeaderLength (uint64_t bodyLength);
-  };
+  // calculate the required length for a marker of the specified type, given a
+  // payload of the specified length
+  static uint64_t calculateMarkerLength(MarkerType type,
+                                        uint64_t payloadLength);
 
-  /* the base layout for all markers is:
-     uint32_t   type and length information (first byte contains marker type,
-                following 3 bytes contain length information)
-     uint32_t   crc checksum
-     uint64_t   tick value
-     (uint64_t) optional length information 
-     char[]     payload
+  // calculate the required length for the header of a marker, given a body
+  // of the specified length
+  static uint64_t calculateHeaderLength(uint64_t bodyLength);
+};
 
-     if the highest bit in the first byte (type) is set, then the length of
-     the marker is coded in the uint64_t length value at offset 0x10.
-     if the highest bit in the first byte (type) is not set, then the length
-     of the marker is coded in bytes from offset 1 to (including) 3.
-  */
+/* the base layout for all markers is:
+   uint32_t   type and length information (first byte contains marker type,
+              following 3 bytes contain length information)
+   uint32_t   crc checksum
+   uint64_t   tick value
+   (uint64_t) optional length information
+   char[]     payload
+
+   if the highest bit in the first byte (type) is set, then the length of
+   the marker is coded in the uint64_t length value at offset 0x10.
+   if the highest bit in the first byte (type) is not set, then the length
+   of the marker is coded in bytes from offset 1 to (including) 3.
+*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                        generic read-only accessor for all markers
 // -----------------------------------------------------------------------------
 
-  class MarkerReader {
-    
-    public:
+class MarkerReader {
+ public:
+  static const uint64_t MinMarkerLength = 16;
 
-      static const uint64_t MinMarkerLength = 16;
+  MarkerReader(uint8_t* begin) : _begin(begin), _length(calculateLength()) {
+    TRI_ASSERT(_length >= MinMarkerLength);
+  }
 
-      MarkerReader (uint8_t* begin)
-        : _begin(begin),
-          _length(calculateLength()) {
+ public:
+  char* data() const { return reinterpret_cast<char*>(_begin); }
 
-        TRI_ASSERT(_length >= MinMarkerLength);
-      }
+  uint8_t* begin() const { return _begin; }
 
-    public:
-      
-      char* data () const {
-        return reinterpret_cast<char*>(_begin);
-      }
+  uint8_t* end() const { return _begin + _length; }
 
-      uint8_t* begin () const {
-        return _begin;
-      }
-      
-      uint8_t* end () const {
-        return _begin + _length;
-      }
+  MarkerType type() const {
+    // read lowest 7 bits of head byte
+    uint8_t type = *_begin & 0x7f;
+    return static_cast<MarkerType>(type);
+  }
 
-      MarkerType type () const {
-        // read lowest 7 bits of head byte
-        uint8_t type = *_begin & 0x7f;
-        return static_cast<MarkerType>(type);
-      }
+  uint32_t length() const { return static_cast<uint32_t>(_length); }
 
-      uint32_t length () const {
-        return static_cast<uint32_t>(_length);
-      }
-      
-      uint32_t headerLength () const {
-        if (*_begin & 0x80) {
-          return 24;
-        }
-        return 16;
-      }
-      
-      // gets the currently persisted CRC value of the marker
-      uint32_t persistedCrc () const {
-        return readAlignedNumber<uint32_t>(_begin + 4, 4);
-      }
+  uint32_t headerLength() const {
+    if (*_begin & 0x80) {
+      return 24;
+    }
+    return 16;
+  }
 
-      // recalculates the actual CRC value of the marker
-      uint32_t actualCrc () const {
-        static uint32_t const empty = 0;
+  // gets the currently persisted CRC value of the marker
+  uint32_t persistedCrc() const {
+    return readAlignedNumber<uint32_t>(_begin + 4, 4);
+  }
 
-        uint32_t crc = TRI_InitialCrc32();
-        crc = TRI_BlockCrc32(crc, data(), 4); // calculate crc for first 4 bytes
-        crc = TRI_BlockCrc32(crc, reinterpret_cast<char const*>(&empty), sizeof(empty)); 
-        crc = TRI_BlockCrc32(crc, data() + 8, _length - 8); // calculate crc for rest of marker
-        crc = TRI_FinalCrc32(crc);
-        return crc;
-      }
-      
-      uint64_t tick () const {
-        return readAlignedNumber<uint64_t>(_begin + 8, 8);
-      }
+  // recalculates the actual CRC value of the marker
+  uint32_t actualCrc() const {
+    static uint32_t const empty = 0;
 
-      uint8_t* payload () const {
-        return _begin + headerLength();
-      }
+    uint32_t crc = TRI_InitialCrc32();
+    crc = TRI_BlockCrc32(crc, data(), 4);  // calculate crc for first 4 bytes
+    crc = TRI_BlockCrc32(crc, reinterpret_cast<char const*>(&empty),
+                         sizeof(empty));
+    crc = TRI_BlockCrc32(crc, data() + 8,
+                         _length - 8);  // calculate crc for rest of marker
+    crc = TRI_FinalCrc32(crc);
+    return crc;
+  }
 
-      template<typename T>
-      T readNumber (uint8_t const* start, uint64_t length) const {
-        return MarkerHelper::readNumber<T>(start, static_cast<uint32_t>(length));
-      }
-      
-      template<typename T>
-      T readAlignedNumber (uint8_t const* start, uint64_t length) const {
-        TRI_ASSERT(reinterpret_cast<uintptr_t>(start) % sizeof(T) == 0);
-        // TODO: create an optimized version for aligned data access
-        return readNumber<T>(start, length);
-      }
+  uint64_t tick() const { return readAlignedNumber<uint64_t>(_begin + 8, 8); }
 
-    protected:
+  uint8_t* payload() const { return _begin + headerLength(); }
 
-      uint64_t calculateLength () const {
-        if (*_begin & 0x80) {
-          return readAlignedNumber<uint64_t>(_begin + 8, 8);
-        }
-        return readNumber<uint64_t>(_begin + 1, 3);
-      }
+  template <typename T>
+  T readNumber(uint8_t const* start, uint64_t length) const {
+    return MarkerHelper::readNumber<T>(start, static_cast<uint32_t>(length));
+  }
 
-    protected:
+  template <typename T>
+  T readAlignedNumber(uint8_t const* start, uint64_t length) const {
+    TRI_ASSERT(reinterpret_cast<uintptr_t>(start) % sizeof(T) == 0);
+    // TODO: create an optimized version for aligned data access
+    return readNumber<T>(start, length);
+  }
 
-      uint8_t* _begin;
-      uint64_t _length;
-  };
+ protected:
+  uint64_t calculateLength() const {
+    if (*_begin & 0x80) {
+      return readAlignedNumber<uint64_t>(_begin + 8, 8);
+    }
+    return readNumber<uint64_t>(_begin + 1, 3);
+  }
+
+ protected:
+  uint8_t* _begin;
+  uint64_t _length;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                       generic read-write accessor for all markers
 // -----------------------------------------------------------------------------
 
-  class MarkerWriter : public MarkerReader {
+class MarkerWriter : public MarkerReader {
+ public:
+  MarkerWriter(uint8_t* begin) : MarkerReader(begin) {}
 
-    public:
-      MarkerWriter (uint8_t* begin) 
-        : MarkerReader(begin) {
-      }
+ public:
+  // calculates the marker's CRC values and stores it
+  uint32_t storeCrc() {
+    // invalidate crc data in marker
+    MarkerHelper::storeNumber(_begin + 4, 0, 4);
+    // recalculate crc
+    uint32_t crc = TRI_InitialCrc32();
+    crc = TRI_BlockCrc32(crc, data(), _length);
+    crc = TRI_FinalCrc32(crc);
+    MarkerHelper::storeNumber(_begin + 4, crc, 4);
+    return crc;
+  }
 
-    public:
-      // calculates the marker's CRC values and stores it
-      uint32_t storeCrc () {
-        // invalidate crc data in marker
-        MarkerHelper::storeNumber(_begin + 4, 0, 4);
-        // recalculate crc
-        uint32_t crc = TRI_InitialCrc32();
-        crc = TRI_BlockCrc32(crc, data(), _length);
-        crc = TRI_FinalCrc32(crc);
-        MarkerHelper::storeNumber(_begin + 4, crc, 4);
-        return crc;
-      }
-      
-      template<typename T>
-      void storeNumber (uint8_t* start, T value, uint64_t length) const {
-        MarkerHelper::storeNumber<T>(start, value, static_cast<uint32_t>(length));
-      }
-      
-      template<typename T>
-      void storeAlignedNumber (uint8_t* start, T value, uint64_t length) const {
-        TRI_ASSERT(reinterpret_cast<uintptr_t>(start) % sizeof(T) == 0);
-        // TODO: create an optimized version for aligned data access
-        storeNumber<T>(start, value, length);
-      }
-  };
+  template <typename T>
+  void storeNumber(uint8_t* start, T value, uint64_t length) const {
+    MarkerHelper::storeNumber<T>(start, value, static_cast<uint32_t>(length));
+  }
+
+  template <typename T>
+  void storeAlignedNumber(uint8_t* start, T value, uint64_t length) const {
+    TRI_ASSERT(reinterpret_cast<uintptr_t>(start) % sizeof(T) == 0);
+    // TODO: create an optimized version for aligned data access
+    storeNumber<T>(start, value, length);
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                 generic accessor for meta markers
 // -----------------------------------------------------------------------------
 
-  template<typename T>
-  class MarkerAccessorMeta : public T {
-    /* this is a marker for meta data (header, footer etc)
-       its layout is:
+template <typename T>
+class MarkerAccessorMeta : public T {
+  /* this is a marker for meta data (header, footer etc)
+     its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-    */
+     BaseMarker      base (16 or 24 bytes)
+  */
 
-    public:
+ public:
+  MarkerAccessorMeta(uint8_t* begin) : T(begin) {}
 
-      MarkerAccessorMeta (uint8_t* begin)
-        : T(begin) {
-      }
-
-      static uint64_t staticLength () {
-        return 0;
-      }
-  };
+  static uint64_t staticLength() { return 0; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               read-only accessor for meta markers
 // -----------------------------------------------------------------------------
-  
-  typedef MarkerAccessorMeta<MarkerReader> MarkerReaderMeta;
+
+typedef MarkerAccessorMeta<MarkerReader> MarkerReaderMeta;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              read-write accessor for meta markers
 // -----------------------------------------------------------------------------
 
-  class MarkerWriterMeta : public MarkerAccessorMeta<MarkerWriter> {
-
-    public:
-
-      MarkerWriterMeta (uint8_t* begin)
-        : MarkerAccessorMeta<MarkerWriter>(begin) {
-      }
-
-  };
+class MarkerWriterMeta : public MarkerAccessorMeta<MarkerWriter> {
+ public:
+  MarkerWriterMeta(uint8_t* begin) : MarkerAccessorMeta<MarkerWriter>(begin) {}
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                     generic accessor for document preface markers
 // -----------------------------------------------------------------------------
 
-  template<typename T>
-  class MarkerAccessorDocumentPreface : public T {
-    /* this is a preface marker for documents operations
-       its layout is:
+template <typename T>
+class MarkerAccessorDocumentPreface : public T {
+  /* this is a preface marker for documents operations
+     its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       uint64_t        database id
-       uint64_t        collection id
-    */
+     BaseMarker      base (16 or 24 bytes)
+     uint64_t        database id
+     uint64_t        collection id
+  */
 
-    public:
+ public:
+  MarkerAccessorDocumentPreface(uint8_t* begin) : T(begin) {}
 
-      MarkerAccessorDocumentPreface (uint8_t* begin)
-        : T(begin) {
-      }
+ public:
+  uint64_t database() const {
+    return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(),
+                                                     8);
+  }
 
-    public:
-      
-      uint64_t database () const {
-        return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(), 8);
-      }
+  uint64_t collection() const {
+    return MarkerReader::readAlignedNumber<uint64_t>(
+        MarkerReader::payload() + 8, 8);
+  }
 
-      uint64_t collection () const {
-        return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload() + 8, 8);
-      }
-
-      static uint64_t staticLength () {
-        return 16;
-      }
-  };
+  static uint64_t staticLength() { return 16; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                   read-only accessor for document preface markers
 // -----------------------------------------------------------------------------
-  
-  typedef MarkerAccessorDocumentPreface<MarkerReader> MarkerReaderDocumentPreface;
+
+typedef MarkerAccessorDocumentPreface<MarkerReader> MarkerReaderDocumentPreface;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                  read-write accessor for document preface markers
 // -----------------------------------------------------------------------------
 
-  class MarkerWriterDocumentPreface : public MarkerAccessorDocumentPreface<MarkerWriter> {
+class MarkerWriterDocumentPreface
+    : public MarkerAccessorDocumentPreface<MarkerWriter> {
+ public:
+  MarkerWriterDocumentPreface(uint8_t* begin)
+      : MarkerAccessorDocumentPreface<MarkerWriter>(begin) {}
 
-    public:
+ public:
+  void database(uint64_t id) {
+    MarkerWriter::storeAlignedNumber<uint64_t>(MarkerWriter::payload(), id, 8);
+  }
 
-      MarkerWriterDocumentPreface (uint8_t* begin)
-        : MarkerAccessorDocumentPreface<MarkerWriter>(begin) {
-      }
-
-    public:
-
-      void database (uint64_t id) {
-        MarkerWriter::storeAlignedNumber<uint64_t>(MarkerWriter::payload(), id, 8);
-      }
-
-      void collection (uint64_t id) {
-        MarkerWriter::storeAlignedNumber<uint64_t>(MarkerWriter::payload() + 8, id, 8);
-      }
-  };
+  void collection(uint64_t id) {
+    MarkerWriter::storeAlignedNumber<uint64_t>(MarkerWriter::payload() + 8, id,
+                                               8);
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             generic accessor for document markers
 // -----------------------------------------------------------------------------
 
-  template<typename T>
-  class MarkerAccessorDocument : public T {
-    /* this is a combined marker for documents / edges and deletions.
-       its layout is:
+template <typename T>
+class MarkerAccessorDocument : public T {
+  /* this is a combined marker for documents / edges and deletions.
+     its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       uint64_t        transaction id
-       VersionedVPack  VPack with document value
+     BaseMarker      base (16 or 24 bytes)
+     uint64_t        transaction id
+     VersionedVPack  VPack with document value
 
-       VersionedVPack is one byte for the VPack version, followed
-       by the actual VPack value
-    */
+     VersionedVPack is one byte for the VPack version, followed
+     by the actual VPack value
+  */
 
-    public:
+ public:
+  MarkerAccessorDocument(uint8_t* begin) : T(begin) {}
 
-      MarkerAccessorDocument (uint8_t* begin)
-        : T(begin) {
-      }
+ public:
+  uint64_t transaction() const {
+    return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(),
+                                                     8);
+  }
 
-    public:
+  uint8_t* versionedVPackValue() const { return this->payload() + 8; }
 
-      uint64_t transaction () const {
-        return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(), 8);
-      }
+  uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
 
-      uint8_t* versionedVPackValue () const {
-        return this->payload() + 8;
-      }
-      
-      uint8_t* vPackValue () const {
-        return versionedVPackValue() + 1;
-      }
-      
-      static uint64_t staticLength () {
-        return 8;
-      }
-  };
+  static uint64_t staticLength() { return 8; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                           read-only accessor for document markers
 // -----------------------------------------------------------------------------
-  
-  typedef MarkerAccessorDocument<MarkerReader> MarkerReaderDocument;
+
+typedef MarkerAccessorDocument<MarkerReader> MarkerReaderDocument;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                          read-write accessor for document markers
 // -----------------------------------------------------------------------------
 
-  class MarkerWriterDocument : public MarkerAccessorDocument<MarkerWriter> {
+class MarkerWriterDocument : public MarkerAccessorDocument<MarkerWriter> {
+ public:
+  MarkerWriterDocument(uint8_t* begin)
+      : MarkerAccessorDocument<MarkerWriter>(begin) {}
 
-    public:
-
-      MarkerWriterDocument (uint8_t* begin)
-        : MarkerAccessorDocument<MarkerWriter>(begin) {
-      }
-
-    public:
-
-      void transaction (uint64_t tid) const {
-        MarkerWriter::storeAlignedNumber<uint64_t>(MarkerReader::payload(), tid, 8);
-      }
-  };
+ public:
+  void transaction(uint64_t tid) const {
+    MarkerWriter::storeAlignedNumber<uint64_t>(MarkerReader::payload(), tid, 8);
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                          generic accessor for transaction markers
 // -----------------------------------------------------------------------------
-  
-  template<typename T>
-  class MarkerAccessorTransaction : public T {
-    /* this is a marker accessor for transaction handling.
-       its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       uint64_t        transaction id
-    */
+template <typename T>
+class MarkerAccessorTransaction : public T {
+  /* this is a marker accessor for transaction handling.
+     its layout is:
 
-    public:
+     BaseMarker      base (16 or 24 bytes)
+     uint64_t        transaction id
+  */
 
-      MarkerAccessorTransaction (uint8_t* begin)
-        : T(begin) {
-      }
+ public:
+  MarkerAccessorTransaction(uint8_t* begin) : T(begin) {}
 
-    public:
+ public:
+  uint64_t transaction() const {
+    return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(),
+                                                     8);
+  }
 
-      uint64_t transaction () const {
-        return MarkerReader::readAlignedNumber<uint64_t>(MarkerReader::payload(), 8);
-      }
-      
-      static uint64_t staticLength () {
-        return 0;
-      }
-  };
+  static uint64_t staticLength() { return 0; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                        read-only accessor for transaction markers
 // -----------------------------------------------------------------------------
-  
-  typedef MarkerAccessorTransaction<MarkerReader> MarkerReaderTransaction;
+
+typedef MarkerAccessorTransaction<MarkerReader> MarkerReaderTransaction;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                       read-write accessor for transaction markers
 // -----------------------------------------------------------------------------
-  
-  class MarkerWriterTransaction : public MarkerAccessorTransaction<MarkerWriter> {
-    /* this is a marker accessor for transaction handling.
-       its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       uint64_t        transaction id
-    */
+class MarkerWriterTransaction : public MarkerAccessorTransaction<MarkerWriter> {
+  /* this is a marker accessor for transaction handling.
+     its layout is:
 
-    public:
+     BaseMarker      base (16 or 24 bytes)
+     uint64_t        transaction id
+  */
 
-      MarkerWriterTransaction (uint8_t* begin)
-        : MarkerAccessorTransaction<MarkerWriter>(begin) {
-      }
+ public:
+  MarkerWriterTransaction(uint8_t* begin)
+      : MarkerAccessorTransaction<MarkerWriter>(begin) {}
 
-    public:
+ public:
+  void transaction(uint64_t tid) const {
+    MarkerWriter::storeAlignedNumber<uint64_t>(MarkerReader::payload(), tid, 8);
+  }
+};
 
-      void transaction (uint64_t tid) const {
-        MarkerWriter::storeAlignedNumber<uint64_t>(MarkerReader::payload(), tid, 8);
-      }
-  };
-  
 // -----------------------------------------------------------------------------
 // --SECTION--                           generic accessor for structural markers
 // -----------------------------------------------------------------------------
-  
-  template<typename T>
-  class MarkerAccessorStructural : public T {
-    /* this is a marker accessor for structural data
-       (i.e. collections, indexes, databases)
-       its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       VersionedVPack  VPack with document value
+template <typename T>
+class MarkerAccessorStructural : public T {
+  /* this is a marker accessor for structural data
+     (i.e. collections, indexes, databases)
+     its layout is:
 
-       VersionedVPack is one byte for the VPack version, followed
-       by the actual VPack value
-    */
+     BaseMarker      base (16 or 24 bytes)
+     VersionedVPack  VPack with document value
 
-    public:
+     VersionedVPack is one byte for the VPack version, followed
+     by the actual VPack value
+  */
 
-      MarkerAccessorStructural (uint8_t* begin)
-        : T(begin) {
-      }
+ public:
+  MarkerAccessorStructural(uint8_t* begin) : T(begin) {}
 
-    public:
-      
-      uint8_t* versionedVPackValue () const {
-        return MarkerReader::payload() + 8;
-      }
-      
-      uint8_t* vPackValue () const {
-        return versionedVPackValue() + 1;
-      }
-      
-      static uint64_t staticLength () {
-        return 0;
-      }
-  };
+ public:
+  uint8_t* versionedVPackValue() const { return MarkerReader::payload() + 8; }
+
+  uint8_t* vPackValue() const { return versionedVPackValue() + 1; }
+
+  static uint64_t staticLength() { return 0; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             generic accessor for database markers
 // -----------------------------------------------------------------------------
-  
-  template<typename T>
-  class MarkerAccessorDatabase : public MarkerAccessorStructural<T> {
-    /* this is a marker accessor for database.
-       its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       VersionedVPack  VPack with document value
+template <typename T>
+class MarkerAccessorDatabase : public MarkerAccessorStructural<T> {
+  /* this is a marker accessor for database.
+     its layout is:
 
-       VersionedVPack is one byte for the VPack version, followed
-       by the actual VPack value
-    */
+     BaseMarker      base (16 or 24 bytes)
+     VersionedVPack  VPack with document value
 
-    public:
+     VersionedVPack is one byte for the VPack version, followed
+     by the actual VPack value
+  */
 
-      MarkerAccessorDatabase (uint8_t* begin)
-        : MarkerAccessorStructural<T>(begin) {
-      }
+ public:
+  MarkerAccessorDatabase(uint8_t* begin) : MarkerAccessorStructural<T>(begin) {}
 
-      static uint64_t staticLength () {
-        return 0;
-      }
-  };
+  static uint64_t staticLength() { return 0; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                           read-only accessor for database markers
 // -----------------------------------------------------------------------------
 
-  typedef MarkerAccessorDatabase<MarkerReader> MarkerReaderDatabase;
-  
+typedef MarkerAccessorDatabase<MarkerReader> MarkerReaderDatabase;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                          read-write accessor for database markers
 // -----------------------------------------------------------------------------
-  
-  class MarkerWriterDatabase : public MarkerAccessorDatabase<MarkerWriter> {
-    
-    public:
 
-      MarkerWriterDatabase (uint8_t* begin)
-        : MarkerAccessorDatabase<MarkerWriter>(begin) {
-      }
-    
-  };
+class MarkerWriterDatabase : public MarkerAccessorDatabase<MarkerWriter> {
+ public:
+  MarkerWriterDatabase(uint8_t* begin)
+      : MarkerAccessorDatabase<MarkerWriter>(begin) {}
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                           generic accessor for collection markers
 // -----------------------------------------------------------------------------
-  
-  template<typename T>
-  class MarkerAccessorCollection : public MarkerAccessorStructural<T> {
-    /* this is a marker accessor for collections.
-       its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       VersionedVPack  VPack with more data value
+template <typename T>
+class MarkerAccessorCollection : public MarkerAccessorStructural<T> {
+  /* this is a marker accessor for collections.
+     its layout is:
 
-       VersionedVPack is one byte for the VPack version, followed
-       by the actual VPack value
-    */
+     BaseMarker      base (16 or 24 bytes)
+     VersionedVPack  VPack with more data value
 
-    public:
+     VersionedVPack is one byte for the VPack version, followed
+     by the actual VPack value
+  */
 
-      MarkerAccessorCollection (uint8_t* begin)
-        : MarkerAccessorStructural<T>(begin) {
-      }
+ public:
+  MarkerAccessorCollection(uint8_t* begin)
+      : MarkerAccessorStructural<T>(begin) {}
 
-      static uint64_t staticLength () {
-        return 0;
-      }
-  };
+  static uint64_t staticLength() { return 0; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                         read-only accessor for collection markers
 // -----------------------------------------------------------------------------
 
-  typedef MarkerAccessorCollection<MarkerReader> MarkerReaderCollection;
-  
+typedef MarkerAccessorCollection<MarkerReader> MarkerReaderCollection;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                        read-write accessor for collection markers
 // -----------------------------------------------------------------------------
-  
-  class MarkerWriterCollection : public MarkerAccessorCollection<MarkerWriter> {
-    
-    public:
 
-      MarkerWriterCollection (uint8_t* begin)
-        : MarkerAccessorCollection<MarkerWriter>(begin) {
-      }
-    
-  };
+class MarkerWriterCollection : public MarkerAccessorCollection<MarkerWriter> {
+ public:
+  MarkerWriterCollection(uint8_t* begin)
+      : MarkerAccessorCollection<MarkerWriter>(begin) {}
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                generic accessor for index markers
 // -----------------------------------------------------------------------------
-  
-  template<typename T>
-  class MarkerAccessorIndex : public MarkerAccessorStructural<T> {
-    /* this is a marker accessor for indexes.
-       its layout is:
 
-       BaseMarker      base (16 or 24 bytes)
-       uint64_t        transaction id
-    */
+template <typename T>
+class MarkerAccessorIndex : public MarkerAccessorStructural<T> {
+  /* this is a marker accessor for indexes.
+     its layout is:
 
-    public:
+     BaseMarker      base (16 or 24 bytes)
+     uint64_t        transaction id
+  */
 
-      MarkerAccessorIndex (uint8_t* begin)
-        : MarkerAccessorStructural<T>(begin) {
-      }
+ public:
+  MarkerAccessorIndex(uint8_t* begin) : MarkerAccessorStructural<T>(begin) {}
 
-      static uint64_t staticLength () {
-        return 0;
-      }
-  };
+  static uint64_t staticLength() { return 0; }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              read-only accessor for index markers
 // -----------------------------------------------------------------------------
-  
-  typedef MarkerAccessorIndex<MarkerReader> MarkerReaderIndex;
+
+typedef MarkerAccessorIndex<MarkerReader> MarkerReaderIndex;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             read-write accessor for index markers
 // -----------------------------------------------------------------------------
-  
-  class MarkerWriterIndex : public MarkerReaderIndex {
-    
-    public:
 
-      MarkerWriterIndex (uint8_t* begin)
-        : MarkerReaderIndex(begin) {
-      }
-    
-  };
-  
+class MarkerWriterIndex : public MarkerReaderIndex {
+ public:
+  MarkerWriterIndex(uint8_t* begin) : MarkerReaderIndex(begin) {}
+};
 }
 
-std::ostream& operator<< (std::ostream&, arangodb::MarkerReader const*);
+std::ostream& operator<<(std::ostream&, arangodb::MarkerReader const*);
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReader const& marker) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReader const& marker) {
   return operator<<(stream, &marker);
 }
 
-std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderMeta const*);
+std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderMeta const*);
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderMeta const& marker) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderMeta const& marker) {
   return operator<<(stream, &marker);
 }
 
-std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderDocumentPreface const*);
+std::ostream& operator<<(std::ostream&,
+                         arangodb::MarkerReaderDocumentPreface const*);
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocumentPreface const& marker) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderDocumentPreface const& marker) {
   return operator<<(stream, &marker);
 }
 
-std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderDocument const*);
+std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderDocument const*);
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDocument const& marker) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderDocument const& marker) {
   return operator<<(stream, &marker);
 }
 
-std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderDatabase const*);
+std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderDatabase const*);
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderDatabase const& marker) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderDatabase const& marker) {
   return operator<<(stream, &marker);
 }
 
-std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderCollection const*);
+std::ostream& operator<<(std::ostream&,
+                         arangodb::MarkerReaderCollection const*);
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderCollection const& marker) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderCollection const& marker) {
   return operator<<(stream, &marker);
 }
 
-std::ostream& operator<< (std::ostream&, arangodb::MarkerReaderIndex const*);
+std::ostream& operator<<(std::ostream&, arangodb::MarkerReaderIndex const*);
 
-std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderIndex const& marker) {
+std::ostream& operator<<(std::ostream& stream,
+                         arangodb::MarkerReaderIndex const& marker) {
   return operator<<(stream, &marker);
 }
 
@@ -749,5 +657,6 @@ std::ostream& operator<< (std::ostream& stream, arangodb::MarkerReaderIndex cons
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

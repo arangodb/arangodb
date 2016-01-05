@@ -35,8 +35,8 @@
 #include "VocBase/vocbase.h"
 
 namespace triagens {
-  namespace arango {
-    class CollectionNameResolver;
+namespace arango {
+class CollectionNameResolver;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class IndexIterator
@@ -46,49 +46,43 @@ namespace triagens {
 /// @brief context for an index iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct IndexIteratorContext {
-      IndexIteratorContext (TRI_vocbase_t*, CollectionNameResolver*);
-      
-      explicit IndexIteratorContext (TRI_vocbase_t*);
-      
-      ~IndexIteratorContext ();
+struct IndexIteratorContext {
+  IndexIteratorContext(TRI_vocbase_t*, CollectionNameResolver*);
 
-      CollectionNameResolver const* getResolver () const;
+  explicit IndexIteratorContext(TRI_vocbase_t*);
 
-      bool isCluster () const;
+  ~IndexIteratorContext();
 
-      int resolveId (char const*,
-                     TRI_voc_cid_t&, 
-                     char const*&) const;
+  CollectionNameResolver const* getResolver() const;
 
-      TRI_vocbase_t* vocbase;
-      mutable CollectionNameResolver const* resolver;
-      bool ownsResolver;
-    };
+  bool isCluster() const;
+
+  int resolveId(char const*, TRI_voc_cid_t&, char const*&) const;
+
+  TRI_vocbase_t* vocbase;
+  mutable CollectionNameResolver const* resolver;
+  bool ownsResolver;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a base class to iterate over the index. An iterator is requested 
+/// @brief a base class to iterate over the index. An iterator is requested
 /// at the index itself
 ////////////////////////////////////////////////////////////////////////////////
 
-    class IndexIterator {
+class IndexIterator {
+ public:
+  IndexIterator(IndexIterator const&) = delete;
+  IndexIterator& operator=(IndexIterator const&) = delete;
 
-      public:
+  IndexIterator() {}
 
-        IndexIterator (IndexIterator const&) = delete;
-        IndexIterator& operator= (IndexIterator const&) = delete;
-        
-        IndexIterator () {
-        }
-        
-        virtual ~IndexIterator ();
+  virtual ~IndexIterator();
 
-        virtual TRI_doc_mptr_t* next ();
+  virtual TRI_doc_mptr_t* next();
 
-        virtual void reset ();
-    };
-
-  }
+  virtual void reset();
+};
+}
 }
 
 #endif
@@ -99,5 +93,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

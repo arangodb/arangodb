@@ -56,16 +56,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-  typedef struct TRI_socket_s {
-    int fileDescriptor;
-    SOCKET fileHandle;
-  } TRI_socket_t;
+typedef struct TRI_socket_s {
+  int fileDescriptor;
+  SOCKET fileHandle;
+} TRI_socket_t;
 #else
-  typedef struct TRI_socket_s {
-    int fileDescriptor;
-  } TRI_socket_t;
+typedef struct TRI_socket_s { int fileDescriptor; } TRI_socket_t;
 #endif
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -75,10 +72,10 @@
 /// @brief socket abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_socket_t TRI_socket (int domain, int type, int protocol) {
+static inline TRI_socket_t TRI_socket(int domain, int type, int protocol) {
   TRI_socket_t res;
 #ifdef _WIN32
-  res.fileHandle     = socket(domain, type, protocol);
+  res.fileHandle = socket(domain, type, protocol);
   res.fileDescriptor = -1;
 #else
   res.fileDescriptor = socket(domain, type, protocol);
@@ -90,7 +87,7 @@ static inline TRI_socket_t TRI_socket (int domain, int type, int protocol) {
 /// @brief listen abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_listen (TRI_socket_t s, int backlog) {
+static inline int TRI_listen(TRI_socket_t s, int backlog) {
 #ifdef _WIN32
   return listen(s.fileHandle, backlog);
 #else
@@ -102,11 +99,11 @@ static inline int TRI_listen (TRI_socket_t s, int backlog) {
 /// @brief accept abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_socket_t TRI_accept (TRI_socket_t s, struct sockaddr* address,
-                                socklen_t* address_len) {
+static inline TRI_socket_t TRI_accept(TRI_socket_t s, struct sockaddr* address,
+                                      socklen_t* address_len) {
   TRI_socket_t res;
 #ifdef _WIN32
-  res.fileHandle     = accept(s.fileHandle, address, address_len);
+  res.fileHandle = accept(s.fileHandle, address, address_len);
   res.fileDescriptor = -1;
 #else
   res.fileDescriptor = accept(s.fileDescriptor, address, address_len);
@@ -118,8 +115,8 @@ static inline TRI_socket_t TRI_accept (TRI_socket_t s, struct sockaddr* address,
 /// @brief bind abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_bind (TRI_socket_t s, const struct sockaddr* address,
-              int addr_len) {
+static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
+                           int addr_len) {
 #ifdef _WIN32
   return bind(s.fileHandle, address, addr_len);
 #else
@@ -131,7 +128,8 @@ static inline int TRI_bind (TRI_socket_t s, const struct sockaddr* address,
 /// @brief connect abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_connect (TRI_socket_t s, const struct sockaddr *address, int addr_len) {
+static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
+                              int addr_len) {
 #ifdef _WIN32
   return connect(s.fileHandle, address, addr_len);
 #else
@@ -143,10 +141,10 @@ static inline int TRI_connect (TRI_socket_t s, const struct sockaddr *address, i
 /// @brief send abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline int TRI_send (TRI_socket_t s, const void* buffer, size_t length,
-                     int flags) {
+static inline int TRI_send(TRI_socket_t s, const void* buffer, size_t length,
+                           int flags) {
 #ifdef _WIN32
-  return send(s.fileHandle, (char*) buffer, (int) length, flags);
+  return send(s.fileHandle, (char*)buffer, (int)length, flags);
 #else
   return send(s.fileDescriptor, buffer, length, flags);
 #endif
@@ -157,13 +155,13 @@ static inline int TRI_send (TRI_socket_t s, const void* buffer, size_t length,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr,
-                            int* len) {
+static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr,
+                                  int* len) {
   return getsockname(s.fileHandle, addr, len);
 }
 #else
-static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr,
-                            socklen_t* len) {
+static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr,
+                                  socklen_t* len) {
   return getsockname(s.fileDescriptor, addr, len);
 }
 #endif
@@ -173,13 +171,13 @@ static inline int TRI_getsockname (TRI_socket_t s, struct sockaddr* addr,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_getsockopt (TRI_socket_t s, int level, int optname,
-                           void* optval, socklen_t* optlen) {
-  return getsockopt(s.fileHandle, level, optname, (char*) optval, optlen);
+static inline int TRI_getsockopt(TRI_socket_t s, int level, int optname,
+                                 void* optval, socklen_t* optlen) {
+  return getsockopt(s.fileHandle, level, optname, (char*)optval, optlen);
 }
 #else
-static inline int TRI_getsockopt (TRI_socket_t s, int level, int optname,
-                           void* optval, socklen_t* optlen) {
+static inline int TRI_getsockopt(TRI_socket_t s, int level, int optname,
+                                 void* optval, socklen_t* optlen) {
   return getsockopt(s.fileDescriptor, level, optname, optval, optlen);
 }
 #endif
@@ -189,44 +187,45 @@ static inline int TRI_getsockopt (TRI_socket_t s, int level, int optname,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline int TRI_setsockopt (TRI_socket_t s, int level, int optname,
-                           const void* optval, int optlen) {
-  return setsockopt(s.fileHandle, level, optname, (const char*) optval, optlen);
+static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
+                                 const void* optval, int optlen) {
+  return setsockopt(s.fileHandle, level, optname, (const char*)optval, optlen);
 }
 #else
-static inline int TRI_setsockopt (TRI_socket_t s, int level, int optname,
-                           const void* optval, socklen_t optlen) {
+static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
+                                 const void* optval, socklen_t optlen) {
   return setsockopt(s.fileDescriptor, level, optname, optval, optlen);
 }
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setsockopt abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline bool TRI_setsockopttimeout (TRI_socket_t s, double timeout) {
-  DWORD to = (DWORD) timeout * 1000;
+static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
+  DWORD to = (DWORD)timeout * 1000;
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&to, sizeof(to)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&to,
+                     sizeof(to)) != 0) {
     return false;
   }
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)&to, sizeof(to)) != 0) {
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)&to,
+                     sizeof(to)) != 0) {
     return false;
   }
   return true;
 }
 #else
-static inline bool TRI_setsockopttimeout (TRI_socket_t s, double timeout) {
+static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
   struct timeval tv;
 
   // shut up Valgrind
   memset(&tv, 0, sizeof(tv));
-  tv.tv_sec = (long) timeout;
-  tv.tv_usec = (long) ((timeout - (double) tv.tv_sec) * 1000000.0);
- 
+  tv.tv_sec = (long)timeout;
+  tv.tv_usec = (long)((timeout - (double)tv.tv_sec) * 1000000.0);
+
   if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
     return false;
   }
@@ -242,7 +241,7 @@ static inline bool TRI_setsockopttimeout (TRI_socket_t s, double timeout) {
 /// @brief checks whether or not a socket is valid
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_isvalidsocket (TRI_socket_t s) {
+static inline bool TRI_isvalidsocket(TRI_socket_t s) {
 #ifdef _WIN32
   return s.fileHandle != TRI_INVALID_SOCKET;
 #else
@@ -254,9 +253,9 @@ static inline bool TRI_isvalidsocket (TRI_socket_t s) {
 /// @brief invalidates a socket
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void TRI_invalidatesocket (TRI_socket_t* s) {
+static inline void TRI_invalidatesocket(TRI_socket_t* s) {
 #ifdef _WIN32
-  s->fileHandle     = TRI_INVALID_SOCKET;
+  s->fileHandle = TRI_INVALID_SOCKET;
   s->fileDescriptor = -1;
 #else
   s->fileDescriptor = TRI_INVALID_SOCKET;
@@ -271,11 +270,11 @@ static inline void TRI_invalidatesocket (TRI_socket_t* s) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-static inline SOCKET TRI_get_fd_or_handle_of_socket (TRI_socket_t s) {
+static inline SOCKET TRI_get_fd_or_handle_of_socket(TRI_socket_t s) {
   return s.fileHandle;
 }
 #else
-static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t s) {
+static inline int TRI_get_fd_or_handle_of_socket(TRI_socket_t s) {
   return s.fileDescriptor;
 }
 #endif
@@ -284,23 +283,25 @@ static inline int TRI_get_fd_or_handle_of_socket (TRI_socket_t s) {
 /// @brief closes an open socket
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_closesocket (TRI_socket_t);
+int TRI_closesocket(TRI_socket_t);
 
-int TRI_readsocket (TRI_socket_t, void* buffer, size_t numBytesToRead, int flags);
+int TRI_readsocket(TRI_socket_t, void* buffer, size_t numBytesToRead,
+                   int flags);
 
-int TRI_writesocket (TRI_socket_t, const void* buffer, size_t numBytesToWrite, int flags);
+int TRI_writesocket(TRI_socket_t, const void* buffer, size_t numBytesToWrite,
+                    int flags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SetNonBlockingSocket (TRI_socket_t);
+bool TRI_SetNonBlockingSocket(TRI_socket_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets close-on-exec for a socket
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SetCloseOnExecSocket (TRI_socket_t);
+bool TRI_SetCloseOnExecSocket(TRI_socket_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translates for IPv4 address
@@ -308,7 +309,7 @@ bool TRI_SetCloseOnExecSocket (TRI_socket_t);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton4 (char const* src, unsigned char* dst);
+int TRI_InetPton4(char const* src, unsigned char* dst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translates for IPv6 address
@@ -316,7 +317,7 @@ int TRI_InetPton4 (char const* src, unsigned char* dst);
 /// This code is copyright Internet Systems Consortium, Inc. ("ISC")
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InetPton6 (char const* src, unsigned char* dst);
+int TRI_InetPton6(char const* src, unsigned char* dst);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
@@ -334,5 +335,6 @@ int TRI_InetPton6 (char const* src, unsigned char* dst);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

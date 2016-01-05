@@ -39,84 +39,80 @@
 struct TRI_transaction_s;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class TransactionContext {
+class TransactionContext {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                          class
+  // TransactionContext
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class TransactionContext
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  TransactionContext(TransactionContext const&) = delete;
+  TransactionContext& operator=(TransactionContext const&) = delete;
 
-      public:
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the context
+  ////////////////////////////////////////////////////////////////////////////////
 
-        TransactionContext (TransactionContext const&) = delete;
-        TransactionContext& operator= (TransactionContext const&) = delete;
+  TransactionContext();
 
-      protected:
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the context
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the context
-////////////////////////////////////////////////////////////////////////////////
+  virtual ~TransactionContext();
 
-        TransactionContext ();
-      
-      public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the context
-////////////////////////////////////////////////////////////////////////////////
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the resolver
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~TransactionContext ();
+  virtual CollectionNameResolver const* getResolver() const = 0;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the vpack options
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  virtual VPackOptions const* getVPackOptions() const = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the resolver
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get parent transaction (if any)
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual CollectionNameResolver const* getResolver () const = 0;
+  virtual struct TRI_transaction_s* getParentTransaction() const = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the vpack options
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the transaction is embeddable
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual VPackOptions const* getVPackOptions () const = 0;
+  virtual bool isEmbeddable() const = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get parent transaction (if any)
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief register the transaction in the context
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual struct TRI_transaction_s* getParentTransaction () const = 0;
+  virtual int registerTransaction(struct TRI_transaction_s*) = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is embeddable
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unregister the transaction from the context
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool isEmbeddable () const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register the transaction in the context
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual int registerTransaction (struct TRI_transaction_s*) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister the transaction from the context
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual int unregisterTransaction () = 0;
-
-    };
-
-  }
+  virtual int unregisterTransaction() = 0;
+};
+}
 }
 
 #endif
@@ -127,5 +123,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

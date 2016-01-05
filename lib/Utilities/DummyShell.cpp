@@ -48,17 +48,14 @@ using namespace arangodb;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-DummyShell::DummyShell (std::string const& history, Completer* completer)
-  : ShellBase(history, completer) {
-}
+DummyShell::DummyShell(std::string const& history, Completer* completer)
+    : ShellBase(history, completer) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-DummyShell::~DummyShell () {
-  close();
-}
+DummyShell::~DummyShell() { close(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ShellBase methods
@@ -68,7 +65,7 @@ DummyShell::~DummyShell () {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DummyShell::open (bool) {
+bool DummyShell::open(bool) {
   _state = STATE_OPENED;
   return true;
 }
@@ -77,7 +74,7 @@ bool DummyShell::open (bool) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DummyShell::close () {
+bool DummyShell::close() {
   _state = STATE_CLOSED;
   return true;
 }
@@ -86,22 +83,19 @@ bool DummyShell::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void DummyShell::addHistory (const string&) {
-}
+void DummyShell::addHistory(const string&) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DummyShell::writeHistory () {
-  return true;
-}
+bool DummyShell::writeHistory() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string DummyShell::getLine (const std::string& prompt, bool& eof) {
+string DummyShell::getLine(const std::string& prompt, bool& eof) {
   std::cout << prompt << flush;
 
   string line;

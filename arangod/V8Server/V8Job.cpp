@@ -49,19 +49,16 @@ using namespace triagens::arango;
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Job::V8Job (TRI_vocbase_t* vocbase,
-              ApplicationV8* v8Dealer,
-              std::string const& command,
-              TRI_json_t const* parameters,
-              bool allowUseDatabase)
-  : Job("V8 Job"),
-    _vocbase(vocbase),
-    _v8Dealer(v8Dealer),
-    _command(command),
-    _parameters(nullptr),
-    _canceled(false),
-    _allowUseDatabase(allowUseDatabase) {
-
+V8Job::V8Job(TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
+             std::string const& command, TRI_json_t const* parameters,
+             bool allowUseDatabase)
+    : Job("V8 Job"),
+      _vocbase(vocbase),
+      _v8Dealer(v8Dealer),
+      _command(command),
+      _parameters(nullptr),
+      _canceled(false),
+      _allowUseDatabase(allowUseDatabase) {
   if (parameters != nullptr) {
     // create our own copy of the parameters
     _parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
@@ -72,7 +69,7 @@ V8Job::V8Job (TRI_vocbase_t* vocbase,
 /// @brief destroys a V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Job::~V8Job () {
+V8Job::~V8Job() {
   if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
   }
@@ -86,12 +83,13 @@ V8Job::~V8Job () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Job::work () {
+void V8Job::work() {
   if (_canceled) {
     return;
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, _allowUseDatabase);
+  ApplicationV8::V8Context* context =
+      _v8Dealer->enterContext(_vocbase, _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -105,22 +103,24 @@ void V8Job::work () {
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     auto current = isolate->GetCurrentContext()->Global();
-    auto ctor = v8::Local<v8::Function>::Cast(current->Get(TRI_V8_ASCII_STRING("Function")));
+    auto ctor = v8::Local<v8::Function>::Cast(
+        current->Get(TRI_V8_ASCII_STRING("Function")));
 
-    // Invoke Function constructor to create function with the given body and no arguments
-    v8::Handle<v8::Value> args[2] = { TRI_V8_ASCII_STRING("params"), TRI_V8_STD_STRING(_command) };
+    // Invoke Function constructor to create function with the given body and no
+    // arguments
+    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
+                                     TRI_V8_STD_STRING(_command)};
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
-    if (! action.IsEmpty()) {
+    if (!action.IsEmpty()) {
       // only go in here if action is a function
       v8::Handle<v8::Value> fArgs;
 
       if (_parameters != nullptr) {
         fArgs = TRI_ObjectJson(isolate, _parameters);
-      }
-      else {
+      } else {
         fArgs = v8::Undefined(isolate);
       }
 
@@ -133,22 +133,21 @@ void V8Job::work () {
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
             TRI_LogV8Exception(isolate, &tryCatch);
-          }
-          else {
+          } else {
             TRI_GET_GLOBALS();
 
             v8g->_canceled = true;
-            LOG_WARNING("caught non-catchable exception (aka termination) in job");
+            LOG_WARNING(
+                "caught non-catchable exception (aka termination) in job");
           }
         }
-      }
-      catch (triagens::basics::Exception const& ex) {
-        LOG_ERROR("caught exception in V8 job: %s %s", TRI_errno_string(ex.code()), ex.what());
-      }
-      catch (std::bad_alloc const&) {
-        LOG_ERROR("caught exception in V8 job: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
-      }
-      catch (...) {
+      } catch (triagens::basics::Exception const& ex) {
+        LOG_ERROR("caught exception in V8 job: %s %s",
+                  TRI_errno_string(ex.code()), ex.what());
+      } catch (std::bad_alloc const&) {
+        LOG_ERROR("caught exception in V8 job: %s",
+                  TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+      } catch (...) {
         LOG_ERROR("caught unknown exception in V8 job");
       }
     }
@@ -161,7 +160,7 @@ void V8Job::work () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8Job::cancel () {
+bool V8Job::cancel() {
   _canceled = true;
   return true;
 }
@@ -170,7 +169,7 @@ bool V8Job::cancel () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Job::cleanup (DispatcherQueue* queue) {
+void V8Job::cleanup(DispatcherQueue* queue) {
   queue->removeJob(this);
   delete this;
 }
@@ -179,8 +178,7 @@ void V8Job::cleanup (DispatcherQueue* queue) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Job::handleError (Exception const& ex) {
-}
+void V8Job::handleError(Exception const& ex) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -188,5 +186,6 @@ void V8Job::handleError (Exception const& ex) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

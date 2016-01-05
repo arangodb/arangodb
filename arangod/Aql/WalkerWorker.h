@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursive execution plan walker
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -31,97 +31,86 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<class T> class WalkerWorker {
+template <class T>
+class WalkerWorker {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  WalkerWorker() {}
 
-      public:
+  virtual ~WalkerWorker() {}
 
-        WalkerWorker () {
-        }
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-        virtual ~WalkerWorker () {
-        }
+  virtual bool before(T*) {
+    return false;  // true to abort the whole walking process
+  }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  virtual void after(T*) {}
 
-        virtual bool before (T*) {
-          return false; // true to abort the whole walking process
-        }
+  virtual bool enterSubquery(T*, T*) {  // super, sub
+    return true;
+  }
 
-        virtual void after (T*) {
-        }
-
-        virtual bool enterSubquery (T*, T*) { // super, sub
-          return true;
-        }
-
-        virtual void leaveSubquery (T*, // super,
-                                    T*  // sub
-                                   ) {
-        }
-
+  virtual void leaveSubquery(T*,  // super,
+                             T*   // sub
+                             ) {}
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
-        bool done (T* en) {
-          // make sure a node is only processed once
-          if (_done.find(en) == _done.end()) {
-            _done.emplace(en);
-            return false;
-          }
+  bool done(T* en) {
+    // make sure a node is only processed once
+    if (_done.find(en) == _done.end()) {
+      _done.emplace(en);
+      return false;
+    }
 
-          TRI_ASSERT(false);
+    TRI_ASSERT(false);
 
-          return true;
-        }
+    return true;
+  }
 
-        void reset () {
-          _done.clear();
-        }
+  void reset() { _done.clear(); }
 
 #else
 
-        // this is a no-op in non-failure mode
-        bool done (T*) {
-          return false;
-        }
+  // this is a no-op in non-failure mode
+  bool done(T*) { return false; }
 
-        // this is a no-op in non-failure mode
-        void reset () {
-        }
+  // this is a no-op in non-failure mode
+  void reset() {}
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-      private:
-
+ private:
 #ifdef TRI_ENABLE_FAILURE_TESTS
-        std::unordered_set<T*> _done;
+  std::unordered_set<T*> _done;
 #endif
-
-    };
-
-  }
-} 
+};
+}
+}
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-

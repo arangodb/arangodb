@@ -45,13 +45,12 @@ class VocShaper;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shape_access_s {
-  TRI_shape_sid_t _sid;                 // shaped identifier of the shape we are looking at
-  TRI_shape_pid_t _pid;                 // path identifier of the attribute path
+  TRI_shape_sid_t _sid;  // shaped identifier of the shape we are looking at
+  TRI_shape_pid_t _pid;  // path identifier of the attribute path
 
-  TRI_shape_sid_t _resultSid;           // resulting shape
-  void const** _code;                   // bytecode
-}
-TRI_shape_access_t;
+  TRI_shape_sid_t _resultSid;  // resulting shape
+  void const** _code;          // bytecode
+} TRI_shape_access_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -61,29 +60,28 @@ TRI_shape_access_t;
 /// @brief free a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeShapeAccessor (TRI_shape_access_t*);
+void TRI_FreeShapeAccessor(TRI_shape_access_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_access_t* TRI_ShapeAccessor (VocShaper* shaper,
-                                       TRI_shape_sid_t sid,
-                                       TRI_shape_pid_t pid);
+TRI_shape_access_t* TRI_ShapeAccessor(VocShaper* shaper, TRI_shape_sid_t sid,
+                                      TRI_shape_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a shape accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteShapeAccessor (TRI_shape_access_t const* accessor,
-                               TRI_shaped_json_t const* shaped,
-                               TRI_shaped_json_t* result);
+bool TRI_ExecuteShapeAccessor(TRI_shape_access_t const* accessor,
+                              TRI_shaped_json_t const* shaped,
+                              TRI_shaped_json_t* result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PrintShapeAccessor (TRI_shape_access_t*);
+void TRI_PrintShapeAccessor(TRI_shape_access_t*);
 
 #endif
 
@@ -93,5 +91,6 @@ void TRI_PrintShapeAccessor (TRI_shape_access_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

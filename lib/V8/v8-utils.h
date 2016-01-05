@@ -50,43 +50,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 class TRI_Utf8ValueNFC {
+ public:
+  TRI_Utf8ValueNFC(TRI_memory_zone_t*, v8::Handle<v8::Value> const);
 
-  public:
+  ~TRI_Utf8ValueNFC();
 
-    TRI_Utf8ValueNFC (TRI_memory_zone_t*,
-                      v8::Handle<v8::Value> const);
+  // Disallow copying and assigning.
+  TRI_Utf8ValueNFC(TRI_Utf8ValueNFC const&) = delete;
+  TRI_Utf8ValueNFC& operator=(TRI_Utf8ValueNFC const&) = delete;
 
-    ~TRI_Utf8ValueNFC ();
+  inline char* operator*() { return _str; }
 
-    // Disallow copying and assigning.
-    TRI_Utf8ValueNFC (TRI_Utf8ValueNFC const&) = delete;
-    TRI_Utf8ValueNFC& operator= (TRI_Utf8ValueNFC const&) = delete;
+  inline const char* operator*() const { return _str; }
 
-    inline char* operator* () {
-      return _str;
-    }
+  inline size_t length() const { return _length; }
 
-    inline const char* operator* () const {
-      return _str;
-    }
+  char* steal() {
+    char* tmp = _str;
+    _str = nullptr;
+    return tmp;
+  }
 
-    inline size_t length () const {
-      return _length;
-    }
+ private:
+  char* _str;
 
-    char* steal () {
-      char* tmp = _str;
-      _str = nullptr;
-      return tmp;
-    }
+  size_t _length;
 
-  private:
-
-    char* _str;
-
-    size_t _length;
-
-    TRI_memory_zone_t* _memoryZone;
+  TRI_memory_zone_t* _memoryZone;
 };
 
 // -----------------------------------------------------------------------------
@@ -119,8 +109,8 @@ static int const SLOT_CLASS = 1;
 /// @brief unwraps a C++ class given a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
 
-template<class T>
-static T* TRI_UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
+template <class T>
+static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return nullptr;
   }
@@ -129,107 +119,102 @@ static T* TRI_UnwrapClass (v8::Handle<v8::Object> obj, int32_t type) {
     return nullptr;
   }
 
-  return static_cast<T*>(v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
+  return static_cast<T*>(v8::Handle<v8::External>::Cast(
+                             obj->GetInternalField(SLOT_CLASS))->Value());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_StringifyV8Exception (v8::Isolate* isolate, v8::TryCatch*);
+std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints an exception and stacktrace
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogV8Exception (v8::Isolate* isolate,
-                         v8::TryCatch*);
+void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile (v8::Isolate* isolate, char const*);
+bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads all files from a directory into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptDirectory (v8::Isolate* isolate, char const*);
+bool TRI_ExecuteGlobalJavaScriptDirectory(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes all files from a directory in a local context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteLocalJavaScriptDirectory (v8::Isolate* isolate, char const*);
+bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile (v8::Isolate* isolate, char const*);
+bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Isolate* isolate,
-                                                   v8::Handle<v8::Context> context,
-                                                   v8::Handle<v8::String> const source,
-                                                   v8::Handle<v8::String> const name,
-                                                   bool printResult);
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
+    v8::Isolate* isolate, v8::Handle<v8::Context> context,
+    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
+    bool printResult);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on error number only
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject (v8::Isolate* isolate, int errorNumber);
+void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, using supplied text
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject (v8::Isolate* isolate,
-                            int errorNumber,
-                            std::string const& message);
+void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
+                           std::string const& message);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject (v8::Isolate* isolate,
-                            int errorNumber,
-                            std::string const& message,
-                            bool autoPrepend);
+void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
+                           std::string const& message, bool autoPrepend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_normalize_V8_Obj (const v8::FunctionCallbackInfo<v8::Value>& args,
-                           v8::Handle<v8::Value> obj);
+void TRI_normalize_V8_Obj(const v8::FunctionCallbackInfo<v8::Value>& args,
+                          v8::Handle<v8::Value> obj);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief run the V8 garbage collection for at most a specifiable amount of 
+/// @brief run the V8 garbage collection for at most a specifiable amount of
 /// time
 ////////////////////////////////////////////////////////////////////////////////
-   
-void TRI_RunGarbageCollectionV8 (v8::Isolate*, double);
+
+void TRI_RunGarbageCollectionV8(v8::Isolate*, double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear the instance-local cache of wrapped objects
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClearObjectCacheV8 (v8::Isolate*);
+void TRI_ClearObjectCacheV8(v8::Isolate*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Utils (v8::Isolate* isolate,
-                      v8::Handle<v8::Context>,
-                      std::string const& startupPath,
-                      std::string const& modules);
+void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context>,
+                     std::string const& startupPath,
+                     std::string const& modules);
 
 #endif
 
@@ -239,5 +224,6 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

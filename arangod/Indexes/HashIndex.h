@@ -48,14 +48,15 @@ struct TRI_json_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_hash_index_search_value_t {
-  TRI_hash_index_search_value_t ();
-  ~TRI_hash_index_search_value_t ();
+  TRI_hash_index_search_value_t();
+  ~TRI_hash_index_search_value_t();
 
-  TRI_hash_index_search_value_t (TRI_hash_index_search_value_t const&) = delete;
-  TRI_hash_index_search_value_t& operator= (TRI_hash_index_search_value_t const&) = delete;
+  TRI_hash_index_search_value_t(TRI_hash_index_search_value_t const&) = delete;
+  TRI_hash_index_search_value_t& operator=(
+      TRI_hash_index_search_value_t const&) = delete;
 
-  void reserve (size_t);
-  void destroy ();
+  void reserve(size_t);
+  void destroy();
 
   size_t _length;
   struct TRI_shaped_json_s* _values;
@@ -66,342 +67,303 @@ struct TRI_hash_index_search_value_t {
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace aql {
-    class SortCondition;
+namespace aql {
+class SortCondition;
+}
+namespace arango {
+class Transaction;
+
+class HashIndexIterator final : public IndexIterator {
+ public:
+  HashIndexIterator(triagens::arango::Transaction* trx, HashIndex const* index,
+                    std::vector<TRI_hash_index_search_value_t*>& keys)
+      : _trx(trx),
+        _index(index),
+        _keys(keys),
+        _position(0),
+        _buffer(),
+        _posInBuffer(0) {}
+
+  ~HashIndexIterator() {
+    for (auto& it : _keys) {
+      delete it;
+    }
   }
-  namespace arango {
-    class Transaction;
 
-    class HashIndexIterator final : public IndexIterator {
+  TRI_doc_mptr_t* next() override;
 
-      public:
+  void reset() override;
 
-        HashIndexIterator (triagens::arango::Transaction* trx,
-                           HashIndex const* index,
-                           std::vector<TRI_hash_index_search_value_t*>& keys)
-        : _trx(trx),
-          _index(index),
-          _keys(keys),
-          _position(0),
-          _buffer(),
-          _posInBuffer(0) {
-        }
+ private:
+  triagens::arango::Transaction* _trx;
+  HashIndex const* _index;
+  std::vector<TRI_hash_index_search_value_t*> _keys;
+  size_t _position;
+  std::vector<TRI_doc_mptr_t*> _buffer;
+  size_t _posInBuffer;
+};
 
-        ~HashIndexIterator() {
-          for (auto& it : _keys) {
-            delete it;
-          }
-        }
+class HashIndex final : public PathBasedIndex {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-        TRI_doc_mptr_t* next () override;
+ public:
+  HashIndex() = delete;
 
-        void reset () override;
+  HashIndex(TRI_idx_iid_t, struct TRI_document_collection_t*,
+            std::vector<std::vector<triagens::basics::AttributeName>> const&,
+            bool, bool);
 
-      private:
+  explicit HashIndex(struct TRI_json_t const*);
 
-        triagens::arango::Transaction*               _trx;
-        HashIndex const*                             _index;
-        std::vector<TRI_hash_index_search_value_t*>  _keys;
-        size_t                                       _position;
-        std::vector<TRI_doc_mptr_t*>                 _buffer;
-        size_t                                       _posInBuffer;
+  ~HashIndex();
 
-    };
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-    class HashIndex final : public PathBasedIndex {
+ public:
+  IndexType type() const override final {
+    return Index::TRI_IDX_TYPE_HASH_INDEX;
+  }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  bool isSorted() const override final { return false; }
 
-      public:
+  bool hasSelectivityEstimate() const override final { return true; }
 
-        HashIndex () = delete;
+  double selectivityEstimate() const override final;
 
-        HashIndex (TRI_idx_iid_t,
-                   struct TRI_document_collection_t*,
-                   std::vector<std::vector<triagens::basics::AttributeName>> const&,
-                   bool,
+  size_t memory() const override final;
+
+  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+
+  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int batchInsert(triagens::arango::Transaction*,
+                  std::vector<TRI_doc_mptr_t const*> const*,
+                  size_t) override final;
+
+  int sizeHint(triagens::arango::Transaction*, size_t) override final;
+
+  bool hasBatchInsert() const override final { return true; }
+
+  std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths()
+      const {
+    return _paths;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief locates entries in the hash index given shaped json objects
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int lookup(triagens::arango::Transaction*, TRI_hash_index_search_value_t*,
+             std::vector<TRI_doc_mptr_t*>&) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief locates entries in the hash index given shaped json objects
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int lookup(triagens::arango::Transaction*, TRI_hash_index_search_value_t*,
+             std::vector<TRI_doc_mptr_copy_t>&, TRI_index_element_t*&,
+             size_t batchSize) const;
+
+  bool supportsFilterCondition(triagens::aql::AstNode const*,
+                               triagens::aql::Variable const*, size_t, size_t&,
+                               double&) const override;
+
+  IndexIterator* iteratorForCondition(triagens::arango::Transaction*,
+                                      IndexIteratorContext*,
+                                      triagens::aql::Ast*,
+                                      triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      bool) const override;
+
+  triagens::aql::AstNode* specializeCondition(
+      triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
+
+ private:
+  int insertUnique(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
                    bool);
-        
-        explicit HashIndex (struct TRI_json_t const*);
 
-        ~HashIndex ();
+  int batchInsertUnique(triagens::arango::Transaction*,
+                        std::vector<TRI_doc_mptr_t const*> const*, size_t);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  int insertMulti(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+                  bool);
 
-      public:
-        
-        IndexType type () const override final {
-          return Index::TRI_IDX_TYPE_HASH_INDEX;
-        }
-        
-        bool isSorted () const override final {
+  int batchInsertMulti(triagens::arango::Transaction*,
+                       std::vector<TRI_doc_mptr_t const*> const*, size_t);
+
+  int removeUniqueElement(triagens::arango::Transaction*, TRI_index_element_t*,
+                          bool);
+
+  int removeUnique(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+                   bool);
+
+  int removeMultiElement(triagens::arango::Transaction*, TRI_index_element_t*,
+                         bool);
+
+  int removeMulti(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+                  bool);
+
+  bool accessFitsIndex(triagens::aql::AstNode const* access,
+                       triagens::aql::AstNode const* other,
+                       triagens::aql::Variable const* reference,
+                       std::unordered_set<size_t>& found) const;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // classes
+  // -----------------------------------------------------------------------------
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief given an element generates a hash integer
+  ////////////////////////////////////////////////////////////////////////////////
+
+ private:
+  class HashElementFunc {
+    size_t _numFields;
+
+   public:
+    explicit HashElementFunc(size_t n) : _numFields(n) {}
+
+    uint64_t operator()(void* userData, TRI_index_element_t const* element,
+                        bool byKey = true) {
+      uint64_t hash = 0x0123456789abcdef;
+
+      for (size_t j = 0; j < _numFields; j++) {
+        char const* data;
+        size_t length;
+        TRI_InspectShapedSub(&element->subObjects()[j], element->document(),
+                             data, length);
+
+        // ignore the sid for hashing
+        // only hash the data block
+        hash = fasthash64(data, length, hash);
+      }
+
+      if (byKey) {
+        return hash;
+      }
+
+      TRI_doc_mptr_t* ptr = element->document();
+      return fasthash64(&ptr, sizeof(TRI_doc_mptr_t*), hash);
+    }
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief determines if a key corresponds to an element
+  ////////////////////////////////////////////////////////////////////////////////
+
+  class IsEqualElementElementByKey {
+    size_t _numFields;
+
+   public:
+    explicit IsEqualElementElementByKey(size_t n) : _numFields(n) {}
+
+    bool operator()(void* userData, TRI_index_element_t const* left,
+                    TRI_index_element_t const* right) {
+      TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
+      TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
+
+      if (left->document() == right->document()) {
+        return true;
+      }
+
+      for (size_t j = 0; j < _numFields; ++j) {
+        TRI_shaped_sub_t* leftSub = &left->subObjects()[j];
+        TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
+
+        if (leftSub->_sid != rightSub->_sid) {
           return false;
         }
 
-        bool hasSelectivityEstimate () const override final {
-          return true;
+        char const* leftData;
+        size_t leftLength;
+        TRI_InspectShapedSub(leftSub, left->document(), leftData, leftLength);
+
+        char const* rightData;
+        size_t rightLength;
+        TRI_InspectShapedSub(rightSub, right->document(), rightData,
+                             rightLength);
+
+        if (leftLength != rightLength) {
+          return false;
         }
 
-        double selectivityEstimate () const override final;
-
-        size_t memory () const override final;
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
-  
-        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-        
-        int batchInsert (triagens::arango::Transaction*, 
-                         std::vector<TRI_doc_mptr_t const*> const*,
-                         size_t) override final;
-
-        int sizeHint (triagens::arango::Transaction*, size_t) override final;
-
-        bool hasBatchInsert () const override final {
-          return true;
+        if (leftLength > 0 && memcmp(leftData, rightData, leftLength) != 0) {
+          return false;
         }
-        
-        std::vector<std::vector<std::pair<TRI_shape_pid_t, bool>>> const& paths () const {
-          return _paths;
-        }
+      }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given shaped json objects
-////////////////////////////////////////////////////////////////////////////////
+      return true;
+    }
+  };
 
-        int lookup (triagens::arango::Transaction*,
-                    TRI_hash_index_search_value_t*,
-                    std::vector<TRI_doc_mptr_t*>&) const;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locates entries in the hash index given shaped json objects
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the actual hash index (unique type)
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int lookup (triagens::arango::Transaction*,
-                    TRI_hash_index_search_value_t*,
-                    std::vector<TRI_doc_mptr_copy_t>&,
-                    TRI_index_element_t*&,
-                    size_t batchSize) const;
+  typedef triagens::basics::AssocUnique<TRI_hash_index_search_value_t,
+                                        TRI_index_element_t> TRI_HashArray_t;
 
-        bool supportsFilterCondition (triagens::aql::AstNode const*,
-                                      triagens::aql::Variable const*,
-                                      size_t,
-                                      size_t&,
-                                      double&) const override;
+  struct UniqueArray {
+    UniqueArray() = delete;
+    UniqueArray(TRI_HashArray_t*, HashElementFunc*,
+                IsEqualElementElementByKey*);
 
-        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
-                                             IndexIteratorContext*,
-                                             triagens::aql::Ast*,
-                                             triagens::aql::AstNode const*,
-                                             triagens::aql::Variable const*,
-                                             bool) const override;
+    ~UniqueArray();
 
-        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
-                                                     triagens::aql::Variable const*) const override;
+    TRI_HashArray_t* _hashArray;    // the hash array itself, unique values
+    HashElementFunc* _hashElement;  // hash function for elements
+    IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+  };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the actual hash index (multi type)
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  typedef triagens::basics::AssocMulti<TRI_hash_index_search_value_t,
+                                       TRI_index_element_t, uint32_t,
+                                       true> TRI_HashArrayMulti_t;
 
-        int insertUnique (triagens::arango::Transaction*,
-                          struct TRI_doc_mptr_t const*, 
-                          bool);
+  struct MultiArray {
+    MultiArray() = delete;
+    MultiArray(TRI_HashArrayMulti_t*, HashElementFunc*,
+               IsEqualElementElementByKey*);
+    ~MultiArray();
 
-        int batchInsertUnique (triagens::arango::Transaction*, 
-                               std::vector<TRI_doc_mptr_t const*> const*, 
-                               size_t);
+    TRI_HashArrayMulti_t*
+        _hashArray;                 // the hash array itself, non-unique values
+    HashElementFunc* _hashElement;  // hash function for elements
+    IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+  };
 
-        int insertMulti (triagens::arango::Transaction*,
-                         struct TRI_doc_mptr_t const*, 
-                         bool);
-
-        int batchInsertMulti (triagens::arango::Transaction*, 
-                              std::vector<TRI_doc_mptr_t const*> const*, 
-                              size_t);
-
-        int removeUniqueElement (triagens::arango::Transaction*,
-                                 TRI_index_element_t*, 
-                                 bool);
-
-        int removeUnique (triagens::arango::Transaction*,
-                          struct TRI_doc_mptr_t const*, 
-                          bool);
-
-        int removeMultiElement (triagens::arango::Transaction*,
-                                TRI_index_element_t*, 
-                                bool);
-
-        int removeMulti (triagens::arango::Transaction*,
-                         struct TRI_doc_mptr_t const*, 
-                         bool);
-
-        bool accessFitsIndex (triagens::aql::AstNode const* access,
-                              triagens::aql::AstNode const* other,
-                              triagens::aql::Variable const* reference,
-                              std::unordered_set<size_t>& found) const;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private classes
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief given an element generates a hash integer
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        class HashElementFunc {
-
-            size_t _numFields;
-
-          public:
-
-            explicit HashElementFunc (size_t n) 
-              : _numFields(n) {
-            }
-
-            uint64_t operator() (void* userData, 
-                                 TRI_index_element_t const* element,
-                                 bool byKey = true) {
-              uint64_t hash = 0x0123456789abcdef;
-
-              for (size_t j = 0;  j < _numFields;  j++) {
-                char const* data;
-                size_t length;
-                TRI_InspectShapedSub(&element->subObjects()[j], 
-                                     element->document(), data, length);
-
-                // ignore the sid for hashing
-                // only hash the data block
-                hash = fasthash64(data, length, hash);
-              }
-
-              if (byKey) {
-                return hash;
-              }
-
-              TRI_doc_mptr_t* ptr = element->document();
-              return fasthash64(&ptr, sizeof(TRI_doc_mptr_t*), hash);
-            }
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determines if a key corresponds to an element
-////////////////////////////////////////////////////////////////////////////////
-
-        class IsEqualElementElementByKey {
-
-            size_t _numFields;
-
-          public:
-
-            explicit IsEqualElementElementByKey (size_t n) 
-              : _numFields(n) {
-            }
-
-            bool operator() (void* userData,
-                             TRI_index_element_t const* left,
-                             TRI_index_element_t const* right) {
-              TRI_ASSERT_EXPENSIVE(left->document() != nullptr);
-              TRI_ASSERT_EXPENSIVE(right->document() != nullptr);
-
-              if (left->document() == right->document()) {
-                return true;
-              }
-
-              for (size_t j = 0;  j < _numFields;  ++j) {
-                TRI_shaped_sub_t* leftSub  = &left->subObjects()[j];
-                TRI_shaped_sub_t* rightSub = &right->subObjects()[j];
-
-                if (leftSub->_sid != rightSub->_sid) {
-                  return false;
-                }
-
-                char const* leftData;
-                size_t leftLength;
-                TRI_InspectShapedSub(leftSub, left->document(),
-                                     leftData, leftLength);
-
-                char const* rightData;
-                size_t rightLength;
-                TRI_InspectShapedSub(rightSub, right->document(),
-                                     rightData, rightLength);
-
-                if (leftLength != rightLength) {
-                  return false;
-                }
-
-                if (leftLength > 0 && 
-                    memcmp(leftData, rightData, leftLength) != 0) {
-                  return false;
-                }
-              }
-
-              return true;
-            }
-        };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual hash index (unique type)
-////////////////////////////////////////////////////////////////////////////////
-  
-        typedef triagens::basics::AssocUnique<TRI_hash_index_search_value_t,
-                                              TRI_index_element_t>
-                TRI_HashArray_t;
-          
-        struct UniqueArray {
-          UniqueArray () = delete;
-          UniqueArray (TRI_HashArray_t*, HashElementFunc*, IsEqualElementElementByKey*);
-
-          ~UniqueArray ();
-
-          TRI_HashArray_t*            _hashArray;   // the hash array itself, unique values
-          HashElementFunc*            _hashElement; // hash function for elements
-          IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual hash index (multi type)
-////////////////////////////////////////////////////////////////////////////////
-        
-        typedef triagens::basics::AssocMulti<TRI_hash_index_search_value_t,
-                                             TRI_index_element_t,
-                                             uint32_t, true>
-                TRI_HashArrayMulti_t;
-
-
-        struct MultiArray {
-          MultiArray () = delete;
-          MultiArray (TRI_HashArrayMulti_t*, HashElementFunc*, IsEqualElementElementByKey*);
-          ~MultiArray ();
-
-          TRI_HashArrayMulti_t*       _hashArray;   // the hash array itself, non-unique values
-          HashElementFunc*            _hashElement; // hash function for elements
-          IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
-        };
-
-        union {
-          UniqueArray* _uniqueArray;
-          MultiArray* _multiArray;
-        };
-
-    };
-
-  }
+  union {
+    UniqueArray* _uniqueArray;
+    MultiArray* _multiArray;
+  };
+};
+}
 }
 
 #endif
@@ -412,5 +374,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -51,132 +51,110 @@ struct TRI_json_t;
 struct TRI_vector_pointer_s;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-    namespace traverser {
-      class TraverserExpression;
-    }
+namespace traverser {
+class TraverserExpression;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge headers of a DB server response into the current response
 ////////////////////////////////////////////////////////////////////////////////
 
-    void mergeResponseHeaders (triagens::rest::HttpResponse* response,
-                               std::map<std::string, std::string> const& headers);
+void mergeResponseHeaders(triagens::rest::HttpResponse* response,
+                          std::map<std::string, std::string> const& headers);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::map<std::string, std::string> getForwardableRequestHeaders (triagens::rest::HttpRequest* request);
+std::map<std::string, std::string> getForwardableRequestHeaders(
+    triagens::rest::HttpRequest* request);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two JSON
 /// documents
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool shardKeysChanged (std::string const& dbname,
-                           std::string const& collname,
-                           struct TRI_json_t const* oldJson,
-                           struct TRI_json_t const* newJson,
-                           bool isPatch);
+bool shardKeysChanged(std::string const& dbname, std::string const& collname,
+                      struct TRI_json_t const* oldJson,
+                      struct TRI_json_t const* newJson, bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns users
 ////////////////////////////////////////////////////////////////////////////////
 
-    int usersOnCoordinator (std::string const& dbname,
-                            struct TRI_json_t*& result,
-                            double timeout);
+int usersOnCoordinator(std::string const& dbname, struct TRI_json_t*& result,
+                       double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns revision for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    int revisionOnCoordinator (std::string const& dbname,
-                               std::string const& collname,
-                               TRI_voc_rid_t&);
+int revisionOnCoordinator(std::string const& dbname,
+                          std::string const& collname, TRI_voc_rid_t&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    int figuresOnCoordinator (std::string const& dbname,
-                              std::string const& collname,
-                              TRI_doc_collection_info_t*&);
+int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
+                         TRI_doc_collection_info_t*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts number of documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int countOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 uint64_t& result);
+int countOnCoordinator(std::string const& dbname, std::string const& collname,
+                       uint64_t& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int createDocumentOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 bool waitForSync,
-                 VPackSlice const& slice,
-                 std::map<std::string, std::string> const& headers,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::map<std::string, std::string>& resultHeaders,
-                 std::string& resultBody);
-
-
+int createDocumentOnCoordinator(
+    std::string const& dbname, std::string const& collname, bool waitForSync,
+    VPackSlice const& slice, std::map<std::string, std::string> const& headers,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int createDocumentOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 bool waitForSync,
-                 std::unique_ptr<TRI_json_t>& json,
-                 std::map<std::string, std::string> const& headers,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::map<std::string, std::string>& resultHeaders,
-                 std::string& resultBody);
+int createDocumentOnCoordinator(
+    std::string const& dbname, std::string const& collname, bool waitForSync,
+    std::unique_ptr<TRI_json_t>& json,
+    std::map<std::string, std::string> const& headers,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int deleteDocumentOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 std::string const& key,
-                 TRI_voc_rid_t const rev,
-                 TRI_doc_update_policy_e policy,
-                 bool waitForSync,
-                 std::unique_ptr<std::map<std::string, std::string>>& headers,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::map<std::string, std::string>& resultHeaders,
-                 std::string& resultBody);
+int deleteDocumentOnCoordinator(
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync,
+    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getDocumentOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 std::string const& key,
-                 TRI_voc_rid_t const rev,
-                 std::unique_ptr<std::map<std::string, std::string>>& headers,
-                 bool generateDocument,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::map<std::string, std::string>& resultHeaders,
-                 std::string& resultBody);
+int getDocumentOnCoordinator(
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    bool generateDocument,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a list of filtered documents in a coordinator
@@ -185,123 +163,100 @@ namespace triagens {
 ///        that could not be found.
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getFilteredDocumentsOnCoordinator (
-                 std::string const& dbname,
-                 std::vector<traverser::TraverserExpression*> const& expressions, 
-                 std::unique_ptr<std::map<std::string, std::string>>& headers,
-                 std::unordered_set<std::string>& documentIds,
-                 std::unordered_map<std::string, TRI_json_t*>& result);
+int getFilteredDocumentsOnCoordinator(
+    std::string const& dbname,
+    std::vector<traverser::TraverserExpression*> const& expressions,
+    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    std::unordered_set<std::string>& documentIds,
+    std::unordered_map<std::string, TRI_json_t*>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getAllDocumentsOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 std::string const& returnType,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::string& contentType,
-                 std::string& resultBody);
+int getAllDocumentsOnCoordinator(
+    std::string const& dbname, std::string const& collname,
+    std::string const& returnType,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::string& contentType, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get all edges in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getAllEdgesOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 std::string const& vertex,
-                 TRI_edge_direction_e const& direction,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::string& contentType,
-                 std::string& resultBody);
+int getAllEdgesOnCoordinator(
+    std::string const& dbname, std::string const& collname,
+    std::string const& vertex, TRI_edge_direction_e const& direction,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::string& contentType, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.
 ///        Also returns the result in Json
 ////////////////////////////////////////////////////////////////////////////////
 
-    int getFilteredEdgesOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 std::string const& vertex,
-                 TRI_edge_direction_e const& direction,
-                 std::vector<traverser::TraverserExpression*> const& expressions, 
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::string& contentType,
-                 triagens::basics::Json& resultJson);
+int getFilteredEdgesOnCoordinator(
+    std::string const& dbname, std::string const& collname,
+    std::string const& vertex, TRI_edge_direction_e const& direction,
+    std::vector<traverser::TraverserExpression*> const& expressions,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::string& contentType, triagens::basics::Json& resultJson);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int modifyDocumentOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 std::string const& key,
-                 TRI_voc_rid_t const rev,
-                 TRI_doc_update_policy_e policy,
-                 bool waitForSync,
-                 bool isPatch,
-                 bool keepNull,   // only counts for isPatch == true
-                 bool mergeObjects,   // only counts for isPatch == true
-                 VPackSlice const& slice,
-                 std::unique_ptr<std::map<std::string, std::string>>& headers,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::map<std::string, std::string>& resultHeaders,
-                 std::string& resultBody);
+int modifyDocumentOnCoordinator(
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
+    bool keepNull,      // only counts for isPatch == true
+    bool mergeObjects,  // only counts for isPatch == true
+    VPackSlice const& slice,
+    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int modifyDocumentOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 std::string const& key,
-                 TRI_voc_rid_t const rev,
-                 TRI_doc_update_policy_e policy,
-                 bool waitForSync,
-                 bool isPatch,
-                 bool keepNull,   // only counts for isPatch == true
-                 bool mergeObjects,   // only counts for isPatch == true
-                 std::unique_ptr<TRI_json_t>& json,
-                 std::unique_ptr<std::map<std::string, std::string>>& headers,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::map<std::string, std::string>& resultHeaders,
-                 std::string& resultBody);
+int modifyDocumentOnCoordinator(
+    std::string const& dbname, std::string const& collname,
+    std::string const& key, TRI_voc_rid_t const rev,
+    TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
+    bool keepNull,      // only counts for isPatch == true
+    bool mergeObjects,  // only counts for isPatch == true
+    std::unique_ptr<TRI_json_t>& json,
+    std::unique_ptr<std::map<std::string, std::string>>& headers,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an edge in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int createEdgeOnCoordinator (
-                 std::string const& dbname,
-                 std::string const& collname,
-                 bool waitForSync,
-                 std::unique_ptr<TRI_json_t>& json,
-                 char const* from,
-                 char const* to,
-                 triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-                 std::map<std::string, std::string>& resultHeaders,
-                 std::string& resultBody);
+int createEdgeOnCoordinator(
+    std::string const& dbname, std::string const& collname, bool waitForSync,
+    std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
+    triagens::rest::HttpResponse::HttpResponseCode& responseCode,
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-    int truncateCollectionOnCoordinator (std::string const& dbname,
-                                         std::string const& collname);
+int truncateCollectionOnCoordinator(std::string const& dbname,
+                                    std::string const& collname);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-    int flushWalOnAllDBServers (bool, bool);
+int flushWalOnAllDBServers(bool, bool);
 
-  }  // namespace arango
-}   // namespace triagens
+}  // namespace arango
+}  // namespace triagens
 
 #endif
 
@@ -311,5 +266,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

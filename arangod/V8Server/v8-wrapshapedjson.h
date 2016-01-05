@@ -38,22 +38,18 @@
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
-                                          triagens::arango::CollectionNameResolver const*,
-                                          triagens::arango::DocumentDitch*,
-                                          TRI_voc_cid_t,
-                                          TRI_document_collection_t*,
-                                          void const*);
+v8::Handle<v8::Value> TRI_WrapShapedJson(
+    v8::Isolate* isolate, triagens::arango::CollectionNameResolver const*,
+    triagens::arango::DocumentDitch*, TRI_voc_cid_t, TRI_document_collection_t*,
+    void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-template<class T>
-v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
-                                          T& trx,
-                                          TRI_voc_cid_t cid,
-                                          void const* data) {
+template <class T>
+v8::Handle<v8::Value> TRI_WrapShapedJson(v8::Isolate* isolate, T& trx,
+                                         TRI_voc_cid_t cid, void const* data) {
   auto ditch = trx.ditch(cid);
   TRI_ASSERT(ditch != nullptr);
 
@@ -69,8 +65,6 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
 /// @brief generate the TRI_shaped_json_t template
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8ShapedJson (v8::Isolate *isolate, 
-                           v8::Handle<v8::Context> context,
-                           size_t threadNumber,
-                           TRI_v8_global_t* v8g);
+void TRI_InitV8ShapedJson(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                          size_t threadNumber, TRI_v8_global_t* v8g);
 #endif

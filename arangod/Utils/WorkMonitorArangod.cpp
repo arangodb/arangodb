@@ -49,8 +49,7 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HandlerWorkStack::HandlerWorkStack (HttpHandler* handler) 
-  : _handler(handler) {
+HandlerWorkStack::HandlerWorkStack(HttpHandler* handler) : _handler(handler) {
   WorkMonitor::pushHandler(_handler);
 }
 
@@ -58,7 +57,7 @@ HandlerWorkStack::HandlerWorkStack (HttpHandler* handler)
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HandlerWorkStack::HandlerWorkStack (WorkItem::uptr<HttpHandler>& handler) {
+HandlerWorkStack::HandlerWorkStack(WorkItem::uptr<HttpHandler>& handler) {
   _handler = handler.release();
   WorkMonitor::pushHandler(_handler);
 }
@@ -67,7 +66,7 @@ HandlerWorkStack::HandlerWorkStack (WorkItem::uptr<HttpHandler>& handler) {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HandlerWorkStack::~HandlerWorkStack () {
+HandlerWorkStack::~HandlerWorkStack() {
   WorkMonitor::popHandler(_handler, true);
 }
 
@@ -83,7 +82,7 @@ HandlerWorkStack::~HandlerWorkStack () {
 /// @brief pushes a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushHandler (HttpHandler* handler) {
+void WorkMonitor::pushHandler(HttpHandler* handler) {
   TRI_ASSERT(handler != nullptr);
   WorkDescription* desc = createWorkDescription(WorkType::HANDLER);
   desc->_data.handler = handler;
@@ -96,7 +95,7 @@ void WorkMonitor::pushHandler (HttpHandler* handler) {
 /// @brief pops and releases a handler
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkDescription* WorkMonitor::popHandler (HttpHandler* handler, bool free) {
+WorkDescription* WorkMonitor::popHandler(HttpHandler* handler, bool free) {
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc != nullptr);
@@ -107,8 +106,7 @@ WorkDescription* WorkMonitor::popHandler (HttpHandler* handler, bool free) {
   if (free) {
     try {
       freeWorkDescription(desc);
-    }
-    catch (...) {
+    } catch (...) {
       // just to prevent throwing exceptions from here, as this method
       // will be called in destructors...
     }
@@ -121,23 +119,24 @@ WorkDescription* WorkMonitor::popHandler (HttpHandler* handler, bool free) {
 /// @brief thread deleter
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::DELETE_HANDLER (WorkDescription* desc) {
+void WorkMonitor::DELETE_HANDLER(WorkDescription* desc) {
   TRI_ASSERT(desc->_type == WorkType::HANDLER);
 
-  WorkItem::deleter()((WorkItem*) desc->_data.handler);
+  WorkItem::deleter()((WorkItem*)desc->_data.handler);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread description string
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::VPACK_HANDLER (VPackBuilder* b, WorkDescription* desc) {
+void WorkMonitor::VPACK_HANDLER(VPackBuilder* b, WorkDescription* desc) {
   HttpHandler* handler = desc->_data.handler;
   const HttpRequest* request = handler->getRequest();
 
   b->add("type", VPackValue("http-handler"));
   b->add("protocol", VPackValue(request->protocol()));
-  b->add("method", VPackValue(HttpRequest::translateMethod(request->requestType())));
+  b->add("method",
+         VPackValue(HttpRequest::translateMethod(request->requestType())));
   b->add("url", VPackValue(request->fullUrl()));
   b->add("httpVersion", VPackValue(request->httpVersion()));
   b->add("database", VPackValue(request->databaseName()));

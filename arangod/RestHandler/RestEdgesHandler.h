@@ -39,89 +39,82 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-    namespace traverser {
-      class TraverserExpression;
-    }
+namespace traverser {
+class TraverserExpression;
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-    class RestEdgesHandler : public RestVocbaseBaseHandler {
+class RestEdgesHandler : public RestVocbaseBaseHandler {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
+  explicit RestEdgesHandler(rest::HttpRequest*);
 
-      public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   Handler
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-        explicit RestEdgesHandler (rest::HttpRequest*);
+  status_t execute() override final;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 protected
+  // methods
+  // -----------------------------------------------------------------------------
 
-      public:
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief reads all edges in given direction for given vertex
+  ///        Uses the TraverserExpression for filtering.
+  ///        Might be nullptr for no filtering
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+  bool readEdges(std::vector<traverser::TraverserExpression*> const&);
 
-        status_t execute () override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief reads all edges in given direction for given vertex
+  ///        Also parses the body into an TraverserExpression
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
+  bool readFilteredEdges();
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief reads all edges in given direction for a given list of vertices
+  ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
+  bool readEdgesForMultipleVertices();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all edges in given direction for given vertex
-///        Uses the TraverserExpression for filtering.
-///        Might be nullptr for no filtering
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get all edges for a given vertex. Independent from the request
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool readEdges (std::vector<traverser::TraverserExpression*> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all edges in given direction for given vertex
-///        Also parses the body into an TraverserExpression
-////////////////////////////////////////////////////////////////////////////////
-
-        bool readFilteredEdges ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all edges in given direction for a given list of vertices
-////////////////////////////////////////////////////////////////////////////////
-
-        bool readEdgesForMultipleVertices ();
-
- ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all edges for a given vertex. Independent from the request
-////////////////////////////////////////////////////////////////////////////////
-
-        bool getEdgesForVertex (std::string const& id,
-                                std::vector<traverser::TraverserExpression*> const& expressions,
-                                TRI_edge_direction_e direction,
-                                SingleCollectionReadOnlyTransaction& trx,
-                                triagens::basics::Json& result,
-                                size_t& scannedIndex,
-                                size_t& filtered);
-
-    };
-
-  }
+  bool getEdgesForVertex(
+      std::string const& id,
+      std::vector<traverser::TraverserExpression*> const& expressions,
+      TRI_edge_direction_e direction, SingleCollectionReadOnlyTransaction& trx,
+      triagens::basics::Json& result, size_t& scannedIndex, size_t& filtered);
+};
+}
 }
 
 #endif

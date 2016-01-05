@@ -66,48 +66,36 @@
 /// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile (int fileDescriptor,
-                     void* startingAddress,
-                     size_t numOfBytesToFlush,
-                     int flags);
+int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
+                    size_t numOfBytesToFlush, int flags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maps a file on disk onto memory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile (void* memoryAddress,
-                size_t numOfBytesToInitialize,
-                int memoryProtection,
-                int flags,
-                int fileDescriptor,
-                void** mmHandle,
-                int64_t offset,
-                void** result);
+int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
+               int memoryProtection, int flags, int fileDescriptor,
+               void** mmHandle, int64_t offset, void** result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile (void* memoryAddress,
-                  size_t numOfBytesToUnMap,
-                  int fileDescriptor,
-                  void** mmHandle);
+int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+                 int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets various protection levels with the memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ProtectMMFile (void* memoryAddress,
-                       size_t numOfBytesToProtect,
-                       int flags,
-                       int fileDescriptor,
-                       void** mmHandle);
+int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
+                      int flags, int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice);
+int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
 
 #endif
 
@@ -117,5 +105,6 @@ int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -40,24 +40,18 @@ class VocShaper;
 ///        This json object contains all internal attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json TRI_ExpandShapedJson (
-  VocShaper* shaper,
-  triagens::arango::CollectionNameResolver const* resolver,
-  TRI_voc_cid_t const& cid,
-  TRI_df_marker_t const* marker
-);
+triagens::basics::Json TRI_ExpandShapedJson(
+    VocShaper* shaper, triagens::arango::CollectionNameResolver const* resolver,
+    TRI_voc_cid_t const& cid, TRI_df_marker_t const* marker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transforms a given doc_mptr into a JSON object.
 ///        This json object contains all internal attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json TRI_ExpandShapedJson (
-  VocShaper* shaper,
-  triagens::arango::CollectionNameResolver const* resolver,
-  TRI_voc_cid_t const& cid,
-  TRI_doc_mptr_t const* mptr
-);
+triagens::basics::Json TRI_ExpandShapedJson(
+    VocShaper* shaper, triagens::arango::CollectionNameResolver const* resolver,
+    TRI_voc_cid_t const& cid, TRI_doc_mptr_t const* mptr);
 
 #endif
 
@@ -67,5 +61,6 @@ triagens::basics::Json TRI_ExpandShapedJson (
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

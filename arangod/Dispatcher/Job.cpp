@@ -40,8 +40,8 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 namespace {
-std::atomic_uint_fast64_t NEXT_JOB_ID(
-    static_cast<uint64_t>(TRI_microtime() * 100000.0));
+std::atomic_uint_fast64_t NEXT_JOB_ID(static_cast<uint64_t>(TRI_microtime() *
+                                                            100000.0));
 }
 
 // -----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ std::atomic_uint_fast64_t NEXT_JOB_ID(
 /// @brief constructs a job
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::Job(string const &name)
+Job::Job(string const& name)
     : _jobId(NEXT_JOB_ID.fetch_add(1, memory_order_seq_cst)),
       _name(name),
       _queuePosition((size_t)-1) {}

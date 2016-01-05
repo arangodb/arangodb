@@ -48,10 +48,10 @@ using namespace triagens::arango;
 /// @brief free a string if defined, nop otherwise
 ////////////////////////////////////////////////////////////////////////////////
 
-#define FREE_STRING(zone, what)                                           \
-  if (what != 0) {                                                        \
-    TRI_Free(zone, what);                                                 \
-    what = 0;                                                             \
+#define FREE_STRING(zone, what) \
+  if (what != 0) {              \
+    TRI_Free(zone, what);       \
+    what = 0;                   \
   }
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -61,9 +61,8 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
-  : RestDocumentHandler(request) {
-}
+RestEdgeHandler::RestEdgeHandler(HttpRequest* request)
+    : RestDocumentHandler(request) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -90,7 +89,8 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
 ///
-/// **Note**: This flag is not supported in a cluster. Using it will result in an
+/// **Note**: This flag is not supported in a cluster. Using it will result in
+/// an
 /// error.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
@@ -160,59 +160,64 @@ RestEdgeHandler::RestEdgeHandler (HttpRequest* request)
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestEdgeHandler::createDocument () {
+bool RestEdgeHandler::createDocument() {
   vector<string> const& suffix = _request->suffix();
 
-  if (! suffix.empty()) {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + EDGE_PATH + "?collection=<identifier>");
+  if (!suffix.empty()) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                  "superfluous suffix, expecting " + EDGE_PATH +
+                      "?collection=<identifier>");
     return false;
   }
 
   // extract the from
   bool found;
   char const* from = _request->value("from", found);
-  if (! found || *from == '\0') {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'from' is missing, expecting " + EDGE_PATH + "?collection=<identifier>&from=<from-handle>&to=<to-handle>");
+  if (!found || *from == '\0') {
+    generateError(
+        HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "'from' is missing, expecting " + EDGE_PATH +
+            "?collection=<identifier>&from=<from-handle>&to=<to-handle>");
     return false;
   }
 
   // extract the to
   char const* to = _request->value("to", found);
 
-  if (! found || *to == '\0') {
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "'to' is missing, expecting " + EDGE_PATH + "?collection=<identifier>&from=<from-handle>&to=<to-handle>");
+  if (!found || *to == '\0') {
+    generateError(
+        HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "'to' is missing, expecting " + EDGE_PATH +
+            "?collection=<identifier>&from=<from-handle>&to=<to-handle>");
     return false;
   }
 
   // extract the cid
   std::string const& collection = _request->value("collection", found);
 
-  if (! found || collection.empty()) {
+  if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_PATH + "?collection=<identifier>");
+                  "'collection' is missing, expecting " + DOCUMENT_PATH +
+                      "?collection=<identifier>");
     return false;
   }
 
   bool const waitForSync = extractWaitForSync();
-  try { 
+  try {
     bool parseSuccess = true;
     VPackOptions options;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(&options, parseSuccess);
-    if (! parseSuccess) {
+    std::shared_ptr<VPackBuilder> parsedBody =
+        parseVelocyPackBody(&options, parseSuccess);
+    if (!parseSuccess) {
       return false;
     }
 
     VPackSlice body = parsedBody->slice();
 
-    if (! body.isObject()) {
-      generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    if (!body.isObject()) {
+      generateTransactionError(collection,
+                               TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
       return false;
     }
 
@@ -221,12 +226,13 @@ bool RestEdgeHandler::createDocument () {
       return createDocumentCoordinator(collection, waitForSync, body, from, to);
     }
 
-    if (! checkCreateCollection(collection, getCollectionType())) {
+    if (!checkCreateCollection(collection, getCollectionType())) {
       return false;
     }
 
     // find and load collection given by name or identifier
-    SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(), _vocbase, collection);
+    SingleCollectionWriteTransaction<1> trx(new StandaloneTransactionContext(),
+                                            _vocbase, collection);
 
     // .............................................................................
     // inside write transaction
@@ -242,8 +248,10 @@ bool RestEdgeHandler::createDocument () {
     TRI_document_collection_t* document = trx.documentCollection();
 
     if (document->_info.type() != TRI_COL_TYPE_EDGE) {
-      // check if we are inserting with the EDGE handler into a non-EDGE collection
-      generateError(HttpResponse::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+      // check if we are inserting with the EDGE handler into a non-EDGE
+      // collection
+      generateError(HttpResponse::BAD,
+                    TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
       return false;
     }
 
@@ -252,9 +260,9 @@ bool RestEdgeHandler::createDocument () {
     // edge
     TRI_document_edge_t edge;
     edge._fromCid = cid;
-    edge._toCid   = cid;
+    edge._toCid = cid;
     edge._fromKey = nullptr;
-    edge._toKey   = nullptr;
+    edge._toKey = nullptr;
 
     string wrongPart;
     // Note that in a DBserver in a cluster, the following call will
@@ -264,8 +272,7 @@ bool RestEdgeHandler::createDocument () {
 
     if (res != TRI_ERROR_NO_ERROR) {
       wrongPart = "'from'";
-    }
-    else {
+    } else {
       // Note that in a DBserver in a cluster, the following call will
       // actually parse the first part of *from* as a cluster-wide
       // collection name, exactly as it is needed here!
@@ -281,10 +288,11 @@ bool RestEdgeHandler::createDocument () {
       FREE_STRING(TRI_CORE_MEM_ZONE, edge._toKey);
 
       if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
-        generateError(HttpResponse::NOT_FOUND, res, wrongPart + " does not point to a valid collection");
-      }
-      else {
-        generateError(HttpResponse::BAD, res, wrongPart + " is not a document handle");
+        generateError(HttpResponse::NOT_FOUND, res,
+                      wrongPart + " does not point to a valid collection");
+      } else {
+        generateError(HttpResponse::BAD, res,
+                      wrongPart + " is not a document handle");
       }
       return false;
     }
@@ -314,17 +322,13 @@ bool RestEdgeHandler::createDocument () {
     generateSaved(trx, cid, mptr);
 
     return true;
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
-  }
-  catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const&) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
-  }
-  catch (std::exception const& ex) {
+  } catch (std::exception const& ex) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  }
-  catch (...) {
+  } catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
   // Only in error case
@@ -335,22 +339,22 @@ bool RestEdgeHandler::createDocument () {
 /// @brief creates a document (an edge), coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
-                                                 bool waitForSync,
-                                                 VPackSlice const& document,
-                                                 char const* from,
-                                                 char const* to) {
+bool RestEdgeHandler::createDocumentCoordinator(string const& collname,
+                                                bool waitForSync,
+                                                VPackSlice const& document,
+                                                char const* from,
+                                                char const* to) {
   std::string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   map<string, string> resultHeaders;
   string resultBody;
 
-  std::unique_ptr<TRI_json_t> json
-      (triagens::basics::VelocyPackHelper::velocyPackToJson(document));
+  std::unique_ptr<TRI_json_t> json(
+      triagens::basics::VelocyPackHelper::velocyPackToJson(document));
   int error = triagens::arango::createEdgeOnCoordinator(
-            dbname, collname, waitForSync,
-            json, from, to, responseCode, resultHeaders, resultBody);
+      dbname, collname, waitForSync, json, from, to, responseCode,
+      resultHeaders, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname.c_str(), error);
@@ -460,7 +464,8 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally fetch an edge document based on a target revision id by
+/// You can conditionally fetch an edge document based on a target revision id
+/// by
 /// using the *rev* query parameter.
 ///
 /// @RESTHEADERPARAMETERS
@@ -472,12 +477,14 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// identical to the specified etag, then an *HTTP 304* is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally fetch an edge document based on a target revision id by
+/// You can conditionally fetch an edge document based on a target revision id
+/// by
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
 /// Like *GET*, but only returns the header fields and not the body. You
-/// can use this call to get the current revision of an edge document or check if
+/// can use this call to get the current revision of an edge document or check
+/// if
 /// it was deleted.
 ///
 /// @RESTRETURNCODES
@@ -519,7 +526,8 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// Wait until edge document has been synced to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally replace an edge document based on a target revision id by
+/// You can conditionally replace an edge document based on a target revision id
+/// by
 /// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
@@ -529,23 +537,27 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally replace an edge document based on a target revision id by
+/// You can conditionally replace an edge document based on a target revision id
+/// by
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
-/// Completely updates (i.e. replaces) the edge document identified by *document-handle*.
-/// If the edge document exists and can be updated, then a *HTTP 201* is returned
+/// Completely updates (i.e. replaces) the edge document identified by
+/// *document-handle*.
+/// If the edge document exists and can be updated, then a *HTTP 201* is
+/// returned
 /// and the "ETag" header field contains the new revision of the edge document.
 ///
 /// If the new edge document passed in the body of the request contains the
 /// *document-handle* in the attribute *_id* and the revision in *_rev*,
 /// these attributes will be ignored. Only the URI and the "ETag" header are
-/// relevant in order to avoid confusion when using proxies. 
+/// relevant in order to avoid confusion when using proxies.
 /// **Note**: The attributes
 /// *_from* and *_to* of an edge are immutable and cannot be updated either.
 ///
 /// Optionally, the query parameter *waitForSync* can be used to force
-/// synchronization of the edge document replacement operation to disk even in case
+/// synchronization of the edge document replacement operation to disk even in
+/// case
 /// that the *waitForSync* flag had been disabled for the entire collection.
 /// Thus, the *waitForSync* query parameter can be used to force synchronization
 /// of just specific operations. To use this, set the *waitForSync* parameter
@@ -557,8 +569,10 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated edge document, *_key* contains the key which 
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// *document-handle* of the updated edge document, *_key* contains the key
+/// which
+/// uniquely identifies a document in a given collection, and the attribute
+/// *_rev*
 /// contains the new document revision.
 ///
 /// If the edge document does not exist, then a *HTTP 404* is returned and the
@@ -574,23 +588,29 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// Specifying a target revision is optional, however, if done, only one of the
 /// described mechanisms must be used (either the *rev* query parameter or the
 /// *if-match* HTTP header).
-/// Regardless which mechanism is used, the parameter needs to contain the target
+/// Regardless which mechanism is used, the parameter needs to contain the
+/// target
 /// revision id as returned in the *_rev* attribute of an edge document or
 /// by an HTTP *etag* header.
 ///
-/// For example, to conditionally replace an edge document based on a specific revision
+/// For example, to conditionally replace an edge document based on a specific
+/// revision
 /// id, you can use the following request:
 ///
 /// - PUT /_api/document/*document-handle*?rev=*etag*
 ///
-/// If a target revision id is provided in the request (e.g. via the *etag* value
+/// If a target revision id is provided in the request (e.g. via the *etag*
+/// value
 /// in the *rev* URL query parameter above), ArangoDB will check that
-/// the revision id of the edge document found in the database is equal to the target
-/// revision id provided in the request. If there is a mismatch between the revision
+/// the revision id of the edge document found in the database is equal to the
+/// target
+/// revision id provided in the request. If there is a mismatch between the
+/// revision
 /// id, then by default a *HTTP 412* conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overridden with the *policy* URL query parameter:
+/// The conditional update behavior can be overridden with the *policy* URL
+/// query parameter:
 ///
 /// - PUT /_api/document/*document-handle*?policy=*policy*
 ///
@@ -599,22 +619,27 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// revision id specified in the request.
 ///
 /// If *policy* is set to *last*, then the replacement will succeed, even if the
-/// revision id found in the database does not match the target revision id specified
+/// revision id found in the database does not match the target revision id
+/// specified
 /// in the request. You can use the *last* *policy* to force replacements.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the edge document was replaced successfully and *waitForSync* was
+/// is returned if the edge document was replaced successfully and *waitForSync*
+/// was
 /// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the edge document was replaced successfully and *waitForSync* was
+/// is returned if the edge document was replaced successfully and *waitForSync*
+/// was
 /// *false*.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if the body does not contain a valid JSON representation of an edge
-/// document or if applied to a non-edge collection. The response body contains an
+/// is returned if the body does not contain a valid JSON representation of an
+/// edge
+/// document or if applied to a non-edge collection. The response body contains
+/// an
 /// error document in this case.
 ///
 /// @RESTRETURNCODE{404}
@@ -648,7 +673,8 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// If the intention is to delete existing attributes with the patch command,
 /// the URL query parameter *keepNull* can be used with a value of *false*.
 /// This will modify the behavior of the patch command to remove any attributes
-/// from the existing edge document that are contained in the patch document with an
+/// from the existing edge document that are contained in the patch document
+/// with an
 /// attribute value of *null*.
 ///
 /// @RESTQUERYPARAM{mergeObjects,boolean,optional}
@@ -661,7 +687,8 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// Wait until edge document has been synced to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally patch an edge document based on a target revision id by
+/// You can conditionally patch an edge document based on a target revision id
+/// by
 /// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
@@ -671,20 +698,23 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally patch an edge document based on a target revision id by
+/// You can conditionally patch an edge document based on a target revision id
+/// by
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
 /// Partially updates the edge document identified by *document-handle*.
 /// The body of the request must contain a JSON document with the attributes
 /// to patch (the patch document). All attributes from the patch document will
-/// be added to the existing edge document if they do not yet exist, and overwritten
+/// be added to the existing edge document if they do not yet exist, and
+/// overwritten
 /// in the existing edge document if they do exist there.
 ///
 /// Setting an attribute value to *null* in the patch document will cause a
 /// value of *null* be saved for the attribute by default.
 ///
-/// **Note**: Internal attributes such as *_key*, *_from* and *_to* are immutable
+/// **Note**: Internal attributes such as *_key*, *_from* and *_to* are
+/// immutable
 /// once set and cannot be updated.
 ///
 /// Optionally, the query parameter *waitForSync* can be used to force
@@ -700,14 +730,17 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated edge document, *_key* contains the key which 
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// *document-handle* of the updated edge document, *_key* contains the key
+/// which
+/// uniquely identifies a document in a given collection, and the attribute
+/// *_rev*
 /// contains the new document revision.
 ///
 /// If the edge document does not exist, then a *HTTP 404* is returned and the
 /// body of the response contains an error document.
 ///
-/// You can conditionally update an edge document based on a target revision id by
+/// You can conditionally update an edge document based on a target revision id
+/// by
 /// using either the *rev* query parameter or the *if-match* HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the *policy* parameter. This is the same as when replacing
@@ -725,7 +758,8 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation or when
-/// applied on an non-edge collection. The response body contains an error document
+/// applied on an non-edge collection. The response body contains an error
+/// document
 /// in this case.
 ///
 /// @RESTRETURNCODE{404}
@@ -753,7 +787,8 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
-/// You can conditionally delete an edge document based on a target revision id by
+/// You can conditionally delete an edge document based on a target revision id
+/// by
 /// using the *rev* query parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
@@ -767,14 +802,17 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// You can conditionally delete an edge document based on a target revision id by
+/// You can conditionally delete an edge document based on a target revision id
+/// by
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the deleted edge document, *_key* contains the key which 
-/// uniquely identifies a document in a given collection, and the attribute *_rev*
+/// *document-handle* of the deleted edge document, *_key* contains the key
+/// which
+/// uniquely identifies a document in a given collection, and the attribute
+/// *_rev*
 /// contains the new document revision.
 ///
 /// If the *waitForSync* parameter is not specified or set to
@@ -786,11 +824,13 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the edge document was deleted successfully and *waitForSync* was
+/// is returned if the edge document was deleted successfully and *waitForSync*
+/// was
 /// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the edge document was deleted successfully and *waitForSync* was
+/// is returned if the edge document was deleted successfully and *waitForSync*
+/// was
 /// *false*.
 ///
 /// @RESTRETURNCODE{404}
@@ -811,5 +851,6 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -40,95 +40,86 @@
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class ExplicitTransaction : public Transaction {
+class ExplicitTransaction : public Transaction {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                         class
+  // ExplicitTransaction
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class ExplicitTransaction
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the transaction
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  ExplicitTransaction(TRI_vocbase_t* vocbase,
+                      std::vector<std::string> const& readCollections,
+                      std::vector<std::string> const& writeCollections,
+                      double lockTimeout, bool waitForSync, bool embed,
+                      bool allowImplicitCollections)
+      : Transaction(new V8TransactionContext(embed), vocbase, 0) {
+    this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
+    if (lockTimeout >= 0.0) {
+      this->setTimeout(lockTimeout);
+    }
 
-        ExplicitTransaction (TRI_vocbase_t* vocbase,
-                             std::vector<std::string> const& readCollections,
-                             std::vector<std::string> const& writeCollections,
-                             double lockTimeout,
-                             bool waitForSync,
-                             bool embed,
-                             bool allowImplicitCollections)
-          : Transaction(new V8TransactionContext(embed), vocbase, 0) {
+    if (waitForSync) {
+      this->setWaitForSync();
+    }
 
-          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+    this->setAllowImplicitCollections(allowImplicitCollections);
 
-          if (lockTimeout >= 0.0) {
-            this->setTimeout(lockTimeout);
-          }
+    for (auto const& it : readCollections) {
+      this->addCollection(it, TRI_TRANSACTION_READ);
+    }
 
-          if (waitForSync) {
-            this->setWaitForSync();
-          }
-
-          this->setAllowImplicitCollections(allowImplicitCollections);
-          
-          for (auto const& it : readCollections) {
-            this->addCollection(it, TRI_TRANSACTION_READ);
-          }
-
-          for (auto const& it : writeCollections) {
-            this->addCollection(it, TRI_TRANSACTION_WRITE);
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction with cids
-////////////////////////////////////////////////////////////////////////////////
-
-        ExplicitTransaction (TRI_vocbase_t* vocbase,
-                             std::vector<TRI_voc_cid_t> const& readCollections,
-                             std::vector<TRI_voc_cid_t> const& writeCollections,
-                             double lockTimeout,
-                             bool waitForSync,
-                             bool embed)
-          : Transaction(new V8TransactionContext(embed), vocbase, 0) {
-
-          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
-
-          if (lockTimeout >= 0.0) {
-            this->setTimeout(lockTimeout);
-          }
-
-          if (waitForSync) {
-            this->setWaitForSync();
-          }
-
-          for (auto const& it : readCollections) {
-            this->addCollection(it, TRI_TRANSACTION_READ);
-          }
-
-          for (auto const& it : writeCollections) {
-            this->addCollection(it, TRI_TRANSACTION_WRITE);
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~ExplicitTransaction () {
-        }
-
-    };
-
+    for (auto const& it : writeCollections) {
+      this->addCollection(it, TRI_TRANSACTION_WRITE);
+    }
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the transaction with cids
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ExplicitTransaction(TRI_vocbase_t* vocbase,
+                      std::vector<TRI_voc_cid_t> const& readCollections,
+                      std::vector<TRI_voc_cid_t> const& writeCollections,
+                      double lockTimeout, bool waitForSync, bool embed)
+      : Transaction(new V8TransactionContext(embed), vocbase, 0) {
+    this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
+
+    if (lockTimeout >= 0.0) {
+      this->setTimeout(lockTimeout);
+    }
+
+    if (waitForSync) {
+      this->setWaitForSync();
+    }
+
+    for (auto const& it : readCollections) {
+      this->addCollection(it, TRI_TRANSACTION_READ);
+    }
+
+    for (auto const& it : writeCollections) {
+      this->addCollection(it, TRI_TRANSACTION_WRITE);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief end the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ~ExplicitTransaction() {}
+};
+}
 }
 
 #endif
@@ -139,5 +130,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

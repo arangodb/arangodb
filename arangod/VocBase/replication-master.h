@@ -47,14 +47,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_replication_master_info_s {
-  char*                            _endpoint;
-  TRI_server_id_t                  _serverId;
-  int                              _majorVersion;
-  int                              _minorVersion;
-  TRI_voc_tick_t                   _lastLogTick;
-  bool                             _active;
-}
-TRI_replication_master_info_t;
+  char* _endpoint;
+  TRI_server_id_t _serverId;
+  int _majorVersion;
+  int _minorVersion;
+  TRI_voc_tick_t _lastLogTick;
+  bool _active;
+} TRI_replication_master_info_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -64,21 +63,20 @@ TRI_replication_master_info_t;
 /// @brief initialize a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMasterInfoReplication (TRI_replication_master_info_t*,
-                                    const char*);
+void TRI_InitMasterInfoReplication(TRI_replication_master_info_t*, const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t*);
+void TRI_DestroyMasterInfoReplication(TRI_replication_master_info_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log information about the master state
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const*,
-                                   const char*);
+void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const*,
+                                  const char*);
 
 #endif
 
@@ -88,5 +86,6 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const*,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

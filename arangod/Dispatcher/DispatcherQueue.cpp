@@ -47,42 +47,39 @@ using namespace triagens::rest;
 /// @brief constructs a new dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
-                                  Dispatcher* dispatcher,
-                                  size_t id,
-                                  Dispatcher::newDispatcherThread_fptr creator,
-                                  size_t nrThreads,
-                                  size_t maxSize)
-  : _id(id),
-    _nrThreads(nrThreads),
-    _maxSize(maxSize),
-    _waitLock(),
-    _readyJobs(maxSize),
-    _numberJobs(0),
-    _hazardLock(),
-    _hazardPointer(nullptr),
-    _stopping(false),
-    _threadsLock(),
-    _startedThreads(),
-    _stoppedThreads(0),
-    _nrRunning(0),
-    _nrWaiting(0),
-    _nrBlocked(0),
-    _lastChanged(0.0),
-    _gracePeriod(5.0),
-    _scheduler(scheduler),
-    _dispatcher(dispatcher),
-    createDispatcherThread(creator),
-    _affinityCores(),
-    _affinityPos(0),
-    _jobs(),
-    _jobPositions(_maxSize) {
-
+DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
+                                 size_t id,
+                                 Dispatcher::newDispatcherThread_fptr creator,
+                                 size_t nrThreads, size_t maxSize)
+    : _id(id),
+      _nrThreads(nrThreads),
+      _maxSize(maxSize),
+      _waitLock(),
+      _readyJobs(maxSize),
+      _numberJobs(0),
+      _hazardLock(),
+      _hazardPointer(nullptr),
+      _stopping(false),
+      _threadsLock(),
+      _startedThreads(),
+      _stoppedThreads(0),
+      _nrRunning(0),
+      _nrWaiting(0),
+      _nrBlocked(0),
+      _lastChanged(0.0),
+      _gracePeriod(5.0),
+      _scheduler(scheduler),
+      _dispatcher(dispatcher),
+      createDispatcherThread(creator),
+      _affinityCores(),
+      _affinityPos(0),
+      _jobs(),
+      _jobPositions(_maxSize) {
   // keep a list of all jobs
   _jobs = new atomic<Job*>[maxSize];
 
   // and a list of positions into this array
-  for (size_t i = 0;  i < maxSize;  ++i) {
+  for (size_t i = 0; i < maxSize; ++i) {
     _jobPositions.push(i);
     _jobs[i] = nullptr;
   }
@@ -92,7 +89,7 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-DispatcherQueue::~DispatcherQueue () {
+DispatcherQueue::~DispatcherQueue() {
   beginShutdown();
   delete[] _jobs;
 }
@@ -109,16 +106,16 @@ DispatcherQueue::~DispatcherQueue () {
 /// @brief adds a job
 ////////////////////////////////////////////////////////////////////////////////
 
-int DispatcherQueue::addJob (std::unique_ptr<Job>& job) {
+int DispatcherQueue::addJob(std::unique_ptr<Job>& job) {
   TRI_ASSERT(job.get() != nullptr);
 
   // get next free slot, return false is queue is full
   size_t pos;
 
-  if (! _jobPositions.pop(pos)) {
+  if (!_jobPositions.pop(pos)) {
     return TRI_ERROR_QUEUE_FULL;
   }
-  
+
   Job* raw = job.release();
   _jobs[pos] = raw;
 
@@ -130,8 +127,7 @@ int DispatcherQueue::addJob (std::unique_ptr<Job>& job) {
 
   if (ok) {
     ++_numberJobs;
-  }
-  else {
+  } else {
     LOG_WARNING("cannot insert job into ready queue, giving up");
 
     removeJob(raw);
@@ -157,7 +153,7 @@ int DispatcherQueue::addJob (std::unique_ptr<Job>& job) {
 /// @brief removes a job
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::removeJob (Job* job) {
+void DispatcherQueue::removeJob(Job* job) {
   size_t pos = job->queuePosition();
 
   // clear the entry
@@ -178,7 +174,7 @@ void DispatcherQueue::removeJob (Job* job) {
 /// @brief cancels a job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DispatcherQueue::cancelJob (uint64_t jobId) {
+bool DispatcherQueue::cancelJob(uint64_t jobId) {
   if (jobId == 0) {
     return false;
   }
@@ -189,7 +185,7 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
   // first find the job
   Job* job = nullptr;
 
-  for (size_t i = 0;  i < _maxSize;  ++i) {
+  for (size_t i = 0; i < _maxSize; ++i) {
     while (true) {
       job = _jobs[i];
 
@@ -206,15 +202,13 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
     }
 
     if (job != nullptr && job->jobId() == jobId) {
-
       // cancel the job
       try {
         job->cancel();
-      }
-      catch (...) {
+      } catch (...) {
         job = nullptr;
       }
-  
+
       _hazardPointer = nullptr;
       return true;
     }
@@ -228,15 +222,13 @@ bool DispatcherQueue::cancelJob (uint64_t jobId) {
 /// @brief indicates that thread is doing a blocking operation
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::blockThread () {
-  ++_nrBlocked;
-}
+void DispatcherQueue::blockThread() { ++_nrBlocked; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread has resumed work
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::unblockThread () {
+void DispatcherQueue::unblockThread() {
   if (--_nrBlocked < 0) {
     LOG_ERROR("internal error, unblocking too many threads");
   }
@@ -246,22 +238,23 @@ void DispatcherQueue::unblockThread () {
 /// @brief begins the shutdown sequence the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::beginShutdown () {
+void DispatcherQueue::beginShutdown() {
   if (_stopping) {
     return;
   }
 
-  LOG_DEBUG("beginning shutdown sequence of dispatcher queue '%lu'", (unsigned long) _id);
+  LOG_DEBUG("beginning shutdown sequence of dispatcher queue '%lu'",
+            (unsigned long)_id);
 
   // broadcast the we want to stop
   size_t const MAX_TRIES = 10;
 
   _stopping = true;
-  
+
   // kill all jobs in the queue
   {
     Job* job = nullptr;
-    
+
     while (_readyJobs.pop(job)) {
       if (job != nullptr) {
         --_numberJobs;
@@ -275,7 +268,7 @@ void DispatcherQueue::beginShutdown () {
   // now try to get rid of the remaining (running) jobs
   MUTEX_LOCKER(_hazardLock);
 
-  for (size_t i = 0;  i < _maxSize;  ++i) {
+  for (size_t i = 0; i < _maxSize; ++i) {
     Job* job = nullptr;
 
     while (true) {
@@ -296,8 +289,7 @@ void DispatcherQueue::beginShutdown () {
     if (job != nullptr) {
       try {
         job->cancel();
-      }
-      catch (...) {
+      } catch (...) {
       }
 
       _hazardPointer = nullptr;
@@ -309,11 +301,11 @@ void DispatcherQueue::beginShutdown () {
   _hazardPointer = nullptr;
 
   // wait for threads to shutdown
-  for (size_t count = 0;  count < MAX_TRIES;  ++count) {
-    LOG_TRACE("shutdown sequence dispatcher queue '%lu', status: %d running threads, %d waiting threads",
-              (unsigned long) _id,
-              (int) _nrRunning,
-              (int) _nrWaiting);
+  for (size_t count = 0; count < MAX_TRIES; ++count) {
+    LOG_TRACE(
+        "shutdown sequence dispatcher queue '%lu', status: %d running threads, "
+        "%d waiting threads",
+        (unsigned long)_id, (int)_nrRunning, (int)_nrWaiting);
 
     if (0 == _nrRunning + _nrWaiting) {
       break;
@@ -327,18 +319,18 @@ void DispatcherQueue::beginShutdown () {
     usleep(10 * 1000);
   }
 
-  LOG_DEBUG("shutdown sequence dispatcher queue '%lu', status: %d running threads, %d waiting threads",
-            (unsigned long) _id,
-            (int) _nrRunning,
-            (int) _nrWaiting);
+  LOG_DEBUG(
+      "shutdown sequence dispatcher queue '%lu', status: %d running threads, "
+      "%d waiting threads",
+      (unsigned long)_id, (int)_nrRunning, (int)_nrWaiting);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::shutdown () {
-  LOG_DEBUG("shutting down the dispatcher queue '%lu'", (unsigned long) _id);
+void DispatcherQueue::shutdown() {
+  LOG_DEBUG("shutting down the dispatcher queue '%lu'", (unsigned long)_id);
 
   // try to stop threads forcefully
   {
@@ -365,7 +357,7 @@ void DispatcherQueue::shutdown () {
   }
 
   // and delete old jobs
-  for (size_t i = 0;  i < _maxSize;  ++i) {
+  for (size_t i = 0; i < _maxSize; ++i) {
     Job* job = _jobs[i];
 
     if (job != nullptr) {
@@ -378,13 +370,13 @@ void DispatcherQueue::shutdown () {
 /// @brief starts a new queue thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::startQueueThread () {
-  DispatcherThread * thread = (*createDispatcherThread)(this);
+void DispatcherQueue::startQueueThread() {
+  DispatcherThread* thread = (*createDispatcherThread)(this);
 
-  if (! _affinityCores.empty()) {
+  if (!_affinityCores.empty()) {
     size_t c = _affinityCores[_affinityPos];
 
-    LOG_DEBUG("using core %d for standard dispatcher thread", (int) c);
+    LOG_DEBUG("using core %d for standard dispatcher thread", (int)c);
 
     thread->setProcessorAffinity(c);
 
@@ -398,7 +390,7 @@ void DispatcherQueue::startQueueThread () {
   {
     MUTEX_LOCKER(_threadsLock);
 
-    if (! notEnoughThreads()) {
+    if (!notEnoughThreads()) {
       delete thread;
       return;
     }
@@ -410,10 +402,9 @@ void DispatcherQueue::startQueueThread () {
 
   bool ok = thread->start();
 
-  if (! ok) {
+  if (!ok) {
     LOG_FATAL_AND_EXIT("cannot start dispatcher thread");
-  }
-  else {
+  } else {
     _lastChanged = TRI_microtime();
   }
 
@@ -424,7 +415,7 @@ void DispatcherQueue::startQueueThread () {
 /// @brief called when a thread has stopped
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::removeStartedThread (DispatcherThread* thread) {
+void DispatcherQueue::removeStartedThread(DispatcherThread* thread) {
   {
     MUTEX_LOCKER(_threadsLock);
     _startedThreads.erase(thread);
@@ -439,11 +430,11 @@ void DispatcherQueue::removeStartedThread (DispatcherThread* thread) {
 /// @brief checks if we have too many threads
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DispatcherQueue::tooManyThreads () {
+bool DispatcherQueue::tooManyThreads() {
   size_t nrRunning = _nrRunning.load(memory_order_relaxed);
-  size_t nrBlocked = (size_t) _nrBlocked.load(memory_order_relaxed);
+  size_t nrBlocked = (size_t)_nrBlocked.load(memory_order_relaxed);
 
-  if ((_nrThreads + nrBlocked) <  nrRunning) {
+  if ((_nrThreads + nrBlocked) < nrRunning) {
     double now = TRI_microtime();
     double lastChanged = _lastChanged.load(memory_order_relaxed);
 
@@ -462,9 +453,9 @@ bool DispatcherQueue::tooManyThreads () {
 /// @brief checks if we have enough threads
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DispatcherQueue::notEnoughThreads () {
+bool DispatcherQueue::notEnoughThreads() {
   size_t nrRunning = _nrRunning.load(memory_order_relaxed);
-  size_t nrBlocked = (size_t) _nrBlocked.load(memory_order_relaxed);
+  size_t nrBlocked = (size_t)_nrBlocked.load(memory_order_relaxed);
 
   return nrRunning <= _nrThreads - 1 || nrRunning <= nrBlocked;
 }
@@ -473,7 +464,7 @@ bool DispatcherQueue::notEnoughThreads () {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::setProcessorAffinity (const vector<size_t>& cores) {
+void DispatcherQueue::setProcessorAffinity(const vector<size_t>& cores) {
   _affinityCores = cores;
 }
 
@@ -485,7 +476,7 @@ void DispatcherQueue::setProcessorAffinity (const vector<size_t>& cores) {
 /// @brief deletes old threads
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::deleteOldThreads () {
+void DispatcherQueue::deleteOldThreads() {
   DispatcherThread* thread;
 
   while (_stoppedThreads.pop(thread)) {
@@ -501,5 +492,6 @@ void DispatcherQueue::deleteOldThreads () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

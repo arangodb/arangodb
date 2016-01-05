@@ -32,7 +32,7 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief binary greatest common divisor
@@ -40,41 +40,39 @@ namespace triagens {
 /// note: T must be an unsigned type
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename T> static T binaryGcd (T u, T v) {
-      if (u == 0) {
-        return v;
-      }
-      if (v == 0) {
-        return u;
-      }
+template <typename T>
+static T binaryGcd(T u, T v) {
+  if (u == 0) {
+    return v;
+  }
+  if (v == 0) {
+    return u;
+  }
 
-      int shift;
-      for (shift = 0; ((u | v) & 1) == 0; ++shift) {
-        u >>= 1;
-        v >>= 1;
-      }
+  int shift;
+  for (shift = 0; ((u | v) & 1) == 0; ++shift) {
+    u >>= 1;
+    v >>= 1;
+  }
 
-      while ((u & 1) == 0) {
-        u >>= 1;
-      }
+  while ((u & 1) == 0) {
+    u >>= 1;
+  }
 
-      do {
-        while ((v & 1) == 0) {
-          v >>= 1;
-        }
-
-        if (u > v) {
-          std::swap(v, u);
-        }
-        v = v - u; 
-      } 
-      while (v != 0);
-
-      return u << shift;
+  do {
+    while ((v & 1) == 0) {
+      v >>= 1;
     }
 
-  }
+    if (u > v) {
+      std::swap(v, u);
+    }
+    v = v - u;
+  } while (v != 0);
+
+  return u << shift;
+}
+}
 }
 
 #endif
-

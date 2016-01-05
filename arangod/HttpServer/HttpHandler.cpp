@@ -59,7 +59,7 @@ std::atomic_uint_fast64_t NEXT_HANDLER_ID(
 /// @brief constructs a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::HttpHandler(HttpRequest *request)
+HttpHandler::HttpHandler(HttpRequest* request)
     : _handlerId(NEXT_HANDLER_ID.fetch_add(1, std::memory_order_seq_cst)),
       _taskId(0),
       _request(request),
@@ -85,7 +85,7 @@ HttpHandler::~HttpHandler() {
 
 size_t HttpHandler::queue() const {
   bool found;
-  const char *queue = _request->header("x-arango-queue", found);
+  const char* queue = _request->header("x-arango-queue", found);
 
   if (found) {
     uint32_t n = StringUtils::uint32(queue);
@@ -122,7 +122,7 @@ bool HttpHandler::cancel() { return false; }
 /// @brief adds a response
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::addResponse(HttpHandler *) {
+void HttpHandler::addResponse(HttpHandler*) {
   // nothing by default
 }
 
@@ -134,17 +134,13 @@ void HttpHandler::addResponse(HttpHandler *) {
 /// @brief returns the id of the underlying task
 //////////////////////////////////////////////////////////////////////////////
 
-uint64_t HttpHandler::taskId() const {
-  return _taskId;
-}
+uint64_t HttpHandler::taskId() const { return _taskId; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief returns the event loop of the underlying task
 //////////////////////////////////////////////////////////////////////////////
 
-EventLoop HttpHandler::eventLoop() const {
-  return _loop;
-}
+EventLoop HttpHandler::eventLoop() const { return _loop; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief sets the id of the underlying task or 0 to dettach
@@ -169,14 +165,14 @@ HttpHandler::status_t HttpHandler::executeFull() {
 
     try {
       status = execute();
-    } catch (Exception const &ex) {
+    } catch (Exception const& ex) {
       requestStatisticsAgentSetExecuteError();
       handleError(ex);
-    } catch (std::bad_alloc const &ex) {
+    } catch (std::bad_alloc const& ex) {
       requestStatisticsAgentSetExecuteError();
       Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
       handleError(err);
-    } catch (std::exception const &ex) {
+    } catch (std::exception const& ex) {
       requestStatisticsAgentSetExecuteError();
       Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
       handleError(err);
@@ -194,11 +190,11 @@ HttpHandler::status_t HttpHandler::executeFull() {
 
       handleError(err);
     }
-  } catch (Exception const &ex) {
+  } catch (Exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
     LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
-  } catch (std::exception const &ex) {
+  } catch (std::exception const& ex) {
     status = HANDLER_FAILED;
     requestStatisticsAgentSetExecuteError();
     LOG_ERROR("caught exception: %s", ex.what());
@@ -222,20 +218,20 @@ HttpHandler::status_t HttpHandler::executeFull() {
 /// @brief register the server object
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandler::setServer(HttpHandlerFactory *server) { _server = server; }
+void HttpHandler::setServer(HttpHandlerFactory* server) { _server = server; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest const *HttpHandler::getRequest() const { return _request; }
+HttpRequest const* HttpHandler::getRequest() const { return _request; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief steal the request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest *HttpHandler::stealRequest() {
-  HttpRequest *tmp = _request;
+HttpRequest* HttpHandler::stealRequest() {
+  HttpRequest* tmp = _request;
   _request = nullptr;
   return tmp;
 }
@@ -244,14 +240,14 @@ HttpRequest *HttpHandler::stealRequest() {
 /// @brief returns the response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse *HttpHandler::getResponse() const { return _response; }
+HttpResponse* HttpHandler::getResponse() const { return _response; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief steal the response
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse *HttpHandler::stealResponse() {
-  HttpResponse *tmp = _response;
+HttpResponse* HttpHandler::stealResponse() {
+  HttpResponse* tmp = _response;
   _response = nullptr;
   return tmp;
 }
@@ -265,7 +261,6 @@ HttpResponse *HttpHandler::stealResponse() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpHandler::createResponse(HttpResponse::HttpResponseCode code) {
-
   // avoid having multiple responses. this would be a memleak
   if (_response != nullptr) {
     delete _response;

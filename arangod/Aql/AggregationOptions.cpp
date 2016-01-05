@@ -31,26 +31,27 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor, using JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-AggregationOptions::AggregationOptions (Json const& json) {
+AggregationOptions::AggregationOptions(Json const& json) {
   Json obj = json.get("aggregationOptions");
 
-  method = methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
+  method =
+      methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the hash method can be used
 ////////////////////////////////////////////////////////////////////////////////
-      
-bool AggregationOptions::canUseHashMethod () const {
+
+bool AggregationOptions::canUseHashMethod() const {
   if (method == AggregationMethod::AGGREGATION_METHOD_SORTED) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -58,12 +59,11 @@ bool AggregationOptions::canUseHashMethod () const {
 /// @brief convert the options to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void AggregationOptions::toJson (triagens::basics::Json& json,
-                                 TRI_memory_zone_t* zone) const {
+void AggregationOptions::toJson(triagens::basics::Json& json,
+                                TRI_memory_zone_t* zone) const {
   Json options;
 
-  options = Json(Json::Object, 1)
-    ("method", Json(methodToString(method)));
+  options = Json(Json::Object, 1)("method", Json(methodToString(method)));
 
   json("aggregationOptions", options);
 }
@@ -71,8 +71,9 @@ void AggregationOptions::toJson (triagens::basics::Json& json,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the aggregation method from a string
 ////////////////////////////////////////////////////////////////////////////////
-          
-AggregationOptions::AggregationMethod AggregationOptions::methodFromString (std::string const& method) {
+
+AggregationOptions::AggregationMethod AggregationOptions::methodFromString(
+    std::string const& method) {
   if (method == "hash") {
     return AggregationMethod::AGGREGATION_METHOD_HASH;
   }
@@ -86,8 +87,9 @@ AggregationOptions::AggregationMethod AggregationOptions::methodFromString (std:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the aggregation method
 ////////////////////////////////////////////////////////////////////////////////
-          
-std::string AggregationOptions::methodToString (AggregationOptions::AggregationMethod method) {
+
+std::string AggregationOptions::methodToString(
+    AggregationOptions::AggregationMethod method) {
   if (method == AggregationMethod::AGGREGATION_METHOD_HASH) {
     return std::string("hash");
   }
@@ -95,6 +97,6 @@ std::string AggregationOptions::methodToString (AggregationOptions::AggregationM
     return std::string("sorted");
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot stringify unknown aggregation method");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "cannot stringify unknown aggregation method");
 }
-

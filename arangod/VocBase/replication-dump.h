@@ -58,22 +58,20 @@ class TRI_vocbase_col_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_replication_dump_t {
-  TRI_replication_dump_t (TRI_vocbase_t* vocbase,
-                          size_t chunkSize,
-                          bool includeSystem)
-    : _vocbase(vocbase),
-      _buffer(nullptr),
-      _chunkSize(chunkSize),
-      _lastFoundTick(0),
-      _lastSid(0),
-      _lastShape(nullptr),
-      _collectionNames(),
-      _failed(false),
-      _bufferFull(false),
-      _hasMore(false),
-      _includeSystem(includeSystem),
-      _fromTickIncluded(false) {
- 
+  TRI_replication_dump_t(TRI_vocbase_t* vocbase, size_t chunkSize,
+                         bool includeSystem)
+      : _vocbase(vocbase),
+        _buffer(nullptr),
+        _chunkSize(chunkSize),
+        _lastFoundTick(0),
+        _lastSid(0),
+        _lastShape(nullptr),
+        _collectionNames(),
+        _failed(false),
+        _bufferFull(false),
+        _hasMore(false),
+        _includeSystem(includeSystem),
+        _fromTickIncluded(false) {
     if (_chunkSize == 0) {
       // default chunk size
       _chunkSize = 128 * 1024;
@@ -83,28 +81,28 @@ struct TRI_replication_dump_t {
 
     if (_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    } 
+    }
   }
 
-  ~TRI_replication_dump_t () {
+  ~TRI_replication_dump_t() {
     if (_buffer != nullptr) {
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
       _buffer = nullptr;
     }
   }
 
-  TRI_vocbase_t*               _vocbase;
-  TRI_string_buffer_t*         _buffer;
-  size_t                       _chunkSize;
-  TRI_voc_tick_t               _lastFoundTick;
-  TRI_shape_sid_t              _lastSid;
-  struct TRI_shape_s const*    _lastShape;
+  TRI_vocbase_t* _vocbase;
+  TRI_string_buffer_t* _buffer;
+  size_t _chunkSize;
+  TRI_voc_tick_t _lastFoundTick;
+  TRI_shape_sid_t _lastSid;
+  struct TRI_shape_s const* _lastShape;
   std::unordered_map<TRI_voc_cid_t, std::string> _collectionNames;
-  bool                         _failed;
-  bool                         _bufferFull;
-  bool                         _hasMore;
-  bool                         _includeSystem;
-  bool                         _fromTickIncluded;
+  bool _failed;
+  bool _bufferFull;
+  bool _hasMore;
+  bool _includeSystem;
+  bool _fromTickIncluded;
 };
 
 // -----------------------------------------------------------------------------
@@ -115,32 +113,25 @@ struct TRI_replication_dump_t {
 /// @brief dump data from a single collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DumpCollectionReplication (TRI_replication_dump_t*,
-                                   TRI_vocbase_col_t*,
-                                   TRI_voc_tick_t,
-                                   TRI_voc_tick_t,
-                                   bool,
-                                   bool,
-                                   bool);
+int TRI_DumpCollectionReplication(TRI_replication_dump_t*, TRI_vocbase_col_t*,
+                                  TRI_voc_tick_t, TRI_voc_tick_t, bool, bool,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from the replication log
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DumpLogReplication (TRI_replication_dump_t*,
-                            std::unordered_set<TRI_voc_tid_t> const&,
-                            TRI_voc_tick_t,
-                            TRI_voc_tick_t,
-                            TRI_voc_tick_t,
-                            bool);
+int TRI_DumpLogReplication(TRI_replication_dump_t*,
+                           std::unordered_set<TRI_voc_tid_t> const&,
+                           TRI_voc_tick_t, TRI_voc_tick_t, TRI_voc_tick_t,
+                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the transactions that were open at a given point in time
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t*,
-                                              TRI_voc_tick_t,
-                                              TRI_voc_tick_t);
+int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t*,
+                                             TRI_voc_tick_t, TRI_voc_tick_t);
 
 #endif
 
@@ -150,5 +141,6 @@ int TRI_DetermineOpenTransactionsReplication (TRI_replication_dump_t*,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

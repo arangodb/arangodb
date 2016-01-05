@@ -42,7 +42,7 @@
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context>);
+void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
 
@@ -52,5 +52,6 @@ void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

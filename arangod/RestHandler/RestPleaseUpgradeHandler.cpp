@@ -41,9 +41,8 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestPleaseUpgradeHandler::RestPleaseUpgradeHandler (HttpRequest* request)
-  : HttpHandler(request) {
-}
+RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
+    : HttpHandler(request) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -53,15 +52,13 @@ RestPleaseUpgradeHandler::RestPleaseUpgradeHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestPleaseUpgradeHandler::isDirect () const {
-  return true;
-}
+bool RestPleaseUpgradeHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
+HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
   createResponse(HttpResponse::OK);
   _response->setContentType("text/plain; charset=utf-8");
 
@@ -83,8 +80,7 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestPleaseUpgradeHandler::handleError (const Exception&) {
-}
+void RestPleaseUpgradeHandler::handleError(const Exception&) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -92,5 +88,6 @@ void RestPleaseUpgradeHandler::handleError (const Exception&) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

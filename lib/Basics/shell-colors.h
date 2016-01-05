@@ -151,9 +151,9 @@
 #define TRI_SHELL_COLOR_RESET "\x1b[0m"
 
 #else
-  // .............................................................................
-  // Quick hack for windows
-  // .............................................................................
+// .............................................................................
+// Quick hack for windows
+// .............................................................................
 
 #define TRI_SHELL_COLOR_RED ""
 #define TRI_SHELL_COLOR_BOLD_RED ""
@@ -185,5 +185,6 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

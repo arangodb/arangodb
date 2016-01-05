@@ -41,7 +41,7 @@
 /// @brief cleanup event loop
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CleanupVocBase (void*);
+void TRI_CleanupVocBase(void*);
 
 #endif
 
@@ -51,5 +51,6 @@ void TRI_CleanupVocBase (void*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

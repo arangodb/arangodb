@@ -46,22 +46,19 @@ using namespace triagens::rest;
 /// @brief creates an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV6::EndpointIpV6 (const Endpoint::EndpointType type,
-                            const Endpoint::EncryptionType encryption,
-                            const std::string& specification,
-                            int listenBacklog,
-                            bool reuseAddress,
-                            const std::string& host,
-                            const uint16_t port)
-  : EndpointIp(type, DOMAIN_IPV6, encryption, specification, listenBacklog, reuseAddress, host, port) {
-}
+EndpointIpV6::EndpointIpV6(const Endpoint::EndpointType type,
+                           const Endpoint::EncryptionType encryption,
+                           const std::string& specification, int listenBacklog,
+                           bool reuseAddress, const std::string& host,
+                           const uint16_t port)
+    : EndpointIp(type, DOMAIN_IPV6, encryption, specification, listenBacklog,
+                 reuseAddress, host, port) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an IPv6 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV6::~EndpointIpV6 () {
-}
+EndpointIpV6::~EndpointIpV6() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -69,5 +66,6 @@ EndpointIpV6::~EndpointIpV6 () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

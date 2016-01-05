@@ -48,24 +48,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_EDGE_ANY    = 0, // can only be used for searching
-  TRI_EDGE_IN     = 1,
-  TRI_EDGE_OUT    = 2
-}
-TRI_edge_direction_e;
+  TRI_EDGE_ANY = 0,  // can only be used for searching
+  TRI_EDGE_IN = 1,
+  TRI_EDGE_OUT = 2
+} TRI_edge_direction_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index entry for edges
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_edge_header_t {
-  TRI_edge_header_t (TRI_voc_cid_t cid,
-                     TRI_voc_key_t key) 
-    : _cid(cid),
-      _key(key) {
-  }
+  TRI_edge_header_t(TRI_voc_cid_t cid, TRI_voc_key_t key)
+      : _cid(cid), _key(key) {}
 
-  TRI_voc_cid_t _cid; // from or to, depending on the direction
+  TRI_voc_cid_t _cid;  // from or to, depending on the direction
   TRI_voc_key_t _key;
 };
 
@@ -74,12 +70,9 @@ struct TRI_edge_header_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_edge_index_iterator_t {
-  TRI_edge_index_iterator_t (TRI_edge_direction_e direction,
-                             TRI_voc_cid_t cid,
-                             TRI_voc_key_t key) 
-    : _direction(direction),
-      _edge(cid, nullptr) {
-
+  TRI_edge_index_iterator_t(TRI_edge_direction_e direction, TRI_voc_cid_t cid,
+                            TRI_voc_key_t key)
+      : _direction(direction), _edge(cid, nullptr) {
     TRI_ASSERT(key != nullptr);
 
     _edge._key = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key);
@@ -89,12 +82,9 @@ struct TRI_edge_index_iterator_t {
     }
   }
 
-  TRI_edge_index_iterator_t (TRI_edge_direction_e direction,
-                             TRI_voc_cid_t cid,
-                             char const* key) 
-    : _direction(direction),
-      _edge({ cid, nullptr }) {
-
+  TRI_edge_index_iterator_t(TRI_edge_direction_e direction, TRI_voc_cid_t cid,
+                            char const* key)
+      : _direction(direction), _edge({cid, nullptr}) {
     TRI_ASSERT(key != nullptr);
     _edge._key = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key);
     if (_edge._key == nullptr) {
@@ -102,14 +92,14 @@ struct TRI_edge_index_iterator_t {
     }
   }
 
-  ~TRI_edge_index_iterator_t () {
+  ~TRI_edge_index_iterator_t() {
     if (_edge._key != nullptr) {
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _edge._key);
     }
   }
 
   TRI_edge_direction_e const _direction;
-  TRI_edge_header_t          _edge;
+  TRI_edge_header_t _edge;
 };
 
 // -----------------------------------------------------------------------------
@@ -124,12 +114,9 @@ struct TRI_edge_index_iterator_t {
 /// @brief looks up edges
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
-                                                  triagens::arango::Transaction*,
-                                                  struct TRI_document_collection_t*,
-                                                  TRI_edge_direction_e,
-                                                  TRI_voc_cid_t,
-                                                  TRI_voc_key_t const);
+std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
+    triagens::arango::Transaction*, struct TRI_document_collection_t*,
+    TRI_edge_direction_e, TRI_voc_cid_t, TRI_voc_key_t const);
 
 #endif
 
@@ -139,5 +126,6 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

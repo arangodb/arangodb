@@ -47,27 +47,21 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::V8PeriodicTask (string const& id,
-                                string const& name,
-                                TRI_vocbase_t* vocbase,
-                                ApplicationV8* v8Dealer,
-                                Scheduler* scheduler,
-                                Dispatcher* dispatcher,
-                                double offset,
-                                double period,
-                                string const& command,
-                                TRI_json_t* parameters,
-                                bool allowUseDatabase)
-  : Task(id, name),
-    PeriodicTask(id, offset, period),
-    _vocbase(vocbase),
-    _v8Dealer(v8Dealer),
-    _dispatcher(dispatcher),
-    _command(command),
-    _parameters(parameters),
-    _created(TRI_microtime()),
-    _allowUseDatabase(allowUseDatabase) {
-
+V8PeriodicTask::V8PeriodicTask(string const& id, string const& name,
+                               TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
+                               Scheduler* scheduler, Dispatcher* dispatcher,
+                               double offset, double period,
+                               string const& command, TRI_json_t* parameters,
+                               bool allowUseDatabase)
+    : Task(id, name),
+      PeriodicTask(id, offset, period),
+      _vocbase(vocbase),
+      _v8Dealer(v8Dealer),
+      _dispatcher(dispatcher),
+      _command(command),
+      _parameters(parameters),
+      _created(TRI_microtime()),
+      _allowUseDatabase(allowUseDatabase) {
   TRI_ASSERT(vocbase != nullptr);
 
   // increase reference counter for the database used
@@ -78,7 +72,7 @@ V8PeriodicTask::V8PeriodicTask (string const& id,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8PeriodicTask::~V8PeriodicTask () {
+V8PeriodicTask::~V8PeriodicTask() {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
 
@@ -95,16 +89,18 @@ V8PeriodicTask::~V8PeriodicTask () {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8PeriodicTask::getDescription (TRI_json_t* json) const {
+void V8PeriodicTask::getDescription(TRI_json_t* json) const {
   PeriodicTask::getDescription(json);
 
   TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "created", created);
 
-  TRI_json_t* cmd = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _command.c_str(), _command.size());
+  TRI_json_t* cmd = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                             _command.c_str(), _command.size());
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "command", cmd);
 
-  TRI_json_t* db = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _vocbase->_name, strlen(_vocbase->_name));
+  TRI_json_t* db = TRI_CreateStringCopyJson(
+      TRI_UNKNOWN_MEM_ZONE, _vocbase->_name, strlen(_vocbase->_name));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "database", db);
 }
 

@@ -46,11 +46,8 @@ using namespace triagens::rest;
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpListenTask::HttpListenTask (HttpServer* server, Endpoint* endpoint)
-  : Task("HttpListenTask"),
-    ListenTask(endpoint),
-    _server(server) {
-}
+HttpListenTask::HttpListenTask(HttpServer* server, Endpoint* endpoint)
+    : Task("HttpListenTask"), ListenTask(endpoint), _server(server) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ListenTask methods
@@ -60,7 +57,8 @@ HttpListenTask::HttpListenTask (HttpServer* server, Endpoint* endpoint)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpListenTask::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
+bool HttpListenTask::handleConnected(TRI_socket_t s,
+                                     const ConnectionInfo& info) {
   _server->handleConnected(s, info);
   return true;
 }

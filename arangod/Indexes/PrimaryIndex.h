@@ -44,228 +44,204 @@ struct TRI_json_t;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace aql {
-    class SortCondition;
+namespace aql {
+class SortCondition;
+}
+namespace basics {
+struct AttributeName;
+}
+
+namespace arango {
+class Transaction;
+
+class PrimaryIndexIterator final : public IndexIterator {
+ public:
+  PrimaryIndexIterator(triagens::arango::Transaction* trx,
+                       PrimaryIndex const* index,
+                       std::vector<char const*>& keys)
+      : _trx(trx), _index(index), _keys(std::move(keys)), _position(0) {}
+
+  ~PrimaryIndexIterator() {}
+
+  TRI_doc_mptr_t* next() override;
+
+  void reset() override;
+
+ private:
+  triagens::arango::Transaction* _trx;
+  PrimaryIndex const* _index;
+  std::vector<char const*> _keys;
+  size_t _position;
+};
+
+class PrimaryIndex final : public Index {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
+
+ public:
+  PrimaryIndex() = delete;
+
+  explicit PrimaryIndex(struct TRI_document_collection_t*);
+
+  explicit PrimaryIndex(struct TRI_json_t const*);
+
+  ~PrimaryIndex();
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                      public
+  // types
+  // -----------------------------------------------------------------------------
+
+ private:
+  typedef triagens::basics::AssocUnique<char const, TRI_doc_mptr_t>
+      TRI_PrimaryIndex_t;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
+
+ public:
+  IndexType type() const override final {
+    return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
   }
-  namespace basics {
-    struct AttributeName;
-  }
 
-  namespace arango {
-    class Transaction;
+  bool isSorted() const override final { return false; }
 
-    class PrimaryIndexIterator final : public IndexIterator {
- 
-      public:
+  bool hasSelectivityEstimate() const override final { return true; }
 
-        PrimaryIndexIterator (triagens::arango::Transaction* trx,
-                              PrimaryIndex const* index,
-                              std::vector<char const*>& keys) 
-          : _trx(trx),
-            _index(index),
-            _keys(std::move(keys)),
-            _position(0) {
-        }
+  double selectivityEstimate() const override final { return 1.0; }
 
-        ~PrimaryIndexIterator () {
-        }
+  bool dumpFields() const override final { return true; }
 
-        TRI_doc_mptr_t* next () override;
+  size_t size() const;
 
-        void reset () override;
+  size_t memory() const override final;
 
-      private:
+  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
 
-        triagens::arango::Transaction* _trx;
-        PrimaryIndex const*            _index;
-        std::vector<char const*>       _keys;
-        size_t                         _position;
+  std::shared_ptr<VPackBuilder> toVelocyPack(bool, bool) const override final;
+  std::shared_ptr<VPackBuilder> toVelocyPackFigures(bool) const override final;
 
-    };
+  int insert(triagens::arango::Transaction*, TRI_doc_mptr_t const*,
+             bool) override final;
 
-    class PrimaryIndex final : public Index {
+  int remove(triagens::arango::Transaction*, TRI_doc_mptr_t const*,
+             bool) override final;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  TRI_doc_mptr_t* lookupKey(triagens::arango::Transaction*, char const*) const;
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up an element given a key
+  /// returns the index position into which a key would belong in the second
+  /// parameter. also returns the hash value for the object
+  ////////////////////////////////////////////////////////////////////////////////
 
-        PrimaryIndex () = delete;
-        
-        explicit PrimaryIndex (struct TRI_document_collection_t*);
-        
-        explicit PrimaryIndex (struct TRI_json_t const*);
+  TRI_doc_mptr_t* lookupKey(triagens::arango::Transaction*, char const*,
+                            triagens::basics::BucketPosition&, uint64_t&) const;
 
-        ~PrimaryIndex ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief a method to iterate over all elements in the index in
+  ///        a random order.
+  ///        Returns nullptr if all documents have been returned.
+  ///        Convention: step === 0 indicates a new start.
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-        
-      private:
+  TRI_doc_mptr_t* lookupRandom(
+      triagens::arango::Transaction*,
+      triagens::basics::BucketPosition& initialPosition,
+      triagens::basics::BucketPosition& position, uint64_t& step,
+      uint64_t& total);
 
-        typedef triagens::basics::AssocUnique<char const,
-                TRI_doc_mptr_t> TRI_PrimaryIndex_t;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief a method to iterate over all elements in the index in
+  ///        a sequential order.
+  ///        Returns nullptr if all documents have been returned.
+  ///        Convention: position === 0 indicates a new start.
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  TRI_doc_mptr_t* lookupSequential(triagens::arango::Transaction*,
+                                   triagens::basics::BucketPosition& position,
+                                   uint64_t& total);
 
-      public:
-        
-        IndexType type () const override final {
-          return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief a method to iterate over all elements in the index in
+  ///        reversed sequential order.
+  ///        Returns nullptr if all documents have been returned.
+  ///        Convention: position === UINT64_MAX indicates a new start.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool isSorted () const override final {
-          return false;
-        }
+  TRI_doc_mptr_t* lookupSequentialReverse(
+      triagens::arango::Transaction*,
+      triagens::basics::BucketPosition& position);
 
-        bool hasSelectivityEstimate () const override final {
-          return true;
-        }
+  int insertKey(triagens::arango::Transaction*, TRI_doc_mptr_t*, void const**);
 
-        double selectivityEstimate () const override final {
-          return 1.0;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief adds a key/element to the index
+  /// this is a special, optimized version that receives the target slot index
+  /// from a previous lookupKey call
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool dumpFields () const override final {
-          return true;
-        }
-        
-        size_t size () const;
+  int insertKey(triagens::arango::Transaction*, struct TRI_doc_mptr_t*,
+                triagens::basics::BucketPosition const&);
 
-        size_t memory () const override final;
+  TRI_doc_mptr_t* removeKey(triagens::arango::Transaction*, char const*);
 
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
+  int resize(triagens::arango::Transaction*, size_t);
 
-        std::shared_ptr<VPackBuilder> toVelocyPack (bool, bool) const override final;
-        std::shared_ptr<VPackBuilder> toVelocyPackFigures (bool) const override final;
-  
-        int insert (triagens::arango::Transaction*, TRI_doc_mptr_t const*, bool) override final;
+  static uint64_t calculateHash(triagens::arango::Transaction*, char const*);
 
-        int remove (triagens::arango::Transaction*, TRI_doc_mptr_t const*, bool) override final;
+  static uint64_t calculateHash(triagens::arango::Transaction*, char const*,
+                                size_t);
 
-        TRI_doc_mptr_t* lookupKey (triagens::arango::Transaction*, char const*) const;
+  void invokeOnAllElements(std::function<void(TRI_doc_mptr_t*)>);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an element given a key
-/// returns the index position into which a key would belong in the second
-/// parameter. also returns the hash value for the object
-////////////////////////////////////////////////////////////////////////////////
+  bool supportsFilterCondition(triagens::aql::AstNode const*,
+                               triagens::aql::Variable const*, size_t, size_t&,
+                               double&) const override;
 
-        TRI_doc_mptr_t* lookupKey (triagens::arango::Transaction*, 
-                                   char const*, 
-                                   triagens::basics::BucketPosition&, 
-                                   uint64_t&) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a method to iterate over all elements in the index in
-///        a random order. 
-///        Returns nullptr if all documents have been returned.
-///        Convention: step === 0 indicates a new start.
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_doc_mptr_t* lookupRandom (triagens::arango::Transaction*,
-                                      triagens::basics::BucketPosition& initialPosition,
-                                      triagens::basics::BucketPosition& position,
-                                      uint64_t& step,
-                                      uint64_t& total);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a method to iterate over all elements in the index in
-///        a sequential order. 
-///        Returns nullptr if all documents have been returned.
-///        Convention: position === 0 indicates a new start.
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_doc_mptr_t* lookupSequential (triagens::arango::Transaction*,
-                                          triagens::basics::BucketPosition& position,
-                                          uint64_t& total);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a method to iterate over all elements in the index in
-///        reversed sequential order. 
-///        Returns nullptr if all documents have been returned.
-///        Convention: position === UINT64_MAX indicates a new start.
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_doc_mptr_t* lookupSequentialReverse (triagens::arango::Transaction*,
-                                                 triagens::basics::BucketPosition& position);
-
-        int insertKey (triagens::arango::Transaction*, 
-                       TRI_doc_mptr_t*, 
-                       void const**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a key/element to the index
-/// this is a special, optimized version that receives the target slot index
-/// from a previous lookupKey call
-////////////////////////////////////////////////////////////////////////////////
-
-        int insertKey (triagens::arango::Transaction*,
-                       struct TRI_doc_mptr_t*, 
-                       triagens::basics::BucketPosition const&);
-
-        TRI_doc_mptr_t* removeKey (triagens::arango::Transaction*, 
-                                   char const*);
-
-        int resize (triagens::arango::Transaction*, size_t);
-
-        static uint64_t calculateHash (triagens::arango::Transaction*, char const*); 
-        
-        static uint64_t calculateHash (triagens::arango::Transaction*, char const*, size_t);
-
-        void invokeOnAllElements (std::function<void(TRI_doc_mptr_t*)>);
-
-        bool supportsFilterCondition (triagens::aql::AstNode const*,
+  IndexIterator* iteratorForCondition(triagens::arango::Transaction*,
+                                      IndexIteratorContext*,
+                                      triagens::aql::Ast*,
+                                      triagens::aql::AstNode const*,
                                       triagens::aql::Variable const*,
-                                      size_t,
-                                      size_t&,
-                                      double&) const override;
-        
-        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
-                                             IndexIteratorContext*,
-                                             triagens::aql::Ast*,
-                                             triagens::aql::AstNode const*,
-                                             triagens::aql::Variable const*,
-                                             bool) const override;
-        
-        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
-                                                     triagens::aql::Variable const*) const override;
+                                      bool) const override;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  triagens::aql::AstNode* specializeCondition(
+      triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
 
-      private:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the iterator
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the iterator
+  ////////////////////////////////////////////////////////////////////////////////
 
-        IndexIterator* createIterator (triagens::arango::Transaction*,
-                                       IndexIteratorContext*,
-                                       triagens::aql::AstNode const*,
-                                       std::vector<triagens::aql::AstNode const*> const&) const;
+  IndexIterator* createIterator(
+      triagens::arango::Transaction*, IndexIteratorContext*,
+      triagens::aql::AstNode const*,
+      std::vector<triagens::aql::AstNode const*> const&) const;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-      private:
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the actual index
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual index
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_PrimaryIndex_t* _primaryIndex;
-
-    };
-
-  }
+  TRI_PrimaryIndex_t* _primaryIndex;
+};
+}
 }
 
 #endif
@@ -276,5 +252,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -35,7 +35,7 @@
 #include <openssl/ssl.h>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -45,15 +45,15 @@ namespace triagens {
 /// @brief SSL protocol methods
 ////////////////////////////////////////////////////////////////////////////////
 
-        enum protocol_e {
-          SSL_UNKNOWN = 0,
-          SSL_V2      = 1,
-          SSL_V23     = 2,
-          SSL_V3      = 3,
-          TLS_V1      = 4,
+enum protocol_e {
+  SSL_UNKNOWN = 0,
+  SSL_V2 = 1,
+  SSL_V23 = 2,
+  SSL_V3 = 3,
+  TLS_V1 = 4,
 
-          SSL_LAST
-        };
+  SSL_LAST
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SSL_CONST
@@ -73,20 +73,20 @@ namespace triagens {
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-    SSL_CTX* sslContext (protocol_e, std::string const& keyfile);
+SSL_CTX* sslContext(protocol_e, std::string const& keyfile);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::string protocolName (const protocol_e protocol);
+std::string protocolName(const protocol_e protocol);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::string lastSSLError ();
-  }
+std::string lastSSLError();
+}
 }
 
 #endif
@@ -97,5 +97,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

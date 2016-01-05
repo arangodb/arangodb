@@ -53,8 +53,8 @@ static Completer* COMPLETER = nullptr;
 /// @brief completer generator
 ////////////////////////////////////////////////////////////////////////////////
 
-static void LinenoiseCompletionGenerator (char const* text, 
-                                          linenoiseCompletions* lc) {
+static void LinenoiseCompletionGenerator(char const* text,
+                                         linenoiseCompletions* lc) {
   if (COMPLETER) {
     std::vector<string> alternatives = COMPLETER->alternatives(text);
     ShellBase::sortAlternatives(alternatives);
@@ -77,9 +77,8 @@ static void LinenoiseCompletionGenerator (char const* text,
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LinenoiseShell::LinenoiseShell (std::string const& history, 
-                                Completer* completer)
-  : ShellBase(history, completer) {
+LinenoiseShell::LinenoiseShell(std::string const& history, Completer* completer)
+    : ShellBase(history, completer) {
   COMPLETER = completer;
   linenoiseSetCompletionCallback(LinenoiseCompletionGenerator);
   linenoiseInstallWindowChangeHandler();
@@ -89,9 +88,7 @@ LinenoiseShell::LinenoiseShell (std::string const& history,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LinenoiseShell::~LinenoiseShell() {
-  COMPLETER = nullptr;
-}
+LinenoiseShell::~LinenoiseShell() { COMPLETER = nullptr; }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -101,7 +98,7 @@ LinenoiseShell::~LinenoiseShell() {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::open (bool) {
+bool LinenoiseShell::open(bool) {
   linenoiseHistoryLoad(_historyFilename.c_str());
   _state = STATE_OPENED;
   return true;
@@ -111,7 +108,7 @@ bool LinenoiseShell::open (bool) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::close () {
+bool LinenoiseShell::close() {
   // avoid duplicate saving of history
   if (_state != STATE_OPENED) {
     return true;
@@ -127,7 +124,7 @@ bool LinenoiseShell::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void LinenoiseShell::addHistory (std::string const& str) {
+void LinenoiseShell::addHistory(std::string const& str) {
   if (str.empty()) {
     return;
   }
@@ -139,7 +136,7 @@ void LinenoiseShell::addHistory (std::string const& str) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LinenoiseShell::writeHistory () {
+bool LinenoiseShell::writeHistory() {
   linenoiseHistorySave(_historyFilename.c_str());
 
   return true;
@@ -149,7 +146,7 @@ bool LinenoiseShell::writeHistory () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string LinenoiseShell::getLine (std::string const& prompt, bool& eof) {
+std::string LinenoiseShell::getLine(std::string const& prompt, bool& eof) {
   char* line = linenoise(prompt.c_str());
 
   if (line != nullptr) {

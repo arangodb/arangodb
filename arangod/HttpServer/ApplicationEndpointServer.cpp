@@ -57,19 +57,15 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 namespace {
-  class BIOGuard {
-    public:
-      explicit BIOGuard(BIO *bio)
-        : _bio(bio) {
-      }
+class BIOGuard {
+ public:
+  explicit BIOGuard(BIO* bio) : _bio(bio) {}
 
-      ~BIOGuard() {
-        BIO_free(_bio);
-      }
+  ~BIOGuard() { BIO_free(_bio); }
 
-    public:
-      BIO *_bio;
-  };
+ public:
+  BIO* _bio;
+};
 }
 
 // -----------------------------------------------------------------------------
@@ -80,42 +76,42 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applicationServer,
-                                                      ApplicationScheduler* applicationScheduler,
-                                                      ApplicationDispatcher* applicationDispatcher,
-                                                      AsyncJobManager* jobManager,
-                                                      std::string const& authenticationRealm,
-                                                      HttpHandlerFactory::context_fptr setContext,
-                                                      void* contextData)
-  : ApplicationFeature("EndpointServer"),
-    _applicationServer(applicationServer),
-    _applicationScheduler(applicationScheduler),
-    _applicationDispatcher(applicationDispatcher),
-    _jobManager(jobManager),
-    _authenticationRealm(authenticationRealm),
-    _setContext(setContext),
-    _contextData(contextData),
-    _handlerFactory(nullptr),
-    _servers(),
-    _basePath(),
-    _endpointList(),
-    _httpPort(),
-    _endpoints(),
-    _reuseAddress(true),
-    _keepAliveTimeout(300.0),
-    _defaultApiCompatibility(0),
-    _allowMethodOverride(false),
-    _backlogSize(64),
-    _httpsKeyfile(),
-    _cafile(),
-    _sslProtocol(TLS_V1),
-    _sslCache(false),
-    _sslOptions((long) (SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
-    _sslCipherList(""),
-    _sslContext(nullptr),
-    _rctx() {
-
-  // if our default value is too high, we'll use half of the max value provided by the system
+ApplicationEndpointServer::ApplicationEndpointServer(
+    ApplicationServer* applicationServer,
+    ApplicationScheduler* applicationScheduler,
+    ApplicationDispatcher* applicationDispatcher, AsyncJobManager* jobManager,
+    std::string const& authenticationRealm,
+    HttpHandlerFactory::context_fptr setContext, void* contextData)
+    : ApplicationFeature("EndpointServer"),
+      _applicationServer(applicationServer),
+      _applicationScheduler(applicationScheduler),
+      _applicationDispatcher(applicationDispatcher),
+      _jobManager(jobManager),
+      _authenticationRealm(authenticationRealm),
+      _setContext(setContext),
+      _contextData(contextData),
+      _handlerFactory(nullptr),
+      _servers(),
+      _basePath(),
+      _endpointList(),
+      _httpPort(),
+      _endpoints(),
+      _reuseAddress(true),
+      _keepAliveTimeout(300.0),
+      _defaultApiCompatibility(0),
+      _allowMethodOverride(false),
+      _backlogSize(64),
+      _httpsKeyfile(),
+      _cafile(),
+      _sslProtocol(TLS_V1),
+      _sslCache(false),
+      _sslOptions(
+          (long)(SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
+      _sslCipherList(""),
+      _sslContext(nullptr),
+      _rctx() {
+  // if our default value is too high, we'll use half of the max value provided
+  // by the system
   if (_backlogSize > SOMAXCONN) {
     _backlogSize = SOMAXCONN / 2;
   }
@@ -127,8 +123,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationEndpointServer::~ApplicationEndpointServer () {
-
+ApplicationEndpointServer::~ApplicationEndpointServer() {
   // ..........................................................................
   // Where ever possible we should EXPLICITLY write down the type used in
   // a templated class/method etc. This makes it a lot easier to debug the
@@ -159,7 +154,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 /// @brief builds the endpoint servers
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::buildServers () {
+bool ApplicationEndpointServer::buildServers() {
   TRI_ASSERT(_handlerFactory != nullptr);
   TRI_ASSERT(_applicationScheduler->scheduler() != nullptr);
 
@@ -167,10 +162,8 @@ bool ApplicationEndpointServer::buildServers () {
 
   // unencrypted endpoints
   server = new HttpServer(_applicationScheduler->scheduler(),
-                          _applicationDispatcher->dispatcher(),
-                          _handlerFactory,
-                          _jobManager,
-                          _keepAliveTimeout);
+                          _applicationDispatcher->dispatcher(), _handlerFactory,
+                          _jobManager, _keepAliveTimeout);
 
   server->setEndpointList(&_endpointList);
   _servers.push_back(server);
@@ -184,12 +177,10 @@ bool ApplicationEndpointServer::buildServers () {
     }
 
     // https
-    server = new HttpsServer(_applicationScheduler->scheduler(),
-                             _applicationDispatcher->dispatcher(),
-                             _handlerFactory,
-                             _jobManager,
-                             _keepAliveTimeout,
-                             _sslContext);
+    server =
+        new HttpsServer(_applicationScheduler->scheduler(),
+                        _applicationDispatcher->dispatcher(), _handlerFactory,
+                        _jobManager, _keepAliveTimeout, _sslContext);
 
     server->setEndpointList(&_endpointList);
     _servers.push_back(server);
@@ -206,56 +197,67 @@ bool ApplicationEndpointServer::buildServers () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
+void ApplicationEndpointServer::setupOptions(
+    map<string, ProgramOptionsDescription>& options) {
   // issue #175: add deprecated hidden option for downwards compatibility
-  options["Hidden Options"]
-    ("server.http-port", &_httpPort, "http port for client requests (deprecated)")
-  ;
+  options["Hidden Options"]("server.http-port", &_httpPort,
+                            "http port for client requests (deprecated)");
 
-  options["Server Options:help-default"]
-    ("server.endpoint", &_endpoints, "endpoint for client requests (e.g. \"tcp://127.0.0.1:8529\", or \"ssl://192.168.1.1:8529\")")
-  ;
+  options["Server Options:help-default"]("server.endpoint", &_endpoints,
+                                         "endpoint for client requests (e.g. "
+                                         "\"tcp://127.0.0.1:8529\", or "
+                                         "\"ssl://192.168.1.1:8529\")");
 
-  options["Server Options:help-admin"]
-    ("server.allow-method-override", &_allowMethodOverride, "allow HTTP method override using special headers")
-    ("server.backlog-size", &_backlogSize, "listen backlog size")
-    ("server.default-api-compatibility", &_defaultApiCompatibility, "default API compatibility version")
-    ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
-    ("server.reuse-address", &_reuseAddress, "try to reuse address")
-  ;
+  options["Server Options:help-admin"](
+      "server.allow-method-override", &_allowMethodOverride,
+      "allow HTTP method override using special headers")(
+      "server.backlog-size", &_backlogSize, "listen backlog size")(
+      "server.default-api-compatibility", &_defaultApiCompatibility,
+      "default API compatibility version")("server.keep-alive-timeout",
+                                           &_keepAliveTimeout,
+                                           "keep-alive timeout in seconds")(
+      "server.reuse-address", &_reuseAddress, "try to reuse address");
 
-  options["SSL Options:help-ssl"]
-    ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
-    ("server.cafile", &_cafile, "file containing the CA certificates of clients")
-    ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
-    ("server.ssl-cache", &_sslCache, "use SSL session caching")
-    ("server.ssl-options", &_sslOptions, "SSL options, see OpenSSL documentation")
-    ("server.ssl-cipher-list", &_sslCipherList, "SSL cipher list, see OpenSSL documentation")
-  ;
+  options["SSL Options:help-ssl"]("server.keyfile", &_httpsKeyfile,
+                                  "keyfile for SSL connections")(
+      "server.cafile", &_cafile,
+      "file containing the CA certificates of clients")(
+      "server.ssl-protocol", &_sslProtocol,
+      "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")(
+      "server.ssl-cache", &_sslCache, "use SSL session caching")(
+      "server.ssl-options", &_sslOptions,
+      "SSL options, see OpenSSL documentation")(
+      "server.ssl-cipher-list", &_sslCipherList,
+      "SSL cipher list, see OpenSSL documentation");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::afterOptionParsing (ProgramOptions& options) {
+bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   // create the ssl context (if possible)
   bool ok = createSslContext();
 
-  if (! ok) {
+  if (!ok) {
     return false;
   }
 
   if (_backlogSize <= 0) {
-    LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. expecting a positive value");
-  }
-  
-  if (_backlogSize > SOMAXCONN) {
-    LOG_WARNING("value for --server.backlog-size exceeds default system header SOMAXCONN value %d. trying to use %d anyway", (int) SOMAXCONN, (int) SOMAXCONN);
+    LOG_FATAL_AND_EXIT(
+        "invalid value for --server.backlog-size. expecting a positive value");
   }
 
-  if (! _httpPort.empty()) {
-    // issue #175: add hidden option --server.http-port for downwards-compatibility
+  if (_backlogSize > SOMAXCONN) {
+    LOG_WARNING(
+        "value for --server.backlog-size exceeds default system header "
+        "SOMAXCONN value %d. trying to use %d anyway",
+        (int)SOMAXCONN, (int)SOMAXCONN);
+  }
+
+  if (!_httpPort.empty()) {
+    // issue #175: add hidden option --server.http-port for
+    // downwards-compatibility
     string httpEndpoint("tcp://" + _httpPort);
     _endpoints.push_back(httpEndpoint);
   }
@@ -263,17 +265,20 @@ bool ApplicationEndpointServer::afterOptionParsing (ProgramOptions& options) {
   const vector<string> dbNames;
 
   // add & validate endpoints
-  for (vector<string>::const_iterator i = _endpoints.begin(); i != _endpoints.end(); ++i) {
+  for (vector<string>::const_iterator i = _endpoints.begin();
+       i != _endpoints.end(); ++i) {
     bool ok = _endpointList.add((*i), dbNames, _backlogSize, _reuseAddress);
 
-    if (! ok) {
+    if (!ok) {
       LOG_FATAL_AND_EXIT("invalid endpoint '%s'", (*i).c_str());
     }
   }
 
   if (_defaultApiCompatibility < HttpRequest::MinCompatibility) {
-    LOG_FATAL_AND_EXIT("invalid value for --server.default-api-compatibility. minimum allowed value is %d",
-                       (int) HttpRequest::MinCompatibility);
+    LOG_FATAL_AND_EXIT(
+        "invalid value for --server.default-api-compatibility. minimum allowed "
+        "value is %d",
+        (int)HttpRequest::MinCompatibility);
   }
 
   // and return
@@ -284,7 +289,7 @@ bool ApplicationEndpointServer::afterOptionParsing (ProgramOptions& options) {
 /// @brief return the name of the endpoints file
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string ApplicationEndpointServer::getEndpointsFilename () const {
+std::string ApplicationEndpointServer::getEndpointsFilename() const {
   return _basePath + TRI_DIR_SEPARATOR_CHAR + "ENDPOINTS";
 }
 
@@ -292,7 +297,8 @@ std::string ApplicationEndpointServer::getEndpointsFilename () const {
 /// @brief return a list of all endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::map<std::string, std::vector<std::string>> ApplicationEndpointServer::getEndpoints () {
+std::map<std::string, std::vector<std::string>>
+ApplicationEndpointServer::getEndpoints() {
   return _endpointList.getAll();
 }
 
@@ -300,10 +306,10 @@ std::map<std::string, std::vector<std::string>> ApplicationEndpointServer::getEn
 /// @brief restores the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::loadEndpoints () {
+bool ApplicationEndpointServer::loadEndpoints() {
   const string filename = getEndpointsFilename();
 
-  if (! FileUtils::exists(filename)) {
+  if (!FileUtils::exists(filename)) {
     return false;
   }
 
@@ -312,29 +318,27 @@ bool ApplicationEndpointServer::loadEndpoints () {
   std::shared_ptr<VPackBuilder> builder;
   try {
     builder = triagens::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  }
-  catch (...) {
+  } catch (...) {
     // Silently fail
     return false;
   }
   VPackSlice const slice = builder->slice();
 
-  if (! slice.isObject()) {
+  if (!slice.isObject()) {
     return false;
   }
 
   std::map<std::string, std::vector<std::string>> endpoints;
 
   for (auto const& it : VPackObjectIterator(slice)) {
-
-    if (! it.key.isString() || ! it.value.isArray()) {
+    if (!it.key.isString() || !it.value.isArray()) {
       return false;
     }
     std::string const endpoint = it.key.copyString();
 
     std::vector<std::string> dbNames;
     for (VPackSlice const& d : VPackArrayIterator(it.value)) {
-      if (! d.isString()) {
+      if (!d.isString()) {
         return false;
       }
 
@@ -346,9 +350,10 @@ bool ApplicationEndpointServer::loadEndpoints () {
   }
 
   for (auto& it : endpoints) {
-    bool ok = _endpointList.add(it.first, it.second, _backlogSize, _reuseAddress);
+    bool ok =
+        _endpointList.add(it.first, it.second, _backlogSize, _reuseAddress);
 
-    if (! ok) {
+    if (!ok) {
       return false;
     }
   }
@@ -360,7 +365,8 @@ bool ApplicationEndpointServer::loadEndpoints () {
 /// @brief get the list of databases for an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping (std::string const& endpoint) {
+std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping(
+    std::string const& endpoint) {
   return _endpointList.getMapping(endpoint);
 }
 
@@ -368,7 +374,7 @@ std::vector<std::string> const& ApplicationEndpointServer::getEndpointMapping (s
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::prepare () {
+bool ApplicationEndpointServer::prepare() {
   if (_disabled) {
     return true;
   }
@@ -383,13 +389,12 @@ bool ApplicationEndpointServer::prepare () {
   // dump all endpoints for user information
   _endpointList.dump();
 
-  _handlerFactory = new HttpHandlerFactory(_authenticationRealm,
-                                           _defaultApiCompatibility,
-                                           _allowMethodOverride,
-                                           _setContext,
-                                           _contextData);
+  _handlerFactory =
+      new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
+                             _allowMethodOverride, _setContext, _contextData);
 
-  LOG_INFO("using default API compatibility: %ld", (long int) _defaultApiCompatibility);
+  LOG_INFO("using default API compatibility: %ld",
+           (long int)_defaultApiCompatibility);
 
   return true;
 }
@@ -398,7 +403,7 @@ bool ApplicationEndpointServer::prepare () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::open () {
+bool ApplicationEndpointServer::open() {
   if (_disabled) {
     return true;
   }
@@ -414,7 +419,7 @@ bool ApplicationEndpointServer::open () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationEndpointServer::close () {
+void ApplicationEndpointServer::close() {
   if (_disabled) {
     return;
   }
@@ -429,7 +434,7 @@ void ApplicationEndpointServer::close () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationEndpointServer::stop () {
+void ApplicationEndpointServer::stop() {
   if (_disabled) {
     return;
   }
@@ -447,7 +452,7 @@ void ApplicationEndpointServer::stop () {
 /// @brief creates an ssl context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationEndpointServer::createSslContext () {
+bool ApplicationEndpointServer::createSslContext() {
   // check keyfile
   if (_httpsKeyfile.empty()) {
     return true;
@@ -455,14 +460,18 @@ bool ApplicationEndpointServer::createSslContext () {
 
   // validate protocol
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
-    LOG_ERROR("invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.");
+    LOG_ERROR(
+        "invalid SSL protocol version specified. Please use a valid value for "
+        "--server.ssl-protocol.");
     return false;
   }
 
-  LOG_DEBUG("using SSL protocol version '%s'", protocolName((protocol_e) _sslProtocol).c_str());
+  LOG_DEBUG("using SSL protocol version '%s'",
+            protocolName((protocol_e)_sslProtocol).c_str());
 
-  if (! FileUtils::exists(_httpsKeyfile)) {
-    LOG_FATAL_AND_EXIT("unable to find SSL keyfile '%s'", _httpsKeyfile.c_str());
+  if (!FileUtils::exists(_httpsKeyfile)) {
+    LOG_FATAL_AND_EXIT("unable to find SSL keyfile '%s'",
+                       _httpsKeyfile.c_str());
   }
 
   // create context
@@ -474,32 +483,35 @@ bool ApplicationEndpointServer::createSslContext () {
   }
 
   // set cache mode
-  SSL_CTX_set_session_cache_mode(_sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
+  SSL_CTX_set_session_cache_mode(
+      _sslContext, _sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
 
   if (_sslCache) {
     LOG_TRACE("using SSL session caching");
   }
 
   // set options
-  SSL_CTX_set_options(_sslContext, (long) _sslOptions);
+  SSL_CTX_set_options(_sslContext, (long)_sslOptions);
 
-  LOG_INFO("using SSL options: %ld", (long) _sslOptions);
+  LOG_INFO("using SSL options: %ld", (long)_sslOptions);
 
-  if (! _sslCipherList.empty()) {
+  if (!_sslCipherList.empty()) {
     if (SSL_CTX_set_cipher_list(_sslContext, _sslCipherList.c_str()) != 1) {
       LOG_ERROR("SSL error: %s", lastSSLError().c_str());
-      LOG_FATAL_AND_EXIT("cannot set SSL cipher list '%s'", _sslCipherList.c_str());
-    }
-    else {
+      LOG_FATAL_AND_EXIT("cannot set SSL cipher list '%s'",
+                         _sslCipherList.c_str());
+    } else {
       LOG_INFO("using SSL cipher-list '%s'", _sslCipherList.c_str());
     }
   }
 
   // set ssl context
-  Random::UniformCharacter r("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  Random::UniformCharacter r(
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
   _rctx = r.random(SSL_MAX_SSL_SESSION_ID_LENGTH);
 
-  int res = SSL_CTX_set_session_id_context(_sslContext, (unsigned char const*) _rctx.c_str(), (int) _rctx.size());
+  int res = SSL_CTX_set_session_id_context(
+      _sslContext, (unsigned char const*)_rctx.c_str(), (int)_rctx.size());
 
   if (res != 1) {
     LOG_ERROR("SSL error: %s", lastSSLError().c_str());
@@ -507,14 +519,15 @@ bool ApplicationEndpointServer::createSslContext () {
   }
 
   // check CA
-  if (! _cafile.empty()) {
+  if (!_cafile.empty()) {
     LOG_TRACE("trying to load CA certificates from '%s'", _cafile.c_str());
 
     int res = SSL_CTX_load_verify_locations(_sslContext, _cafile.c_str(), 0);
 
     if (res == 0) {
       LOG_ERROR("SSL error: %s", lastSSLError().c_str());
-      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'", _cafile.c_str());
+      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
+                         _cafile.c_str());
     }
 
     STACK_OF(X509_NAME) * certNames;
@@ -523,17 +536,21 @@ bool ApplicationEndpointServer::createSslContext () {
 
     if (certNames == nullptr) {
       LOG_ERROR("ssl error: %s", lastSSLError().c_str());
-      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'", _cafile.c_str());
+      LOG_FATAL_AND_EXIT("cannot load CA certificates from '%s'",
+                         _cafile.c_str());
     }
 
     if (TRI_IsTraceLogging(__FILE__)) {
-      for (int i = 0;  i < sk_X509_NAME_num(certNames);  ++i) {
+      for (int i = 0; i < sk_X509_NAME_num(certNames); ++i) {
         X509_NAME* cert = sk_X509_NAME_value(certNames, i);
 
         if (cert) {
           BIOGuard bout(BIO_new(BIO_s_mem()));
 
-          X509_NAME_print_ex(bout._bio, cert, 0, (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV | ASN1_STRFLGS_UTF8_CONVERT) & ~ASN1_STRFLGS_ESC_MSB);
+          X509_NAME_print_ex(bout._bio, cert, 0,
+                             (XN_FLAG_SEP_COMMA_PLUS | XN_FLAG_DN_REV |
+                              ASN1_STRFLGS_UTF8_CONVERT) &
+                                 ~ASN1_STRFLGS_ESC_MSB);
 
 #ifdef TRI_ENABLE_LOGGER
           char* r;
@@ -557,5 +574,6 @@ bool ApplicationEndpointServer::createSslContext () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

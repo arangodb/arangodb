@@ -56,19 +56,19 @@ typedef uint32_t TRI_fulltext_list_entry_t;
 /// @brief clone a list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_CloneListFulltextIndex (TRI_fulltext_list_t const*);
+TRI_fulltext_list_t* TRI_CloneListFulltextIndex(TRI_fulltext_list_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a list
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_CreateListFulltextIndex (uint32_t);
+TRI_fulltext_list_t* TRI_CreateListFulltextIndex(uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeListFulltextIndex (TRI_fulltext_list_t*);
+void TRI_FreeListFulltextIndex(TRI_fulltext_list_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -78,67 +78,67 @@ void TRI_FreeListFulltextIndex (TRI_fulltext_list_t*);
 /// @brief get the memory usage of a list
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_MemoryListFulltextIndex (TRI_fulltext_list_t const*);
+size_t TRI_MemoryListFulltextIndex(TRI_fulltext_list_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unionise two lists
 /// this will create a new list and free both lhs & rhs
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex (TRI_fulltext_list_t*,
-                                                    TRI_fulltext_list_t*);
+TRI_fulltext_list_t* TRI_UnioniseListFulltextIndex(TRI_fulltext_list_t*,
+                                                   TRI_fulltext_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief intersect two lists
 /// this will create a new list and free both lhs & rhs
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_IntersectListFulltextIndex (TRI_fulltext_list_t*,
-                                                     TRI_fulltext_list_t*);
+TRI_fulltext_list_t* TRI_IntersectListFulltextIndex(TRI_fulltext_list_t*,
+                                                    TRI_fulltext_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exclude values from a list
 /// this will modify the result in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex (TRI_fulltext_list_t*,
-                                                   TRI_fulltext_list_t*);
+TRI_fulltext_list_t* TRI_ExcludeListFulltextIndex(TRI_fulltext_list_t*,
+                                                  TRI_fulltext_list_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert an element into a list
 /// this might free the old list and allocate a new, bigger one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_t* TRI_InsertListFulltextIndex (TRI_fulltext_list_t*,
-                                                  const TRI_fulltext_list_entry_t);
+TRI_fulltext_list_t* TRI_InsertListFulltextIndex(
+    TRI_fulltext_list_t*, const TRI_fulltext_list_entry_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rewrites the list of entries using a map of values
 /// returns the number of entries remaining in the list after rewrite
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_RewriteListFulltextIndex (TRI_fulltext_list_t*,
-                                       void const*);
+uint32_t TRI_RewriteListFulltextIndex(TRI_fulltext_list_t*, void const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump a list
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_FULLTEXT_DEBUG
-void TRI_DumpListFulltextIndex (TRI_fulltext_list_t const*);
+void TRI_DumpListFulltextIndex(TRI_fulltext_list_t const*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of entries
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_NumEntriesListFulltextIndex (TRI_fulltext_list_t const*);
+uint32_t TRI_NumEntriesListFulltextIndex(TRI_fulltext_list_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a pointer to the first list entry
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex (TRI_fulltext_list_t const*);
+TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex(
+    TRI_fulltext_list_t const*);
 
 #endif
 
@@ -148,5 +148,6 @@ TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex (TRI_fulltext_list_t const
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

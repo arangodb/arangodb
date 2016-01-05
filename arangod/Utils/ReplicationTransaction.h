@@ -40,95 +40,91 @@
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class ReplicationTransaction : public Transaction {
+class ReplicationTransaction : public Transaction {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      class
+  // ReplicationTransaction
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class ReplicationTransaction
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the transaction
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ReplicationTransaction (TRI_server_t* server,
-                                TRI_vocbase_t* vocbase,
-                                TRI_voc_tid_t externalId)
-          : Transaction(new StandaloneTransactionContext(), vocbase, externalId),
-            _server(server),
-            _externalId(externalId) {
-
-          TRI_UseDatabaseServer(_server, vocbase->_name);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~ReplicationTransaction () {
-          TRI_ReleaseDatabaseServer(_server, vocbase());
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the remote (external) id of the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_voc_tid_t externalId () const {
-          return _externalId;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a collection by id
-/// this will automatically add the collection to the transaction 
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_transaction_collection_t* trxCollection (TRI_voc_cid_t cid) {
-          TRI_ASSERT(cid > 0);
-
-          TRI_transaction_collection_t* trxCollection = TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
-
-          if (trxCollection == nullptr) {
-            int res = TRI_AddCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE, 0, true, true);
-
-            if (res == TRI_ERROR_NO_ERROR) {
-              res = TRI_EnsureCollectionsTransaction(this->_trx);
-            }
-              
-            if (res != TRI_ERROR_NO_ERROR) {
-              return nullptr;
-            }
-          
-            trxCollection = TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
-          }
- 
-          return trxCollection;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
- 
-      private:
-
-        TRI_server_t* _server;
-        
-        TRI_voc_tid_t _externalId;
-    };
-
+  ReplicationTransaction(TRI_server_t* server, TRI_vocbase_t* vocbase,
+                         TRI_voc_tid_t externalId)
+      : Transaction(new StandaloneTransactionContext(), vocbase, externalId),
+        _server(server),
+        _externalId(externalId) {
+    TRI_UseDatabaseServer(_server, vocbase->_name);
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief end the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ~ReplicationTransaction() { TRI_ReleaseDatabaseServer(_server, vocbase()); }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the remote (external) id of the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline TRI_voc_tid_t externalId() const { return _externalId; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get a collection by id
+  /// this will automatically add the collection to the transaction
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline TRI_transaction_collection_t* trxCollection(TRI_voc_cid_t cid) {
+    TRI_ASSERT(cid > 0);
+
+    TRI_transaction_collection_t* trxCollection =
+        TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
+
+    if (trxCollection == nullptr) {
+      int res = TRI_AddCollectionTransaction(
+          this->_trx, cid, TRI_TRANSACTION_WRITE, 0, true, true);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        res = TRI_EnsureCollectionsTransaction(this->_trx);
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return nullptr;
+      }
+
+      trxCollection =
+          TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
+    }
+
+    return trxCollection;
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  TRI_server_t* _server;
+
+  TRI_voc_tid_t _externalId;
+};
+}
 }
 
 #endif
@@ -139,5 +135,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

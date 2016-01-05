@@ -39,15 +39,15 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-#if ! defined(TRI_HAVE_SYS_IOCTL_H) && ! defined(TRI_WIN32_CONSOLE)
+#if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
 
-int TRI_ColumnsWidth (void) {
+int TRI_ColumnsWidth(void) {
   char* e;
 
   e = getenv("COLUMNS");
 
   if (e != 0) {
-    int c = (int) TRI_Int32String(e);
+    int c = (int)TRI_Int32String(e);
 
     if (c == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
       return TRI_DEFAULT_COLUMNS;
@@ -65,18 +65,17 @@ int TRI_ColumnsWidth (void) {
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetStdinVisibility (bool visible) {
+void TRI_SetStdinVisibility(bool visible) {
 #ifdef TRI_HAVE_TERMIOS_H
   struct termios tty;
 
   tcgetattr(STDIN_FILENO, &tty);
   if (visible) {
     tty.c_lflag |= ECHO;
-  }
-  else {
+  } else {
     tty.c_lflag &= ~ECHO;
   }
-  (void) tcsetattr(STDIN_FILENO, TCSANOW, &tty);
+  (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
 #endif
 }
 
@@ -86,5 +85,6 @@ void TRI_SetStdinVisibility (bool visible) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

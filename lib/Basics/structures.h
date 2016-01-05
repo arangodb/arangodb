@@ -74,8 +74,7 @@ typedef int32_t TRI_seconds_t;
 typedef struct TRI_blob_s {
   char* data;
   uint32_t length;
-}
-TRI_blob_t;
+} TRI_blob_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -85,7 +84,7 @@ TRI_blob_t;
 /// @brief destorys the data of blob, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBlob (TRI_memory_zone_t*, TRI_blob_t*);
+void TRI_DestroyBlob(TRI_memory_zone_t*, TRI_blob_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -95,13 +94,14 @@ void TRI_DestroyBlob (TRI_memory_zone_t*, TRI_blob_t*);
 /// @brief copies a blob into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyToBlob (TRI_memory_zone_t*, TRI_blob_t* dst, TRI_blob_t const* src);
+int TRI_CopyToBlob(TRI_memory_zone_t*, TRI_blob_t* dst, TRI_blob_t const* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assigns a blob value by reference into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src);
+int TRI_AssignToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                     TRI_blob_t const* src);
 
 #endif
 
@@ -111,5 +111,6 @@ int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

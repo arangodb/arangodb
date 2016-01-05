@@ -43,14 +43,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_mutex_s {
-  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
+// as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   HANDLE _mutex;
 #else
   SRWLOCK _mutex;
 #endif
-}
-TRI_mutex_t;
+} TRI_mutex_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief spin-lock type
@@ -84,18 +83,16 @@ typedef struct TRI_read_write_lock_s {
 #else
   SRWLOCK _lock;
 #endif
-}
-TRI_read_write_lock_t;
+} TRI_read_write_lock_t;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_condition_s {
-  CRITICAL_SECTION   _lockWaiters;
+  CRITICAL_SECTION _lockWaiters;
   CONDITION_VARIABLE _conditionVariable;
-}
-TRI_condition_t;
+} TRI_condition_t;
 
 #endif
 
@@ -107,5 +104,6 @@ TRI_condition_t;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

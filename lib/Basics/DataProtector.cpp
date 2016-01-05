@@ -30,12 +30,12 @@
 #include "Basics/DataProtector.h"
 
 // TODO: Make this a template again once everybody has gcc >= 4.9.2
-// template<int Nr> 
+// template<int Nr>
 // thread_local int triagens::basics::DataProtector<Nr>::_mySlot = -1;
 thread_local int triagens::basics::DataProtector::_mySlot = -1;
 
 // TODO: Make this a template again once everybody has gcc >= 4.9.2
-// template<int Nr> 
+// template<int Nr>
 // std::atomic<int> triagens::basics::DataProtector<Nr>::_last(0);
 std::atomic<int> triagens::basics::DataProtector::_last(0);
 
@@ -48,5 +48,6 @@ std::atomic<int> triagens::basics::DataProtector::_last(0);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

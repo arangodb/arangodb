@@ -54,9 +54,8 @@ using namespace triagens::basics;
 /// The constructor aquires a lock, the destructor releases the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLocker::SpinLocker (SpinLock* lock, char const* file, int line)
-  : _lock(lock), _file(file), _line(line) {
-  
+SpinLocker::SpinLocker(SpinLock* lock, char const* file, int line)
+    : _lock(lock), _file(file), _line(line) {
   double t = TRI_microtime();
   _lock->lock();
   _time = TRI_microtime() - t;
@@ -64,11 +63,7 @@ SpinLocker::SpinLocker (SpinLock* lock, char const* file, int line)
 
 #else
 
-SpinLocker::SpinLocker (SpinLock* lock)
-  : _lock(lock) {
-  
-  _lock->lock();
-}
+SpinLocker::SpinLocker(SpinLock* lock) : _lock(lock) { _lock->lock(); }
 
 #endif
 
@@ -76,14 +71,14 @@ SpinLocker::SpinLocker (SpinLock* lock)
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLocker::~SpinLocker () {
+SpinLocker::~SpinLocker() {
   _lock->unlock();
 
 #ifdef TRI_SHOW_LOCK_TIME
   if (_time > TRI_SHOW_LOCK_THRESHOLD) {
     LOG_WARNING("SpinLocker %s:%d took %f s", _file, _line, _time);
   }
-#endif  
+#endif
 }
 
 // -----------------------------------------------------------------------------
@@ -92,5 +87,6 @@ SpinLocker::~SpinLocker () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

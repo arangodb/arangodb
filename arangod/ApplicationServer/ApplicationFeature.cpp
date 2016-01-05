@@ -41,17 +41,14 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationFeature::ApplicationFeature (string const& name)
-  : _disabled(false), 
-    _name(name) {
-}
+ApplicationFeature::ApplicationFeature(string const& name)
+    : _disabled(false), _name(name) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationFeature::~ApplicationFeature () {
-}
+ApplicationFeature::~ApplicationFeature() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -61,23 +58,21 @@ ApplicationFeature::~ApplicationFeature () {
 /// @brief returns the name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ApplicationFeature::getName () const {
-  return _name;
-}
+string const& ApplicationFeature::getName() const { return _name; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the options
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::setupOptions (map<string, basics::ProgramOptionsDescription>&) {
-}
+void ApplicationFeature::setupOptions(
+    map<string, basics::ProgramOptionsDescription>&) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief callback after options parsing and config file reading, 
+/// @brief callback after options parsing and config file reading,
 /// before dropping privileges
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::afterOptionParsing (basics::ProgramOptions&) {
+bool ApplicationFeature::afterOptionParsing(basics::ProgramOptions&) {
   return true;
 }
 
@@ -85,55 +80,43 @@ bool ApplicationFeature::afterOptionParsing (basics::ProgramOptions&) {
 /// @brief prepares the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::prepare () {
-  return true;
-}
+bool ApplicationFeature::prepare() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::prepare2 () {
-  return true;
-}
+bool ApplicationFeature::prepare2() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::start () {
-  return true;
-}
+bool ApplicationFeature::start() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the feature for business
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationFeature::open () {
-  return true;
-}
+bool ApplicationFeature::open() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes the feature
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::close () {
-}
+void ApplicationFeature::close() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops everything
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::stop () {
-}
+void ApplicationFeature::stop() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable feature
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationFeature::disable () {
-  _disabled = true;
-}
+void ApplicationFeature::disable() { _disabled = true; }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -141,5 +124,6 @@ void ApplicationFeature::disable () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

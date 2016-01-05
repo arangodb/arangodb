@@ -41,77 +41,69 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript source code loader
 ////////////////////////////////////////////////////////////////////////////////
 
-    class JSLoader : public ScriptLoader {
+class JSLoader : public ScriptLoader {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  enum eState { eFailLoad, eFailExecute, eSuccess };
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs a loader
+  ////////////////////////////////////////////////////////////////////////////////
 
-      enum eState {
-        eFailLoad,
-        eFailExecute,
-        eSuccess
-      };
+  JSLoader();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a loader
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-        JSLoader ();
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes a named script in the global context
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  v8::Handle<v8::Value> executeGlobalScript(v8::Isolate* isolate,
+                                            v8::Handle<v8::Context> context,
+                                            std::string const& name);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief loads a named script
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a named script in the global context
-////////////////////////////////////////////////////////////////////////////////
+  JSLoader::eState loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>&,
+                              std::string const& name);
 
-        v8::Handle<v8::Value> executeGlobalScript (v8::Isolate* isolate,
-                                                   v8::Handle<v8::Context> context,
-                                                   std::string const& name);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief loads all scripts
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a named script
-////////////////////////////////////////////////////////////////////////////////
+  bool loadAllScripts(v8::Isolate* isolate, v8::Handle<v8::Context>& context);
 
-        JSLoader::eState loadScript (v8::Isolate* isolate,
-                                     v8::Handle<v8::Context>&,
-                                     std::string const& name);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes a named script
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads all scripts
-////////////////////////////////////////////////////////////////////////////////
+  bool executeScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
+                     std::string const& name);
 
-        bool loadAllScripts (v8::Isolate* isolate,
-                             v8::Handle<v8::Context>& context);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes all scripts
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a named script
-////////////////////////////////////////////////////////////////////////////////
-
-        bool executeScript (v8::Isolate* isolate,
-                            v8::Handle<v8::Context>& context,
-                            std::string const& name);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all scripts
-////////////////////////////////////////////////////////////////////////////////
-
-        bool executeAllScripts (v8::Isolate* isolate,
-                                v8::Handle<v8::Context>& context);
-    };
-  }
+  bool executeAllScripts(v8::Isolate* isolate,
+                         v8::Handle<v8::Context>& context);
+};
+}
 }
 
 #endif
@@ -122,5 +114,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

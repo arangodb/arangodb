@@ -59,8 +59,8 @@ class HttpServer;
 ////////////////////////////////////////////////////////////////////////////////
 
 class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
-  HttpHandler(HttpHandler const &) = delete;
-  HttpHandler &operator=(HttpHandler const &) = delete;
+  HttpHandler(HttpHandler const&) = delete;
+  HttpHandler& operator=(HttpHandler const&) = delete;
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                    constructors and destructors
@@ -74,7 +74,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// responsibility to destroy them both. See also the two steal methods.
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit HttpHandler(HttpRequest *);
+  explicit HttpHandler(HttpRequest*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destructs a handler
@@ -151,13 +151,13 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief handles error
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void handleError(basics::Exception const &) = 0;
+  virtual void handleError(basics::Exception const&) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a response
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void addResponse(HttpHandler *);
+  virtual void addResponse(HttpHandler*);
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                                  public methods
@@ -192,31 +192,31 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief register the server object
   //////////////////////////////////////////////////////////////////////////////
 
-  void setServer(HttpHandlerFactory *server);
+  void setServer(HttpHandlerFactory* server);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a pointer to the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest const *getRequest() const;
+  HttpRequest const* getRequest() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief steal the pointer to the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest *stealRequest();
+  HttpRequest* stealRequest();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse *getResponse() const;
+  HttpResponse* getResponse() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief steal the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse *stealResponse();
+  HttpResponse* stealResponse();
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                               protected methods
@@ -256,19 +256,19 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   /// @brief the request
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpRequest *_request;
+  HttpRequest* _request;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the response
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpResponse *_response;
+  HttpResponse* _response;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the server
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory *_server;
+  HttpHandlerFactory* _server;
 };
 }
 }

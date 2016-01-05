@@ -170,7 +170,7 @@ typedef long suseconds_t;
 /// @brief incrementing a uint64_t modulo a number with wraparound
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint64_t TRI_IncModU64 (uint64_t i, uint64_t len) {
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
   // Note that the dummy variable gives the compiler a (good) chance to
   // use a conditional move instruction instead of a branch. This actually
   // works on modern gcc.
@@ -179,7 +179,7 @@ static inline uint64_t TRI_IncModU64 (uint64_t i, uint64_t len) {
   return i < len ? i : dummy;
 }
 
-static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
+static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
   if ((i--) != 0) {
     return i;
   }
@@ -190,7 +190,7 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
 /// @brief a trivial hash function for uint64_t to uint32_t
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint32_t TRI_64to32 (uint64_t x) {
+static inline uint32_t TRI_64to32(uint64_t x) {
   return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
 }
 
@@ -199,11 +199,10 @@ static inline uint32_t TRI_64to32 (uint64_t x) {
 /// (cache line) will be needed soon.
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void TRI_MemoryPrefetch (void* p) {
-}
+static inline void TRI_MemoryPrefetch(void* p) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper macro for calculating strlens for static strings at 
+/// @brief helper macro for calculating strlens for static strings at
 /// a compile-time (unless compiled with fno-builtin-strlen etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -220,24 +219,39 @@ static inline void TRI_MemoryPrefetch (void* p) {
 #define TRI_FAKE_SPIN_LOCKS 1
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) { if (! (expr)) { TRI_PrintBacktrace(); assert(expr); } }
-#define TRI_ASSERT_EXPENSIVE(expr) { if (! (expr)) { TRI_PrintBacktrace(); assert(expr); } }
+#define TRI_ASSERT(expr)    \
+  {                         \
+    if (!(expr)) {          \
+      TRI_PrintBacktrace(); \
+      assert(expr);         \
+    }                       \
+  }
+#define TRI_ASSERT_EXPENSIVE(expr) \
+  {                                \
+    if (!(expr)) {                 \
+      TRI_PrintBacktrace();        \
+      assert(expr);                \
+    }                              \
+  }
 #endif
 
-
 #else
-
 
 #undef TRI_FAKE_SPIN_LOCKS
 
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) do { (void) 0; } while (0)
-#define TRI_ASSERT_EXPENSIVE(expr) do { (void) 0; } while (0)
+#define TRI_ASSERT(expr) \
+  do {                   \
+    (void)0;             \
+  } while (0)
+#define TRI_ASSERT_EXPENSIVE(expr) \
+  do {                             \
+    (void)0;                       \
+  } while (0)
 
 #endif
 
 #endif
-
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -274,35 +288,38 @@ static inline void TRI_MemoryPrefetch (void* p) {
 ///   http://blog.memsql.com/c-error-handling-with-auto/
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TOKEN_PASTE_WRAPPED(x, y) x ## y
+#define TOKEN_PASTE_WRAPPED(x, y) x##y
 #define TOKEN_PASTE(x, y) TOKEN_PASTE_WRAPPED(x, y)
 
-template<typename T>
+template <typename T>
 struct TRI_AutoOutOfScope {
-    explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) { }
-    ~TRI_AutoOutOfScope() { m_destructor(); }
-  private:
-    T& m_destructor;
+  explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) {}
+  ~TRI_AutoOutOfScope() { m_destructor(); }
+
+ private:
+  T& m_destructor;
 };
 
 #define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
-  auto funcname = [&]() { Destructor; }; \
+  auto funcname = [&]() { Destructor; };                  \
   TRI_AutoOutOfScope<decltype(funcname)> objname(funcname);
 
-#define TRI_DEFER(Destructor) TRI_DEFER_INTERNAL(Destructor, TOKEN_PASTE(auto_fun, __LINE__) , TOKEN_PASTE(auto_obj, __LINE__))
+#define TRI_DEFER(Destructor)                                     \
+  TRI_DEFER_INTERNAL(Destructor, TOKEN_PASTE(auto_fun, __LINE__), \
+                     TOKEN_PASTE(auto_obj, __LINE__))
 
 // -----------------------------------------------------------------------------
 // --SECTIONS--                                               triagens namespace
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  typedef TRI_blob_t blob_t;
-  typedef TRI_datetime_t datetime_t;
-  typedef TRI_date_t date_t;
-  typedef TRI_seconds_t seconds_t;
+typedef TRI_blob_t blob_t;
+typedef TRI_datetime_t datetime_t;
+typedef TRI_date_t date_t;
+typedef TRI_seconds_t seconds_t;
 }
 
-#undef TRI_SHOW_LOCK_TIME 
+#undef TRI_SHOW_LOCK_TIME
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
 
 #endif
@@ -313,5 +330,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

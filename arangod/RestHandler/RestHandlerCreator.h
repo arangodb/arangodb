@@ -33,12 +33,12 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace rest {
-    class HttpHandler;
-    class HttpRequest;
-  }
+namespace rest {
+class HttpHandler;
+class HttpRequest;
+}
 
-  namespace admin {
+namespace admin {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class RestHandlerCreator
@@ -48,41 +48,40 @@ namespace triagens {
 /// @brief creator function
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename H>
-    class RestHandlerCreator : public H {
+template <typename H>
+class RestHandlerCreator : public H {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                             public static
+  // methods
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create with void pointer data
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create with void pointer data
-////////////////////////////////////////////////////////////////////////////////
-
-        static rest::HttpHandler* create (rest::HttpRequest* request, void* data) {
-          return new H(request, data);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create with data
-////////////////////////////////////////////////////////////////////////////////
-
-        template<typename D>
-        static rest::HttpHandler* createData (rest::HttpRequest* request, void* data) {
-          return new H(request, (D) data);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create without data
-////////////////////////////////////////////////////////////////////////////////
-
-        static rest::HttpHandler* createNoData (rest::HttpRequest* request, void*) {
-          return new H(request);
-        }
-    };
+  static rest::HttpHandler* create(rest::HttpRequest* request, void* data) {
+    return new H(request, data);
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create with data
+  ////////////////////////////////////////////////////////////////////////////////
+
+  template <typename D>
+  static rest::HttpHandler* createData(rest::HttpRequest* request, void* data) {
+    return new H(request, (D)data);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create without data
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static rest::HttpHandler* createNoData(rest::HttpRequest* request, void*) {
+    return new H(request);
+  }
+};
+}
 }
 
 #endif
@@ -93,5 +92,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

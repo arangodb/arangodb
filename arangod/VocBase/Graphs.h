@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Class for arangodb's graph features. Wrapper around the graph informations
+/// @brief Class for arangodb's graph features. Wrapper around the graph
+/// informations
 ///
 /// @file
 ///
@@ -33,15 +34,14 @@
 #include "VocBase/vocbase.h"
 
 namespace triagens {
-  namespace aql {
-    class Graph;
-  }
-  namespace arango {
+namespace aql {
+class Graph;
+}
+namespace arango {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                Factory for graphs
 // -----------------------------------------------------------------------------
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an instance of Graph by Name.
@@ -49,10 +49,10 @@ namespace triagens {
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-    triagens::aql::Graph* lookupGraphByName (TRI_vocbase_t*, std::string const&);
+triagens::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
 
-  } // namespace arango
-} // namespace triagens
+}  // namespace arango
+}  // namespace triagens
 
 #endif
 
@@ -62,4 +62,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"

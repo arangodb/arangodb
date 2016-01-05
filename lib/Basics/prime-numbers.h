@@ -40,7 +40,7 @@
 /// @brief return a prime number not lower than value
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_NearPrime (uint64_t);
+uint64_t TRI_NearPrime(uint64_t);
 
 #endif
 
@@ -50,5 +50,6 @@ uint64_t TRI_NearPrime (uint64_t);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

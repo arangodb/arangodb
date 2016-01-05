@@ -73,27 +73,25 @@ const std::string Syncer::BaseUrl = "/_api/replication";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Syncer::Syncer (TRI_vocbase_t* vocbase,
-                TRI_replication_applier_configuration_t const* configuration) 
-  : _vocbase(vocbase),
-    _configuration(),
-    _masterInfo(),
-    _policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr),
-    _endpoint(nullptr),
-    _connection(nullptr),
-    _client(nullptr) {
-
+Syncer::Syncer(TRI_vocbase_t* vocbase,
+               TRI_replication_applier_configuration_t const* configuration)
+    : _vocbase(vocbase),
+      _configuration(),
+      _masterInfo(),
+      _policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr),
+      _endpoint(nullptr),
+      _connection(nullptr),
+      _client(nullptr) {
   if (configuration->_database != nullptr) {
     // use name from configuration
     _databaseName = std::string(configuration->_database);
-  }
-  else {
+  } else {
     // use name of current database
     _databaseName = std::string(vocbase->_name);
   }
 
   // get our own server-id
-  _localServerId       = TRI_GetIdServer();
+  _localServerId = TRI_GetIdServer();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
   TRI_InitConfigurationReplicationApplier(&_configuration);
@@ -104,14 +102,15 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
   if (_endpoint != nullptr) {
-    _connection = GeneralClientConnection::factory(_endpoint,
-                                                   _configuration._requestTimeout,
-                                                   _configuration._connectTimeout,
-                                                   (size_t) _configuration._maxConnectRetries,
-                                                   (uint32_t) _configuration._sslProtocol);
+    _connection = GeneralClientConnection::factory(
+        _endpoint, _configuration._requestTimeout,
+        _configuration._connectTimeout,
+        (size_t)_configuration._maxConnectRetries,
+        (uint32_t)_configuration._sslProtocol);
 
     if (_connection != nullptr) {
-      _client = new SimpleHttpClient(_connection, _configuration._requestTimeout, false);
+      _client = new SimpleHttpClient(_connection,
+                                     _configuration._requestTimeout, false);
 
       if (_client != nullptr) {
         string username;
@@ -130,7 +129,11 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
 
         _client->_maxRetries = 2;
         _client->_retryWaitTime = 2 * 1000 * 1000;
-        _client->_retryMessage = std::string("retrying failed HTTP request for endpoint '") + _configuration._endpoint + std::string("' for replication applier in database '" + std::string(_vocbase->_name) + "'");
+        _client->_retryMessage =
+            std::string("retrying failed HTTP request for endpoint '") +
+            _configuration._endpoint +
+            std::string("' for replication applier in database '" +
+                        std::string(_vocbase->_name) + "'");
       }
     }
   }
@@ -140,7 +143,7 @@ Syncer::Syncer (TRI_vocbase_t* vocbase,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Syncer::~Syncer () {
+Syncer::~Syncer() {
   // shutdown everything properly
   delete _client;
   delete _connection;
@@ -157,7 +160,7 @@ Syncer::~Syncer () {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-string Syncer::rewriteLocation (void* data, const string& location) {
+string Syncer::rewriteLocation(void* data, const string& location) {
   Syncer* s = static_cast<Syncer*>(data);
 
   TRI_ASSERT(s != nullptr);
@@ -169,8 +172,7 @@ string Syncer::rewriteLocation (void* data, const string& location) {
 
   if (location[0] == '/') {
     return "/_db/" + s->_databaseName + location;
-  }
-  else {
+  } else {
     return "/_db/" + s->_databaseName + "/" + location;
   }
 }
@@ -183,8 +185,8 @@ string Syncer::rewriteLocation (void* data, const string& location) {
 /// @brief extract the collection id from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_cid_t Syncer::getCid (TRI_json_t const* json) const {
-  if (! JsonHelper::isObject(json)) {
+TRI_voc_cid_t Syncer::getCid(TRI_json_t const* json) const {
+  if (!JsonHelper::isObject(json)) {
     return 0;
   }
 
@@ -192,11 +194,11 @@ TRI_voc_cid_t Syncer::getCid (TRI_json_t const* json) const {
 
   if (JsonHelper::isString(id)) {
     // string cid, e.g. "9988488"
-    return StringUtils::uint64(id->_value._string.data, id->_value._string.length - 1);
-  }
-  else if (JsonHelper::isNumber(id)) {
+    return StringUtils::uint64(id->_value._string.data,
+                               id->_value._string.length - 1);
+  } else if (JsonHelper::isNumber(id)) {
     // numeric cid, e.g. 9988488
-    return (TRI_voc_cid_t) id->_value._number;
+    return (TRI_voc_cid_t)id->_value._number;
   }
 
   return 0;
@@ -206,8 +208,8 @@ TRI_voc_cid_t Syncer::getCid (TRI_json_t const* json) const {
 /// @brief extract the collection name from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* Syncer::getCName (TRI_json_t const* json) const {
-  if (! JsonHelper::isObject(json)) {
+char const* Syncer::getCName(TRI_json_t const* json) const {
+  if (!JsonHelper::isObject(json)) {
     return nullptr;
   }
 
@@ -224,24 +226,25 @@ char const* Syncer::getCName (TRI_json_t const* json) const {
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
-                                       TRI_transaction_collection_t* trxCollection,
-                                       TRI_replication_operation_e type,
-                                       const TRI_voc_key_t key,
-                                       const TRI_voc_rid_t rid,
-                                       TRI_json_t const* json,
-                                       string& errorMsg) {
-
-  if (type == REPLICATION_MARKER_DOCUMENT || 
-      type == REPLICATION_MARKER_EDGE) {
+int Syncer::applyCollectionDumpMarker(
+    triagens::arango::Transaction* trx,
+    TRI_transaction_collection_t* trxCollection,
+    TRI_replication_operation_e type, const TRI_voc_key_t key,
+    const TRI_voc_rid_t rid, TRI_json_t const* json, string& errorMsg) {
+  if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_ASSERT(json != nullptr);
 
-    TRI_document_collection_t* document = trxCollection->_collection->_collection;
-    TRI_memory_zone_t* zone = document->getShaper()->memoryZone();  // PROTECTED by trx in trxCollection
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
-    
+    TRI_document_collection_t* document =
+        trxCollection->_collection->_collection;
+    TRI_memory_zone_t* zone =
+        document->getShaper()
+            ->memoryZone();  // PROTECTED by trx in trxCollection
+    TRI_shaped_json_t* shaped =
+        TRI_ShapedJsonJson(document->getShaper(), json,
+                           true);  // PROTECTED by trx in trxCollection
+
     if (shaped == nullptr) {
       errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -252,7 +255,8 @@ int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
       TRI_doc_mptr_copy_t mptr;
 
       bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
-      int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key, &mptr, ! isLocked);
+      int res = TRI_ReadShapedJsonDocumentCollection(trx, trxCollection, key,
+                                                     &mptr, !isLocked);
 
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
@@ -261,55 +265,59 @@ int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
           // edge
           if (document->_info.type() != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
-          }
-          else {
+          } else {
             res = TRI_ERROR_NO_ERROR;
           }
 
-          string const from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
-          string const to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
+          string const from =
+              JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
+          string const to =
+              JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
 
           CollectionNameResolver resolver(_vocbase);
 
           // parse _from
           TRI_document_edge_t edge;
-          if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
+          if (!DocumentHelper::parseDocumentId(resolver, from.c_str(),
+                                               edge._fromCid, &edge._fromKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
           }
 
           // parse _to
-          if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
+          if (!DocumentHelper::parseDocumentId(resolver, to.c_str(),
+                                               edge._toCid, &edge._toKey)) {
             res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge, ! isLocked, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(
+                trx, trxCollection, key, rid, nullptr, &mptr, shaped, &edge,
+                !isLocked, false, true);
           }
-        }
-        else {
+        } else {
           // document
           if (document->_info.type() != TRI_COL_TYPE_DOCUMENT) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
-          }
-          else {
-            res = TRI_InsertShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, ! isLocked, false, true);
+          } else {
+            res = TRI_InsertShapedJsonDocumentCollection(
+                trx, trxCollection, key, rid, nullptr, &mptr, shaped, nullptr,
+                !isLocked, false, true);
           }
         }
-      }
-      else {
+      } else {
         // update
-        res = TRI_UpdateShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, ! isLocked, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(
+            trx, trxCollection, key, rid, nullptr, &mptr, shaped, &_policy,
+            !isLocked, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
 
       return res;
-    }
-    catch (triagens::basics::Exception const& ex) {
+    } catch (triagens::basics::Exception const& ex) {
       TRI_FreeShapedJson(zone, shaped);
       return ex.code();
-    }
-    catch (...) {
+    } catch (...) {
       TRI_FreeShapedJson(zone, shaped);
       return TRI_ERROR_INTERNAL;
     }
@@ -322,22 +330,23 @@ int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
     bool const isLocked = TRI_IsLockedCollectionTransaction(trxCollection);
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trx, trxCollection, key, rid, nullptr, &_policy, ! isLocked, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(
+          trx, trxCollection, key, rid, nullptr, &_policy, !isLocked, false);
 
-      if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+      if (res != TRI_ERROR_NO_ERROR &&
+          res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
         res = TRI_ERROR_NO_ERROR;
       }
-    }
-    catch (triagens::basics::Exception const& ex) {
+    } catch (triagens::basics::Exception const& ex) {
       res = ex.code();
-    }
-    catch (...) {
+    } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }
-        
+
     if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
+      errorMsg =
+          "document removal operation failed: " + string(TRI_errno_string(res));
     }
 
     return res;
@@ -354,13 +363,12 @@ int Syncer::applyCollectionDumpMarker (triagens::arango::Transaction* trx,
 /// @brief creates a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::createCollection (TRI_json_t const* json,
-                              TRI_vocbase_col_t** dst) {
+int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
-  if (! JsonHelper::isObject(json)) {
+  if (!JsonHelper::isObject(json)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -376,7 +384,8 @@ int Syncer::createCollection (TRI_json_t const* json,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_col_type_e const type = (TRI_col_type_e) JsonHelper::getNumericValue<int>(json, "type", (int) TRI_COL_TYPE_DOCUMENT);
+  TRI_col_type_e const type = (TRI_col_type_e)JsonHelper::getNumericValue<int>(
+      json, "type", (int)TRI_COL_TYPE_DOCUMENT);
 
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -385,8 +394,7 @@ int Syncer::createCollection (TRI_json_t const* json,
     col = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
   }
 
-  if (col != nullptr &&
-      (TRI_col_type_t) col->_type == (TRI_col_type_t) type) {
+  if (col != nullptr && (TRI_col_type_t)col->_type == (TRI_col_type_t)type) {
     // collection already exists. TODO: compare attributes
     return TRI_ERROR_NO_ERROR;
   }
@@ -394,7 +402,8 @@ int Syncer::createCollection (TRI_json_t const* json,
   TRI_json_t* keyOptions = nullptr;
 
   if (JsonHelper::isObject(JsonHelper::getObjectElement(json, "keyOptions"))) {
-    keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::getObjectElement(json, "keyOptions"));
+    keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE,
+                              JsonHelper::getObjectElement(json, "keyOptions"));
   }
 
   std::shared_ptr<VPackBuilder> opts = JsonHelper::toVelocyPack(keyOptions);
@@ -403,17 +412,14 @@ int Syncer::createCollection (TRI_json_t const* json,
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
 
-  std::shared_ptr<VPackBuilder> builder = triagens::basics::JsonHelper::toVelocyPack(json);
+  std::shared_ptr<VPackBuilder> builder =
+      triagens::basics::JsonHelper::toVelocyPack(json);
 
-  VocbaseCollectionInfo params(_vocbase,
-                               name.c_str(),
-                               builder->slice());
+  VocbaseCollectionInfo params(_vocbase, name.c_str(), builder->slice());
 
   // wait for "old" collection to be dropped
-  char* dirName = TRI_GetDirectoryCollection(_vocbase->_path,
-                                             name.c_str(),
-                                             type,
-                                             cid);
+  char* dirName =
+      TRI_GetDirectoryCollection(_vocbase->_path, name.c_str(), type, cid);
 
   if (dirName != nullptr) {
     char* parameterName = TRI_Concatenate2File(dirName, TRI_VOC_PARAMETER_FILE);
@@ -421,7 +427,8 @@ int Syncer::createCollection (TRI_json_t const* json,
     if (parameterName != nullptr) {
       int iterations = 0;
 
-      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) && iterations++ < 1200) {
+      while (TRI_IsDirectory(dirName) && TRI_ExistsFile(parameterName) &&
+             iterations++ < 1200) {
         usleep(1000 * 100);
       }
 
@@ -448,8 +455,7 @@ int Syncer::createCollection (TRI_json_t const* json,
 /// @brief drops a collection, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::dropCollection (TRI_json_t const* json,
-                            bool reportError) {
+int Syncer::dropCollection(TRI_json_t const* json, bool reportError) {
   TRI_voc_cid_t cid = getCid(json);
   TRI_vocbase_col_t* col = TRI_LookupCollectionByIdVocBase(_vocbase, cid);
 
@@ -475,10 +481,10 @@ int Syncer::dropCollection (TRI_json_t const* json,
 /// @brief creates an index, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::createIndex (TRI_json_t const* json) {
+int Syncer::createIndex(TRI_json_t const* json) {
   TRI_json_t const* indexJson = JsonHelper::getObjectElement(json, "index");
 
-  if (! JsonHelper::isObject(indexJson)) {
+  if (!JsonHelper::isObject(indexJson)) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
@@ -493,8 +499,9 @@ int Syncer::createIndex (TRI_json_t const* json) {
     }
 
     TRI_document_collection_t* document = guard.collection()->_collection;
-  
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, guard.collection()->_cid);
+
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(
+        new StandaloneTransactionContext(), _vocbase, guard.collection()->_cid);
 
     int res = trx.begin();
 
@@ -512,11 +519,9 @@ int Syncer::createIndex (TRI_json_t const* json) {
     res = trx.finish(res);
 
     return res;
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     return ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
 }
@@ -525,7 +530,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
 /// @brief drops an index, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::dropIndex (TRI_json_t const* json) {
+int Syncer::dropIndex(TRI_json_t const* json) {
   string const id = JsonHelper::getStringValue(json, "id", "");
 
   if (id.empty()) {
@@ -539,7 +544,7 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 
   try {
     CollectionGuard guard(_vocbase, cid, cname);
-    
+
     if (guard.collection() == nullptr) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
@@ -548,16 +553,14 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 
     bool result = TRI_DropIndexDocumentCollection(document, iid, true);
 
-    if (! result) {
+    if (!result) {
       return TRI_ERROR_NO_ERROR;
     }
 
     return TRI_ERROR_NO_ERROR;
-  }
-  catch (triagens::basics::Exception const& ex) {
+  } catch (triagens::basics::Exception const& ex) {
     return ex.code();
-  }
-  catch (...) {
+  } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
 }
@@ -566,29 +569,28 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 /// @brief get master state
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::getMasterState (string& errorMsg) {
+int Syncer::getMasterState(string& errorMsg) {
   string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
   // store old settings
-  uint64_t maxRetries = _client->_maxRetries; 
+  uint64_t maxRetries = _client->_maxRetries;
   uint64_t retryWaitTime = _client->_retryWaitTime;
 
   // apply settings that prevent endless waiting here
-  _client->_maxRetries    = 1;
+  _client->_maxRetries = 1;
   _client->_retryWaitTime = 500 * 1000;
 
-  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(HttpRequest::HTTP_REQUEST_GET,
-                                             url,
-                                             nullptr,
-                                             0));
+  std::unique_ptr<SimpleHttpResult> response(
+      _client->retryRequest(HttpRequest::HTTP_REQUEST_GET, url, nullptr, 0));
 
   // restore old settings
   _client->_maxRetries = maxRetries;
   _client->_retryWaitTime = retryWaitTime;
 
-  if (response == nullptr || ! response->isComplete()) {
-    errorMsg = "could not connect to master at " + std::string(_masterInfo._endpoint) +
-               ": " + _client->getErrorMessage();
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg = "could not connect to master at " +
+               std::string(_masterInfo._endpoint) + ": " +
+               _client->getErrorMessage();
 
     return TRI_ERROR_REPLICATION_NO_RESPONSE;
   }
@@ -598,21 +600,21 @@ int Syncer::getMasterState (string& errorMsg) {
   if (response->wasHttpError()) {
     res = TRI_ERROR_REPLICATION_MASTER_ERROR;
 
-    errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
-               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-               ": " + response->getHttpReturnMessage();
-  }
-  else {
-    std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
+    errorMsg = "got invalid response from master at " +
+               std::string(_masterInfo._endpoint) + ": HTTP " +
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+               response->getHttpReturnMessage();
+  } else {
+    std::unique_ptr<TRI_json_t> json(
+        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str()));
 
     if (JsonHelper::isObject(json.get())) {
       res = handleStateResponse(json.get(), errorMsg);
-    }
-    else {
+    } else {
       res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
 
-      errorMsg = "got invalid response from master at " + std::string(_masterInfo._endpoint) +
-        ": invalid JSON";
+      errorMsg = "got invalid response from master at " +
+                 std::string(_masterInfo._endpoint) + ": invalid JSON";
     }
   }
 
@@ -623,14 +625,14 @@ int Syncer::getMasterState (string& errorMsg) {
 /// @brief handle the state response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::handleStateResponse (TRI_json_t const* json,
-                                 string& errorMsg) {
-  string const endpointString = " from endpoint '" + std::string(_masterInfo._endpoint) + "'";
+int Syncer::handleStateResponse(TRI_json_t const* json, string& errorMsg) {
+  string const endpointString =
+      " from endpoint '" + std::string(_masterInfo._endpoint) + "'";
 
   // process "state" section
   TRI_json_t const* state = JsonHelper::getObjectElement(json, "state");
 
-  if (! JsonHelper::isObject(state)) {
+  if (!JsonHelper::isObject(state)) {
     errorMsg = "state section is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -639,13 +641,14 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   // state."lastLogTick"
   TRI_json_t const* tick = JsonHelper::getObjectElement(state, "lastLogTick");
 
-  if (! JsonHelper::isString(tick)) {
+  if (!JsonHelper::isString(tick)) {
     errorMsg = "lastLogTick is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_voc_tick_t const lastLogTick = StringUtils::uint64(tick->_value._string.data, tick->_value._string.length - 1);
+  TRI_voc_tick_t const lastLogTick = StringUtils::uint64(
+      tick->_value._string.data, tick->_value._string.length - 1);
 
   // state."running"
   bool running = JsonHelper::getBooleanValue(state, "running", false);
@@ -653,7 +656,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   // process "server" section
   TRI_json_t const* server = JsonHelper::getObjectElement(json, "server");
 
-  if (! JsonHelper::isObject(server)) {
+  if (!JsonHelper::isObject(server)) {
     errorMsg = "server section is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -662,7 +665,7 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   // server."version"
   TRI_json_t const* version = JsonHelper::getObjectElement(server, "version");
 
-  if (! JsonHelper::isString(version)) {
+  if (!JsonHelper::isString(version)) {
     errorMsg = "server version is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -671,14 +674,15 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   // server."serverId"
   TRI_json_t const* serverId = JsonHelper::getObjectElement(server, "serverId");
 
-  if (! JsonHelper::isString(serverId)) {
+  if (!JsonHelper::isString(serverId)) {
     errorMsg = "server id is missing in response" + endpointString;
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
   // validate all values we got
-  string const masterIdString = string(serverId->_value._string.data, serverId->_value._string.length - 1);
+  string const masterIdString = string(serverId->_value._string.data,
+                                       serverId->_value._string.length - 1);
   TRI_server_id_t const masterId = StringUtils::uint64(masterIdString);
 
   if (masterId == 0) {
@@ -690,8 +694,8 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
 
   if (masterIdString == _localServerIdString) {
     // master and replica are the same instance. this is not supported.
-    errorMsg = "got same server id (" + _localServerIdString + ")" + endpointString +
-               " as the local applier server's id";
+    errorMsg = "got same server id (" + _localServerIdString + ")" +
+               endpointString + " as the local applier server's id";
 
     return TRI_ERROR_REPLICATION_LOOP;
   }
@@ -699,28 +703,29 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
   int major = 0;
   int minor = 0;
 
-  string const versionString(version->_value._string.data, version->_value._string.length - 1);
+  string const versionString(version->_value._string.data,
+                             version->_value._string.length - 1);
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    errorMsg = "invalid master version info" + endpointString + ": '" + versionString + "'";
+    errorMsg = "invalid master version info" + endpointString + ": '" +
+               versionString + "'";
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
 
-  if (major < 2 ||
-      major > 2 ||
-      (major == 2 && minor < 2)) {
+  if (major < 2 || major > 2 || (major == 2 && minor < 2)) {
     // we can connect to 1.4, 2.0 and higher only
-    errorMsg = "got incompatible master version" + endpointString + ": '" + versionString + "'";
+    errorMsg = "got incompatible master version" + endpointString + ": '" +
+               versionString + "'";
 
     return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
   }
 
-  _masterInfo._majorVersion        = major;
-  _masterInfo._minorVersion        = minor;
-  _masterInfo._serverId            = masterId;
-  _masterInfo._lastLogTick         = lastLogTick;
-  _masterInfo._active              = running;
+  _masterInfo._majorVersion = major;
+  _masterInfo._minorVersion = minor;
+  _masterInfo._serverId = masterId;
+  _masterInfo._lastLogTick = lastLogTick;
+  _masterInfo._active = running;
 
   TRI_LogMasterInfoReplication(&_masterInfo, "connected to");
 
@@ -733,5 +738,6 @@ int Syncer::handleStateResponse (TRI_json_t const* json,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

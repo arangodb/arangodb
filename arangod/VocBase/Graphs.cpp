@@ -1,5 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Class for arangodb's graph features. Wrapper around the graph informations
+/// @brief Class for arangodb's graph features. Wrapper around the graph
+/// informations
 ///
 /// @file
 ///
@@ -37,7 +38,6 @@ using namespace triagens::arango;
 
 const std::string graphs = "_graphs";
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      GraphFactory
 // -----------------------------------------------------------------------------
@@ -46,8 +46,8 @@ const std::string graphs = "_graphs";
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbase, 
-                                                           std::string const& name) {
+triagens::aql::Graph* triagens::arango::lookupGraphByName(
+    TRI_vocbase_t* vocbase, std::string const& name) {
   if (ServerState::instance()->isCoordinator()) {
     triagens::rest::HttpResponse::HttpResponseCode responseCode;
     auto headers = std::make_unique<std::map<std::string, std::string>>();
@@ -56,21 +56,14 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
 
     TRI_voc_rid_t rev = 0;
 
-    int error = triagens::arango::getDocumentOnCoordinator(vocbase->_name,
-                                                           graphs,
-                                                           name,
-                                                           rev,
-                                                           headers,
-                                                           true,
-                                                           responseCode,
-                                                           resultHeaders,
-                                                           resultBody);
+    int error = triagens::arango::getDocumentOnCoordinator(
+        vocbase->_name, graphs, name, rev, headers, true, responseCode,
+        resultHeaders, resultBody);
 
     if (error != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_FORMAT(error,
                                     "while fetching _graph['%s'] entry: `%s`",
-                                    name.c_str(),
-                                    resultBody.c_str());
+                                    name.c_str(), resultBody.c_str());
     }
 
     auto json = JsonHelper::fromString(resultBody);
@@ -78,30 +71,28 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
     if (json == nullptr) {
       THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_HTTP_CORRUPTED_JSON,
                                     "while fetching _graph['%s'] entry: `%s`",
-                                    name.c_str(),
-                                    resultBody.c_str());
+                                    name.c_str(), resultBody.c_str());
     }
-  
+
     return new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, json));
   }
 
   CollectionNameResolver resolver(vocbase);
   auto collName = resolver.getCollectionId(graphs);
 
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collName);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
+                                          vocbase, collName);
   int res = trx.begin();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res,
-                                  "while looking up graph '%s' in _graphs",
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s' in _graphs",
                                   name.c_str());
   }
 
   TRI_doc_mptr_copy_t mptr;
   res = trx.read(&mptr, name);
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_FORMAT(res,
-                                  "while looking up graph '%s' in _graphs",
+    THROW_ARANGO_EXCEPTION_FORMAT(res, "while looking up graph '%s' in _graphs",
                                   name.c_str());
   }
   TRI_shaped_json_t document;
@@ -119,4 +110,3 @@ triagens::aql::Graph* triagens::arango::lookupGraphByName (TRI_vocbase_t* vocbas
 
   return new triagens::aql::Graph(Json(TRI_UNKNOWN_MEM_ZONE, j));
 }
-

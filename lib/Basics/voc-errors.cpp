@@ -5,7 +5,7 @@
 #include "Basics/Common.h"
 #include "./lib/Basics/voc-errors.h"
 
-void TRI_InitializeErrorMessages () {
+void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_NO_ERROR, "no error");
   REG_ERROR(ERROR_FAILED, "failed");
   REG_ERROR(ERROR_SYS_ERROR, "system error");
@@ -30,9 +30,12 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_REQUEST_CANCELED, "canceled request");
   REG_ERROR(ERROR_DEBUG, "intentional debug error");
   REG_ERROR(ERROR_AID_NOT_FOUND, "internal error with attribute ID in shaper");
-  REG_ERROR(ERROR_LEGEND_INCOMPLETE, "internal error if a legend could not be created");
+  REG_ERROR(ERROR_LEGEND_INCOMPLETE,
+            "internal error if a legend could not be created");
   REG_ERROR(ERROR_IP_ADDRESS_INVALID, "IP address is invalid");
-  REG_ERROR(ERROR_LEGEND_NOT_IN_WAL_FILE, "internal error if a legend for a marker does not yet exist in the same WAL file");
+  REG_ERROR(ERROR_LEGEND_NOT_IN_WAL_FILE,
+            "internal error if a legend for a marker does not yet exist in the "
+            "same WAL file");
   REG_ERROR(ERROR_FILE_EXISTS, "file exists");
   REG_ERROR(ERROR_LOCKED, "locked");
   REG_ERROR(ERROR_DEADLOCK, "deadlock detected");
@@ -55,14 +58,17 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_DATAFILE_EMPTY, "datafile empty");
   REG_ERROR(ERROR_ARANGO_RECOVERY, "logfile recovery error");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_DATAFILE, "corrupted datafile");
-  REG_ERROR(ERROR_ARANGO_ILLEGAL_PARAMETER_FILE, "illegal or unreadable parameter file");
+  REG_ERROR(ERROR_ARANGO_ILLEGAL_PARAMETER_FILE,
+            "illegal or unreadable parameter file");
   REG_ERROR(ERROR_ARANGO_CORRUPTED_COLLECTION, "corrupted collection");
   REG_ERROR(ERROR_ARANGO_MMAP_FAILED, "mmap failed");
   REG_ERROR(ERROR_ARANGO_FILESYSTEM_FULL, "filesystem full");
   REG_ERROR(ERROR_ARANGO_NO_JOURNAL, "no journal");
-  REG_ERROR(ERROR_ARANGO_DATAFILE_ALREADY_EXISTS, "cannot create/rename datafile because it already exists");
+  REG_ERROR(ERROR_ARANGO_DATAFILE_ALREADY_EXISTS,
+            "cannot create/rename datafile because it already exists");
   REG_ERROR(ERROR_ARANGO_DATADIR_LOCKED, "database directory is locked");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS, "cannot create/rename collection because directory already exists");
+  REG_ERROR(ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,
+            "cannot create/rename collection because directory already exists");
   REG_ERROR(ERROR_ARANGO_MSYNC_FAILED, "msync failed");
   REG_ERROR(ERROR_ARANGO_DATADIR_UNLOCKABLE, "cannot lock database directory");
   REG_ERROR(ERROR_ARANGO_SYNC_TIMEOUT, "sync timeout");
@@ -70,35 +76,45 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
+  REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
+            "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
-  REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
+  REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,
+            "maximal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
-  REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
+  REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
+            "unique constraint violated");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
-  REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
+  REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST,
+            "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
-  REG_ERROR(ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED, "cap constraint already defined");
+  REG_ERROR(ERROR_ARANGO_CAP_CONSTRAINT_ALREADY_DEFINED,
+            "cap constraint already defined");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
+  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED,
+            "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
   REG_ERROR(ERROR_ARANGO_VALIDATION_FAILED, "validator failed");
-  REG_ERROR(ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED, "parsing attribute name definition failed");
+  REG_ERROR(ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+            "parsing attribute name definition failed");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_BAD, "illegal document key");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED, "unexpected document key");
-  REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE, "server database directory not writable");
+  REG_ERROR(ERROR_ARANGO_DATADIR_NOT_WRITABLE,
+            "server database directory not writable");
   REG_ERROR(ERROR_ARANGO_OUT_OF_KEYS, "out of keys");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_MISSING, "missing document key");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TYPE_INVALID, "invalid document type");
   REG_ERROR(ERROR_ARANGO_DATABASE_NOT_FOUND, "database not found");
   REG_ERROR(ERROR_ARANGO_DATABASE_NAME_INVALID, "database name invalid");
-  REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE, "operation only allowed in system database");
+  REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE,
+            "operation only allowed in system database");
   REG_ERROR(ERROR_ARANGO_ENDPOINT_NOT_FOUND, "endpoint not found");
   REG_ERROR(ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator");
   REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing");
-  REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING, "index insertion warning - attribute missing in document");
+  REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING,
+            "index insertion warning - attribute missing in document");
   REG_ERROR(ERROR_ARANGO_INDEX_CREATION_FAILED, "index creation failed");
   REG_ERROR(ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT, "write-throttling timeout");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, "collection type mismatch");
@@ -114,8 +130,10 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_MARKER, "unexpected marker");
   REG_ERROR(ERROR_REPLICATION_INVALID_APPLIER_STATE, "invalid applier state");
   REG_ERROR(ERROR_REPLICATION_UNEXPECTED_TRANSACTION, "invalid transaction");
-  REG_ERROR(ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid replication applier configuration");
-  REG_ERROR(ERROR_REPLICATION_RUNNING, "cannot perform operation while applier is running");
+  REG_ERROR(ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+            "invalid replication applier configuration");
+  REG_ERROR(ERROR_REPLICATION_RUNNING,
+            "cannot perform operation while applier is running");
   REG_ERROR(ERROR_REPLICATION_APPLIER_STOPPED, "replication stopped");
   REG_ERROR(ERROR_REPLICATION_NO_START_TICK, "no start tick");
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
@@ -123,66 +141,104 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_NO_COORDINATOR_HEADER, "missing coordinator header");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, "could not lock plan in agency");
   REG_ERROR(ERROR_CLUSTER_COLLECTION_ID_EXISTS, "collection ID already exists");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, "could not create collection in plan");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION, "could not read version in current in agency");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, "could not create collection");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
+            "could not create collection in plan");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION,
+            "could not read version in current in agency");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+            "could not create collection");
   REG_ERROR(ERROR_CLUSTER_TIMEOUT, "timeout in cluster operation");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN, "could not remove collection from plan");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT, "could not remove collection from current");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN, "could not create database in plan");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE, "could not create database");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN, "could not remove database from plan");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT, "could not remove database from current");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
+            "could not remove collection from plan");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,
+            "could not remove collection from current");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,
+            "could not create database in plan");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+            "could not create database");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN,
+            "could not remove database from plan");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT,
+            "could not remove database from current");
   REG_ERROR(ERROR_CLUSTER_SHARD_GONE, "no responsible shard found");
-  REG_ERROR(ERROR_CLUSTER_CONNECTION_LOST, "cluster internal HTTP connection broken");
-  REG_ERROR(ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY, "must not specify _key for this collection");
-  REG_ERROR(ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS, "got contradicting answers from different shards");
-  REG_ERROR(ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN, "not all sharding attributes given");
-  REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES, "must not change the value of a shard key attribute");
+  REG_ERROR(ERROR_CLUSTER_CONNECTION_LOST,
+            "cluster internal HTTP connection broken");
+  REG_ERROR(ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,
+            "must not specify _key for this collection");
+  REG_ERROR(ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,
+            "got contradicting answers from different shards");
+  REG_ERROR(ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN,
+            "not all sharding attributes given");
+  REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES,
+            "must not change the value of a shard key attribute");
   REG_ERROR(ERROR_CLUSTER_UNSUPPORTED, "unsupported operation or parameter");
-  REG_ERROR(ERROR_CLUSTER_ONLY_ON_COORDINATOR, "this operation is only valid on a coordinator in a cluster");
+  REG_ERROR(ERROR_CLUSTER_ONLY_ON_COORDINATOR,
+            "this operation is only valid on a coordinator in a cluster");
   REG_ERROR(ERROR_CLUSTER_READING_PLAN_AGENCY, "error reading Plan in agency");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION, "could not truncate collection");
-  REG_ERROR(ERROR_CLUSTER_AQL_COMMUNICATION, "error in cluster internal communication for AQL");
-  REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED, "document not found or sharding attributes changed");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DETERMINE_ID, "could not determine my ID from my local info");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,
+            "could not truncate collection");
+  REG_ERROR(ERROR_CLUSTER_AQL_COMMUNICATION,
+            "error in cluster internal communication for AQL");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED,
+            "document not found or sharding attributes changed");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DETERMINE_ID,
+            "could not determine my ID from my local info");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
   REG_ERROR(ERROR_QUERY_SCRIPT, "runtime error '%s'");
   REG_ERROR(ERROR_QUERY_NUMBER_OUT_OF_RANGE, "number out of range");
-  REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID, "variable name '%s' has an invalid format");
-  REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED, "variable '%s' is assigned multiple times");
+  REG_ERROR(ERROR_QUERY_VARIABLE_NAME_INVALID,
+            "variable name '%s' has an invalid format");
+  REG_ERROR(ERROR_QUERY_VARIABLE_REDECLARED,
+            "variable '%s' is assigned multiple times");
   REG_ERROR(ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "unknown variable '%s'");
-  REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED, "unable to read-lock collection %s");
+  REG_ERROR(ERROR_QUERY_COLLECTION_LOCK_FAILED,
+            "unable to read-lock collection %s");
   REG_ERROR(ERROR_QUERY_TOO_MANY_COLLECTIONS, "too many collections");
-  REG_ERROR(ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED, "document attribute '%s' is assigned multiple times");
-  REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN, "usage of unknown function '%s()'");
-  REG_ERROR(ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, "invalid number of arguments for function '%s()', expected number of arguments: minimum: %d, maximum: %d");
-  REG_ERROR(ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "invalid argument type in call to function '%s()'");
+  REG_ERROR(ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,
+            "document attribute '%s' is assigned multiple times");
+  REG_ERROR(ERROR_QUERY_FUNCTION_NAME_UNKNOWN,
+            "usage of unknown function '%s()'");
+  REG_ERROR(ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+            "invalid number of arguments for function '%s()', expected number "
+            "of arguments: minimum: %d, maximum: %d");
+  REG_ERROR(ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "invalid argument type in call to function '%s()'");
   REG_ERROR(ERROR_QUERY_INVALID_REGEX, "invalid regex value");
-  REG_ERROR(ERROR_QUERY_BIND_PARAMETERS_INVALID, "invalid structure of bind parameters");
-  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_MISSING, "no value specified for declared bind parameter '%s'");
-  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_UNDECLARED, "bind parameter '%s' was not declared in the query");
-  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_TYPE, "bind parameter '%s' has an invalid value or type");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETERS_INVALID,
+            "invalid structure of bind parameters");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_MISSING,
+            "no value specified for declared bind parameter '%s'");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
+            "bind parameter '%s' was not declared in the query");
+  REG_ERROR(ERROR_QUERY_BIND_PARAMETER_TYPE,
+            "bind parameter '%s' has an invalid value or type");
   REG_ERROR(ERROR_QUERY_INVALID_LOGICAL_VALUE, "invalid logical value");
   REG_ERROR(ERROR_QUERY_INVALID_ARITHMETIC_VALUE, "invalid arithmetic value");
   REG_ERROR(ERROR_QUERY_DIVISION_BY_ZERO, "division by zero");
   REG_ERROR(ERROR_QUERY_ARRAY_EXPECTED, "array expected");
   REG_ERROR(ERROR_QUERY_FAIL_CALLED, "FAIL(%s) called");
-  REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING, "no suitable geo index found for geo restriction on '%s'");
-  REG_ERROR(ERROR_QUERY_FULLTEXT_INDEX_MISSING, "no suitable fulltext index found for fulltext query on '%s'");
+  REG_ERROR(ERROR_QUERY_GEO_INDEX_MISSING,
+            "no suitable geo index found for geo restriction on '%s'");
+  REG_ERROR(ERROR_QUERY_FULLTEXT_INDEX_MISSING,
+            "no suitable fulltext index found for fulltext query on '%s'");
   REG_ERROR(ERROR_QUERY_INVALID_DATE_VALUE, "invalid date value");
   REG_ERROR(ERROR_QUERY_MULTI_MODIFY, "multi-modify query");
-  REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
+  REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS,
+            "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
-  REG_ERROR(ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, "collection '%s' used as expression operand");
-  REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
-  REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification");
+  REG_ERROR(ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION,
+            "collection '%s' used as expression operand");
+  REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,
+            "disallowed dynamic call to '%s'");
+  REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
+            "access after data-modification");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function '%s()' not found");
-  REG_ERROR(ERROR_QUERY_FUNCTION_RUNTIME_ERROR, "user function runtime error: %s");
+  REG_ERROR(ERROR_QUERY_FUNCTION_RUNTIME_ERROR,
+            "user function runtime error: %s");
   REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "bad execution plan JSON");
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
@@ -190,8 +246,10 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
-  REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
-  REG_ERROR(ERROR_TRANSACTION_DISALLOWED_OPERATION, "disallowed operation inside transaction");
+  REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+            "unregistered collection used in transaction");
+  REG_ERROR(ERROR_TRANSACTION_DISALLOWED_OPERATION,
+            "disallowed operation inside transaction");
   REG_ERROR(ERROR_TRANSACTION_ABORTED, "transaction aborted");
   REG_ERROR(ERROR_USER_INVALID_NAME, "invalid user name");
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
@@ -220,28 +278,44 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
-  REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations - try increasing the value of 'maxIterations'");
+  REG_ERROR(
+      ERROR_GRAPH_TOO_MANY_ITERATIONS,
+      "too many iterations - try increasing the value of 'maxIterations'");
   REG_ERROR(ERROR_GRAPH_INVALID_FILTER_RESULT, "invalid filter result");
-  REG_ERROR(ERROR_GRAPH_COLLECTION_MULTI_USE, "multi use of edge collection in edge def");
-  REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS, "edge collection already used in edge def");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_MULTI_USE,
+            "multi use of edge collection in edge def");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,
+            "edge collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_CREATE_MISSING_NAME, "missing graph name");
-  REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION, "malformed edge definition");
+  REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION,
+            "malformed edge definition");
   REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph not found");
   REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
-  REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "vertex collection does not exist or is not part of the graph");
-  REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
+  REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST,
+            "vertex collection does not exist or is not part of the graph");
+  REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,
+            "not a vertex collection");
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
-  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
-  REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
-  REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
-  REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
-  REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING, "Invalid example type. Has to be String, Array or Object");
-  REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT, "Invalid example type. Has to be Array or Object");
-  REG_ERROR(ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS, "Invalid number of arguments. Expected: ");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,
+            "collection already used in edge def");
+  REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED,
+            "edge collection not used in graph");
+  REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION,
+            " is not an ArangoCollection");
+  REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION,
+            "collection _graphs does not exist");
+  REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING,
+            "Invalid example type. Has to be String, Array or Object");
+  REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,
+            "Invalid example type. Has to be Array or Object");
+  REG_ERROR(ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS,
+            "Invalid number of arguments. Expected: ");
   REG_ERROR(ERROR_GRAPH_INVALID_PARAMETER, "Invalid parameter type.");
   REG_ERROR(ERROR_GRAPH_INVALID_ID, "Invalid id");
-  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS, "collection used in orphans");
-  REG_ERROR(ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST, "edge collection does not exist or is not part of the graph");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,
+            "collection used in orphans");
+  REG_ERROR(ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,
+            "edge collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
@@ -250,8 +324,10 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "malformed manifest file");
   REG_ERROR(ERROR_INVALID_APPLICATION_MANIFEST, "manifest file is invalid");
-  REG_ERROR(ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING, "missing manifest attribute");
-  REG_ERROR(ERROR_CANNOT_EXTRACT_APPLICATION_ROOT, "unable to extract app root path");
+  REG_ERROR(ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING,
+            "missing manifest attribute");
+  REG_ERROR(ERROR_CANNOT_EXTRACT_APPLICATION_ROOT,
+            "unable to extract app root path");
   REG_ERROR(ERROR_INVALID_FOXX_OPTIONS, "invalid foxx options");
   REG_ERROR(ERROR_FAILED_TO_EXECUTE_SCRIPT, "failed to execute script");
   REG_ERROR(ERROR_SYNTAX_ERROR_IN_SCRIPT, "syntax error in script");
@@ -265,16 +341,19 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
   REG_ERROR(ERROR_MODULE_UNKNOWN_FILE_TYPE, "unknown file type");
   REG_ERROR(ERROR_MODULE_PATH_MUST_BE_ABSOLUTE, "path must be absolute");
-  REG_ERROR(ERROR_MODULE_CAN_NOT_ESCAPE, "cannot use '..' to escape top-level-directory");
+  REG_ERROR(ERROR_MODULE_CAN_NOT_ESCAPE,
+            "cannot use '..' to escape top-level-directory");
   REG_ERROR(ERROR_MODULE_DRIVE_LETTER, "drive local path is not supported");
   REG_ERROR(ERROR_MODULE_BAD_MODULE_ORIGIN, "corrupted module origin");
   REG_ERROR(ERROR_MODULE_BAD_PACKAGE_ORIGIN, "corrupted package origin");
   REG_ERROR(ERROR_MODULE_DOCUMENT_IS_EMPTY, "no content");
   REG_ERROR(ERROR_MODULE_MAIN_NOT_READABLE, "cannot read main file");
   REG_ERROR(ERROR_MODULE_MAIN_NOT_JS, "main file is not of type 'js'");
-  REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
+  REG_ERROR(RESULT_ELEMENT_EXISTS,
+            "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
-  REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
+  REG_ERROR(ERROR_APP_ALREADY_EXISTS,
+            "newest version of app already installed");
   REG_ERROR(ERROR_QUEUE_ALREADY_EXISTS, "named queue already exists");
   REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");

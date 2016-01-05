@@ -44,7 +44,7 @@
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeC (int argc, char* argv[]) {
+void TRI_InitializeC(int argc, char* argv[]) {
   TRI_InitializeMemory();
   TRI_InitializeDebugging();
   TRI_InitializeError();
@@ -60,7 +60,7 @@ void TRI_InitializeC (int argc, char* argv[]) {
 /// @brief shutdown function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownC () {
+void TRI_ShutdownC() {
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();
   TRI_ShutdownHashes();
@@ -78,5 +78,6 @@ void TRI_ShutdownC () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

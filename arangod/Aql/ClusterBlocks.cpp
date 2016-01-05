@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL cluster execution blocks
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -47,8 +47,16 @@ using StringBuffer = triagens::basics::StringBuffer;
 
 // uncomment the following to get some debugging information
 #if 0
-#define ENTER_BLOCK try { (void) 0;
-#define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
+#define ENTER_BLOCK \
+  try {             \
+    (void)0;
+#define LEAVE_BLOCK                                                            \
+  }                                                                            \
+  catch (...) {                                                                \
+    std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ \
+              << ":" << __LINE__ << "!\n";                                     \
+    throw;                                                                     \
+  }
 #else
 #define ENTER_BLOCK
 #define LEAVE_BLOCK
@@ -57,14 +65,12 @@ using StringBuffer = triagens::basics::StringBuffer;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class GatherBlock
 // -----------------------------------------------------------------------------
-        
-GatherBlock::GatherBlock (ExecutionEngine* engine,
-                          GatherNode const* en)
-  : ExecutionBlock(engine, en),
-    _sortRegisters(),
-    _isSimple(en->getElements().empty()) {
 
-  if (! _isSimple) {
+GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
+    : ExecutionBlock(engine, en),
+      _sortRegisters(),
+      _isSimple(en->getElements().empty()) {
+  if (!_isSimple) {
     for (auto const& p : en->getElements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_registerPlan is set up
@@ -80,10 +86,10 @@ GatherBlock::GatherBlock (ExecutionEngine* engine,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-GatherBlock::~GatherBlock () {
+GatherBlock::~GatherBlock() {
   ENTER_BLOCK
   for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y: x) {
+    for (AqlItemBlock* y : x) {
       delete y;
     }
     x.clear();
@@ -96,11 +102,11 @@ GatherBlock::~GatherBlock () {
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-int GatherBlock::initialize () {
+int GatherBlock::initialize() {
   ENTER_BLOCK
   _atDep = 0;
   auto res = ExecutionBlock::initialize();
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -113,7 +119,7 @@ int GatherBlock::initialize () {
 /// @brief shutdown: need our own method since our _buffer is different
 ////////////////////////////////////////////////////////////////////////////////
 
-int GatherBlock::shutdown (int errorCode) {
+int GatherBlock::shutdown(int errorCode) {
   ENTER_BLOCK
   // don't call default shutdown method since it does the wrong thing to
   // _gatherBlockBuffer
@@ -124,10 +130,10 @@ int GatherBlock::shutdown (int errorCode) {
       return res;
     }
   }
-  
-  if (! _isSimple) {
+
+  if (!_isSimple) {
     for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-      for (AqlItemBlock* y: x) {
+      for (AqlItemBlock* y : x) {
         delete y;
       }
       x.clear();
@@ -135,7 +141,7 @@ int GatherBlock::shutdown (int errorCode) {
     _gatherBlockBuffer.clear();
     _gatherBlockPos.clear();
   }
-    
+
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
 }
@@ -144,31 +150,31 @@ int GatherBlock::shutdown (int errorCode) {
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   _atDep = 0;
-  
-  if (! _isSimple) {
+
+  if (!_isSimple) {
     for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-      for (AqlItemBlock* y: x) {
+      for (AqlItemBlock* y : x) {
         delete y;
       }
       x.clear();
     }
     _gatherBlockBuffer.clear();
     _gatherBlockPos.clear();
-    
+
     _gatherBlockBuffer.reserve(_dependencies.size());
     _gatherBlockPos.reserve(_dependencies.size());
-    for(size_t i = 0; i < _dependencies.size(); i++) {
-      _gatherBlockBuffer.emplace_back(); 
-      _gatherBlockPos.emplace_back(make_pair(i, 0)); 
+    for (size_t i = 0; i < _dependencies.size(); i++) {
+      _gatherBlockBuffer.emplace_back();
+      _gatherBlockPos.emplace_back(make_pair(i, 0));
     }
   }
 
@@ -182,10 +188,10 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// dependency has count -1
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t GatherBlock::count () const {
+int64_t GatherBlock::count() const {
   ENTER_BLOCK
   int64_t sum = 0;
-  for (auto const& x: _dependencies) {
+  for (auto const& x : _dependencies) {
     if (x->count() == -1) {
       return -1;
     }
@@ -200,7 +206,7 @@ int64_t GatherBlock::count () const {
 /// any dependency has remaining -1
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t GatherBlock::remaining () {
+int64_t GatherBlock::remaining() {
   ENTER_BLOCK
   int64_t sum = 0;
   for (auto const& x : _dependencies) {
@@ -218,7 +224,7 @@ int64_t GatherBlock::remaining () {
 /// otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GatherBlock::hasMore () {
+bool GatherBlock::hasMore() {
   ENTER_BLOCK
   if (_done) {
     return false;
@@ -230,13 +236,11 @@ bool GatherBlock::hasMore () {
         return true;
       }
     }
-  }
-  else {
-    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) { 
-      if (! _gatherBlockBuffer.at(i).empty()) {
+  } else {
+    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
+      if (!_gatherBlockBuffer.at(i).empty()) {
         return true;
-      } 
-      else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
+      } else if (getBlock(i, DefaultBatchSize, DefaultBatchSize)) {
         _gatherBlockPos.at(i) = make_pair(i, 0);
         return true;
       }
@@ -251,13 +255,13 @@ bool GatherBlock::hasMore () {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
+AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   if (_done) {
     return nullptr;
   }
 
-  // the simple case . . .  
+  // the simple case . . .
   if (_isSimple) {
     auto res = _dependencies.at(_atDep)->getSome(atLeast, atMost);
     while (res == nullptr && _atDep < _dependencies.size() - 1) {
@@ -269,85 +273,83 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
     }
     return res;
   }
- 
+
   // the non-simple case . . .
-  size_t available = 0; // nr of available rows
-  size_t index = 0;     // an index of a non-empty buffer
-  
+  size_t available = 0;  // nr of available rows
+  size_t index = 0;      // an index of a non-empty buffer
+
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
-    
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
         index = i;
-        _gatherBlockPos.at(i) = make_pair(i, 0);           
+        _gatherBlockPos.at(i) = make_pair(i, 0);
       }
-    } 
-    else {
+    } else {
       index = i;
     }
-    
+
     auto cur = _gatherBlockBuffer.at(i);
-    if (! cur.empty()) {
+    if (!cur.empty()) {
       available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
       for (size_t j = 1; j < cur.size(); j++) {
         available += cur.at(j)->size();
       }
     }
   }
-  
+
   if (available == 0) {
     _done = true;
     return nullptr;
   }
-  
-  size_t toSend = (std::min)(available, atMost); // nr rows in outgoing block
-  
+
+  size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
+
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.emplace_back(_gatherBlockBuffer.at(index).front()->
-        getDocumentCollection(_sortRegisters[i].first));
+    colls.emplace_back(
+        _gatherBlockBuffer.at(index).front()->getDocumentCollection(
+            _sortRegisters[i].first));
   }
-  
+
   // the following is similar to AqlItemBlock's slice method . . .
   std::unordered_map<AqlValue, AqlValue> cache;
-  
-  // comparison function 
+
+  // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
-  AqlItemBlock* example =_gatherBlockBuffer.at(index).front();
+  AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
-  auto res = std::make_unique<AqlItemBlock>(toSend, static_cast<triagens::aql::RegisterId>(nrRegs));  
+  auto res = std::make_unique<AqlItemBlock>(
+      toSend, static_cast<triagens::aql::RegisterId>(nrRegs));
   // automatically deleted if things go wrong
-    
+
   for (RegisterId i = 0; i < nrRegs; i++) {
     res->setDocumentCollection(i, example->getDocumentCollection(i));
   }
 
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val = *(std::min_element(_gatherBlockPos.begin(),
-          _gatherBlockPos.end(), ourLessThan));
-    
+    std::pair<size_t, size_t> val = *(std::min_element(
+        _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
+
     // copy the row in to the outgoing block . . .
     for (RegisterId col = 0; col < nrRegs; col++) {
-      AqlValue const&
-        x(_gatherBlockBuffer.at(val.first).front()->getValue(val.second, col));
-      if (! x.isEmpty()) {
+      AqlValue const& x(
+          _gatherBlockBuffer.at(val.first).front()->getValue(val.second, col));
+      if (!x.isEmpty()) {
         auto it = cache.find(x);
         if (it == cache.end()) {
           AqlValue y = x.clone();
           try {
             res->setValue(i, col, y);
-          }
-          catch (...) {
+          } catch (...) {
             y.destroy();
             throw;
           }
           cache.emplace(x, y);
-        }
-        else {
+        } else {
           res->setValue(i, col, it->second);
         }
       }
@@ -372,13 +374,13 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
 /// @brief skipSome
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
+size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   if (_done) {
     return 0;
   }
 
-  // the simple case . . .  
+  // the simple case . . .
   if (_isSimple) {
     auto skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
     while (skipped == 0 && _atDep < _dependencies.size() - 1) {
@@ -392,53 +394,53 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   }
 
   // the non-simple case . . .
-  size_t available = 0; // nr of available rows
-  size_t index = 0;     // an index of a non-empty buffer
-  TRI_ASSERT(_dependencies.size() != 0); 
+  size_t available = 0;  // nr of available rows
+  size_t index = 0;      // an index of a non-empty buffer
+  TRI_ASSERT(_dependencies.size() != 0);
 
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer.at(i).empty()) {
       if (getBlock(i, atLeast, atMost)) {
         index = i;
-        _gatherBlockPos.at(i) = make_pair(i, 0);           
+        _gatherBlockPos.at(i) = make_pair(i, 0);
       }
-    } 
-    else {
+    } else {
       index = i;
     }
 
     auto cur = _gatherBlockBuffer.at(i);
-    if (! cur.empty()) {
+    if (!cur.empty()) {
       available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
       for (size_t j = 1; j < cur.size(); j++) {
         available += cur.at(j)->size();
       }
     }
   }
-  
+
   if (available == 0) {
     _done = true;
     return 0;
   }
-  
-  size_t skipped = (std::min)(available, atMost); //nr rows in outgoing block
-  
+
+  size_t skipped = (std::min)(available, atMost);  // nr rows in outgoing block
+
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.emplace_back(_gatherBlockBuffer.at(index).front()->
-        getDocumentCollection(_sortRegisters[i].first));
+    colls.emplace_back(
+        _gatherBlockBuffer.at(index).front()->getDocumentCollection(
+            _sortRegisters[i].first));
   }
-  
-  // comparison function 
+
+  // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters, colls);
 
   for (size_t i = 0; i < skipped; i++) {
     // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val = *(std::min_element(_gatherBlockPos.begin(),
-          _gatherBlockPos.end(), ourLessThan));
-    
+    std::pair<size_t, size_t> val = *(std::min_element(
+        _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
+
     // renew the _gatherBlockPos and clean up the buffer if necessary
     _gatherBlockPos.at(val.first).second++;
     if (_gatherBlockPos.at(val.first).second ==
@@ -456,19 +458,18 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
-/// non-simple case only 
+/// non-simple case only
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
+bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   TRI_ASSERT(i < _dependencies.size());
-  TRI_ASSERT(! _isSimple);
+  TRI_ASSERT(!_isSimple);
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
       _gatherBlockBuffer.at(i).emplace_back(docs);
-    }
-    catch (...) {
+    } catch (...) {
       delete docs;
       throw;
     }
@@ -483,8 +484,8 @@ bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
 /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
-                                           std::pair<size_t, size_t> const& b) {
+bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
+                                          std::pair<size_t, size_t> const& b) {
   // nothing in the buffer is maximum!
   if (_gatherBlockBuffer.at(a.first).empty()) {
     return false;
@@ -496,19 +497,16 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   size_t i = 0;
   for (auto const& reg : _sortRegisters) {
     int cmp = AqlValue::Compare(
-      _trx,
-      _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
-      _colls[i],
-      _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
-      _colls[i],
-      true
-    );
+        _trx,
+        _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
+        _colls[i],
+        _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
+        _colls[i], true);
 
     if (cmp == -1) {
       return reg.second;
-    } 
-    else if (cmp == 1) {
-      return ! reg.second;
+    } else if (cmp == 1) {
+      return !reg.second;
     }
     i++;
   }
@@ -524,31 +522,29 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-BlockWithClients::BlockWithClients (ExecutionEngine* engine,
-                                    ExecutionNode const* ep, 
-                                    std::vector<std::string> const& shardIds) 
-  : ExecutionBlock(engine, ep), 
-    _nrClients(shardIds.size()) {
-
+BlockWithClients::BlockWithClients(ExecutionEngine* engine,
+                                   ExecutionNode const* ep,
+                                   std::vector<std::string> const& shardIds)
+    : ExecutionBlock(engine, ep), _nrClients(shardIds.size()) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
-}                                  
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor: reset _doneForClient
 ////////////////////////////////////////////////////////////////////////////////
 
-int BlockWithClients::initializeCursor (AqlItemBlock* items, size_t pos) {
+int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
-  
+
   int res = ExecutionBlock::initializeCursor(items, pos);
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-  
+
   _doneForClient.clear();
   _doneForClient.reserve(_nrClients);
 
@@ -565,7 +561,7 @@ int BlockWithClients::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-int BlockWithClients::shutdown (int errorCode) {
+int BlockWithClients::shutdown(int errorCode) {
   ENTER_BLOCK
 
   _doneForClient.clear();
@@ -578,19 +574,19 @@ int BlockWithClients::shutdown (int errorCode) {
 /// @brief getSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast, 
-                                                 size_t atMost, 
-                                                 std::string const& shardId) {
+AqlItemBlock* BlockWithClients::getSomeForShard(size_t atLeast, size_t atMost,
+                                                std::string const& shardId) {
   ENTER_BLOCK
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
 
-  int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
+  int out =
+      getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
 
   if (out == TRI_ERROR_NO_ERROR) {
     return result;
   }
-    
+
   if (result != nullptr) {
     delete result;
   }
@@ -604,13 +600,13 @@ AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast,
 /// @brief skipSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t BlockWithClients::skipSomeForShard (size_t atLeast, 
-                                           size_t atMost, 
-                                           std::string const& shardId) {
+size_t BlockWithClients::skipSomeForShard(size_t atLeast, size_t atMost,
+                                          std::string const& shardId) {
   ENTER_BLOCK
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
+  int out =
+      getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
   TRI_ASSERT(result == nullptr);
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
@@ -623,8 +619,7 @@ size_t BlockWithClients::skipSomeForShard (size_t atLeast,
 /// @brief skipForShard
 ////////////////////////////////////////////////////////////////////////////////
 
-bool BlockWithClients::skipForShard (size_t number, 
-                                     std::string const& shardId) {
+bool BlockWithClients::skipForShard(size_t number, std::string const& shardId) {
   ENTER_BLOCK
   size_t skipped = skipSomeForShard(number, number, shardId);
   size_t nr = skipped;
@@ -635,7 +630,7 @@ bool BlockWithClients::skipForShard (size_t number,
   if (nr == 0) {
     return true;
   }
-  return ! hasMoreForShard(shardId);
+  return !hasMoreForShard(shardId);
   LEAVE_BLOCK
 }
 
@@ -644,7 +639,7 @@ bool BlockWithClients::skipForShard (size_t number,
 /// corresponding to <shardId>
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t BlockWithClients::getClientId (std::string const& shardId) {
+size_t BlockWithClients::getClientId(std::string const& shardId) {
   ENTER_BLOCK
   if (shardId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
@@ -668,9 +663,9 @@ size_t BlockWithClients::getClientId (std::string const& shardId) {
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
-  
+
   int res = BlockWithClients::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -678,7 +673,7 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
   // local clean up
   _posForClient.clear();
-  
+
   for (size_t i = 0; i < _nrClients; i++) {
     _posForClient.emplace_back(std::make_pair(0, 0));
   }
@@ -690,7 +685,7 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-int ScatterBlock::shutdown (int errorCode) {
+int ScatterBlock::shutdown(int errorCode) {
   ENTER_BLOCK
   int res = BlockWithClients::shutdown(errorCode);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -699,7 +694,7 @@ int ScatterBlock::shutdown (int errorCode) {
 
   // local clean up
   _posForClient.clear();
-  
+
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
 }
@@ -708,7 +703,7 @@ int ScatterBlock::shutdown (int errorCode) {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
+bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   ENTER_BLOCK
   size_t clientId = getClientId(shardId);
 
@@ -716,12 +711,12 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
     return false;
   }
 
-  std::pair<size_t,size_t> pos = _posForClient.at(clientId); 
+  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
   // (i, j) where i is the position in _buffer, and j is the position in
   // _buffer.at(i) we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
-    if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+    if (!ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
       _doneForClient.at(clientId) = true;
       return false;
     }
@@ -735,19 +730,19 @@ bool ScatterBlock::hasMoreForShard (std::string const& shardId) {
 /// in the buffer and _dependencies[0]->remaining()
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
+int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   ENTER_BLOCK
   size_t clientId = getClientId(shardId);
   if (_doneForClient.at(clientId)) {
     return 0;
   }
-  
+
   int64_t sum = _dependencies[0]->remaining();
   if (sum == -1) {
     return -1;
   }
 
-  std::pair<size_t,size_t> pos = _posForClient.at(clientId);
+  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
 
   if (pos.first <= _buffer.size()) {
     sum += _buffer.at(pos.first)->size() - pos.second;
@@ -764,48 +759,49 @@ int64_t ScatterBlock::remainingForShard (std::string const& shardId) {
 /// @brief getOrSkipSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
 
-int ScatterBlock::getOrSkipSomeForShard (size_t atLeast, 
-    size_t atMost, bool skipping, AqlItemBlock*& result, 
-    size_t& skipped, std::string const& shardId) {
+int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
+                                        bool skipping, AqlItemBlock*& result,
+                                        size_t& skipped,
+                                        std::string const& shardId) {
   ENTER_BLOCK
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   size_t clientId = getClientId(shardId);
-  
+
   if (_doneForClient.at(clientId)) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId); 
+  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
 
-  // pull more blocks from dependency if necessary . . . 
+  // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
-    if (! getBlock(atLeast, atMost)) {
+    if (!getBlock(atLeast, atMost)) {
       _doneForClient.at(clientId) = true;
       return TRI_ERROR_NO_ERROR;
     }
   }
-  
+
   size_t available = _buffer.at(pos.first)->size() - pos.second;
-  // available should be non-zero  
-  
-  skipped = (std::min)(available, atMost); //nr rows in outgoing block
-  
-  if (! skipping) { 
+  // available should be non-zero
+
+  skipped = (std::min)(available, atMost);  // nr rows in outgoing block
+
+  if (!skipping) {
     result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
   }
 
   // increment the position . . .
   _posForClient.at(clientId).second += skipped;
 
-  // check if we're done at current block in buffer . . .  
-  if (_posForClient.at(clientId).second 
-      == _buffer.at(_posForClient.at(clientId).first)->size()) {
+  // check if we're done at current block in buffer . . .
+  if (_posForClient.at(clientId).second ==
+      _buffer.at(_posForClient.at(clientId).first)->size()) {
     _posForClient.at(clientId).first++;
     _posForClient.at(clientId).second = 0;
 
-    // check if we can pop the front of the buffer . . . 
+    // check if we can pop the front of the buffer . . .
     bool popit = true;
     for (size_t i = 0; i < _nrClients; i++) {
       if (_posForClient.at(i).first == 0) {
@@ -820,7 +816,6 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
       for (size_t i = 0; i < _nrClients; i++) {
         _posForClient.at(i).first--;
       }
-
     }
   }
 
@@ -832,23 +827,22 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
 // --SECTION--                                             class DistributeBlock
 // -----------------------------------------------------------------------------
 
-DistributeBlock::DistributeBlock (ExecutionEngine* engine,
-                                  DistributeNode const* ep, 
-                                  std::vector<std::string> const& shardIds, 
-                                  Collection const* collection)
-  : BlockWithClients(engine, ep, shardIds), 
-    _collection(collection),
-    _regId(ExecutionNode::MaxRegisterId),
-    _alternativeRegId(ExecutionNode::MaxRegisterId) {
-    
+DistributeBlock::DistributeBlock(ExecutionEngine* engine,
+                                 DistributeNode const* ep,
+                                 std::vector<std::string> const& shardIds,
+                                 Collection const* collection)
+    : BlockWithClients(engine, ep, shardIds),
+      _collection(collection),
+      _regId(ExecutionNode::MaxRegisterId),
+      _alternativeRegId(ExecutionNode::MaxRegisterId) {
   // get the variable to inspect . . .
   VariableId varId = ep->_varId;
-  
+
   // get the register id of the variable to inspect . . .
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   _regId = (*it).second.registerId;
-  
+
   TRI_ASSERT(_regId < ExecutionNode::MaxRegisterId);
 
   if (ep->_alternativeVarId != ep->_varId) {
@@ -856,7 +850,7 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
     auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVarId);
     TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     _alternativeRegId = (*it).second.registerId;
-    
+
     TRI_ASSERT(_alternativeRegId < ExecutionNode::MaxRegisterId);
   }
 
@@ -867,9 +861,9 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
 /// @brief initializeCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
-  
+
   int res = BlockWithClients::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -892,7 +886,7 @@ int DistributeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-int DistributeBlock::shutdown (int errorCode) {
+int DistributeBlock::shutdown(int errorCode) {
   ENTER_BLOCK
   int res = BlockWithClients::shutdown(errorCode);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -910,19 +904,19 @@ int DistributeBlock::shutdown (int errorCode) {
 /// @brief hasMore: any more for any shard?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DistributeBlock::hasMoreForShard (std::string const& shardId) {
+bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   ENTER_BLOCK
- 
+
   size_t clientId = getClientId(shardId);
   if (_doneForClient.at(clientId)) {
     return false;
   }
 
-  if (! _distBuffer.at(clientId).empty()) {
+  if (!_distBuffer.at(clientId).empty()) {
     return true;
   }
 
-  if (! getBlockForClient(DefaultBatchSize, DefaultBatchSize, clientId)) {
+  if (!getBlockForClient(DefaultBatchSize, DefaultBatchSize, clientId)) {
     _doneForClient.at(clientId) = true;
     return false;
   }
@@ -934,16 +928,14 @@ bool DistributeBlock::hasMoreForShard (std::string const& shardId) {
 /// @brief getOrSkipSomeForShard
 ////////////////////////////////////////////////////////////////////////////////
 
-int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
-                                            size_t atMost,
-                                            bool skipping,
-                                            AqlItemBlock*& result,
-                                            size_t& skipped,
-                                            std::string const& shardId) {
+int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
+                                           bool skipping, AqlItemBlock*& result,
+                                           size_t& skipped,
+                                           std::string const& shardId) {
   ENTER_BLOCK
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
-  
+
   size_t clientId = getClientId(shardId);
 
   if (_doneForClient.at(clientId)) {
@@ -963,7 +955,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 
   try {
     if (buf.empty()) {
-      if (! getBlockForClient(atLeast, atMost, clientId)) {
+      if (!getBlockForClient(atLeast, atMost, clientId)) {
         _doneForClient.at(clientId) = true;
         return TRI_ERROR_NO_ERROR;
       }
@@ -976,44 +968,42 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
         buf.pop_front();
       }
       freeCollector();
-      return TRI_ERROR_NO_ERROR; 
-    } 
-   
+      return TRI_ERROR_NO_ERROR;
+    }
+
     size_t i = 0;
     while (i < skipped) {
       std::vector<size_t> chosen;
       size_t const n = buf.front().first;
-      while (buf.front().first == n && i < skipped) { 
+      while (buf.front().first == n && i < skipped) {
         chosen.emplace_back(buf.front().second);
         buf.pop_front();
         i++;
-        
+
         // make sure we are not overreaching over the end of the buffer
         if (buf.empty()) {
           break;
         }
       }
 
-      std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+      std::unique_ptr<AqlItemBlock> more(
+          _buffer.at(n)->slice(chosen, 0, chosen.size()));
       collector.emplace_back(more.get());
-      more.release(); // do not delete it!
+      more.release();  // do not delete it!
     }
-  }
-  catch (...) {
+  } catch (...) {
     freeCollector();
     throw;
   }
 
-  if (! skipping) {
+  if (!skipping) {
     if (collector.size() == 1) {
       result = collector[0];
       collector.clear();
-    }
-    else if (! collector.empty()) {
+    } else if (!collector.empty()) {
       try {
         result = AqlItemBlock::concatenate(collector);
-      }
-      catch (...) {
+      } catch (...) {
         freeCollector();
         throw;
       }
@@ -1021,7 +1011,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
   }
 
   freeCollector();
-  
+
   // _buffer is left intact, deleted and cleared at shutdown
 
   return TRI_ERROR_NO_ERROR;
@@ -1031,36 +1021,35 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getBlockForClient: try to get atLeast pairs into
 /// _distBuffer.at(clientId), this means we have to look at every row in the
-/// incoming blocks until they run out or we find enough rows for clientId. We 
+/// incoming blocks until they run out or we find enough rows for clientId. We
 /// also keep track of blocks which should be sent to other clients than the
-/// current one. 
+/// current one.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool DistributeBlock::getBlockForClient (size_t atLeast, 
-                                         size_t atMost,
-                                         size_t clientId) {
+bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
+                                        size_t clientId) {
   ENTER_BLOCK
   if (_buffer.empty()) {
-    _index = 0;         // position in _buffer
-    _pos = 0;           // position in _buffer.at(_index)
+    _index = 0;  // position in _buffer
+    _pos = 0;    // position in _buffer.at(_index)
   }
 
   std::vector<std::deque<pair<size_t, size_t>>>& buf = _distBuffer;
-  // it should be the case that buf.at(clientId) is empty 
-  
+  // it should be the case that buf.at(clientId) is empty
+
   while (buf.at(clientId).size() < atLeast) {
     if (_index == _buffer.size()) {
-      if (! ExecutionBlock::getBlock(atLeast, atMost)) {
+      if (!ExecutionBlock::getBlock(atLeast, atMost)) {
         if (buf.at(clientId).size() == 0) {
           _doneForClient.at(clientId) = true;
           return false;
         }
-        break; 
+        break;
       }
     }
 
     AqlItemBlock* cur = _buffer.at(_index);
-      
+
     while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
       // this may modify the input item buffer in place
       size_t id = sendToClient(cur);
@@ -1071,12 +1060,11 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
     if (_pos == cur->size()) {
       _pos = 0;
       _index++;
-    } 
-    else {
+    } else {
       break;
     }
   }
-  
+
   return true;
   LEAVE_BLOCK
 }
@@ -1084,31 +1072,33 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the JSON that is used to determine the initial shard
 ////////////////////////////////////////////////////////////////////////////////
-  
-TRI_json_t const* DistributeBlock::getInputJson (AqlItemBlock const* cur) const {
+
+TRI_json_t const* DistributeBlock::getInputJson(AqlItemBlock const* cur) const {
   auto const& val = cur->getValueReference(_pos, _regId);
 
   if (val._type != AqlValue::JSON) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "DistributeBlock: can only send JSON");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "DistributeBlock: can only send JSON");
   }
 
   TRI_json_t const* json = val._json->json();
-  
-  if (json != nullptr &&
-      TRI_IsNullJson(json) && 
+
+  if (json != nullptr && TRI_IsNullJson(json) &&
       _alternativeRegId != ExecutionNode::MaxRegisterId) {
     // json is set, but null
-    // check if there is a second input register available (UPSERT makes use of two input registers,
+    // check if there is a second input register available (UPSERT makes use of
+    // two input registers,
     // one for the search document, the other for the insert document)
     auto const& val = cur->getValueReference(_pos, _alternativeRegId);
 
     if (val._type != AqlValue::JSON) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "DistributeBlock: can only send JSON");
-    } 
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                     "DistributeBlock: can only send JSON");
+    }
 
     json = val._json->json();
   }
-    
+
   if (json == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is a nullptr");
   }
@@ -1122,9 +1112,9 @@ TRI_json_t const* DistributeBlock::getInputJson (AqlItemBlock const* cur) const 
 /// the row should be sent and return its clientId
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
+size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   ENTER_BLOCK
-      
+
   // inspect cur in row _pos and check to which shard it should be sent . .
   auto json = getInputJson(cur);
 
@@ -1132,24 +1122,27 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
 
   bool hasCreatedKeyAttribute = false;
 
-  if (TRI_IsStringJson(json) && static_cast<DistributeNode const*>(_exeNode)->_allowKeyConversionToObject) { 
+  if (TRI_IsStringJson(json) &&
+      static_cast<DistributeNode const*>(_exeNode)
+          ->_allowKeyConversionToObject) {
     TRI_json_t* obj = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
     if (obj == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, json);
+    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY,
+                         json);
     // clear the previous value
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+    cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(
+                                    TRI_UNKNOWN_MEM_ZONE, obj)));
 
     json = obj;
     hasCreatedKeyAttribute = true;
-  }
-  else if (! TRI_IsObjectJson(json)) {
+  } else if (!TRI_IsObjectJson(json)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -1161,31 +1154,35 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
 
-      if (! hasCreatedKeyAttribute && 
+      if (!hasCreatedKeyAttribute &&
           TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
-        // there is no _key attribute present, so we are responsible for creating one
+        // there is no _key attribute present, so we are responsible for
+        // creating one
         std::string keyString(createKey());
 
         TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-      
+
         if (obj == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
-        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
-    
+        TRI_Insert3ObjectJson(
+            TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY,
+            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(),
+                                     keyString.size()));
+
         // clear the previous value
         cur->destroyValue(_pos, _regId);
 
         // overwrite with new value
-        cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+        cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(
+                                        TRI_UNKNOWN_MEM_ZONE, obj)));
         json = obj;
-      } 
-    }
-    else {
+      }
+    } else {
       // the collection is not sharded by _key
 
-      if (hasCreatedKeyAttribute || 
+      if (hasCreatedKeyAttribute ||
           TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
         // a _key was given, but user is not allowed to specify _key
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
@@ -1200,39 +1197,42 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
-        
+      TRI_Insert3ObjectJson(
+          TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY,
+          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(),
+                                   keyString.size()));
+
       // clear the previous value
       cur->destroyValue(_pos, _regId);
 
       // overwrite with new value
-      cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+      cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(
+                                      TRI_UNKNOWN_MEM_ZONE, obj)));
       json = obj;
     }
   }
 
-  // std::cout << "JSON: " << triagens::basics::JsonHelper::toString(json) << "\n";
+  // std::cout << "JSON: " << triagens::basics::JsonHelper::toString(json) <<
+  // "\n";
 
   std::string shardId;
-  bool usesDefaultShardingAttributes;  
+  bool usesDefaultShardingAttributes;
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  auto const planId = triagens::basics::StringUtils::itoa(_collection->getPlanId());
+  auto const planId =
+      triagens::basics::StringUtils::itoa(_collection->getPlanId());
 
-  int res = clusterInfo->getResponsibleShard(planId,
-                                             json,
-                                             true,
-                                             shardId,
+  int res = clusterInfo->getResponsibleShard(planId, json, true, shardId,
                                              usesDefaultShardingAttributes);
-  
+
   // std::cout << "SHARDID: " << shardId << "\n";
-  
+
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  TRI_ASSERT(! shardId.empty());
+  TRI_ASSERT(!shardId.empty());
 
-  return getClientId(shardId); 
+  return getClientId(shardId);
   LEAVE_BLOCK
 }
 
@@ -1240,7 +1240,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
 /// @brief create a new document key
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string DistributeBlock::createKey () const {
+std::string DistributeBlock::createKey() const {
   ClusterInfo* ci = ClusterInfo::instance();
   uint64_t uid = ci->uniqid();
   return std::to_string(uid);
@@ -1254,48 +1254,45 @@ std::string DistributeBlock::createKey () const {
 /// @brief local helper to throw an exception if a HTTP request went wrong
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
-                                               bool isShutdown) {
+static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
+                                              bool isShutdown) {
   ENTER_BLOCK
   if (res->status == CL_COMM_TIMEOUT) {
-    std::string errorMessage = std::string("Timeout in communication with shard '") + 
-      std::string(res->shardID) + 
-      std::string("' on cluster node '") +
-      std::string(res->serverID) +
-      std::string("' failed.");
-    
+    std::string errorMessage =
+        std::string("Timeout in communication with shard '") +
+        std::string(res->shardID) + std::string("' on cluster node '") +
+        std::string(res->serverID) + std::string("' failed.");
+
     // No reply, we give up:
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT,
-                                   errorMessage);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_TIMEOUT, errorMessage);
   }
 
   if (res->status == CL_COMM_ERROR) {
     std::string errorMessage;
     // This could be a broken connection or an Http error:
-    if (res->result == nullptr || ! res->result->isComplete()) {
+    if (res->result == nullptr || !res->result->isComplete()) {
       // there is no result
-      errorMessage += std::string("Empty result in communication with shard '") + 
-        std::string(res->shardID) + 
-        std::string("' on cluster node '") +
-        std::string(res->serverID) +
-        std::string("'");
+      errorMessage +=
+          std::string("Empty result in communication with shard '") +
+          std::string(res->shardID) + std::string("' on cluster node '") +
+          std::string(res->serverID) + std::string("'");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CONNECTION_LOST,
                                      errorMessage);
     }
-      
+
     StringBuffer const& responseBodyBuf(res->result->getBody());
- 
+
     // extract error number and message from response
     int errorNum = TRI_ERROR_NO_ERROR;
-    TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
+    TRI_json_t* json =
+        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.c_str());
 
     if (JsonHelper::getBooleanValue(json, "error", true)) {
       errorNum = TRI_ERROR_INTERNAL;
-      errorMessage = std::string("Error message received from shard '") + 
-        std::string(res->shardID) + 
-        std::string("' on cluster node '") +
-        std::string(res->serverID) +
-        std::string("': ");
+      errorMessage = std::string("Error message received from shard '") +
+                     std::string(res->shardID) +
+                     std::string("' on cluster node '") +
+                     std::string(res->serverID) + std::string("': ");
     }
 
     if (TRI_IsObjectJson(json)) {
@@ -1311,13 +1308,12 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
 
       v = TRI_LookupObjectJson(json, "errorMessage");
       if (TRI_IsStringJson(v)) {
-        errorMessage += std::string(v->_value._string.data, v->_value._string.length - 1);
-      }
-      else {
+        errorMessage +=
+            std::string(v->_value._string.data, v->_value._string.length - 1);
+      } else {
         errorMessage += std::string("(no valid error in response)");
       }
-    }
-    else {
+    } else {
       errorMessage += std::string("(no valid response)");
     }
 
@@ -1325,15 +1321,14 @@ static bool throwExceptionAfterBadSyncRequest (ClusterCommResult* res,
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
 
-    if (isShutdown && 
-        errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
+    if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
       // pass the info to the caller who can opt to ignore this error
       return true;
     }
 
     // In this case a proper HTTP error was reported by the DBserver,
-    if (errorNum > 0 && ! errorMessage.empty()) {
+    if (errorNum > 0 && !errorMessage.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(errorNum, errorMessage);
     }
 
@@ -1354,61 +1349,56 @@ double const RemoteBlock::defaultTimeOut = 3600.0;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a remote block
 ////////////////////////////////////////////////////////////////////////////////
-        
-RemoteBlock::RemoteBlock (ExecutionEngine* engine,
-                          RemoteNode const* en,
-                          std::string const& server,
-                          std::string const& ownName,
-                          std::string const& queryId)
-  : ExecutionBlock(engine, en),
-    _server(server),
-    _ownName(ownName),
-    _queryId(queryId),
-    _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
 
-  TRI_ASSERT(! queryId.empty());
-  TRI_ASSERT_EXPENSIVE((triagens::arango::ServerState::instance()->isCoordinator() && ownName.empty()) ||
-                       (! triagens::arango::ServerState::instance()->isCoordinator() && ! ownName.empty()));
+RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
+                         std::string const& server, std::string const& ownName,
+                         std::string const& queryId)
+    : ExecutionBlock(engine, en),
+      _server(server),
+      _ownName(ownName),
+      _queryId(queryId),
+      _isResponsibleForInitCursor(en->isResponsibleForInitCursor()) {
+  TRI_ASSERT(!queryId.empty());
+  TRI_ASSERT_EXPENSIVE(
+      (triagens::arango::ServerState::instance()->isCoordinator() &&
+       ownName.empty()) ||
+      (!triagens::arango::ServerState::instance()->isCoordinator() &&
+       !ownName.empty()));
 }
 
-RemoteBlock::~RemoteBlock () {
-}
+RemoteBlock::~RemoteBlock() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to send a request
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest (
-          triagens::rest::HttpRequest::HttpRequestType type,
-          std::string const& urlPart,
-          std::string const& body) const {
+std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
+    triagens::rest::HttpRequest::HttpRequestType type,
+    std::string const& urlPart, std::string const& body) const {
   ENTER_BLOCK
   ClusterComm* cc = ClusterComm::instance();
 
   // Later, we probably want to set these sensibly:
   ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer(); //1;
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();  // 1;
   std::map<std::string, std::string> headers;
-  if (! _ownName.empty()) {
+  if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
   }
 
-  auto currentThread = triagens::rest::DispatcherThread::currentDispatcherThread;
+  auto currentThread =
+      triagens::rest::DispatcherThread::currentDispatcherThread;
 
   if (currentThread != nullptr) {
     triagens::rest::DispatcherThread::currentDispatcherThread->block();
   }
 
-  auto result = cc->syncRequest(clientTransactionId,
-                                coordTransactionId,
-                                _server,
-                                type,
-                                std::string("/_db/") 
-                                + triagens::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->_name)
-                                + urlPart + _queryId,
-                                body,
-                                headers,
-                                defaultTimeOut);
+  auto result = cc->syncRequest(
+      clientTransactionId, coordTransactionId, _server, type,
+      std::string("/_db/") + triagens::basics::StringUtils::urlEncode(
+                                 _engine->getQuery()->trx()->vocbase()->_name) +
+          urlPart + _queryId,
+      body, headers, defaultTimeOut);
 
   if (currentThread != nullptr) {
     triagens::rest::DispatcherThread::currentDispatcherThread->unblock();
@@ -1422,7 +1412,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest (
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-int RemoteBlock::initialize () {
+int RemoteBlock::initialize() {
   ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
@@ -1438,44 +1428,40 @@ int RemoteBlock::initialize () {
 /// @brief initializeCursor, could be called multiple times
 ////////////////////////////////////////////////////////////////////////////////
 
-int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
-  if (! _isResponsibleForInitCursor) {
+  if (!_isResponsibleForInitCursor) {
     // do nothing...
-    return TRI_ERROR_NO_ERROR; 
+    return TRI_ERROR_NO_ERROR;
   }
 
   Json body(Json::Object, 4);
   if (items == nullptr) {
     // first call, items is still a nullptr
-    body("exhausted", Json(true))
-        ("error", Json(false));
-  }
-  else {
-    body("pos", Json(static_cast<double>(pos)))
-        ("items", items->toJson(_engine->getQuery()->trx()))
-        ("exhausted", Json(false))
-        ("error", Json(false));
+    body("exhausted", Json(true))("error", Json(false));
+  } else {
+    body("pos", Json(static_cast<double>(pos)))(
+        "items", items->toJson(_engine->getQuery()->trx()))(
+        "exhausted", Json(false))("error", Json(false));
   }
 
   std::string bodyString(body.toString());
 
-  std::unique_ptr<ClusterCommResult> res
-      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                    "/_api/aql/initializeCursor/",
-                    bodyString);
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
+                  "/_api/aql/initializeCursor/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
-                                       responseBodyBuf.begin()));
-  return JsonHelper::getNumericValue<int>
-              (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
+  return JsonHelper::getNumericValue<int>(responseBodyJson.json(), "code",
+                                          TRI_ERROR_INTERNAL);
   LEAVE_BLOCK
 }
 
@@ -1483,29 +1469,28 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
-int RemoteBlock::shutdown (int errorCode) {
+int RemoteBlock::shutdown(int errorCode) {
   ENTER_BLOCK
 
-  if (! _isResponsibleForInitCursor) {
+  if (!_isResponsibleForInitCursor) {
     // do nothing...
-    return TRI_ERROR_NO_ERROR; 
+    return TRI_ERROR_NO_ERROR;
   }
 
   // For every call we simply forward via HTTP
 
-  std::unique_ptr<ClusterCommResult> res
-      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                    "/_api/aql/shutdown/",
-                    string("{\"code\":" + std::to_string(errorCode) + "}"));
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/aql/shutdown/",
+                  string("{\"code\":" + std::to_string(errorCode) + "}"));
   if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
     // artificially ignore error in case query was not found during shutdown
     return TRI_ERROR_NO_ERROR;
   }
 
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
-                                       responseBodyBuf.begin()));
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
 
   // read "warnings" attribute if present and add it our query
   if (responseBodyJson.isObject()) {
@@ -1518,16 +1503,17 @@ int RemoteBlock::shutdown (int errorCode) {
           auto code = warning.get("code");
           auto message = warning.get("message");
           if (code.isNumber() && message.isString()) {
-            query->registerWarning(static_cast<int>(code.json()->_value._number),
-                                   message.json()->_value._string.data);
+            query->registerWarning(
+                static_cast<int>(code.json()->_value._number),
+                message.json()->_value._string.data);
           }
         }
       }
     }
   }
 
-  return JsonHelper::getNumericValue<int>
-              (responseBodyJson.json(), "code", TRI_ERROR_INTERNAL);
+  return JsonHelper::getNumericValue<int>(responseBodyJson.json(), "code",
+                                          TRI_ERROR_INTERNAL);
   LEAVE_BLOCK
 }
 
@@ -1535,38 +1521,35 @@ int RemoteBlock::shutdown (int errorCode) {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
-                                    size_t atMost) {
+AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
   Json body(Json::Object, 2);
-  body("atLeast", Json(static_cast<double>(atLeast)))
-      ("atMost", Json(static_cast<double>(atMost)));
+  body("atLeast", Json(static_cast<double>(atLeast)))(
+      "atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());
 
-  std::unique_ptr<ClusterCommResult> res
-      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                    "/_api/aql/getSome/",
-                    bodyString);
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/aql/getSome/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
-                                       responseBodyBuf.begin()));
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
 
   ExecutionStats newStats(responseBodyJson.get("stats"));
-  
+
   _engine->_stats.addDelta(_deltaStats, newStats);
   _deltaStats = newStats;
-  
+
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
     return nullptr;
   }
-    
+
   return new triagens::aql::AqlItemBlock(responseBodyJson);
   LEAVE_BLOCK
 }
@@ -1575,27 +1558,25 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
 /// @brief skipSome
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
+size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
 
   Json body(Json::Object, 2);
-  body("atLeast", Json(static_cast<double>(atLeast)))
-      ("atMost", Json(static_cast<double>(atMost)));
+  body("atLeast", Json(static_cast<double>(atLeast)))(
+      "atMost", Json(static_cast<double>(atMost)));
   std::string bodyString(body.toString());
 
-  std::unique_ptr<ClusterCommResult> res
-      = sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT,
-                    "/_api/aql/skipSome/",
-                    bodyString);
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/aql/skipSome/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
-                                       responseBodyBuf.begin()));
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
@@ -1609,21 +1590,19 @@ size_t RemoteBlock::skipSome (size_t atLeast, size_t atMost) {
 /// @brief hasMore
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RemoteBlock::hasMore () {
+bool RemoteBlock::hasMore() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res
-      = sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
-                    "/_api/aql/hasMore/",
-                    string());
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/hasMore/", string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
-                                       responseBodyBuf.begin()));
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
@@ -1635,26 +1614,24 @@ bool RemoteBlock::hasMore () {
 /// @brief count
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t RemoteBlock::count () const {
+int64_t RemoteBlock::count() const {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res
-      = sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
-                    "/_api/aql/count/",
-                    string());
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/count/", string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
-                                       responseBodyBuf.begin()));
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  return JsonHelper::getNumericValue<int64_t>
-               (responseBodyJson.json(), "count", 0);
+  return JsonHelper::getNumericValue<int64_t>(responseBodyJson.json(), "count",
+                                              0);
   LEAVE_BLOCK
 }
 
@@ -1662,30 +1639,29 @@ int64_t RemoteBlock::count () const {
 /// @brief remaining
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t RemoteBlock::remaining () {
+int64_t RemoteBlock::remaining() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res
-      = sendRequest(rest::HttpRequest::HTTP_REQUEST_GET,
-                    "/_api/aql/remaining/",
-                    string());
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/remaining/", string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
   // a serialized AqlItemBlock:
   StringBuffer const& responseBodyBuf(res->result->getBody());
-  Json responseBodyJson(TRI_UNKNOWN_MEM_ZONE,
-                        TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, 
-                                       responseBodyBuf.begin()));
+  Json responseBodyJson(
+      TRI_UNKNOWN_MEM_ZONE,
+      TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, responseBodyBuf.begin()));
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "error", true)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  return JsonHelper::getNumericValue<int64_t>
-               (responseBodyJson.json(), "remaining", 0);
+  return JsonHelper::getNumericValue<int64_t>(responseBodyJson.json(),
+                                              "remaining", 0);
   LEAVE_BLOCK
 }
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

@@ -44,168 +44,159 @@ class VocShaper;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class GeoIndex2 final : public Index {
+class GeoIndex2 final : public Index {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  GeoIndex2() = delete;
 
-      public:
+  GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
+            std::vector<std::vector<triagens::basics::AttributeName>> const&,
+            std::vector<TRI_shape_pid_t> const&, bool);
 
-        GeoIndex2 () = delete;
+  GeoIndex2(TRI_idx_iid_t, struct TRI_document_collection_t*,
+            std::vector<std::vector<triagens::basics::AttributeName>> const&,
+            std::vector<TRI_shape_pid_t> const&);
 
-        GeoIndex2 (TRI_idx_iid_t,
-                   struct TRI_document_collection_t*,
-                   std::vector<std::vector<triagens::basics::AttributeName>> const&,
-                   std::vector<TRI_shape_pid_t> const&,
-                   bool);
-        
-        GeoIndex2 (TRI_idx_iid_t,
-                   struct TRI_document_collection_t*,
-                   std::vector<std::vector<triagens::basics::AttributeName>> const&,
-                   std::vector<TRI_shape_pid_t> const&);
+  ~GeoIndex2();
 
-        ~GeoIndex2 ();
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                      public
+  // types
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief geo index variants
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  enum IndexVariant {
+    INDEX_GEO_NONE = 0,
+    INDEX_GEO_INDIVIDUAL_LAT_LON,
+    INDEX_GEO_COMBINED_LAT_LON,
+    INDEX_GEO_COMBINED_LON_LAT
+  };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief geo index variants
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-      enum IndexVariant {
-        INDEX_GEO_NONE = 0,
-        INDEX_GEO_INDIVIDUAL_LAT_LON,
-        INDEX_GEO_COMBINED_LAT_LON,
-        INDEX_GEO_COMBINED_LON_LAT
-      };
+ public:
+  IndexType type() const override final {
+    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
+        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+      return TRI_IDX_TYPE_GEO1_INDEX;
+    }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-        
-        IndexType type () const override final {
-          if (_variant == INDEX_GEO_COMBINED_LAT_LON || 
-              _variant == INDEX_GEO_COMBINED_LON_LAT) {
-            return TRI_IDX_TYPE_GEO1_INDEX;
-          }
-
-          return TRI_IDX_TYPE_GEO2_INDEX;
-        }
-        
-        bool isSorted () const override final {
-          return false;
-        }
-
-        bool hasSelectivityEstimate () const override final {
-          return false;
-        }
-        
-        bool dumpFields () const override final {
-          return true;
-        }
-
-        size_t memory () const override final;
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
-  
-        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up all points within a given radius
-////////////////////////////////////////////////////////////////////////////////
-
-        GeoCoordinates* withinQuery (triagens::arango::Transaction*, double, double, double) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up the nearest points
-////////////////////////////////////////////////////////////////////////////////
-
-        GeoCoordinates* nearQuery (triagens::arango::Transaction*, double, double, size_t) const;
-
-        bool isSame (TRI_shape_pid_t location, bool geoJson) const {
-          return (_location != 0 && _location == location && _geoJson == geoJson);
-        }
-        
-        bool isSame (TRI_shape_pid_t latitude, TRI_shape_pid_t longitude) const {
-          return (_latitude != 0 && _longitude != 0 && _latitude == latitude && _longitude == longitude);
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a double value from an object
-////////////////////////////////////////////////////////////////////////////////
-
-        bool extractDoubleObject (VocShaper*,
-                                  struct TRI_shaped_json_s const*,
-                                  int,
-                                  double*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts a double value from an array
-////////////////////////////////////////////////////////////////////////////////
-
-        bool extractDoubleArray (VocShaper*,
-                                 struct TRI_shaped_json_s const*,
-                                 double*,
-                                 double*);
-        
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the attribute paths
-////////////////////////////////////////////////////////////////////////////////
-        
-        std::vector<TRI_shape_pid_t> const  _paths;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attribute paths
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_shape_pid_t _location;
-        TRI_shape_pid_t _latitude;
-        TRI_shape_pid_t _longitude;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the geo index variant (geo1 or geo2)
-////////////////////////////////////////////////////////////////////////////////
-
-        IndexVariant const _variant;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether the index is a geoJson index (latitude / longitude reversed)
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _geoJson;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual geo index
-////////////////////////////////////////////////////////////////////////////////
-  
-        GeoIndex* _geoIndex;
-    };
-
+    return TRI_IDX_TYPE_GEO2_INDEX;
   }
+
+  bool isSorted() const override final { return false; }
+
+  bool hasSelectivityEstimate() const override final { return false; }
+
+  bool dumpFields() const override final { return true; }
+
+  size_t memory() const override final;
+
+  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+
+  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up all points within a given radius
+  ////////////////////////////////////////////////////////////////////////////////
+
+  GeoCoordinates* withinQuery(triagens::arango::Transaction*, double, double,
+                              double) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up the nearest points
+  ////////////////////////////////////////////////////////////////////////////////
+
+  GeoCoordinates* nearQuery(triagens::arango::Transaction*, double, double,
+                            size_t) const;
+
+  bool isSame(TRI_shape_pid_t location, bool geoJson) const {
+    return (_location != 0 && _location == location && _geoJson == geoJson);
+  }
+
+  bool isSame(TRI_shape_pid_t latitude, TRI_shape_pid_t longitude) const {
+    return (_latitude != 0 && _longitude != 0 && _latitude == latitude &&
+            _longitude == longitude);
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extracts a double value from an object
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool extractDoubleObject(VocShaper*, struct TRI_shaped_json_s const*, int,
+                           double*);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extracts a double value from an array
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool extractDoubleArray(VocShaper*, struct TRI_shaped_json_s const*, double*,
+                          double*);
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the attribute paths
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::vector<TRI_shape_pid_t> const _paths;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief attribute paths
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_shape_pid_t _location;
+  TRI_shape_pid_t _latitude;
+  TRI_shape_pid_t _longitude;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the geo index variant (geo1 or geo2)
+  ////////////////////////////////////////////////////////////////////////////////
+
+  IndexVariant const _variant;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether the index is a geoJson index (latitude / longitude
+  /// reversed)
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool _geoJson;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the actual geo index
+  ////////////////////////////////////////////////////////////////////////////////
+
+  GeoIndex* _geoIndex;
+};
+}
 }
 
 #endif
@@ -216,5 +207,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

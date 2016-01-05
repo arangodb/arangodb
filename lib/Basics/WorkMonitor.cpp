@@ -52,7 +52,8 @@ using namespace triagens::basics;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-CustomWorkStack::CustomWorkStack (const char* type, const char* text, size_t length) {
+CustomWorkStack::CustomWorkStack(const char* type, const char* text,
+                                 size_t length) {
   WorkMonitor::pushCustom(type, text, length);
 }
 
@@ -60,9 +61,7 @@ CustomWorkStack::CustomWorkStack (const char* type, const char* text, size_t len
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-CustomWorkStack::~CustomWorkStack () {
-  WorkMonitor::popCustom();
-}
+CustomWorkStack::~CustomWorkStack() { WorkMonitor::popCustom(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -110,7 +109,6 @@ static boost::lockfree::queue<WorkDescription*> EMPTY_WORK_DESCRIPTION(128);
 
 static boost::lockfree::queue<WorkDescription*> FREEABLE_WORK_DESCRIPTION(128);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stopped flag
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +123,7 @@ static std::atomic<bool> WORK_MONITOR_STOPPED(true);
 /// @brief deletes a description and its resources
 ////////////////////////////////////////////////////////////////////////////////
 
-static void deleteWorkDescription (WorkDescription* desc, bool stopped) {
+static void deleteWorkDescription(WorkDescription* desc, bool stopped) {
   if (desc->_destroy) {
     switch (desc->_type) {
       case WorkType::THREAD:
@@ -147,7 +145,7 @@ static void deleteWorkDescription (WorkDescription* desc, bool stopped) {
   }
 
   // while the work monitor thread is still active, push the item on the
-  // work monitor's cleanup list for destruction    
+  // work monitor's cleanup list for destruction
   EMPTY_WORK_DESCRIPTION.push(desc);
 }
 
@@ -160,7 +158,7 @@ static void deleteWorkDescription (WorkDescription* desc, bool stopped) {
 #ifdef SHOW_RESULTS
 #include <iostream>
 
-static void vpackWorkDescription (VPackBuilder* b, WorkDescription* desc) {
+static void vpackWorkDescription(VPackBuilder* b, WorkDescription* desc) {
   switch (desc->_type) {
     case WorkType::THREAD:
       b->add("type", VPackValue("thread"));
@@ -201,9 +199,8 @@ static void vpackWorkDescription (VPackBuilder* b, WorkDescription* desc) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkDescription::WorkDescription (WorkType type, WorkDescription* prev)
-  : _type(type), _destroy(true), _prev(prev) {
-}
+WorkDescription::WorkDescription(WorkType type, WorkDescription* prev)
+    : _type(type), _destroy(true), _prev(prev) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class WorkMonitor
@@ -217,9 +214,7 @@ WorkDescription::WorkDescription (WorkType type, WorkDescription* prev)
 /// @brief constructors a new monitor
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkMonitor::WorkMonitor ()
-  : Thread("Work Monitor"), _stopping(false) {
-}
+WorkMonitor::WorkMonitor() : Thread("Work Monitor"), _stopping(false) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -229,18 +224,17 @@ WorkMonitor::WorkMonitor ()
 /// @brief creates an empty WorkDescription
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkDescription* WorkMonitor::createWorkDescription (WorkType type) {
+WorkDescription* WorkMonitor::createWorkDescription(WorkType type) {
   WorkDescription* desc = nullptr;
   WorkDescription* prev = (CURRENT_THREAD == nullptr)
-    ? CURRENT_WORK_DESCRIPTION
-    : CURRENT_THREAD->workDescription();
+                              ? CURRENT_WORK_DESCRIPTION
+                              : CURRENT_THREAD->workDescription();
 
   if (EMPTY_WORK_DESCRIPTION.pop(desc) && desc != nullptr) {
     desc->_type = type;
     desc->_prev = prev;
     desc->_destroy = true;
-  }
-  else {
+  } else {
     desc = new WorkDescription(type, prev);
   }
 
@@ -253,11 +247,10 @@ WorkDescription* WorkMonitor::createWorkDescription (WorkType type) {
 /// @brief activates a WorkDescription
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::activateWorkDescription (WorkDescription* desc) {
+void WorkMonitor::activateWorkDescription(WorkDescription* desc) {
   if (CURRENT_THREAD == nullptr) {
     CURRENT_WORK_DESCRIPTION = desc;
-  }
-  else {
+  } else {
     CURRENT_THREAD->setWorkDescription(desc);
   }
 }
@@ -266,13 +259,12 @@ void WorkMonitor::activateWorkDescription (WorkDescription* desc) {
 /// @brief deactivates a WorkDescription
 ////////////////////////////////////////////////////////////////////////////////
 
-WorkDescription* WorkMonitor::deactivateWorkDescription () {
+WorkDescription* WorkMonitor::deactivateWorkDescription() {
   if (CURRENT_THREAD == nullptr) {
     WorkDescription* desc = CURRENT_WORK_DESCRIPTION;
     CURRENT_WORK_DESCRIPTION = desc->_prev;
     return desc;
-  }
-  else {
+  } else {
     return CURRENT_THREAD->setPrevWorkDescription();
   }
 }
@@ -281,11 +273,10 @@ WorkDescription* WorkMonitor::deactivateWorkDescription () {
 /// @brief frees an WorkDescription
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::freeWorkDescription (WorkDescription* desc) {
+void WorkMonitor::freeWorkDescription(WorkDescription* desc) {
   if (WORK_MONITOR_STOPPED) {
     deleteWorkDescription(desc, true);
-  }
-  else {
+  } else {
     FREEABLE_WORK_DESCRIPTION.push(desc);
   }
 }
@@ -294,7 +285,7 @@ void WorkMonitor::freeWorkDescription (WorkDescription* desc) {
 /// @brief pushes a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushThread (Thread* thread) {
+void WorkMonitor::pushThread(Thread* thread) {
   TRI_ASSERT(thread != nullptr);
   TRI_ASSERT(CURRENT_THREAD == nullptr);
   CURRENT_THREAD = thread;
@@ -309,8 +300,7 @@ void WorkMonitor::pushThread (Thread* thread) {
       MutexLocker guard(&THREADS_LOCK);
       THREADS.insert(thread);
     }
-  }
-  catch (...) {
+  } catch (...) {
     CURRENT_THREAD = nullptr;
     throw;
   }
@@ -320,7 +310,7 @@ void WorkMonitor::pushThread (Thread* thread) {
 /// @brief pops a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::popThread (Thread* thread) {
+void WorkMonitor::popThread(Thread* thread) {
   TRI_ASSERT(thread != nullptr);
   WorkDescription* desc = deactivateWorkDescription();
 
@@ -335,8 +325,7 @@ void WorkMonitor::popThread (Thread* thread) {
       MutexLocker guard(&THREADS_LOCK);
       THREADS.erase(thread);
     }
-  }
-  catch (...) {
+  } catch (...) {
     // just to prevent throwing exceptions from here, as this method
     // will be called in destructors...
   }
@@ -346,13 +335,14 @@ void WorkMonitor::popThread (Thread* thread) {
 /// @brief pushes a custom task
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushCustom (const char* type, const char* text, size_t length) {
+void WorkMonitor::pushCustom(const char* type, const char* text,
+                             size_t length) {
   TRI_ASSERT(type != nullptr);
   TRI_ASSERT(text != nullptr);
 
   WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);
   TRI_ASSERT(desc != nullptr);
-  
+
   TRI_CopyString(desc->_customType, type, sizeof(desc->_customType) - 1);
 
   if (sizeof(desc->_data.text) - 1 < length) {
@@ -367,7 +357,7 @@ void WorkMonitor::pushCustom (const char* type, const char* text, size_t length)
 /// @brief pops a custom task
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::popCustom () {
+void WorkMonitor::popCustom() {
   WorkDescription* desc = deactivateWorkDescription();
 
   TRI_ASSERT(desc != nullptr);
@@ -375,8 +365,7 @@ void WorkMonitor::popCustom () {
 
   try {
     freeWorkDescription(desc);
-  }
-  catch (...) {
+  } catch (...) {
     // just to prevent throwing exceptions from here, as this method
     // will be called in destructors...
   }
@@ -390,7 +379,7 @@ void WorkMonitor::popCustom () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::run () {
+void WorkMonitor::run() {
   const uint32_t maxSleep = 100 * 1000;
   const uint32_t minSleep = 100;
   uint32_t s = minSleep;
@@ -400,7 +389,7 @@ void WorkMonitor::run () {
 #endif
 
   // clean old entries and create summary if requested
-  while (! _stopping) {
+  while (!_stopping) {
     try {
       bool found = false;
       WorkDescription* desc;
@@ -414,12 +403,11 @@ void WorkMonitor::run () {
 
       if (found) {
         s = minSleep;
-      }
-      else if (s < maxSleep) {
+      } else if (s < maxSleep) {
         s *= 2;
       }
 
-  // TODO(fc) trigger output
+// TODO(fc) trigger output
 #ifdef SHOW_RESULTS
       double y = TRI_microtime();
 
@@ -456,8 +444,7 @@ void WorkMonitor::run () {
         std::cout << buffer << "\n";
       }
 #endif
-    }
-    catch (...) {
+    } catch (...) {
       // must prevent propagation of exceptions from here
     }
 
@@ -476,7 +463,7 @@ void WorkMonitor::run () {
       deleteWorkDescription(desc, false);
     }
   }
-  
+
   while (EMPTY_WORK_DESCRIPTION.pop(desc)) {
     if (desc != nullptr) {
       delete desc;
@@ -492,7 +479,7 @@ void WorkMonitor::run () {
 /// @brief starts the work monitor
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::InitializeWorkMonitor () {
+void arangodb::InitializeWorkMonitor() {
   WORK_MONITOR_STOPPED.store(false);
   WORK_MONITOR.start();
 }
@@ -501,7 +488,7 @@ void arangodb::InitializeWorkMonitor () {
 /// @brief stops the work monitor
 ////////////////////////////////////////////////////////////////////////////////
 
-void arangodb::ShutdownWorkMonitor () {
+void arangodb::ShutdownWorkMonitor() {
   WORK_MONITOR.shutdown();
   WORK_MONITOR.join();
 }

@@ -42,30 +42,25 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-SignalTask::SignalTask ()
-  : Task("SignalTask") {
-
-  for (size_t i = 0;  i < MAX_SIGNALS;  ++i) {
+SignalTask::SignalTask() : Task("SignalTask") {
+  for (size_t i = 0; i < MAX_SIGNALS; ++i) {
     _watchers[i] = nullptr;
   }
 }
 
-SignalTask::~SignalTask () {
-  cleanup();
-}
+SignalTask::~SignalTask() { cleanup(); }
 
 // -----------------------------------------------------------------------------
 // public methods
 // -----------------------------------------------------------------------------
 
-bool SignalTask::addSignal (int signal) {
+bool SignalTask::addSignal(int signal) {
   MUTEX_LOCKER(_changeLock);
 
   if (_signals.size() >= MAX_SIGNALS) {
     LOG_ERROR("maximal number of signals reached");
     return false;
-  }
-  else {
+  } else {
     if (_scheduler != nullptr) {
       _scheduler->unregisterTask(this);
     }
@@ -84,7 +79,7 @@ bool SignalTask::addSignal (int signal) {
 // Task methods
 // -----------------------------------------------------------------------------
 
-bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
+bool SignalTask::setup(Scheduler* scheduler, EventLoop loop) {
   _scheduler = scheduler;
   _loop = loop;
 
@@ -97,8 +92,8 @@ bool SignalTask::setup (Scheduler* scheduler, EventLoop loop) {
   return true;
 }
 
-void SignalTask::cleanup () {
-  for (size_t pos = 0;  pos < _signals.size() && pos < MAX_SIGNALS;  ++pos) {
+void SignalTask::cleanup() {
+  for (size_t pos = 0; pos < _signals.size() && pos < MAX_SIGNALS; ++pos) {
     if (_scheduler != nullptr) {
       _scheduler->uninstallEvent(_watchers[pos]);
     }
@@ -106,14 +101,13 @@ void SignalTask::cleanup () {
   }
 }
 
-bool SignalTask::handleEvent (EventToken token, 
-                              EventType revents) {
+bool SignalTask::handleEvent(EventToken token, EventType revents) {
   TRI_ASSERT(token != nullptr);
 
   bool result = true;
 
   if (revents & EVENT_SIGNAL) {
-    for (size_t pos = 0;  pos < _signals.size() && pos < MAX_SIGNALS;  ++pos) {
+    for (size_t pos = 0; pos < _signals.size() && pos < MAX_SIGNALS; ++pos) {
       if (token == _watchers[pos]) {
         result = handleSignal();
         break;
@@ -124,9 +118,7 @@ bool SignalTask::handleEvent (EventToken token,
   return result;
 }
 
-bool SignalTask::needsMainEventLoop () const {
-  return true;
-}
+bool SignalTask::needsMainEventLoop() const { return true; }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -134,5 +126,6 @@ bool SignalTask::needsMainEventLoop () const {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

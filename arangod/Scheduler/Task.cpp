@@ -53,7 +53,7 @@ std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-Task::Task(std::string const &id, std::string const &name)
+Task::Task(std::string const& id, std::string const& name)
     : _scheduler(nullptr),
       _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_seq_cst)),
       _loop(0),  // TODO(fc) XXX this should be an "invalid" marker!
@@ -64,7 +64,7 @@ Task::Task(std::string const &id, std::string const &name)
 /// @brief constructs a new task
 ////////////////////////////////////////////////////////////////////////////////
 
-Task::Task(std::string const &name) : Task("", name) {}
+Task::Task(std::string const& name) : Task("", name) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a task
@@ -80,8 +80,8 @@ Task::~Task() {}
 /// @brief get a JSON representation of the task
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t *Task::toJson() const {  // TODO(fc) XXX this should be VPack
-  TRI_json_t *json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
+TRI_json_t* Task::toJson() const {  // TODO(fc) XXX this should be VPack
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json != nullptr) {
     TRI_Insert3ObjectJson(
@@ -121,7 +121,7 @@ bool Task::needsMainEventLoop() const { return false; }
 /// this does nothing for basic tasks, but derived classes may override it
 ////////////////////////////////////////////////////////////////////////////////
 
-void Task::getDescription(TRI_json_t *json) const {}
+void Task::getDescription(TRI_json_t* json) const {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

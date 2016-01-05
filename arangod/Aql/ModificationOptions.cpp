@@ -31,29 +31,30 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
-ModificationOptions::ModificationOptions (Json const& json) {
+ModificationOptions::ModificationOptions(Json const& json) {
   Json obj = json.get("modificationFlags");
 
-  ignoreErrors           = JsonHelper::getBooleanValue(obj.json(), "ignoreErrors", false);
-  waitForSync            = JsonHelper::getBooleanValue(obj.json(), "waitForSync", false);
-  nullMeansRemove        = JsonHelper::getBooleanValue(obj.json(), "nullMeansRemove", false);
-  mergeObjects           = JsonHelper::getBooleanValue(obj.json(), "mergeObjects", true);
-  ignoreDocumentNotFound = JsonHelper::getBooleanValue(obj.json(), "ignoreDocumentNotFound", false);
-  readCompleteInput      = JsonHelper::getBooleanValue(obj.json(), "readCompleteInput", true);
+  ignoreErrors = JsonHelper::getBooleanValue(obj.json(), "ignoreErrors", false);
+  waitForSync = JsonHelper::getBooleanValue(obj.json(), "waitForSync", false);
+  nullMeansRemove =
+      JsonHelper::getBooleanValue(obj.json(), "nullMeansRemove", false);
+  mergeObjects = JsonHelper::getBooleanValue(obj.json(), "mergeObjects", true);
+  ignoreDocumentNotFound =
+      JsonHelper::getBooleanValue(obj.json(), "ignoreDocumentNotFound", false);
+  readCompleteInput =
+      JsonHelper::getBooleanValue(obj.json(), "readCompleteInput", true);
 }
 
-void ModificationOptions::toJson (triagens::basics::Json& json,
-                                  TRI_memory_zone_t* zone) const {
+void ModificationOptions::toJson(triagens::basics::Json& json,
+                                 TRI_memory_zone_t* zone) const {
   Json flags;
 
-  flags = Json(Json::Object, 6)
-    ("ignoreErrors", Json(ignoreErrors))
-    ("waitForSync", Json(waitForSync))
-    ("nullMeansRemove", Json(nullMeansRemove))
-    ("mergeObjects", Json(mergeObjects))
-    ("ignoreDocumentNotFound", Json(ignoreDocumentNotFound))
-    ("readCompleteInput", Json(readCompleteInput));
+  flags = Json(Json::Object, 6)("ignoreErrors", Json(ignoreErrors))(
+      "waitForSync", Json(waitForSync))("nullMeansRemove",
+                                        Json(nullMeansRemove))(
+      "mergeObjects", Json(mergeObjects))("ignoreDocumentNotFound",
+                                          Json(ignoreDocumentNotFound))(
+      "readCompleteInput", Json(readCompleteInput));
 
   json("modificationFlags", flags);
 }
-

@@ -48,9 +48,8 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestDebugHelperHandler::RestDebugHelperHandler (HttpRequest* request)
-  : RestBaseHandler(request) {
-}
+RestDebugHelperHandler::RestDebugHelperHandler(HttpRequest* request)
+    : RestBaseHandler(request) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -60,9 +59,7 @@ RestDebugHelperHandler::RestDebugHelperHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDebugHelperHandler::isDirect () const {
-  return false;
-}
+bool RestDebugHelperHandler::isDirect() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server version number
@@ -71,12 +68,13 @@ bool RestDebugHelperHandler::isDirect () const {
 /// - sleep: sleep for X seconds
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestDebugHelperHandler::execute () {
+HttpHandler::status_t RestDebugHelperHandler::execute() {
   requestStatisticsAgentSetIgnore();
 
   bool found;
   char const* sleepStr = _request->value("sleep", found);
-  auto s = static_cast<unsigned long>(StringUtils::doubleDecimal(sleepStr) * 1000.0 * 1000.0);
+  auto s = static_cast<unsigned long>(StringUtils::doubleDecimal(sleepStr) *
+                                      1000.0 * 1000.0);
 
   if (0 < s) {
     usleep(s);
@@ -91,8 +89,7 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
     result.close();
     VPackSlice slice(result.start());
     generateResult(slice);
-  }
-  catch (...) {
+  } catch (...) {
     // Ignore the error
   }
 

@@ -56,17 +56,16 @@ using namespace triagens::rest;
 /// @brief create an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint::Endpoint (const Endpoint::EndpointType type,
-                    const Endpoint::DomainType domainType,
-                    const Endpoint::EncryptionType encryption,
-                    const std::string& specification,
-                    int listenBacklog) :
-  _connected(false),
-  _type(type),
-  _domainType(domainType),
-  _encryption(encryption),
-  _specification(specification),
-  _listenBacklog(listenBacklog) {
+Endpoint::Endpoint(const Endpoint::EndpointType type,
+                   const Endpoint::DomainType domainType,
+                   const Endpoint::EncryptionType encryption,
+                   const std::string& specification, int listenBacklog)
+    : _connected(false),
+      _type(type),
+      _domainType(domainType),
+      _encryption(encryption),
+      _specification(specification),
+      _listenBacklog(listenBacklog) {
   TRI_invalidatesocket(&_socket);
 }
 
@@ -74,8 +73,7 @@ Endpoint::Endpoint (const Endpoint::EndpointType type,
 /// @brief destroy an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint::~Endpoint () {
-}
+Endpoint::~Endpoint() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -85,7 +83,7 @@ Endpoint::~Endpoint () {
 /// @brief return the endpoint specification in a unified form
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Endpoint::getUnifiedForm (const std::string& specification) {
+std::string Endpoint::getUnifiedForm(const std::string& specification) {
   if (specification.size() < 7) {
     return "";
   }
@@ -116,8 +114,8 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
     return "";
   }
 #endif
-  else if (! StringUtils::isPrefix(copy, "ssl://") &&
-           ! StringUtils::isPrefix(copy, "tcp://")) {
+  else if (!StringUtils::isPrefix(copy, "ssl://") &&
+           !StringUtils::isPrefix(copy, "tcp://")) {
     // invalid type
     return "";
   }
@@ -134,7 +132,7 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
   */
 
   // tcp/ip or ssl
-  string temp = copy.substr(6, copy.length()); // strip tcp:// or ssl://
+  string temp = copy.substr(6, copy.length());  // strip tcp:// or ssl://
   if (temp[0] == '[') {
     // ipv6
     found = temp.find("]:", 1);
@@ -169,7 +167,7 @@ std::string Endpoint::getUnifiedForm (const std::string& specification) {
 /// @brief create a client endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::clientFactory (const std::string& specification) {
+Endpoint* Endpoint::clientFactory(const std::string& specification) {
   return Endpoint::factory(ENDPOINT_CLIENT, specification, 0, false);
 }
 
@@ -177,20 +175,19 @@ Endpoint* Endpoint::clientFactory (const std::string& specification) {
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::serverFactory (const std::string& specification,
-                                   int listenBacklog,
-                                   bool reuseAddress) {
-  return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog, reuseAddress);
+Endpoint* Endpoint::serverFactory(const std::string& specification,
+                                  int listenBacklog, bool reuseAddress) {
+  return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog,
+                           reuseAddress);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
-                             const std::string& specification,
-                             int listenBacklog,
-                             bool reuseAddress) {
+Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
+                            const std::string& specification, int listenBacklog,
+                            bool reuseAddress) {
   if (specification.size() < 7) {
     return nullptr;
   }
@@ -217,8 +214,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     string protoString = StringUtils::tolower(copy.substr(0, found));
     if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
-    }
-    else {
+    } else {
       // invalid protocol
       return nullptr;
     }
@@ -227,26 +223,25 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
   EncryptionType encryption = ENCRYPTION_NONE;
   string domainType = StringUtils::tolower(copy.substr(0, 7));
 
-
   if (StringUtils::isPrefix(domainType, "ssl://")) {
     // ssl
     encryption = ENCRYPTION_SSL;
   }
-
 #if TRI_HAVE_LINUX_SOCKETS
   else if (StringUtils::isPrefix(domainType, "unix://")) {
     // unix socket
-    return new EndpointUnixDomain(type, specification, listenBacklog, copy.substr(strlen("unix://")));
+    return new EndpointUnixDomain(type, specification, listenBacklog,
+                                  copy.substr(strlen("unix://")));
   }
 #else
-    // no unix socket for windows
+  // no unix socket for windows
   else if (StringUtils::isPrefix(domainType, "unix://")) {
     // unix socket
     return nullptr;
   }
 #endif
 
-  else if (! StringUtils::isPrefix(domainType, "tcp://")) {
+  else if (!StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
     return nullptr;
   }
@@ -259,28 +254,18 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     found = copy.find("]:", 1);
     if (found != string::npos && found > 2 && found + 2 < copy.size()) {
       // hostname and port (e.g. [address]:port)
-      uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 2));
+      uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 2));
       std::string portStr = copy.substr(1, found - 1);
-      return new EndpointIpV6(type,
-                              encryption,
-                              specification,
-                              listenBacklog,
-                              reuseAddress,
-                              portStr,
-                              port);
+      return new EndpointIpV6(type, encryption, specification, listenBacklog,
+                              reuseAddress, portStr, port);
     }
 
     found = copy.find("]", 1);
     if (found != string::npos && found > 2 && found + 1 == copy.size()) {
       // hostname only (e.g. [address])
       std::string portStr = copy.substr(1, found - 1);
-      return new EndpointIpV6(type,
-                              encryption,
-                              specification,
-                              listenBacklog,
-                              reuseAddress,
-                              portStr,
-                              EndpointIp::_defaultPort);
+      return new EndpointIpV6(type, encryption, specification, listenBacklog,
+                              reuseAddress, portStr, EndpointIp::_defaultPort);
     }
 
     // invalid address specification
@@ -292,32 +277,22 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
 
   if (found != string::npos && found + 1 < copy.size()) {
     // hostname and port
-    uint16_t port = (uint16_t) StringUtils::uint32(copy.substr(found + 1));
+    uint16_t port = (uint16_t)StringUtils::uint32(copy.substr(found + 1));
     std::string portStr = copy.substr(0, found);
-    return new EndpointIpV4(type,
-                            encryption,
-                            specification,
-                            listenBacklog,
-                            reuseAddress,
-                            portStr,
-                            port);
+    return new EndpointIpV4(type, encryption, specification, listenBacklog,
+                            reuseAddress, portStr, port);
   }
 
   // hostname only
-  return new EndpointIpV4(type,
-                          encryption,
-                          specification,
-                          listenBacklog,
-                          reuseAddress,
-                          copy,
-                          EndpointIp::_defaultPort);
+  return new EndpointIpV4(type, encryption, specification, listenBacklog,
+                          reuseAddress, copy, EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Endpoint::operator== (Endpoint const &that) const {
+bool Endpoint::operator==(Endpoint const& that) const {
   return getSpecification() == that.getSpecification();
 }
 
@@ -325,15 +300,16 @@ bool Endpoint::operator== (Endpoint const &that) const {
 /// @brief return the default endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string Endpoint::getDefaultEndpoint () {
-   return "tcp://" + EndpointIp::_defaultHost + ":" + StringUtils::itoa(EndpointIp::_defaultPort);
+const std::string Endpoint::getDefaultEndpoint() {
+  return "tcp://" + EndpointIp::_defaultHost + ":" +
+         StringUtils::itoa(EndpointIp::_defaultPort);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set socket timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Endpoint::setTimeout (TRI_socket_t s, double timeout) {
+bool Endpoint::setTimeout(TRI_socket_t s, double timeout) {
   return TRI_setsockopttimeout(s, timeout);
 }
 
@@ -341,7 +317,7 @@ bool Endpoint::setTimeout (TRI_socket_t s, double timeout) {
 /// @brief set common socket flags
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Endpoint::setSocketFlags (TRI_socket_t s) {
+bool Endpoint::setSocketFlags(TRI_socket_t s) {
   if (_encryption == ENCRYPTION_SSL && _type == ENDPOINT_CLIENT) {
     // SSL client endpoints are not set to non-blocking
     return true;
@@ -350,7 +326,7 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
   // set to non-blocking, executed for both client and server endpoints
   bool ok = TRI_SetNonBlockingSocket(s);
 
-  if (! ok) {
+  if (!ok) {
     LOG_ERROR("cannot switch to non-blocking: %d (%s)", errno, strerror(errno));
 
     return false;
@@ -359,7 +335,7 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
   // set close-on-exec flag, executed for both client and server endpoints
   ok = TRI_SetCloseOnExecSocket(s);
 
-  if (! ok) {
+  if (!ok) {
     LOG_ERROR("cannot set close-on-exit: %d (%s)", errno, strerror(errno));
 
     return false;
@@ -374,5 +350,6 @@ bool Endpoint::setSocketFlags (TRI_socket_t s) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

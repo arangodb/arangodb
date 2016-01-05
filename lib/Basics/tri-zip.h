@@ -45,21 +45,15 @@
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile (const char* filename,
-                 const char* chdir,
-                 TRI_vector_string_t const*,
-                 const char*);
+int TRI_ZipFile(const char* filename, const char* chdir,
+                TRI_vector_string_t const*, const char*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile (const char*,
-                   const char*,
-                   const bool,
-                   const bool,
-                   const char*,
-                   std::string &errorMessage);
+int TRI_UnzipFile(const char*, const char*, const bool, const bool, const char*,
+                  std::string& errorMessage);
 
 #endif
 
@@ -69,5 +63,6 @@ int TRI_UnzipFile (const char*,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

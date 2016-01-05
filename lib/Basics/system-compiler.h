@@ -43,7 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_GCC_UNUSED
-#define TRI_UNUSED __attribute__ ((unused))
+#define TRI_UNUSED __attribute__((unused))
 #else
 #define TRI_UNUSED /* unused */
 #endif
@@ -53,7 +53,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_HAVE_GCC_ATTRIBUTE
-#define TRI_WARN_UNUSED_RESULT __attribute__ ((warn_unused_result))
+#define TRI_WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #else
 #define TRI_WARN_UNUSED_RESULT /* unused */
 #endif
@@ -118,5 +118,6 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -46,22 +46,19 @@ using namespace triagens::rest;
 /// @brief creates an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV4::EndpointIpV4 (const Endpoint::EndpointType type,
-                            const Endpoint::EncryptionType encryption,
-                            const std::string& specification,
-                            int listenBacklog,
-                            bool reuseAddress,
-                            const std::string& host,
-                            const uint16_t port)
-  : EndpointIp(type, DOMAIN_IPV4, encryption, specification, listenBacklog, reuseAddress, host, port) {
-}
+EndpointIpV4::EndpointIpV4(const Endpoint::EndpointType type,
+                           const Endpoint::EncryptionType encryption,
+                           const std::string& specification, int listenBacklog,
+                           bool reuseAddress, const std::string& host,
+                           const uint16_t port)
+    : EndpointIp(type, DOMAIN_IPV4, encryption, specification, listenBacklog,
+                 reuseAddress, host, port) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an IPv4 socket endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-EndpointIpV4::~EndpointIpV4 () {
-}
+EndpointIpV4::~EndpointIpV4() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -69,5 +66,6 @@ EndpointIpV4::~EndpointIpV4 () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

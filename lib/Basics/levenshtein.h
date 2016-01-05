@@ -40,8 +40,7 @@
 /// @brief calculate the levenshtein distance of the two strings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Levenshtein (std::string const&,
-                     std::string const&);
+int TRI_Levenshtein(std::string const&, std::string const&);
 
 #endif
 
@@ -51,5 +50,6 @@ int TRI_Levenshtein (std::string const&,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

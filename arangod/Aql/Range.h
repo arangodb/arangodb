@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL range type
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -31,33 +31,31 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Range, to hold a range compactly
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct Range {
-      Range () = delete;
+struct Range {
+  Range() = delete;
 
-      Range (int64_t low, 
-             int64_t high); 
+  Range(int64_t low, int64_t high);
 
-      size_t size () const;
-      
-      int64_t at (size_t position) const;
-        
-      int64_t const _low;
-      int64_t const _high;
-    };
+  size_t size() const;
 
-  }
-} 
+  int64_t at(size_t position) const;
+
+  int64_t const _low;
+  int64_t const _high;
+};
+}
+}
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-

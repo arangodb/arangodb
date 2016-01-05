@@ -52,83 +52,83 @@
 // -----------------------------------------------------------------------------
 
 namespace {
-  long* opensslLockCount;
-  TRI_mutex_t* opensslLocks;
+long* opensslLockCount;
+TRI_mutex_t* opensslLocks;
 
 #if OPENSSL_VERSION_NUMBER < 0x01000000L
 
-  unsigned long opensslThreadId () {
-    return (unsigned long) TRI_CurrentThreadId();
-  }
+unsigned long opensslThreadId() { return (unsigned long)TRI_CurrentThreadId(); }
 
 #else
 
-  // The compiler chooses the right one from the following two,
-  // according to the type of the return value of pthread_self():
+// The compiler chooses the right one from the following two,
+// according to the type of the return value of pthread_self():
 
-  template<typename T> void setter (CRYPTO_THREADID* id, T p) {
-    CRYPTO_THREADID_set_pointer(id, p);
-  }
-  
+template <typename T>
+void setter(CRYPTO_THREADID* id, T p) {
+  CRYPTO_THREADID_set_pointer(id, p);
+}
+
 #ifndef __APPLE__
-  template<> void setter (CRYPTO_THREADID* id, unsigned long val) {
-    CRYPTO_THREADID_set_numeric(id, val);
-  }
+template <>
+void setter(CRYPTO_THREADID* id, unsigned long val) {
+  CRYPTO_THREADID_set_numeric(id, val);
+}
 #endif
 
-  static void arango_threadid_func (CRYPTO_THREADID *id) {
-    auto self = TRI_CurrentThreadId();
+static void arango_threadid_func(CRYPTO_THREADID* id) {
+  auto self = TRI_CurrentThreadId();
 
-    setter<decltype(self)>(id, self);
-  }
+  setter<decltype(self)>(id, self);
+}
 
 #endif
 
-  void opensslLockingCallback (int mode, int type, char const* /* file */, int /* line */) {
-    if (mode & CRYPTO_LOCK) {
-      TRI_LockMutex(&(opensslLocks[type]));
-      opensslLockCount[type]++;
-    }
-    else {
-      TRI_UnlockMutex(&(opensslLocks[type]));
-    }
-
+void opensslLockingCallback(int mode, int type, char const* /* file */,
+                            int /* line */) {
+  if (mode & CRYPTO_LOCK) {
+    TRI_LockMutex(&(opensslLocks[type]));
+    opensslLockCount[type]++;
+  } else {
+    TRI_UnlockMutex(&(opensslLocks[type]));
   }
+}
 
-  void opensslSetup () {
-    opensslLockCount = (long*) OPENSSL_malloc(CRYPTO_num_locks() * sizeof(long));
-    opensslLocks = (TRI_mutex_t*) OPENSSL_malloc(CRYPTO_num_locks() * sizeof(TRI_mutex_t));
+void opensslSetup() {
+  opensslLockCount = (long*)OPENSSL_malloc(CRYPTO_num_locks() * sizeof(long));
+  opensslLocks =
+      (TRI_mutex_t*)OPENSSL_malloc(CRYPTO_num_locks() * sizeof(TRI_mutex_t));
 
-    for (long i = 0;  i < CRYPTO_num_locks();  ++i) {
-      opensslLockCount[i] = 0;
-      TRI_InitMutex(&(opensslLocks[i]));
-    }
+  for (long i = 0; i < CRYPTO_num_locks(); ++i) {
+    opensslLockCount[i] = 0;
+    TRI_InitMutex(&(opensslLocks[i]));
+  }
 
 #if OPENSSL_VERSION_NUMBER < 0x01000000L
-    CRYPTO_set_id_callback(opensslThreadId);
-    CRYPTO_set_locking_callback(opensslLockingCallback);
+  CRYPTO_set_id_callback(opensslThreadId);
+  CRYPTO_set_locking_callback(opensslLockingCallback);
 #else
-    CRYPTO_THREADID_set_callback(arango_threadid_func);
-    CRYPTO_set_locking_callback(opensslLockingCallback);
+  CRYPTO_THREADID_set_callback(arango_threadid_func);
+  CRYPTO_set_locking_callback(opensslLockingCallback);
 #endif
-  }
+}
 
-  void opensslCleanup () {
-    CRYPTO_set_locking_callback(nullptr);
+void opensslCleanup() {
+  CRYPTO_set_locking_callback(nullptr);
 
 #if OPENSSL_VERSION_NUMBER < 0x01000000L
-    CRYPTO_set_id_callback(nullptr);
+  CRYPTO_set_id_callback(nullptr);
 #else
-    CRYPTO_THREADID_set_callback(nullptr);
+  CRYPTO_THREADID_set_callback(nullptr);
 #endif
 
-    for (long i = 0;  i < CRYPTO_num_locks();  ++i) {
-      TRI_DestroyMutex(&(opensslLocks[i]));
-    }
-
-    OPENSSL_free(opensslLocks);
-    OPENSSL_free(opensslLockCount);
+  for (long i = 0; i < CRYPTO_num_locks(); ++i) {
+    TRI_DestroyMutex(&(opensslLocks[i]));
   }
+
+  OPENSSL_free(opensslLocks);
+  OPENSSL_free(opensslLockCount);
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -136,32 +136,30 @@ namespace {
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace rest {
-    void InitializeRest (int argc, char* argv[]) {
-      TRIAGENS_BASICS_INITIALIZE(argc, argv);
+namespace rest {
+void InitializeRest(int argc, char* argv[]) {
+  TRIAGENS_BASICS_INITIALIZE(argc, argv);
 
-      SSL_library_init();
-      SSL_load_error_strings();
-      OpenSSL_add_all_algorithms();
-      ERR_load_crypto_strings();
+  SSL_library_init();
+  SSL_load_error_strings();
+  OpenSSL_add_all_algorithms();
+  ERR_load_crypto_strings();
 
-      opensslSetup();
+  opensslSetup();
 
-      Version::initialize();
-    }
+  Version::initialize();
+}
 
+void ShutdownRest() {
+  opensslCleanup();
 
+  ERR_free_strings();
+  EVP_cleanup();
+  CRYPTO_cleanup_all_ex_data();
 
-    void ShutdownRest () {
-      opensslCleanup();
- 
-      ERR_free_strings();
-      EVP_cleanup();
-      CRYPTO_cleanup_all_ex_data();
-
-      TRIAGENS_BASICS_SHUTDOWN;
-    }
-  }
+  TRIAGENS_BASICS_SHUTDOWN;
+}
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -170,5 +168,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

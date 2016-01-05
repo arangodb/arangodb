@@ -46,8 +46,7 @@
 /// @brief generate a timestamp string in a target buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GetTimeStampReplication (char* dst,
-                                  size_t maxLength) {
+void TRI_GetTimeStampReplication(char* dst, size_t maxLength) {
   struct tm tb;
   time_t tt = time(nullptr);
   TRI_gmtime(tt, &tb);
@@ -59,9 +58,8 @@ void TRI_GetTimeStampReplication (char* dst,
 /// @brief generate a timestamp string in a target buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GetTimeStampReplication (double timeStamp,
-                                  char* dst,
-                                  size_t maxLength) {
+void TRI_GetTimeStampReplication(double timeStamp, char* dst,
+                                 size_t maxLength) {
   struct tm tb;
   time_t tt = static_cast<time_t>(timeStamp);
   TRI_gmtime(tt, &tb);
@@ -73,8 +71,7 @@ void TRI_GetTimeStampReplication (double timeStamp,
 /// @brief determine whether a collection should be included in replication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExcludeCollectionReplication (char const* name,
-                                       bool includeSystem) {
+bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem) {
   if (name == nullptr) {
     // name invalid
     return true;
@@ -85,25 +82,23 @@ bool TRI_ExcludeCollectionReplication (char const* name,
     return false;
   }
 
-  if (! includeSystem) {
+  if (!includeSystem) {
     // do not include any system collections
     return true;
   }
-      
+
   if (TRI_EqualString(name, TRI_COL_NAME_REPLICATION) ||
       TRI_EqualString(name, TRI_COL_NAME_TRANSACTION) ||
       TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS) ||
       TRI_EqualString(name, "_apps") ||
       TRI_EqualString(name, "_configuration") ||
       TRI_EqualString(name, "_cluster_kickstarter_plans") ||
-      TRI_EqualString(name, "_foxxlog") ||
-      TRI_EqualString(name, "_jobs") ||
-      TRI_EqualString(name, "_queues") ||
-      TRI_EqualString(name, "_sessions")) {
+      TRI_EqualString(name, "_foxxlog") || TRI_EqualString(name, "_jobs") ||
+      TRI_EqualString(name, "_queues") || TRI_EqualString(name, "_sessions")) {
     // these system collections will always be excluded
     return true;
   }
-  
+
   return false;
 }
 
@@ -113,5 +108,6 @@ bool TRI_ExcludeCollectionReplication (char const* name,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -65,206 +65,199 @@
 /// @brief V8 wrapper helper
 ////////////////////////////////////////////////////////////////////////////////
 
-template<typename STRUCT, uint16_t CID>
+template <typename STRUCT, uint16_t CID>
 class V8Wrapper {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-  public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-    V8Wrapper (v8::Isolate* isolate,
-               STRUCT* object,
-               void (*free)(STRUCT* object),
-               v8::Handle<v8::Object> result)
-      : _refs(0),
-        _object(object),
-        _free(free),
-        _isolate(isolate) {
-
-      // sanity checks
-      TRI_ASSERT(_handle.IsEmpty());
-      TRI_ASSERT(result->InternalFieldCount() > 0);
-
-      // create a new persistent handle
-      result->SetAlignedPointerInInternalField(0, this);
-      _handle.Reset(_isolate, result);
-
-      _handle.SetWrapperClassId(CID);
-
-      // and make it weak, so that we can garbage collect
-      makeWeak();
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-    virtual ~V8Wrapper () {
-      if (! _handle.IsEmpty()) {
-        TRI_ASSERT(_handle.IsNearDeath());
-
-        _handle.ClearWeak();
-        v8::Local<v8::Object> data = v8::Local<v8::Object>::New(_isolate, _handle);
-        data->SetInternalField(0, v8::Undefined(_isolate));
-        _handle.Reset();
-
-        if (_free != nullptr) {
-          _free(_object);
-        }
-      }
-    }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
-
-  public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unwraps a structure
-////////////////////////////////////////////////////////////////////////////////
-
-    static STRUCT* unwrap (v8::Handle<v8::Object> handle) {
-      TRI_ASSERT(handle->InternalFieldCount() > 0);
-      return static_cast<V8Wrapper*>(handle->GetAlignedPointerFromInternalField(0))->_object;
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a structure
-////////////////////////////////////////////////////////////////////////////////
-
-    static void deleteObject (STRUCT* object) {
-      delete object;
-    }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-  public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increases reference count
-///
-/// Marks the object as being attached to an external entity.  Refed objects
-/// will not be garbage collected, even if all references are lost.
-////////////////////////////////////////////////////////////////////////////////
-
-    virtual void ref () {
-      TRI_ASSERT(! _handle.IsEmpty());
-      ++_refs;
-      _handle.ClearWeak();
-    }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decreases reference count
-///
-/// Marks an object as detached from the event loop.  This is its default state.
-/// When an object with a "weak" reference changes from attached to detached
-/// state it will be freed. Be careful not to access the object after making
-/// this call as it might be gone!  (A "weak reference" means an object that
-/// only has a persistant handle.)
-///
-/// DO NOT CALL THIS FROM DESTRUCTOR.
-////////////////////////////////////////////////////////////////////////////////
-
-    virtual void unref () {
-      TRI_ASSERT(! _handle.IsEmpty());
-      TRI_ASSERT(! _handle.IsWeak());
-      TRI_ASSERT(_refs > 0);
-
-      if (--_refs == 0) {
-        makeWeak();
-      }
-    }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-  public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief persistent handle for V8 object
-////////////////////////////////////////////////////////////////////////////////
-
-    v8::Persistent<v8::Object> _handle;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-  private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief weak callback
-////////////////////////////////////////////////////////////////////////////////
-
-    static void weakCallback (const v8::WeakCallbackData<v8::Object, v8::Persistent<v8::Object>>& data) {
-      auto isolate      = data.GetIsolate();
-      auto persistent   = data.GetParameter();
-      auto myPointer    = v8::Local<v8::Object>::New(isolate, *persistent);
-
-      TRI_ASSERT(myPointer->InternalFieldCount() > 0);
-      auto obj          = static_cast<V8Wrapper*>(myPointer->GetAlignedPointerFromInternalField(0))->_object;
-        
-      TRI_ASSERT(persistent == &obj->_handle);
-      TRI_ASSERT(! obj->_refs);
-      TRI_ASSERT(persistent->IsNearDeath());
-      delete obj;
-    }
-
-  protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief weakens the reference
-////////////////////////////////////////////////////////////////////////////////
-
-    void makeWeak () {
-      _handle.SetWeak(&_handle, weakCallback);
-    }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-  protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reference count
-////////////////////////////////////////////////////////////////////////////////
-
-    ssize_t _refs;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stored structure
-////////////////////////////////////////////////////////////////////////////////
-
-    STRUCT* _object;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free function for stored object
-////////////////////////////////////////////////////////////////////////////////
-
-    void (*_free) (STRUCT* object);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
  public:
-////////////////////////////////////////////////////////////////////////////////
-/// @brief isolate
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-    v8::Isolate* _isolate;
+  V8Wrapper(v8::Isolate* isolate, STRUCT* object, void (*free)(STRUCT* object),
+            v8::Handle<v8::Object> result)
+      : _refs(0), _object(object), _free(free), _isolate(isolate) {
+    // sanity checks
+    TRI_ASSERT(_handle.IsEmpty());
+    TRI_ASSERT(result->InternalFieldCount() > 0);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            static private methods
-// -----------------------------------------------------------------------------
+    // create a new persistent handle
+    result->SetAlignedPointerInInternalField(0, this);
+    _handle.Reset(_isolate, result);
 
+    _handle.SetWrapperClassId(CID);
+
+    // and make it weak, so that we can garbage collect
+    makeWeak();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual ~V8Wrapper() {
+    if (!_handle.IsEmpty()) {
+      TRI_ASSERT(_handle.IsNearDeath());
+
+      _handle.ClearWeak();
+      v8::Local<v8::Object> data =
+          v8::Local<v8::Object>::New(_isolate, _handle);
+      data->SetInternalField(0, v8::Undefined(_isolate));
+      _handle.Reset();
+
+      if (_free != nullptr) {
+        _free(_object);
+      }
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                             static public
+  // methods
+  // -----------------------------------------------------------------------------
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unwraps a structure
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static STRUCT* unwrap(v8::Handle<v8::Object> handle) {
+    TRI_ASSERT(handle->InternalFieldCount() > 0);
+    return static_cast<V8Wrapper*>(
+               handle->GetAlignedPointerFromInternalField(0))->_object;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief deletes a structure
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static void deleteObject(STRUCT* object) { delete object; }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief increases reference count
+  ///
+  /// Marks the object as being attached to an external entity.  Refed objects
+  /// will not be garbage collected, even if all references are lost.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual void ref() {
+    TRI_ASSERT(!_handle.IsEmpty());
+    ++_refs;
+    _handle.ClearWeak();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief decreases reference count
+  ///
+  /// Marks an object as detached from the event loop.  This is its default
+  /// state.
+  /// When an object with a "weak" reference changes from attached to detached
+  /// state it will be freed. Be careful not to access the object after making
+  /// this call as it might be gone!  (A "weak reference" means an object that
+  /// only has a persistant handle.)
+  ///
+  /// DO NOT CALL THIS FROM DESTRUCTOR.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual void unref() {
+    TRI_ASSERT(!_handle.IsEmpty());
+    TRI_ASSERT(!_handle.IsWeak());
+    TRI_ASSERT(_refs > 0);
+
+    if (--_refs == 0) {
+      makeWeak();
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // variables
+  // -----------------------------------------------------------------------------
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief persistent handle for V8 object
+  ////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::Object> _handle;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 protected
+  // methods
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief weak callback
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static void weakCallback(const v8::WeakCallbackData<
+      v8::Object, v8::Persistent<v8::Object>>& data) {
+    auto isolate = data.GetIsolate();
+    auto persistent = data.GetParameter();
+    auto myPointer = v8::Local<v8::Object>::New(isolate, *persistent);
+
+    TRI_ASSERT(myPointer->InternalFieldCount() > 0);
+    auto obj = static_cast<V8Wrapper*>(
+                   myPointer->GetAlignedPointerFromInternalField(0))->_object;
+
+    TRI_ASSERT(persistent == &obj->_handle);
+    TRI_ASSERT(!obj->_refs);
+    TRI_ASSERT(persistent->IsNearDeath());
+    delete obj;
+  }
+
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief weakens the reference
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void makeWeak() { _handle.SetWeak(&_handle, weakCallback); }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                               protected
+  // variables
+  // -----------------------------------------------------------------------------
+
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief reference count
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ssize_t _refs;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stored structure
+  ////////////////////////////////////////////////////////////////////////////////
+
+  STRUCT* _object;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief free function for stored object
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void (*_free)(STRUCT* object);
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief isolate
+  ////////////////////////////////////////////////////////////////////////////////
+
+  v8::Isolate* _isolate;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                            static private
+  // methods
+  // -----------------------------------------------------------------------------
 };
 
 #endif
@@ -275,5 +268,6 @@ class V8Wrapper {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -40,16 +40,18 @@
 /// freed when the wordlist is freed
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
-                                                          size_t numWords) {
-  TRI_fulltext_wordlist_t* wordlist = static_cast<TRI_fulltext_wordlist_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false));
+TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex(char** words,
+                                                         size_t numWords) {
+  TRI_fulltext_wordlist_t* wordlist =
+      static_cast<TRI_fulltext_wordlist_t*>(TRI_Allocate(
+          TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_wordlist_t), false));
 
   if (wordlist == nullptr) {
     return nullptr;
   }
 
-  wordlist->_words    = words;
-  wordlist->_numWords = (uint32_t) numWords;
+  wordlist->_words = words;
+  wordlist->_numWords = (uint32_t)numWords;
 
   return wordlist;
 }
@@ -58,7 +60,7 @@ TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char** words,
 /// @brief destroy a wordlist
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
+void TRI_DestroyWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   for (uint32_t i = 0; i < wordlist->_numWords; ++i) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist->_words[i]);
   }
@@ -70,7 +72,7 @@ void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
 /// @brief free a wordlist
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
+void TRI_FreeWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   TRI_DestroyWordlistFulltextIndex(wordlist);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
 }
@@ -83,16 +85,16 @@ void TRI_FreeWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
 /// @brief sort a wordlist in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
+void TRI_SortWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   if (wordlist->_numWords <= 1) {
     // do not sort in this case
     return;
   }
 
-  auto compareSort = [] (char const* l, char const* r) {
-    return (strcmp(l, r) < 0);
-  };
-  std::sort(wordlist->_words, wordlist->_words + wordlist->_numWords, compareSort);
+  auto compareSort =
+      [](char const* l, char const* r) { return (strcmp(l, r) < 0); };
+  std::sort(wordlist->_words, wordlist->_words + wordlist->_numWords,
+            compareSort);
 }
 
 // -----------------------------------------------------------------------------
@@ -101,5 +103,6 @@ void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t* wordlist) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

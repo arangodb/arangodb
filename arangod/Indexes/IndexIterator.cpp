@@ -42,26 +42,20 @@ using namespace triagens::arango;
 /// @brief context for an index iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIteratorContext::IndexIteratorContext (TRI_vocbase_t* vocbase,
-                                            CollectionNameResolver* resolver)
-  : vocbase(vocbase),
-    resolver(resolver),
-    ownsResolver(resolver == nullptr) {
+IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase,
+                                           CollectionNameResolver* resolver)
+    : vocbase(vocbase), resolver(resolver), ownsResolver(resolver == nullptr) {}
 
-}
+IndexIteratorContext::IndexIteratorContext(TRI_vocbase_t* vocbase)
+    : IndexIteratorContext(vocbase, nullptr) {}
 
-IndexIteratorContext::IndexIteratorContext (TRI_vocbase_t* vocbase)
-  : IndexIteratorContext(vocbase, nullptr) {
-
-}
-
-IndexIteratorContext::~IndexIteratorContext () {
+IndexIteratorContext::~IndexIteratorContext() {
   if (ownsResolver) {
     delete resolver;
   }
 }
 
-CollectionNameResolver const* IndexIteratorContext::getResolver () const {
+CollectionNameResolver const* IndexIteratorContext::getResolver() const {
   if (resolver == nullptr) {
     TRI_ASSERT(ownsResolver);
     resolver = new CollectionNameResolver(vocbase);
@@ -69,27 +63,25 @@ CollectionNameResolver const* IndexIteratorContext::getResolver () const {
   return resolver;
 }
 
-bool IndexIteratorContext::isCluster () const {
+bool IndexIteratorContext::isCluster() const {
   return triagens::arango::ServerState::instance()->isRunningInCluster();
 }
 
-int IndexIteratorContext::resolveId (char const* handle, 
-                                     TRI_voc_cid_t& cid, 
-                                      char const*& key) const {
+int IndexIteratorContext::resolveId(char const* handle, TRI_voc_cid_t& cid,
+                                    char const*& key) const {
   char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
 
   if (p == nullptr || *p == '\0') {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
-  
+
   if (*handle >= '0' && *handle <= '9') {
     cid = triagens::basics::StringUtils::uint64(handle, p - handle);
-  }
-  else {
+  } else {
     std::string const name(handle, p - handle);
     cid = getResolver()->getCollectionIdCluster(name);
   }
-                              
+
   if (cid == 0) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -107,23 +99,19 @@ int IndexIteratorContext::resolveId (char const* handle,
 /// @brief default destructor. Does not free anything
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator::~IndexIterator () {
-}
+IndexIterator::~IndexIterator() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for next
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_mptr_t* IndexIterator::next () {
-  return nullptr;
-}
+TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for reset
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexIterator::reset () {
-}
+void IndexIterator::reset() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -131,5 +119,6 @@ void IndexIterator::reset () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

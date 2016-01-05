@@ -37,48 +37,45 @@
 #include "Rest/Endpoint.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ConnectionInfo {
-      public:
-        ConnectionInfo ()
-          : serverPort(0),
-            clientPort(0),
-            serverAddress(),
-            clientAddress(),
-            endpoint(),
-            endpointType(Endpoint::DOMAIN_UNKNOWN),
-            sslContext(nullptr) {
-        }
+struct ConnectionInfo {
+ public:
+  ConnectionInfo()
+      : serverPort(0),
+        clientPort(0),
+        serverAddress(),
+        clientAddress(),
+        endpoint(),
+        endpointType(Endpoint::DOMAIN_UNKNOWN),
+        sslContext(nullptr) {}
 
-      public:
-
-        std::string portType () const {
-          if (endpointType == Endpoint::DOMAIN_UNIX) {
-            return "unix";
-          }
-          else if (endpointType == Endpoint::DOMAIN_IPV4 ||
-                   endpointType == Endpoint::DOMAIN_IPV6) {
-            return "tcp/ip";
-          }
-          return "unknown";
-        }
-
-        int serverPort;
-        int clientPort;
-
-        std::string serverAddress;
-        std::string clientAddress;
-        std::string endpoint;
-        Endpoint::DomainType endpointType;
-
-        void* sslContext;
-    };
+ public:
+  std::string portType() const {
+    if (endpointType == Endpoint::DOMAIN_UNIX) {
+      return "unix";
+    } else if (endpointType == Endpoint::DOMAIN_IPV4 ||
+               endpointType == Endpoint::DOMAIN_IPV6) {
+      return "tcp/ip";
+    }
+    return "unknown";
   }
+
+  int serverPort;
+  int clientPort;
+
+  std::string serverAddress;
+  std::string clientAddress;
+  std::string endpoint;
+  Endpoint::DomainType endpointType;
+
+  void* sslContext;
+};
+}
 }
 
 #endif
@@ -88,5 +85,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

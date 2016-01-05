@@ -61,73 +61,75 @@ using namespace triagens::arango;
 /// @brief batch path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::BATCH_PATH             = "/_api/batch";
+const string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::CURSOR_PATH            = "/_api/cursor";
+const string RestVocbaseBaseHandler::CURSOR_PATH = "/_api/cursor";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::DOCUMENT_PATH          = "/_api/document";
+const string RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::EDGE_PATH              = "/_api/edge";
+const string RestVocbaseBaseHandler::EDGE_PATH = "/_api/edge";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edges path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::EDGES_PATH             = "/_api/edges";
+const string RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::EXPORT_PATH            = "/_api/export";
+const string RestVocbaseBaseHandler::EXPORT_PATH = "/_api/export";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief documents import path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::IMPORT_PATH            = "/_api/import";
+const string RestVocbaseBaseHandler::IMPORT_PATH = "/_api/import";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::REPLICATION_PATH       = "/_api/replication";
+const string RestVocbaseBaseHandler::REPLICATION_PATH = "/_api/replication";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query all path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH  = "/_api/simple/all";
+const string RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH = "/_api/simple/all";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH    = "/_api/simple/lookup-by-keys";
+const string RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH =
+    "/_api/simple/lookup-by-keys";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch remove path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH    = "/_api/simple/remove-by-keys";
+const string RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
+    "/_api/simple/remove-by-keys";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::UPLOAD_PATH            = "/_api/upload";
+const string RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -137,19 +139,17 @@ const string RestVocbaseBaseHandler::UPLOAD_PATH            = "/_api/upload";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler (HttpRequest* request)
-  : RestBaseHandler(request),
-    _context(static_cast<VocbaseContext*>(request->getRequestContext())),
-    _vocbase(_context->getVocbase()),
-    _nolockHeaderSet(nullptr) {
-}
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
+    : RestBaseHandler(request),
+      _context(static_cast<VocbaseContext*>(request->getRequestContext())),
+      _vocbase(_context->getVocbase()),
+      _nolockHeaderSet(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
-}
+RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -165,21 +165,20 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler () {
 /// happen, and the collection name will not be checked
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
-                                                    TRI_col_type_e type) {
+bool RestVocbaseBaseHandler::checkCreateCollection(string const& name,
+                                                   TRI_col_type_e type) {
   bool found;
   char const* valueStr = _request->value("createCollection", found);
 
-  if (! found) {
+  if (!found) {
     // "createCollection" parameter not specified
     return true;
   }
 
-  if (! StringUtils::boolean(valueStr)) {
+  if (!StringUtils::boolean(valueStr)) {
     // "createCollection" parameter specified, but with non-true value
     return true;
   }
-
 
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer()) {
@@ -188,10 +187,8 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
     return false;
   }
 
-
-  TRI_vocbase_col_t* collection = TRI_FindCollectionByNameOrCreateVocBase(_vocbase,
-                                                                          name.c_str(),
-                                                                          type);
+  TRI_vocbase_col_t* collection =
+      TRI_FindCollectionByNameOrCreateVocBase(_vocbase, name.c_str(), type);
 
   if (collection == nullptr) {
     generateTransactionError(name, TRI_errno());
@@ -205,12 +202,11 @@ bool RestVocbaseBaseHandler::checkCreateCollection (string const& name,
 /// @brief generates a HTTP 201 or 202 response
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode responseCode,
-                                          string const& collectionName,
-                                          TRI_voc_key_t key,
-                                          TRI_voc_rid_t rid,
-                                          TRI_col_type_e type) {
-  string handle(std::move(DocumentHelper::assembleDocumentId(collectionName, key)));
+void RestVocbaseBaseHandler::generate20x(
+    HttpResponse::HttpResponseCode responseCode, string const& collectionName,
+    TRI_voc_key_t key, TRI_voc_rid_t rid, TRI_col_type_e type) {
+  string handle(
+      std::move(DocumentHelper::assembleDocumentId(collectionName, key)));
   string rev(std::move(StringUtils::itoa(rid)));
 
   createResponse(responseCode);
@@ -221,41 +217,44 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
 
-    string escapedHandle(std::move(DocumentHelper::assembleDocumentId(collectionName, key, true)));
+    string escapedHandle(std::move(
+        DocumentHelper::assembleDocumentId(collectionName, key, true)));
 
     if (_request->compatibility() < 10400L) {
       // pre-1.4 location header (e.g. /_api/document/xyz)
-      _response->setHeader("location", 8, string(DOCUMENT_PATH + "/" + escapedHandle));
-    }
-    else {
+      _response->setHeader("location", 8,
+                           string(DOCUMENT_PATH + "/" + escapedHandle));
+    } else {
       // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
       if (type == TRI_COL_TYPE_EDGE) {
-        _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + EDGE_PATH + "/" + escapedHandle));
-      }
-      else {
-        _response->setHeader("location", 8, string("/_db/" + _request->databaseName() + DOCUMENT_PATH + "/" + escapedHandle));
+        _response->setHeader("location", 8,
+                             string("/_db/" + _request->databaseName() +
+                                    EDGE_PATH + "/" + escapedHandle));
+      } else {
+        _response->setHeader("location", 8,
+                             string("/_db/" + _request->databaseName() +
+                                    DOCUMENT_PATH + "/" + escapedHandle));
       }
     }
   }
 
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
-    .appendText("{\"error\":false,\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
-    .appendText(handle)
-    .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
-    .appendText(rev)
-    .appendText("\",\"" TRI_VOC_ATTRIBUTE_KEY "\":\"")
-    .appendText(key)
-    .appendText("\"}");
+      .appendText("{\"error\":false,\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
+      .appendText(handle)
+      .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
+      .appendText(rev)
+      .appendText("\",\"" TRI_VOC_ATTRIBUTE_KEY "\":\"")
+      .appendText(key)
+      .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not implemented
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
-  generateError(HttpResponse::NOT_IMPLEMENTED,
-                TRI_ERROR_NOT_IMPLEMENTED,
+void RestVocbaseBaseHandler::generateNotImplemented(string const& path) {
+  generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                 "'" + path + "' not implemented");
 }
 
@@ -263,9 +262,8 @@ void RestVocbaseBaseHandler::generateNotImplemented (string const& path) {
 /// @brief generates forbidden
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateForbidden () {
-  generateError(HttpResponse::FORBIDDEN,
-                TRI_ERROR_FORBIDDEN,
+void RestVocbaseBaseHandler::generateForbidden() {
+  generateError(HttpResponse::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                 "operation forbidden");
 }
 
@@ -273,9 +271,8 @@ void RestVocbaseBaseHandler::generateForbidden () {
 /// @brief generates precondition failed
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectionName,
-                                                         TRI_voc_key_t key,
-                                                         TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generatePreconditionFailed(
+    string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid) {
   string rev(std::move(StringUtils::itoa(rid)));
 
   createResponse(HttpResponse::PRECONDITION_FAILED);
@@ -284,25 +281,25 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectio
 
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
-    .appendText("{\"error\":true,\"code\":")
-    .appendInteger((int32_t) HttpResponse::PRECONDITION_FAILED)
-    .appendText(",\"errorNum\":")
-    .appendInteger((int32_t) TRI_ERROR_ARANGO_CONFLICT)
-    .appendText(",\"errorMessage\":\"precondition failed\"")
-    .appendText(",\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
-    .appendText(DocumentHelper::assembleDocumentId(collectionName, key))
-    .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
-    .appendText(StringUtils::itoa(rid))
-    .appendText("\",\"" TRI_VOC_ATTRIBUTE_KEY "\":\"")
-    .appendText(key)
-    .appendText("\"}");
+      .appendText("{\"error\":true,\"code\":")
+      .appendInteger((int32_t)HttpResponse::PRECONDITION_FAILED)
+      .appendText(",\"errorNum\":")
+      .appendInteger((int32_t)TRI_ERROR_ARANGO_CONFLICT)
+      .appendText(",\"errorMessage\":\"precondition failed\"")
+      .appendText(",\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
+      .appendText(DocumentHelper::assembleDocumentId(collectionName, key))
+      .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
+      .appendText(StringUtils::itoa(rid))
+      .appendText("\",\"" TRI_VOC_ATTRIBUTE_KEY "\":\"")
+      .appendText(key)
+      .appendText("\"}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates not modified
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
   string const&& rev = StringUtils::itoa(rid);
 
   createResponse(HttpResponse::NOT_MODIFIED);
@@ -313,57 +310,85 @@ void RestVocbaseBaseHandler::generateNotModified (TRI_voc_rid_t rid) {
 /// @brief generates next entry from a result set
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransaction& trx,
-                                               TRI_voc_cid_t cid,
-                                               TRI_doc_mptr_copy_t const& mptr,
-                                               VocShaper* shaper,
-                                               bool generateBody) {
-
+void RestVocbaseBaseHandler::generateDocument(
+    SingleCollectionReadOnlyTransaction& trx, TRI_voc_cid_t cid,
+    TRI_doc_mptr_copy_t const& mptr, VocShaper* shaper, bool generateBody) {
   CollectionNameResolver const* resolver = trx.resolver();
 
-  char const* key = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx from above
-  std::string id(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionName(cid), key)));
+  char const* key =
+      TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx from above
+  std::string id(std::move(DocumentHelper::assembleDocumentId(
+      resolver->getCollectionName(cid), key)));
 
   TRI_json_t augmented;
   TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, 5);
 
-  TRI_json_t* idJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str(), id.size());
+  TRI_json_t* idJson =
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str(), id.size());
 
   if (idJson != nullptr) {
-    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_ID, idJson);
+    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
+                          TRI_VOC_ATTRIBUTE_ID, idJson);
   }
 
   // convert rid from uint64_t to string
   string rid(std::move(StringUtils::itoa(mptr._rid)));
-  TRI_json_t* rev = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
+  TRI_json_t* rev =
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
   if (rev != nullptr) {
-    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_REV, rev);
+    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
+                          TRI_VOC_ATTRIBUTE_REV, rev);
   }
 
-  TRI_json_t* keyJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key));
+  TRI_json_t* keyJson =
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key));
 
   if (keyJson != nullptr) {
-    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_KEY, keyJson);
+    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
+                          TRI_VOC_ATTRIBUTE_KEY, keyJson);
   }
 
-  TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(mptr.getDataPtr())->_type;  // PROTECTED by trx passed from above
+  TRI_df_marker_type_t type =
+      static_cast<TRI_df_marker_t const*>(mptr.getDataPtr())
+          ->_type;  // PROTECTED by trx passed from above
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(mptr.getDataPtr());  // PROTECTED by trx passed from above
-    string from(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey))));
-    string to(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey))));
+    TRI_doc_edge_key_marker_t const* marker =
+        static_cast<TRI_doc_edge_key_marker_t const*>(
+            mptr.getDataPtr());  // PROTECTED by trx passed from above
+    string from(std::move(DocumentHelper::assembleDocumentId(
+        resolver->getCollectionNameCluster(marker->_fromCid),
+        string((char*)marker + marker->_offsetFromKey))));
+    string to(std::move(DocumentHelper::assembleDocumentId(
+        resolver->getCollectionNameCluster(marker->_toCid),
+        string((char*)marker + marker->_offsetToKey))));
 
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
-  }
-  else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(mptr.getDataPtr());  // PROTECTED by trx passed from above
-    string from(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_fromCid), string((char*) marker + marker->_offsetFromKey))));
-    string to(std::move(DocumentHelper::assembleDocumentId(resolver->getCollectionNameCluster(marker->_toCid), string((char*) marker +  marker->_offsetToKey))));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
+                          TRI_VOC_ATTRIBUTE_FROM,
+                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                                   from.c_str(), from.size()));
+    TRI_Insert3ObjectJson(
+        TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO,
+        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
+  } else if (type == TRI_WAL_MARKER_EDGE) {
+    triagens::wal::edge_marker_t const* marker =
+        static_cast<triagens::wal::edge_marker_t const*>(
+            mptr.getDataPtr());  // PROTECTED by trx passed from above
+    string from(std::move(DocumentHelper::assembleDocumentId(
+        resolver->getCollectionNameCluster(marker->_fromCid),
+        string((char*)marker + marker->_offsetFromKey))));
+    string to(std::move(DocumentHelper::assembleDocumentId(
+        resolver->getCollectionNameCluster(marker->_toCid),
+        string((char*)marker + marker->_offsetToKey))));
 
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_FROM, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, from.c_str(), from.size()));
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
+                          TRI_VOC_ATTRIBUTE_FROM,
+                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                                   from.c_str(), from.size()));
+    TRI_Insert3ObjectJson(
+        TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_TO,
+        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, to.c_str(), to.size()));
   }
 
   // add document identifier to buffer
@@ -373,7 +398,8 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, mptr.getDataPtr());  // PROTECTED by trx passed from above
+  TRI_EXTRACT_SHAPED_JSON_MARKER(
+      shapedJson, mptr.getDataPtr());  // PROTECTED by trx passed from above
   TRI_StringifyAugmentedShapedJson(shaper, &buffer, &shapedJson, &augmented);
 
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &augmented);
@@ -396,9 +422,9 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   _response->setHeader("etag", 4, "\"" + rid + "\"");
 
   if (generateBody) {
-    _response->body().appendText(TRI_BeginStringBuffer(&buffer), TRI_LengthStringBuffer(&buffer));
-  }
-  else {
+    _response->body().appendText(TRI_BeginStringBuffer(&buffer),
+                                 TRI_LengthStringBuffer(&buffer));
+  } else {
     _response->headResponse(TRI_LengthStringBuffer(&buffer));
   }
 
@@ -409,19 +435,18 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
 /// @brief generate an error message for a transaction error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateTransactionError (string const& collectionName,
-                                                       int res,
-                                                       TRI_voc_key_t key,
-                                                       TRI_voc_rid_t rid) {
+void RestVocbaseBaseHandler::generateTransactionError(
+    string const& collectionName, int res, TRI_voc_key_t key,
+    TRI_voc_rid_t rid) {
   switch (res) {
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
         generateError(HttpResponse::BAD, res, "no collection name specified");
-      }
-      else {
+      } else {
         // collection name specified but collection not found
-        generateError(HttpResponse::NOT_FOUND, res, "collection '" + collectionName + "' not found");
+        generateError(HttpResponse::NOT_FOUND, res,
+                      "collection '" + collectionName + "' not found");
       }
       return;
 
@@ -430,7 +455,8 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
       return;
 
     case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
-      generateError(HttpResponse::CONFLICT, res, "cannot create document, unique constraint violated");
+      generateError(HttpResponse::CONFLICT, res,
+                    "cannot create document, unique constraint violated");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
@@ -442,7 +468,8 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
-      generateError(HttpResponse::BAD, res, "collection does not allow using user-defined keys");
+      generateError(HttpResponse::BAD, res,
+                    "collection does not allow using user-defined keys");
       return;
 
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
@@ -454,7 +481,8 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
       return;
 
     case TRI_ERROR_ARANGO_CONFLICT:
-      generatePreconditionFailed(collectionName, key ? key : (TRI_voc_key_t) "unknown", rid);
+      generatePreconditionFailed(collectionName,
+                                 key ? key : (TRI_voc_key_t) "unknown", rid);
       return;
 
     case TRI_ERROR_CLUSTER_SHARD_GONE:
@@ -478,7 +506,8 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
     }
 
     default:
-      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "failed with error: " + string(TRI_errno_string(res)));
+      generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "failed with error: " + string(TRI_errno_string(res)));
   }
 }
 
@@ -486,9 +515,9 @@ void RestVocbaseBaseHandler::generateTransactionError (string const& collectionN
 /// @brief extracts the revision
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
-                                                       char const* parameter,
-                                                       bool& isValid) {
+TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision(char const* header,
+                                                      char const* parameter,
+                                                      bool& isValid) {
   isValid = true;
   bool found;
   char const* etag = _request->header(header, found);
@@ -504,7 +533,6 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
     if (s < e && (s[0] == '"' || s[0] == '\'')) {
       ++s;
     }
-
 
     while (s < e && (e[-1] == ' ' || e[-1] == '\t')) {
       --e;
@@ -537,22 +565,19 @@ TRI_voc_rid_t RestVocbaseBaseHandler::extractRevision (char const* header,
 /// @brief extracts the update policy
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () const {
+TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy() const {
   bool found;
   char const* policy = _request->value("policy", found);
 
   if (found) {
     if (TRI_CaseEqualString(policy, "error")) {
       return TRI_DOC_UPDATE_ERROR;
-    }
-    else if (TRI_CaseEqualString(policy, "last")) {
+    } else if (TRI_CaseEqualString(policy, "last")) {
       return TRI_DOC_UPDATE_LAST_WRITE;
-    }
-    else {
+    } else {
       return TRI_DOC_UPDATE_ILLEGAL;
     }
-  }
-  else {
+  } else {
     return TRI_DOC_UPDATE_ERROR;
   }
 }
@@ -561,7 +586,7 @@ TRI_doc_update_policy_e RestVocbaseBaseHandler::extractUpdatePolicy () const {
 /// @brief extracts the waitForSync value
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::extractWaitForSync () const {
+bool RestVocbaseBaseHandler::extractWaitForSync() const {
   bool found;
   char const* forceStr = _request->value("waitForSync", found);
 
@@ -576,22 +601,17 @@ bool RestVocbaseBaseHandler::extractWaitForSync () const {
 /// @brief parses the body as VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody (
-    VPackOptions const* options,
-    bool& success) {
+std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
+    VPackOptions const* options, bool& success) {
   try {
     success = true;
     return _request->toVelocyPack(options);
-  }
-  catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const&) {
     generateOOMError();
-  }
-  catch (VPackException const& e) {
-    std::string errmsg ("Parse error: ");
+  } catch (VPackException const& e) {
+    std::string errmsg("Parse error: ");
     errmsg.append(e.what());
-    generateError(HttpResponse::BAD,
-                  TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  errmsg);
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
   }
   success = false;
   VPackParser p;
@@ -611,10 +631,9 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody (
 /// TODO: merge with DocumentHelper::parseDocumentId
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resolver,
-                                             string const& handle,
-                                             TRI_voc_cid_t& cid,
-                                             TRI_voc_key_t& key) {
+int RestVocbaseBaseHandler::parseDocumentId(
+    CollectionNameResolver const* resolver, string const& handle,
+    TRI_voc_cid_t& cid, TRI_voc_key_t& key) {
   char const* ptr = handle.c_str();
   char const* end = ptr + handle.size();
 
@@ -624,16 +643,19 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  char const* pos = static_cast<char const*>(memchr(static_cast<void const*>(ptr), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, handle.size()));
+  char const* pos = static_cast<char const*>(
+      memchr(static_cast<void const*>(ptr), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR,
+             handle.size()));
 
   if (pos == nullptr || pos >= end - 1) {
     // if no '/' is found, the id is invalid
     // if '/' is at the very end, the id is invalid too
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
-  
+
   // check if the id contains a second '/'
-  if (memchr(static_cast<void const*>(pos + 1), TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, end - pos - 1) != nullptr) {
+  if (memchr(static_cast<void const*>(pos + 1),
+             TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, end - pos - 1) != nullptr) {
     return TRI_set_errno(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -641,8 +663,7 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
 
   if (first >= '0' && first <= '9') {
     cid = TRI_UInt64String2(ptr, ptr - pos);
-  }
-  else {
+  } else {
     cid = resolver->getCollectionIdCluster(std::string(ptr, pos - ptr));
   }
 
@@ -659,7 +680,7 @@ int RestVocbaseBaseHandler::parseDocumentId (CollectionNameResolver const* resol
 /// @brief prepareExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::prepareExecute () {
+void RestVocbaseBaseHandler::prepareExecute() {
   RestBaseHandler::prepareExecute();
 
   bool found;
@@ -676,7 +697,7 @@ void RestVocbaseBaseHandler::prepareExecute () {
 /// @brief finalizeExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::finalizeExecute () {
+void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
     triagens::arango::Transaction::_makeNolockHeaders = nullptr;
     delete _nolockHeaderSet;
@@ -692,5 +713,6 @@ void RestVocbaseBaseHandler::finalizeExecute () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

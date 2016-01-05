@@ -48,63 +48,58 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 class triagens::rest::AsyncCallbackContext {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-  public:
+  explicit AsyncCallbackContext(string const& coordHeader)
+      : _coordHeader(coordHeader), _response(nullptr) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-    explicit AsyncCallbackContext (string const& coordHeader)
-      : _coordHeader(coordHeader),
-        _response(nullptr) {
+  ~AsyncCallbackContext() {
+    if (_response != nullptr) {
+      delete _response;
     }
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-    ~AsyncCallbackContext () {
-      if (_response != nullptr) {
-        delete _response;
-      }
-    }
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief gets the coordinator header
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  string& getCoordinatorHeader() { return _coordHeader; }
 
-  public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the coordinator header
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief coordinator header
+  ////////////////////////////////////////////////////////////////////////////////
 
-    string& getCoordinatorHeader () {
-      return _coordHeader;
-    }
+  string _coordHeader;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief http response
+  ////////////////////////////////////////////////////////////////////////////////
 
-  private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief coordinator header
-////////////////////////////////////////////////////////////////////////////////
-
-    string _coordHeader;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief http response
-////////////////////////////////////////////////////////////////////////////////
-
-    HttpResponse* _response;
+  HttpResponse* _response;
 };
 
 // -----------------------------------------------------------------------------
@@ -119,36 +114,31 @@ class triagens::rest::AsyncCallbackContext {
 /// @brief constructor for an unspecified job result
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobResult::AsyncJobResult ()
-  : _jobId(0),
-    _response(nullptr),
-    _stamp(0.0),
-    _status(JOB_UNDEFINED),
-    _ctx(nullptr) {
-}
+AsyncJobResult::AsyncJobResult()
+    : _jobId(0),
+      _response(nullptr),
+      _stamp(0.0),
+      _status(JOB_UNDEFINED),
+      _ctx(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for a specific job result
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobResult::AsyncJobResult (IdType jobId,
-                                HttpResponse* response,
-                                double stamp,
-                                Status status,
-                                AsyncCallbackContext* ctx)
-  : _jobId(jobId),
-    _response(response),
-    _stamp(stamp),
-    _status(status),
-    _ctx(ctx) {
-}
+AsyncJobResult::AsyncJobResult(IdType jobId, HttpResponse* response,
+                               double stamp, Status status,
+                               AsyncCallbackContext* ctx)
+    : _jobId(jobId),
+      _response(response),
+      _stamp(stamp),
+      _status(status),
+      _ctx(ctx) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-AsyncJobResult::~AsyncJobResult () {
-}
+AsyncJobResult::~AsyncJobResult() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class AsyncJobManager
@@ -182,9 +172,9 @@ AsyncJobManager::~AsyncJobManager() {
 /// @brief returns the result of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse* AsyncJobManager::getJobResult (AsyncJobResult::IdType jobId,
-                                             AsyncJobResult::Status& status,
-                                             bool removeFromList) {
+HttpResponse* AsyncJobManager::getJobResult(AsyncJobResult::IdType jobId,
+                                            AsyncJobResult::Status& status,
+                                            bool removeFromList) {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.find(jobId);
@@ -201,7 +191,7 @@ HttpResponse* AsyncJobManager::getJobResult (AsyncJobResult::IdType jobId,
     return nullptr;
   }
 
-  if (! removeFromList) {
+  if (!removeFromList) {
     return nullptr;
   }
 
@@ -214,7 +204,7 @@ HttpResponse* AsyncJobManager::getJobResult (AsyncJobResult::IdType jobId,
 /// @brief deletes the result of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool AsyncJobManager::deleteJobResult (AsyncJobResult::IdType jobId) {
+bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.find(jobId);
@@ -238,7 +228,7 @@ bool AsyncJobManager::deleteJobResult (AsyncJobResult::IdType jobId) {
 /// @brief deletes all results
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::deleteJobResults () {
+void AsyncJobManager::deleteJobResults() {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.begin();
@@ -260,7 +250,7 @@ void AsyncJobManager::deleteJobResults () {
 /// @brief deletes expired results
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::deleteExpiredJobResults (double stamp) {
+void AsyncJobManager::deleteExpiredJobResults(double stamp) {
   WRITE_LOCKER(_lock);
 
   auto it = _jobs.begin();
@@ -276,8 +266,7 @@ void AsyncJobManager::deleteExpiredJobResults (double stamp) {
       }
 
       _jobs.erase(it++);
-    }
-    else {
+    } else {
       ++it;
     }
   }
@@ -287,7 +276,7 @@ void AsyncJobManager::deleteExpiredJobResults (double stamp) {
 /// @brief returns the list of pending jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::pending (size_t maxCount) {
+const vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_PENDING, maxCount);
 }
 
@@ -295,7 +284,7 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::pending (size_t maxCount) 
 /// @brief returns the list of done jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::done (size_t maxCount) {
+const vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_DONE, maxCount);
 }
 
@@ -303,8 +292,8 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::done (size_t maxCount) {
 /// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::Status status,
-                                                                size_t maxCount) {
+const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
+    AsyncJobResult::Status status, size_t maxCount) {
   vector<AsyncJobResult::IdType> jobs;
 
   {
@@ -335,7 +324,7 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus (AsyncJobResult::
 /// @brief initializes an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::initAsyncJob (HttpServerJob* job, char const* hdr) {
+void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
   AsyncCallbackContext* ctx = nullptr;
 
   if (hdr != nullptr) {
@@ -343,11 +332,8 @@ void AsyncJobManager::initAsyncJob (HttpServerJob* job, char const* hdr) {
     ctx = new AsyncCallbackContext(string(hdr));
   }
 
-  AsyncJobResult ajr(job->jobId(),
-                     nullptr,
-                     TRI_microtime(),
-                     AsyncJobResult::JOB_PENDING,
-                     ctx);
+  AsyncJobResult ajr(job->jobId(), nullptr, TRI_microtime(),
+                     AsyncJobResult::JOB_PENDING, ctx);
 
   WRITE_LOCKER(_lock);
 
@@ -358,8 +344,8 @@ void AsyncJobManager::initAsyncJob (HttpServerJob* job, char const* hdr) {
 /// @brief finishes the execution of an async job
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::finishAsyncJob (AsyncJobResult::IdType jobId,
-                                      HttpResponse* response) {
+void AsyncJobManager::finishAsyncJob(AsyncJobResult::IdType jobId,
+                                     HttpResponse* response) {
   double const now = TRI_microtime();
   AsyncCallbackContext* ctx = nullptr;
 
@@ -370,8 +356,7 @@ void AsyncJobManager::finishAsyncJob (AsyncJobResult::IdType jobId,
     if (it == _jobs.end()) {
       delete response;
       return;
-    }
-    else {
+    } else {
       (*it).second._response = response;
       (*it).second._status = AsyncJobResult::JOB_DONE;
       (*it).second._stamp = now;

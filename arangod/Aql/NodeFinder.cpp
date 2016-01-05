@@ -30,7 +30,7 @@
 #include "Aql/NodeFinder.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class NodeFinder
@@ -44,27 +44,21 @@ namespace triagens {
 /// @brief node finder for one node type
 ////////////////////////////////////////////////////////////////////////////////
 
-template<>
-NodeFinder<ExecutionNode::NodeType>::NodeFinder (ExecutionNode::NodeType lookingFor,
-                                                 std::vector<ExecutionNode*>& out,
-                                                 bool enterSubqueries) 
-  : _lookingFor(lookingFor), 
-    _out(out), 
-    _enterSubqueries(enterSubqueries) {
-}
+template <>
+NodeFinder<ExecutionNode::NodeType>::NodeFinder(
+    ExecutionNode::NodeType lookingFor, std::vector<ExecutionNode*>& out,
+    bool enterSubqueries)
+    : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for multiple types
 ////////////////////////////////////////////////////////////////////////////////
-    
-template<>
-NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder (std::vector<ExecutionNode::NodeType> lookingFor,
-                                                              std::vector<ExecutionNode*>& out,
-                                                              bool enterSubqueries) 
-  : _lookingFor(lookingFor), 
-    _out(out), 
-    _enterSubqueries(enterSubqueries) {
-}
+
+template <>
+NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
+    std::vector<ExecutionNode::NodeType> lookingFor,
+    std::vector<ExecutionNode*>& out, bool enterSubqueries)
+    : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -74,8 +68,8 @@ NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder (std::vector<Execut
 /// @brief before method for one node type
 ////////////////////////////////////////////////////////////////////////////////
 
-template<>
-bool NodeFinder<ExecutionNode::NodeType>::before (ExecutionNode* en) {
+template <>
+bool NodeFinder<ExecutionNode::NodeType>::before(ExecutionNode* en) {
   if (en->getType() == _lookingFor) {
     _out.emplace_back(en);
   }
@@ -86,15 +80,16 @@ bool NodeFinder<ExecutionNode::NodeType>::before (ExecutionNode* en) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for multiple node types
 ////////////////////////////////////////////////////////////////////////////////
-    
-template<>
-bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before (ExecutionNode* en) {
+
+template <>
+bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
+    ExecutionNode* en) {
   auto const nodeType = en->getType();
 
   for (auto& type : _lookingFor) {
     if (type == nodeType) {
       _out.emplace_back(en);
-      break; 
+      break;
     }
   }
   return false;
@@ -112,12 +107,9 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before (ExecutionNode* en
 /// @brief node finder for one node type
 ////////////////////////////////////////////////////////////////////////////////
 
-EndNodeFinder::EndNodeFinder (std::vector<ExecutionNode*>& out,
-                              bool enterSubqueries) 
-  : _out(out), 
-    _found({ false }),
-    _enterSubqueries(enterSubqueries) {
-}
+EndNodeFinder::EndNodeFinder(std::vector<ExecutionNode*>& out,
+                             bool enterSubqueries)
+    : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -127,19 +119,20 @@ EndNodeFinder::EndNodeFinder (std::vector<ExecutionNode*>& out,
 /// @brief before method for one node type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndNodeFinder::before (ExecutionNode* en) {
-  TRI_ASSERT(! _found.empty());
-  if (! _found.back()) {
+bool EndNodeFinder::before(ExecutionNode* en) {
+  TRI_ASSERT(!_found.empty());
+  if (!_found.back()) {
     // no node found yet. note that we found one on this level
     _out.emplace_back(en);
     _found[_found.size() - 1] = true;
   }
 
-  // if we don't need to enter subqueries, we can stop after the first node that we found
-  return (! _enterSubqueries);
+  // if we don't need to enter subqueries, we can stop after the first node that
+  // we found
+  return (!_enterSubqueries);
 }
 
-  }  // namespace triagens::aql
+}  // namespace triagens::aql
 }  // namespace triagens
 
 // -----------------------------------------------------------------------------
@@ -148,5 +141,6 @@ bool EndNodeFinder::before (ExecutionNode* en) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

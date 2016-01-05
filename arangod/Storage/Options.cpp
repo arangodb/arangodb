@@ -48,20 +48,20 @@ VPackOptions StorageOptions::NonDocumentTemplate;
 
 // this will initialize the global static objects
 static StorageOptions Instance;
-  
+
 struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
-  bool shouldExclude (VPackSlice const& key, int nesting) override final {
+  bool shouldExclude(VPackSlice const& key, int nesting) override final {
     VPackValueLength keyLength;
     char const* p = key.getString(keyLength);
 
     if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5) {
       // keep attribute
       return true;
-    } 
-  
-    if ((keyLength == 3 && memcmp(p, "_id",   keyLength) == 0) ||
-        (keyLength == 4 && memcmp(p, "_rev",  keyLength) == 0) ||
-        (keyLength == 3 && memcmp(p, "_to",   keyLength) == 0) ||
+    }
+
+    if ((keyLength == 3 && memcmp(p, "_id", keyLength) == 0) ||
+        (keyLength == 4 && memcmp(p, "_rev", keyLength) == 0) ||
+        (keyLength == 3 && memcmp(p, "_to", keyLength) == 0) ||
         (keyLength == 5 && memcmp(p, "_from", keyLength) == 0)) {
       // exclude these attribute
       return true;
@@ -73,26 +73,29 @@ struct ExcludeHandlerImpl : public VPackAttributeExcludeHandler {
 };
 
 struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
-  explicit CustomTypeHandlerImpl (triagens::arango::CollectionNameResolver const* resolver) 
-    : resolver(resolver) { 
-  }
+  explicit CustomTypeHandlerImpl(
+      triagens::arango::CollectionNameResolver const* resolver)
+      : resolver(resolver) {}
 
-  void toJson (VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) {
+  void toJson(VPackSlice const& value, VPackDumper* dumper,
+              VPackSlice const& base) {
     if (value.head() == 0xf0) {
       // _id
-      if (! base.isObject()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid value type"); 
+      if (!base.isObject()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid value type");
       }
       uint64_t cid = arangodb::velocypack::readUInt64(value.start() + 1);
-      char buffer[512]; // This is enough for collection name + _key
-      size_t len = resolver->getCollectionName(&buffer[0], cid); 
+      char buffer[512];  // This is enough for collection name + _key
+      size_t len = resolver->getCollectionName(&buffer[0], cid);
       buffer[len] = '/';
       VPackSlice key = base.get(TRI_VOC_ATTRIBUTE_KEY);
-      
+
       VPackValueLength keyLength;
       char const* p = key.getString(keyLength);
       if (p == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid _key value"); 
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid _key value");
       }
       memcpy(&buffer[len + 1], p, keyLength);
       dumper->appendString(&buffer[0], len + 1 + keyLength);
@@ -112,16 +115,16 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
       // TODO
       return;
     }
-    
+
     throw "unknown type!";
   }
 
-  VPackValueLength byteSize (VPackSlice const& value) {
+  VPackValueLength byteSize(VPackSlice const& value) {
     if (value.head() == 0xf0) {
       // _id
       return 1 + 8;  // 0xf0 + 8 bytes for collection id
     }
-    
+
     if (value.head() == 0xf1) {
       // _rev
       return 1 + 8;  // 0xf1 + 8 bytes for tick value
@@ -140,65 +143,66 @@ struct CustomTypeHandlerImpl : public VPackCustomTypeHandler {
   TRI_voc_cid_t cid;
 };
 
-StorageOptions::StorageOptions () 
-  : _translator(new VPackAttributeTranslator),
-    _excludeHandler(new ExcludeHandlerImpl) {
-
+StorageOptions::StorageOptions()
+    : _translator(new VPackAttributeTranslator),
+      _excludeHandler(new ExcludeHandlerImpl) {
   // these attribute names will be translated into short integer values
-  _translator->add(TRI_VOC_ATTRIBUTE_KEY,  1);
-  _translator->add(TRI_VOC_ATTRIBUTE_REV,  2);
-  _translator->add(TRI_VOC_ATTRIBUTE_ID,   3);
+  _translator->add(TRI_VOC_ATTRIBUTE_KEY, 1);
+  _translator->add(TRI_VOC_ATTRIBUTE_REV, 2);
+  _translator->add(TRI_VOC_ATTRIBUTE_ID, 3);
   _translator->add(TRI_VOC_ATTRIBUTE_FROM, 4);
-  _translator->add(TRI_VOC_ATTRIBUTE_TO,   5);
+  _translator->add(TRI_VOC_ATTRIBUTE_TO, 5);
 
   _translator->seal();
 
   // set options for JSON to document conversion
-  JsonToDocumentTemplate.buildUnindexedArrays     = false;
-  JsonToDocumentTemplate.buildUnindexedObjects    = false;
+  JsonToDocumentTemplate.buildUnindexedArrays = false;
+  JsonToDocumentTemplate.buildUnindexedObjects = false;
   JsonToDocumentTemplate.checkAttributeUniqueness = true;
-  JsonToDocumentTemplate.sortAttributeNames       = true;
-  JsonToDocumentTemplate.attributeTranslator      = _translator.get();
-  JsonToDocumentTemplate.customTypeHandler        = nullptr;
-  JsonToDocumentTemplate.attributeExcludeHandler  = _excludeHandler.get();
+  JsonToDocumentTemplate.sortAttributeNames = true;
+  JsonToDocumentTemplate.attributeTranslator = _translator.get();
+  JsonToDocumentTemplate.customTypeHandler = nullptr;
+  JsonToDocumentTemplate.attributeExcludeHandler = _excludeHandler.get();
 
   // set options for document to JSON conversion
-  DocumentToJsonTemplate.attributeTranslator      = _translator.get();
-  DocumentToJsonTemplate.customTypeHandler        = nullptr;
-  DocumentToJsonTemplate.attributeExcludeHandler  = nullptr;
-  DocumentToJsonTemplate.prettyPrint              = false;
-  DocumentToJsonTemplate.escapeForwardSlashes     = true;
-  DocumentToJsonTemplate.unsupportedTypeBehavior  = VPackOptions::FailOnUnsupportedType;
+  DocumentToJsonTemplate.attributeTranslator = _translator.get();
+  DocumentToJsonTemplate.customTypeHandler = nullptr;
+  DocumentToJsonTemplate.attributeExcludeHandler = nullptr;
+  DocumentToJsonTemplate.prettyPrint = false;
+  DocumentToJsonTemplate.escapeForwardSlashes = true;
+  DocumentToJsonTemplate.unsupportedTypeBehavior =
+      VPackOptions::FailOnUnsupportedType;
 
   // non-document options
-  NonDocumentTemplate.buildUnindexedArrays        = true;
-  NonDocumentTemplate.buildUnindexedObjects       = true;
-  NonDocumentTemplate.checkAttributeUniqueness    = false;
-  NonDocumentTemplate.sortAttributeNames          = false;
-  NonDocumentTemplate.attributeTranslator         = nullptr;
-  NonDocumentTemplate.customTypeHandler           = nullptr;
-  NonDocumentTemplate.attributeExcludeHandler     = nullptr;
-  NonDocumentTemplate.prettyPrint                 = false;
-  NonDocumentTemplate.escapeForwardSlashes        = true;
-  NonDocumentTemplate.unsupportedTypeBehavior     = VPackOptions::FailOnUnsupportedType;
+  NonDocumentTemplate.buildUnindexedArrays = true;
+  NonDocumentTemplate.buildUnindexedObjects = true;
+  NonDocumentTemplate.checkAttributeUniqueness = false;
+  NonDocumentTemplate.sortAttributeNames = false;
+  NonDocumentTemplate.attributeTranslator = nullptr;
+  NonDocumentTemplate.customTypeHandler = nullptr;
+  NonDocumentTemplate.attributeExcludeHandler = nullptr;
+  NonDocumentTemplate.prettyPrint = false;
+  NonDocumentTemplate.escapeForwardSlashes = true;
+  NonDocumentTemplate.unsupportedTypeBehavior =
+      VPackOptions::FailOnUnsupportedType;
 }
 
-StorageOptions::~StorageOptions () {
-}
-      
-VPackOptions StorageOptions::getDocumentToJsonTemplate () {
+StorageOptions::~StorageOptions() {}
+
+VPackOptions StorageOptions::getDocumentToJsonTemplate() {
   return DocumentToJsonTemplate;
 }
 
-VPackOptions StorageOptions::getJsonToDocumentTemplate () {
+VPackOptions StorageOptions::getJsonToDocumentTemplate() {
   return JsonToDocumentTemplate;
 }
 
-VPackOptions StorageOptions::getNonDocumentTemplate () {
+VPackOptions StorageOptions::getNonDocumentTemplate() {
   return NonDocumentTemplate;
 }
 
-VPackCustomTypeHandler* StorageOptions::createCustomHandler (triagens::arango::CollectionNameResolver const* resolver) {
+VPackCustomTypeHandler* StorageOptions::createCustomHandler(
+    triagens::arango::CollectionNameResolver const* resolver) {
   return new CustomTypeHandlerImpl(resolver);
 }
 
@@ -208,5 +212,6 @@ VPackCustomTypeHandler* StorageOptions::createCustomHandler (triagens::arango::C
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

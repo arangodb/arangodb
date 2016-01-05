@@ -36,46 +36,40 @@
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace aql {
-    struct Collection;
+namespace aql {
+struct Collection;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class Collections
 // -----------------------------------------------------------------------------
 
-    class Collections {
+class Collections {
+ public:
+  Collections& operator=(Collections const& other) = delete;
 
-      public:
+  explicit Collections(TRI_vocbase_t*);
 
-        Collections& operator= (Collections const& other) = delete;
-      
-        explicit Collections (TRI_vocbase_t*); 
-      
-        ~Collections ();
+  ~Collections();
 
-      public:
+ public:
+  Collection* get(std::string const&) const;
 
-        Collection* get (std::string const&) const;
+  Collection* add(std::string const&, TRI_transaction_type_e);
 
-        Collection* add (std::string const&,
-                         TRI_transaction_type_e);
+  std::vector<std::string> collectionNames() const;
 
-        std::vector<std::string> collectionNames () const;
+  std::map<std::string, Collection*>* collections();
 
-        std::map<std::string, Collection*>* collections ();
-        
-        std::map<std::string, Collection*> const* collections () const;
+  std::map<std::string, Collection*> const* collections() const;
 
-      private:
+ private:
+  TRI_vocbase_t* _vocbase;
 
-        TRI_vocbase_t*                      _vocbase;
+  std::map<std::string, Collection*> _collections;
 
-        std::map<std::string, Collection*>  _collections;
-
-        static size_t const                 MaxCollections = 32;
-    };
-
-  }
+  static size_t const MaxCollections = 32;
+};
+}
 }
 
 #endif
@@ -86,5 +80,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -58,11 +58,9 @@
 /// @brief read a tick value from a JSON struct
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ReadTick (TRI_json_t const* json,
-                     char const* attributeName,
-                     TRI_voc_tick_t* dst,
-                     bool allowNull) {
-  TRI_ASSERT(json != nullptr); 
+static int ReadTick(TRI_json_t const* json, char const* attributeName,
+                    TRI_voc_tick_t* dst, bool allowNull) {
+  TRI_ASSERT(json != nullptr);
   TRI_ASSERT(json->_type == TRI_JSON_OBJECT);
 
   TRI_json_t const* tick = TRI_LookupObjectJson(json, attributeName);
@@ -72,11 +70,12 @@ static int ReadTick (TRI_json_t const* json,
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (! TRI_IsStringJson(tick)) {
+  if (!TRI_IsStringJson(tick)) {
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }
 
-  *dst = (TRI_voc_tick_t) TRI_UInt64String2(tick->_value._string.data, tick->_value._string.length - 1);
+  *dst = (TRI_voc_tick_t)TRI_UInt64String2(tick->_value._string.data,
+                                           tick->_value._string.length - 1);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -85,7 +84,7 @@ static int ReadTick (TRI_json_t const* json,
 /// @brief get the filename of the replication applier configuration file
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
+static char* GetConfigurationFilename(TRI_vocbase_t* vocbase) {
   return TRI_Concatenate2File(vocbase->_path, "REPLICATION-APPLIER-CONFIG");
 }
 
@@ -94,28 +93,30 @@ static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
 /// this function must be called under the statusLock
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LoadConfiguration (TRI_vocbase_t* vocbase,
-                              TRI_replication_applier_configuration_t* config) {
+static int LoadConfiguration(TRI_vocbase_t* vocbase,
+                             TRI_replication_applier_configuration_t* config) {
   // Clear
   config->freeInternalStrings();
   TRI_InitConfigurationReplicationApplier(config);
 
   char* filename = GetConfigurationFilename(vocbase);
 
-  if (! TRI_ExistsFile(filename)) {
+  if (!TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
+  std::unique_ptr<TRI_json_t> json(
+      TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
 
-  if (! TRI_IsObjectJson(json.get())) {
-    LOG_ERROR("unable to read replication applier configuration from file '%s'", filename);
+  if (!TRI_IsObjectJson(json.get())) {
+    LOG_ERROR("unable to read replication applier configuration from file '%s'",
+              filename);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION;
   }
-  
+
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (config->_endpoint != nullptr) {
@@ -138,31 +139,29 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   // read the database name
   TRI_json_t const* value = TRI_LookupObjectJson(json.get(), "database");
 
-  if (! TRI_IsStringJson(value)) {
-    config->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE,
-                                             vocbase->_name);
-  }
-  else {
-    config->_database = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
-                                              value->_value._string.data,
-                                              value->_value._string.length - 1);
+  if (!TRI_IsStringJson(value)) {
+    config->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name);
+  } else {
+    config->_database =
+        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+                              value->_value._string.length - 1);
   }
 
   // read username / password
   value = TRI_LookupObjectJson(json.get(), "username");
 
   if (TRI_IsStringJson(value)) {
-    config->_username = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
-                                              value->_value._string.data,
-                                              value->_value._string.length - 1);
+    config->_username =
+        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+                              value->_value._string.length - 1);
   }
 
   value = TRI_LookupObjectJson(json.get(), "password");
 
   if (TRI_IsStringJson(value)) {
-    config->_password = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
-                                              value->_value._string.data,
-                                              value->_value._string.length - 1);
+    config->_password =
+        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+                              value->_value._string.length - 1);
   }
 
   value = TRI_LookupObjectJson(json.get(), "requestTimeout");
@@ -180,19 +179,19 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   value = TRI_LookupObjectJson(json.get(), "maxConnectRetries");
 
   if (TRI_IsNumberJson(value)) {
-    config->_maxConnectRetries = (uint64_t) value->_value._number;
+    config->_maxConnectRetries = (uint64_t)value->_value._number;
   }
 
   value = TRI_LookupObjectJson(json.get(), "sslProtocol");
 
   if (TRI_IsNumberJson(value)) {
-    config->_sslProtocol = (uint32_t) value->_value._number;
+    config->_sslProtocol = (uint32_t)value->_value._number;
   }
 
   value = TRI_LookupObjectJson(json.get(), "chunkSize");
 
   if (TRI_IsNumberJson(value)) {
-    config->_chunkSize = (uint64_t) value->_value._number;
+    config->_chunkSize = (uint64_t)value->_value._number;
   }
 
   value = TRI_LookupObjectJson(json.get(), "autoStart");
@@ -206,49 +205,48 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
   if (TRI_IsBooleanJson(value)) {
     config->_adaptivePolling = value->_value._boolean;
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "autoResync");
 
   if (TRI_IsBooleanJson(value)) {
     config->_autoResync = value->_value._boolean;
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "includeSystem");
 
   if (TRI_IsBooleanJson(value)) {
     config->_includeSystem = value->_value._boolean;
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "requireFromPresent");
 
   if (TRI_IsBooleanJson(value)) {
     config->_requireFromPresent = value->_value._boolean;
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "verbose");
 
   if (TRI_IsBooleanJson(value)) {
     config->_verbose = value->_value._boolean;
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "ignoreErrors");
 
   if (TRI_IsNumberJson(value)) {
-    config->_ignoreErrors = (uint64_t) value->_value._number;
-  }
-  else if (TRI_IsBooleanJson(value)) {
+    config->_ignoreErrors = (uint64_t)value->_value._number;
+  } else if (TRI_IsBooleanJson(value)) {
     if (value->_value._boolean) {
       config->_ignoreErrors = UINT64_MAX;
-    }
-    else {
+    } else {
       config->_ignoreErrors = 0;
     }
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "restrictType");
 
   if (TRI_IsStringJson(value)) {
-    config->_restrictType = std::string(value->_value._string.data, value->_value._string.length - 1);
+    config->_restrictType = std::string(value->_value._string.data,
+                                        value->_value._string.length - 1);
   }
 
   value = TRI_LookupObjectJson(json.get(), "restrictCollections");
@@ -260,52 +258,56 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t* collection = TRI_LookupArrayJson(value, i);
       if (TRI_IsStringJson(collection)) {
-        config->_restrictCollections.emplace(std::string(collection->_value._string.data), true);
+        config->_restrictCollections.emplace(
+            std::string(collection->_value._string.data), true);
       }
     }
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "connectionRetryWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_connectionRetryWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
+    config->_connectionRetryWaitTime =
+        (uint64_t)(value->_value._number * 1000.0 * 1000.0);
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "initialSyncMaxWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_initialSyncMaxWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
+    config->_initialSyncMaxWaitTime =
+        (uint64_t)(value->_value._number * 1000.0 * 1000.0);
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "idleMinWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_idleMinWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
+    config->_idleMinWaitTime =
+        (uint64_t)(value->_value._number * 1000.0 * 1000.0);
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "idleMaxWaitTime");
 
   if (TRI_IsNumberJson(value)) {
-    config->_idleMaxWaitTime = (uint64_t) (value->_value._number * 1000.0 * 1000.0);
+    config->_idleMaxWaitTime =
+        (uint64_t)(value->_value._number * 1000.0 * 1000.0);
   }
-  
+
   value = TRI_LookupObjectJson(json.get(), "autoResyncRetries");
 
   if (TRI_IsNumberJson(value)) {
-    config->_autoResyncRetries = (uint64_t) value->_value._number;
+    config->_autoResyncRetries = (uint64_t)value->_value._number;
   }
-  
+
   // read the endpoint
   value = TRI_LookupObjectJson(json.get(), "endpoint");
 
-  if (! TRI_IsStringJson(value)) {
+  if (!TRI_IsStringJson(value)) {
     // we haven't found an endpoint. now don't let the start fail but continue
     config->_autoStart = false;
-  }
-  else {
-    config->_endpoint = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
-                                              value->_value._string.data,
-                                              value->_value._string.length - 1);
+  } else {
+    config->_endpoint =
+        TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, value->_value._string.data,
+                              value->_value._string.length - 1);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -315,7 +317,7 @@ static int LoadConfiguration (TRI_vocbase_t* vocbase,
 /// @brief get the filename of the replication applier state file
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* GetStateFilename (TRI_vocbase_t* vocbase) {
+static char* GetStateFilename(TRI_vocbase_t* vocbase) {
   return TRI_Concatenate2File(vocbase->_path, "REPLICATION-APPLIER-STATE");
 }
 
@@ -323,37 +325,45 @@ static char* GetStateFilename (TRI_vocbase_t* vocbase) {
 /// @brief get a JSON representation of the replication applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::unique_ptr<TRI_json_t> JsonApplyState (TRI_replication_applier_state_t const* state) {
-  std::unique_ptr<TRI_json_t> json(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 4));
+static std::unique_ptr<TRI_json_t> JsonApplyState(
+    TRI_replication_applier_state_t const* state) {
+  std::unique_ptr<TRI_json_t> json(
+      TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 4));
 
   if (json == nullptr) {
     return nullptr;
   }
 
-  std::string const safeResumeTick              = triagens::basics::StringUtils::itoa(state->_safeResumeTick);
-  std::string const lastProcessedContinuousTick = triagens::basics::StringUtils::itoa(state->_lastProcessedContinuousTick);
-  std::string const lastAppliedContinuousTick   = triagens::basics::StringUtils::itoa(state->_lastAppliedContinuousTick);
-  std::string const serverId                    = triagens::basics::StringUtils::itoa(state->_serverId);
+  std::string const safeResumeTick =
+      triagens::basics::StringUtils::itoa(state->_safeResumeTick);
+  std::string const lastProcessedContinuousTick =
+      triagens::basics::StringUtils::itoa(state->_lastProcessedContinuousTick);
+  std::string const lastAppliedContinuousTick =
+      triagens::basics::StringUtils::itoa(state->_lastAppliedContinuousTick);
+  std::string const serverId =
+      triagens::basics::StringUtils::itoa(state->_serverId);
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
-                       json.get(),
-                       "serverId",
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverId.c_str(), serverId.size()));
+  TRI_Insert3ObjectJson(
+      TRI_UNKNOWN_MEM_ZONE, json.get(), "serverId",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverId.c_str(),
+                               serverId.size()));
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
-                       json.get(),
-                       "lastProcessedContinuousTick",
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, lastProcessedContinuousTick.c_str(), lastProcessedContinuousTick.size()));
+  TRI_Insert3ObjectJson(
+      TRI_UNKNOWN_MEM_ZONE, json.get(), "lastProcessedContinuousTick",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                               lastProcessedContinuousTick.c_str(),
+                               lastProcessedContinuousTick.size()));
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
-                       json.get(),
-                       "lastAppliedContinuousTick",
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, lastAppliedContinuousTick.c_str(), lastAppliedContinuousTick.size()));
-  
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
-                       json.get(),
-                       "safeResumeTick",
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, safeResumeTick.c_str(), safeResumeTick.size()));
+  TRI_Insert3ObjectJson(
+      TRI_UNKNOWN_MEM_ZONE, json.get(), "lastAppliedContinuousTick",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                               lastAppliedContinuousTick.c_str(),
+                               lastAppliedContinuousTick.size()));
+
+  TRI_Insert3ObjectJson(
+      TRI_UNKNOWN_MEM_ZONE, json.get(), "safeResumeTick",
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, safeResumeTick.c_str(),
+                               safeResumeTick.size()));
 
   return json;
 }
@@ -362,13 +372,12 @@ static std::unique_ptr<TRI_json_t> JsonApplyState (TRI_replication_applier_state
 /// @brief applier thread main function
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ApplyThread (void* data) {
+static void ApplyThread(void* data) {
   auto syncer = static_cast<triagens::arango::ContinuousSyncer*>(data);
 
   try {
     syncer->run();
-  }
-  catch (...) {
+  } catch (...) {
   }
   delete syncer;
 }
@@ -377,7 +386,7 @@ static void ApplyThread (void* data) {
 /// @brief get a JSON representation of an applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
+static TRI_json_t* JsonState(TRI_replication_applier_state_t const* state) {
   TRI_json_t* last;
   TRI_json_t* progress;
   TRI_json_t* error;
@@ -387,84 +396,118 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
 
   // add replication state
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
+  TRI_Insert3ObjectJson(
+      TRI_CORE_MEM_ZONE, json, "running",
+      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
 
   // lastAppliedContinuousTick
   if (state->_lastAppliedContinuousTick > 0) {
     lastString = TRI_StringUInt64(state->_lastAppliedContinuousTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
-  }
-  else {
+    last =
+        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
+  } else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastAppliedContinuousTick", last);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastAppliedContinuousTick",
+                        last);
 
   // lastProcessedContinuousTick
   if (state->_lastProcessedContinuousTick > 0) {
     lastString = TRI_StringUInt64(state->_lastProcessedContinuousTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
-  }
-  else {
+    last =
+        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
+  } else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastProcessedContinuousTick", last);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastProcessedContinuousTick",
+                        last);
 
   // lastAvailableContinuousTick
   if (state->_lastAvailableContinuousTick > 0) {
     lastString = TRI_StringUInt64(state->_lastAvailableContinuousTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
-  }
-  else {
+    last =
+        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
+  } else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastAvailableContinuousTick", last);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastAvailableContinuousTick",
+                        last);
 
   // safeResumeTick
   if (state->_safeResumeTick > 0) {
     lastString = TRI_StringUInt64(state->_safeResumeTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
-  }
-  else {
+    last =
+        TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
+  } else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
   }
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "safeResumeTick", last);
 
   // progress
   progress = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressTime, strlen(state->_progressTime)));
+  TRI_Insert3ObjectJson(
+      TRI_CORE_MEM_ZONE, progress, "time",
+      TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressTime,
+                               strlen(state->_progressTime)));
 
   if (state->_progressMsg != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "message", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressMsg, strlen(state->_progressMsg)));
+    TRI_Insert3ObjectJson(
+        TRI_CORE_MEM_ZONE, progress, "message",
+        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressMsg,
+                                 strlen(state->_progressMsg)));
   }
 
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "failedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_failedConnects));
+  TRI_Insert3ObjectJson(
+      TRI_CORE_MEM_ZONE, progress, "failedConnects",
+      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double)state->_failedConnects));
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "progress", progress);
 
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalRequests", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalRequests));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalFailedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalFailedConnects));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_totalEvents));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "totalOperationsExcluded", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_skippedOperations));
+  TRI_Insert3ObjectJson(
+      TRI_CORE_MEM_ZONE, json, "totalRequests",
+      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double)state->_totalRequests));
+  TRI_Insert3ObjectJson(
+      TRI_CORE_MEM_ZONE, json, "totalFailedConnects",
+      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE,
+                           (double)state->_totalFailedConnects));
+  TRI_Insert3ObjectJson(
+      TRI_CORE_MEM_ZONE, json, "totalEvents",
+      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double)state->_totalEvents));
+  TRI_Insert3ObjectJson(
+      TRI_CORE_MEM_ZONE, json, "totalOperationsExcluded",
+      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE,
+                           (double)state->_skippedOperations));
 
   // lastError
   error = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (error != nullptr) {
     if (state->_lastError._code > 0) {
-      TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time, strlen(state->_lastError._time)));
+      TRI_Insert3ObjectJson(
+          TRI_CORE_MEM_ZONE, error, "time",
+          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time,
+                                   strlen(state->_lastError._time)));
 
       if (state->_lastError._msg != nullptr) {
-        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg, strlen(state->_lastError._msg)));
+        TRI_Insert3ObjectJson(
+            TRI_CORE_MEM_ZONE, error, "errorMessage",
+            TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg,
+                                     strlen(state->_lastError._msg)));
       }
     }
 
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_lastError._code));
+    TRI_Insert3ObjectJson(
+        TRI_CORE_MEM_ZONE, error, "errorNum",
+        TRI_CreateNumberJson(TRI_CORE_MEM_ZONE,
+                             (double)state->_lastError._code));
 
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastError", error);
   }
 
   TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString, strlen(timeString)));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "time",
+                        TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString,
+                                                 strlen(timeString)));
 
   return json;
 }
@@ -477,9 +520,10 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
-                                                         TRI_vocbase_t* vocbase) {
-  TRI_replication_applier_t* applier = new TRI_replication_applier_t(server, vocbase);
+TRI_replication_applier_t* TRI_CreateReplicationApplier(
+    TRI_server_t* server, TRI_vocbase_t* vocbase) {
+  TRI_replication_applier_t* applier =
+      new TRI_replication_applier_t(server, vocbase);
 
   TRI_InitConfigurationReplicationApplier(&applier->_configuration);
   TRI_InitStateReplicationApplier(&applier->_state);
@@ -487,8 +531,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
   if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
     int res = LoadConfiguration(vocbase, &applier->_configuration);
 
-    if (res != TRI_ERROR_NO_ERROR &&
-        res != TRI_ERROR_FILE_NOT_FOUND) {
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
       delete applier;
       TRI_set_errno(res);
@@ -498,8 +541,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 
     res = TRI_LoadStateReplicationApplier(vocbase, &applier->_state);
 
-    if (res != TRI_ERROR_NO_ERROR &&
-        res != TRI_ERROR_FILE_NOT_FOUND) {
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_FILE_NOT_FOUND) {
       TRI_DestroyStateReplicationApplier(&applier->_state);
       delete applier;
       TRI_set_errno(res);
@@ -526,7 +568,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 /// @brief Frees all internal strings
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_replication_applier_configuration_t::freeInternalStrings () {
+void TRI_replication_applier_configuration_t::freeInternalStrings() {
   if (_endpoint != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, _endpoint);
     _endpoint = nullptr;
@@ -553,8 +595,8 @@ void TRI_replication_applier_configuration_t::freeInternalStrings () {
 ///        Expects builder to be in an open Object state
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword,
-                                                            VPackBuilder& builder) const {
+void TRI_replication_applier_configuration_t::toVelocyPack(
+    bool includePassword, VPackBuilder& builder) const {
   if (_endpoint != nullptr) {
     builder.add("endpoint", VPackValue(_endpoint));
   }
@@ -587,19 +629,29 @@ void TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword
   for (auto& it : _restrictCollections) {
     builder.add(VPackValue(it.first));
   }
-  builder.close(); // restrictCollections
+  builder.close();  // restrictCollections
 
-  builder.add("connectionRetryWaitTime", VPackValue(static_cast<double>(_connectionRetryWaitTime) / (1000.0 * 1000.0)));
-  builder.add("initialSyncMaxWaitTime", VPackValue(static_cast<double>(_initialSyncMaxWaitTime) / (1000.0 * 1000.0)));
-  builder.add("idleMinWaitTime", VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
-  builder.add("idleMaxWaitTime", VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
+  builder.add("connectionRetryWaitTime",
+              VPackValue(static_cast<double>(_connectionRetryWaitTime) /
+                         (1000.0 * 1000.0)));
+  builder.add("initialSyncMaxWaitTime",
+              VPackValue(static_cast<double>(_initialSyncMaxWaitTime) /
+                         (1000.0 * 1000.0)));
+  builder.add(
+      "idleMinWaitTime",
+      VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
+  builder.add(
+      "idleMaxWaitTime",
+      VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a VelocyPack representation
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> TRI_replication_applier_configuration_t::toVelocyPack (bool includePassword) const {
+std::shared_ptr<VPackBuilder>
+TRI_replication_applier_configuration_t::toVelocyPack(
+    bool includePassword) const {
   auto builder = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(builder.get());
@@ -613,12 +665,12 @@ std::shared_ptr<VPackBuilder> TRI_replication_applier_configuration_t::toVelocyP
 /// @brief get a JSON representation of the replication applier configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_configuration_t const* config) {
+TRI_json_t* TRI_JsonConfigurationReplicationApplier(
+    TRI_replication_applier_configuration_t const* config) {
   try {
     std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
     return triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -627,9 +679,9 @@ TRI_json_t* TRI_JsonConfigurationReplicationApplier (TRI_replication_applier_con
 /// @brief configure the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
-                                     TRI_replication_applier_configuration_t const* config) {
-
+int TRI_ConfigureReplicationApplier(
+    TRI_replication_applier_t* applier,
+    TRI_replication_applier_configuration_t const* config) {
   if (applier->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -651,7 +703,8 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
     return TRI_ERROR_REPLICATION_RUNNING;
   }
 
-  int res = TRI_SaveConfigurationReplicationApplier(applier->_vocbase, config, true);
+  int res =
+      TRI_SaveConfigurationReplicationApplier(applier->_vocbase, config, true);
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = LoadConfiguration(applier->_vocbase, &applier->_configuration);
@@ -664,40 +717,45 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
 /// @brief get the current replication applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StateReplicationApplier (TRI_replication_applier_t const* applier,
-                                 TRI_replication_applier_state_t* state) {
+int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
+                                TRI_replication_applier_state_t* state) {
   TRI_InitStateReplicationApplier(state);
 
   READ_LOCKER(applier->_statusLock);
 
-  state->_active                      = applier->_state._active;
-  state->_lastAppliedContinuousTick   = applier->_state._lastAppliedContinuousTick;
-  state->_lastProcessedContinuousTick = applier->_state._lastProcessedContinuousTick;
-  state->_lastAvailableContinuousTick = applier->_state._lastAvailableContinuousTick;
-  state->_safeResumeTick              = applier->_state._safeResumeTick;
-  state->_serverId                    = applier->_state._serverId;
-  state->_lastError._code             = applier->_state._lastError._code;
-  state->_failedConnects              = applier->_state._failedConnects;
-  state->_totalRequests               = applier->_state._totalRequests;
-  state->_totalFailedConnects         = applier->_state._totalFailedConnects;
-  state->_totalEvents                 = applier->_state._totalEvents;
-  state->_skippedOperations           = applier->_state._skippedOperations;
-  memcpy(&state->_lastError._time, &applier->_state._lastError._time, sizeof(state->_lastError._time));
+  state->_active = applier->_state._active;
+  state->_lastAppliedContinuousTick =
+      applier->_state._lastAppliedContinuousTick;
+  state->_lastProcessedContinuousTick =
+      applier->_state._lastProcessedContinuousTick;
+  state->_lastAvailableContinuousTick =
+      applier->_state._lastAvailableContinuousTick;
+  state->_safeResumeTick = applier->_state._safeResumeTick;
+  state->_serverId = applier->_state._serverId;
+  state->_lastError._code = applier->_state._lastError._code;
+  state->_failedConnects = applier->_state._failedConnects;
+  state->_totalRequests = applier->_state._totalRequests;
+  state->_totalFailedConnects = applier->_state._totalFailedConnects;
+  state->_totalEvents = applier->_state._totalEvents;
+  state->_skippedOperations = applier->_state._skippedOperations;
+  memcpy(&state->_lastError._time, &applier->_state._lastError._time,
+         sizeof(state->_lastError._time));
 
   if (applier->_state._progressMsg != nullptr) {
-    state->_progressMsg = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, applier->_state._progressMsg);
-  }
-  else {
+    state->_progressMsg =
+        TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, applier->_state._progressMsg);
+  } else {
     state->_progressMsg = nullptr;
   }
 
-  memcpy(&state->_progressTime, &applier->_state._progressTime, sizeof(state->_progressTime));
+  memcpy(&state->_progressTime, &applier->_state._progressTime,
+         sizeof(state->_progressTime));
 
   if (applier->_state._lastError._msg != nullptr) {
-    state->_lastError._msg          = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, applier->_state._lastError._msg);
-  }
-  else {
-    state->_lastError._msg          = nullptr;
+    state->_lastError._msg = TRI_DuplicateStringZ(
+        TRI_CORE_MEM_ZONE, applier->_state._lastError._msg);
+  } else {
+    state->_lastError._msg = nullptr;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -707,12 +765,12 @@ int TRI_StateReplicationApplier (TRI_replication_applier_t const* applier,
 /// @brief get a JSON representation of an applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
+TRI_json_t* TRI_JsonReplicationApplier(TRI_replication_applier_t* applier) {
   try {
     std::shared_ptr<VPackBuilder> builder = applier->toVelocyPack();
-    return triagens::basics::VelocyPackHelper::velocyPackToJson(builder->slice());
-  }
-  catch (...) {
+    return triagens::basics::VelocyPackHelper::velocyPackToJson(
+        builder->slice());
+  } catch (...) {
     return nullptr;
   }
 }
@@ -721,13 +779,13 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
 /// @brief initialize an applier state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitStateReplicationApplier (TRI_replication_applier_state_t* state) {
+void TRI_InitStateReplicationApplier(TRI_replication_applier_state_t* state) {
   memset(state, 0, sizeof(TRI_replication_applier_state_t));
 
-  state->_active             = false;
+  state->_active = false;
 
-  state->_lastError._code    = TRI_ERROR_NO_ERROR;
-  state->_lastError._msg     = nullptr;
+  state->_lastError._code = TRI_ERROR_NO_ERROR;
+  state->_lastError._msg = nullptr;
   state->_lastError._time[0] = '\0';
 }
 
@@ -735,7 +793,8 @@ void TRI_InitStateReplicationApplier (TRI_replication_applier_state_t* state) {
 /// @brief destroy an applier state struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyStateReplicationApplier (TRI_replication_applier_state_t* state) {
+void TRI_DestroyStateReplicationApplier(
+    TRI_replication_applier_state_t* state) {
   TRI_ASSERT(state != nullptr);
 
   if (state->_progressMsg != nullptr) {
@@ -751,7 +810,7 @@ void TRI_DestroyStateReplicationApplier (TRI_replication_applier_state_t* state)
 /// @brief remove the replication application state file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
+int TRI_RemoveStateReplicationApplier(TRI_vocbase_t* vocbase) {
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -766,8 +825,7 @@ int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
   if (TRI_ExistsFile(filename)) {
     LOG_TRACE("removing replication state file '%s'", filename);
     res = TRI_UnlinkFile(filename);
-  }
-  else {
+  } else {
     res = TRI_ERROR_NO_ERROR;
   }
 
@@ -780,9 +838,9 @@ int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
 /// @brief save the replication application state to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
-                                     TRI_replication_applier_state_t const* state,
-                                     bool doSync) {
+int TRI_SaveStateReplicationApplier(
+    TRI_vocbase_t* vocbase, TRI_replication_applier_state_t const* state,
+    bool doSync) {
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -796,13 +854,13 @@ int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
   char* filename = GetStateFilename(vocbase);
   LOG_TRACE("saving replication applier state to file '%s'", filename);
 
-  if (! TRI_SaveJson(filename, json.get(), doSync)) {
+  if (!TRI_SaveJson(filename, json.get(), doSync)) {
     int res = TRI_errno();
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return res;
   }
-    
+
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   return TRI_ERROR_NO_ERROR;
@@ -812,8 +870,8 @@ int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
 /// @brief load the replication application state from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
-                                     TRI_replication_applier_state_t* state) {
+int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
+                                    TRI_replication_applier_state_t* state) {
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -827,7 +885,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 
   LOG_TRACE("looking for replication state file '%s'", filename);
 
-  if (! TRI_ExistsFile(filename)) {
+  if (!TRI_ExistsFile(filename)) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_ERROR_FILE_NOT_FOUND;
@@ -835,11 +893,12 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 
   LOG_TRACE("replication state file '%s' found", filename);
 
-  std::unique_ptr<TRI_json_t> json(TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
+  std::unique_ptr<TRI_json_t> json(
+      TRI_JsonFile(TRI_UNKNOWN_MEM_ZONE, filename, nullptr));
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (! TRI_IsObjectJson(json.get())) {
+  if (!TRI_IsObjectJson(json.get())) {
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }
 
@@ -848,17 +907,17 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   // read the server id
   TRI_json_t const* serverId = TRI_LookupObjectJson(json.get(), "serverId");
 
-  if (! TRI_IsStringJson(serverId)) {
+  if (!TRI_IsStringJson(serverId)) {
     res = TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
-  }
-  else {
+  } else {
     state->_serverId = TRI_UInt64String2(serverId->_value._string.data,
                                          serverId->_value._string.length - 1);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
     // read the ticks
-    res |= ReadTick(json.get(), "lastAppliedContinuousTick", &state->_lastAppliedContinuousTick, false);
+    res |= ReadTick(json.get(), "lastAppliedContinuousTick",
+                    &state->_lastAppliedContinuousTick, false);
 
     // set processed = applied
     state->_lastProcessedContinuousTick = state->_lastAppliedContinuousTick;
@@ -879,93 +938,91 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 /// @brief initialize an applier configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
-  config->_endpoint                = nullptr;
-  config->_database                = nullptr;
-  config->_username                = nullptr;
-  config->_password                = nullptr;
+void TRI_InitConfigurationReplicationApplier(
+    TRI_replication_applier_configuration_t* config) {
+  config->_endpoint = nullptr;
+  config->_database = nullptr;
+  config->_username = nullptr;
+  config->_password = nullptr;
 
-  config->_requestTimeout          = 600.0;
-  config->_connectTimeout          = 10.0;
-  config->_ignoreErrors            = 0;
-  config->_maxConnectRetries       = 100;
-  config->_chunkSize               = 0;
-  config->_sslProtocol             = 0;
-  config->_autoStart               = false;
-  config->_adaptivePolling         = true;
-  config->_autoResync              = false;
-  config->_includeSystem           = true;
-  config->_requireFromPresent      = false;
-  config->_verbose                 = false;
-  config->_restrictType            = "";
+  config->_requestTimeout = 600.0;
+  config->_connectTimeout = 10.0;
+  config->_ignoreErrors = 0;
+  config->_maxConnectRetries = 100;
+  config->_chunkSize = 0;
+  config->_sslProtocol = 0;
+  config->_autoStart = false;
+  config->_adaptivePolling = true;
+  config->_autoResync = false;
+  config->_includeSystem = true;
+  config->_requireFromPresent = false;
+  config->_verbose = false;
+  config->_restrictType = "";
   config->_restrictCollections.clear();
   config->_connectionRetryWaitTime = 15 * 1000 * 1000;
-  config->_initialSyncMaxWaitTime  = 300 * 1000 * 1000;
-  config->_idleMinWaitTime         = 500 * 1000;
-  config->_idleMaxWaitTime         = 5 * 500 * 1000;
-  config->_autoResyncRetries       = 2;
+  config->_initialSyncMaxWaitTime = 300 * 1000 * 1000;
+  config->_idleMinWaitTime = 500 * 1000;
+  config->_idleMaxWaitTime = 5 * 500 * 1000;
+  config->_autoResyncRetries = 2;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy an applier configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configuration_t const* src,
-                                              TRI_replication_applier_configuration_t* dst) {
+void TRI_CopyConfigurationReplicationApplier(
+    TRI_replication_applier_configuration_t const* src,
+    TRI_replication_applier_configuration_t* dst) {
   if (src->_endpoint != nullptr) {
     dst->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_endpoint);
-  }
-  else {
+  } else {
     dst->_endpoint = nullptr;
   }
 
   if (src->_database != nullptr) {
     dst->_database = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_database);
-  }
-  else {
+  } else {
     dst->_database = nullptr;
   }
 
   if (src->_username != nullptr) {
     dst->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_username);
-  }
-  else {
+  } else {
     dst->_username = nullptr;
   }
 
   if (src->_password != nullptr) {
     dst->_password = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, src->_password);
-  }
-  else {
+  } else {
     dst->_password = nullptr;
   }
 
-  dst->_requestTimeout          = src->_requestTimeout;
-  dst->_connectTimeout          = src->_connectTimeout;
-  dst->_ignoreErrors            = src->_ignoreErrors;
-  dst->_maxConnectRetries       = src->_maxConnectRetries;
-  dst->_sslProtocol             = src->_sslProtocol;
-  dst->_chunkSize               = src->_chunkSize;
-  dst->_autoStart               = src->_autoStart;
-  dst->_adaptivePolling         = src->_adaptivePolling;
-  dst->_autoResync              = src->_autoResync;
-  dst->_includeSystem           = src->_includeSystem;
-  dst->_requireFromPresent      = src->_requireFromPresent;
-  dst->_verbose                 = src->_verbose;
-  dst->_restrictType            = src->_restrictType;
-  dst->_restrictCollections     = src->_restrictCollections;
+  dst->_requestTimeout = src->_requestTimeout;
+  dst->_connectTimeout = src->_connectTimeout;
+  dst->_ignoreErrors = src->_ignoreErrors;
+  dst->_maxConnectRetries = src->_maxConnectRetries;
+  dst->_sslProtocol = src->_sslProtocol;
+  dst->_chunkSize = src->_chunkSize;
+  dst->_autoStart = src->_autoStart;
+  dst->_adaptivePolling = src->_adaptivePolling;
+  dst->_autoResync = src->_autoResync;
+  dst->_includeSystem = src->_includeSystem;
+  dst->_requireFromPresent = src->_requireFromPresent;
+  dst->_verbose = src->_verbose;
+  dst->_restrictType = src->_restrictType;
+  dst->_restrictCollections = src->_restrictCollections;
   dst->_connectionRetryWaitTime = src->_connectionRetryWaitTime;
-  dst->_initialSyncMaxWaitTime  = src->_initialSyncMaxWaitTime;
-  dst->_idleMinWaitTime         = src->_idleMinWaitTime;
-  dst->_idleMaxWaitTime         = src->_idleMaxWaitTime;
-  dst->_autoResyncRetries       = src->_autoResyncRetries;
+  dst->_initialSyncMaxWaitTime = src->_initialSyncMaxWaitTime;
+  dst->_idleMinWaitTime = src->_idleMinWaitTime;
+  dst->_idleMaxWaitTime = src->_idleMaxWaitTime;
+  dst->_autoResyncRetries = src->_autoResyncRetries;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove the replication application configuration file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t* vocbase) {
+int TRI_RemoveConfigurationReplicationApplier(TRI_vocbase_t* vocbase) {
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -979,8 +1036,7 @@ int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t* vocbase) {
   int res;
   if (TRI_ExistsFile(filename)) {
     res = TRI_UnlinkFile(filename);
-  }
-  else {
+  } else {
     res = TRI_ERROR_NO_ERROR;
   }
 
@@ -993,9 +1049,9 @@ int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t* vocbase) {
 /// @brief save the replication application configuration to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
-                                             TRI_replication_applier_configuration_t const* config,
-                                             bool doSync) {
+int TRI_SaveConfigurationReplicationApplier(
+    TRI_vocbase_t* vocbase,
+    TRI_replication_applier_configuration_t const* config, bool doSync) {
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -1004,8 +1060,7 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
   try {
     std::shared_ptr<VPackBuilder> tmp = config->toVelocyPack(false);
     json = triagens::basics::VelocyPackHelper::velocyPackToJson(tmp->slice());
-  }
-  catch (...) {
+  } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1016,10 +1071,9 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
   char* filename = GetConfigurationFilename(vocbase);
 
   int res;
-  if (! TRI_SaveJson(filename, json, doSync)) {
+  if (!TRI_SaveJson(filename, json, doSync)) {
     res = TRI_errno();
-  }
-  else {
+  } else {
     res = TRI_ERROR_NO_ERROR;
   }
 
@@ -1036,20 +1090,19 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
-  
-TRI_replication_applier_t::TRI_replication_applier_t (TRI_server_t* server,
-                                                      TRI_vocbase_t* vocbase) 
-  : _databaseName(vocbase->_name),
-    _server(server),
-    _vocbase(vocbase),
-    _terminateThread(false) {
-}
+
+TRI_replication_applier_t::TRI_replication_applier_t(TRI_server_t* server,
+                                                     TRI_vocbase_t* vocbase)
+    : _databaseName(vocbase->_name),
+      _server(server),
+      _vocbase(vocbase),
+      _terminateThread(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_applier_t::~TRI_replication_applier_t () {
+TRI_replication_applier_t::~TRI_replication_applier_t() {
   stop(true);
   TRI_DestroyStateReplicationApplier(&_state);
 }
@@ -1058,18 +1111,18 @@ TRI_replication_applier_t::~TRI_replication_applier_t () {
 /// @brief start the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
-                                      bool useTick) {
-  LOG_TRACE("requesting replication applier start. initialTick: %llu, useTick: %d",
-            (unsigned long long) initialTick,
-            (int) useTick);
+int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick) {
+  LOG_TRACE(
+      "requesting replication applier start. initialTick: %llu, useTick: %d",
+      (unsigned long long)initialTick, (int)useTick);
 
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
   // wait until previous applier thread is shut down
-  while (! wait(10 * 1000));
+  while (!wait(10 * 1000))
+    ;
 
   WRITE_LOCKER(_statusLock);
 
@@ -1082,20 +1135,17 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
   }
 
   if (_configuration._endpoint == nullptr) {
-    return doSetError(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    return doSetError(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+                      "no endpoint configured");
   }
 
   if (_configuration._database == nullptr) {
-    return doSetError(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
+    return doSetError(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,
+                      "no database configured");
   }
-  
+
   auto syncer = std::make_unique<triagens::arango::ContinuousSyncer>(
-    _server,
-    _vocbase,
-    &_configuration,
-    initialTick,
-    useTick
-  );
+      _server, _vocbase, &_configuration, initialTick, useTick);
 
   // reset error
   if (_state._lastError._msg != nullptr) {
@@ -1105,28 +1155,30 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
 
   _state._lastError._code = TRI_ERROR_NO_ERROR;
 
-  TRI_GetTimeStampReplication(_state._lastError._time, sizeof(_state._lastError._time) - 1);
+  TRI_GetTimeStampReplication(_state._lastError._time,
+                              sizeof(_state._lastError._time) - 1);
 
   setTermination(false);
   _state._active = true;
 
   TRI_InitThread(&_thread);
 
-  if (! TRI_StartThread(&_thread, nullptr, "[applier]", ApplyThread, static_cast<void*>(syncer.get()))) {
+  if (!TRI_StartThread(&_thread, nullptr, "[applier]", ApplyThread,
+                       static_cast<void*>(syncer.get()))) {
     return TRI_ERROR_INTERNAL;
   }
 
   syncer.release();
 
   if (useTick) {
-    LOG_INFO("started replication applier for database '%s', endpoint '%s' from tick %llu", 
-             _databaseName.c_str(),
-             _configuration._endpoint,
-             (unsigned long long) initialTick);
-  }
-  else {
+    LOG_INFO(
+        "started replication applier for database '%s', endpoint '%s' from "
+        "tick %llu",
+        _databaseName.c_str(), _configuration._endpoint,
+        (unsigned long long)initialTick);
+  } else {
     LOG_INFO("re-started replication applier for database '%s', endpoint '%s'",
-              _databaseName.c_str(), _configuration._endpoint);
+             _databaseName.c_str(), _configuration._endpoint);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1136,9 +1188,9 @@ int TRI_replication_applier_t::start (TRI_voc_tick_t initialTick,
 /// @brief test if the replication applier is running
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_replication_applier_t::isRunning () const {
+bool TRI_replication_applier_t::isRunning() const {
   READ_LOCKER(_statusLock);
-    
+
   return _state._active;
 }
 
@@ -1146,9 +1198,9 @@ bool TRI_replication_applier_t::isRunning () const {
 /// @brief block the replication applier from starting
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::preventStart () {
+int TRI_replication_applier_t::preventStart() {
   WRITE_LOCKER(_statusLock);
-   
+
   if (_state._active) {
     // already running
     return TRI_ERROR_REPLICATION_RUNNING;
@@ -1158,9 +1210,9 @@ int TRI_replication_applier_t::preventStart () {
     // someone else requested start prevention
     return TRI_ERROR_LOCKED;
   }
- 
-  _state._stopInitialSynchronization = false; 
-  _state._preventStart = true; 
+
+  _state._stopInitialSynchronization = false;
+  _state._preventStart = true;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1169,14 +1221,14 @@ int TRI_replication_applier_t::preventStart () {
 /// @brief unblock the replication applier from starting
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::allowStart () {
+int TRI_replication_applier_t::allowStart() {
   WRITE_LOCKER(_statusLock);
-   
-  if (! _state._preventStart) {
+
+  if (!_state._preventStart) {
     return TRI_ERROR_INTERNAL;
   }
 
-  _state._stopInitialSynchronization = false; 
+  _state._stopInitialSynchronization = false;
   _state._preventStart = false;
 
   return TRI_ERROR_NO_ERROR;
@@ -1186,9 +1238,9 @@ int TRI_replication_applier_t::allowStart () {
 /// @brief check whether the initial synchronization should be stopped
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_replication_applier_t::stopInitialSynchronization () {
+bool TRI_replication_applier_t::stopInitialSynchronization() {
   READ_LOCKER(_statusLock);
-  
+
   return _state._stopInitialSynchronization;
 }
 
@@ -1196,7 +1248,7 @@ bool TRI_replication_applier_t::stopInitialSynchronization () {
 /// @brief stop the initial synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_replication_applier_t::stopInitialSynchronization (bool value) {
+void TRI_replication_applier_t::stopInitialSynchronization(bool value) {
   WRITE_LOCKER(_statusLock);
   _state._stopInitialSynchronization = value;
 }
@@ -1205,7 +1257,7 @@ void TRI_replication_applier_t::stopInitialSynchronization (bool value) {
 /// @brief stop the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::stop (bool resetError) {
+int TRI_replication_applier_t::stop(bool resetError) {
   LOG_TRACE("requesting replication applier stop");
 
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
@@ -1215,10 +1267,10 @@ int TRI_replication_applier_t::stop (bool resetError) {
   {
     WRITE_LOCKER(_statusLock);
 
-    // always stop initial synchronization 
-   _state._stopInitialSynchronization = true;
+    // always stop initial synchronization
+    _state._stopInitialSynchronization = true;
 
-    if (! _state._active) {
+    if (!_state._active) {
       return TRI_ERROR_NO_ERROR;
     }
     _state._active = false;
@@ -1235,15 +1287,18 @@ int TRI_replication_applier_t::stop (bool resetError) {
       _state._lastError._code = TRI_ERROR_NO_ERROR;
     }
 
-    TRI_GetTimeStampReplication(_state._lastError._time, sizeof(_state._lastError._time) - 1);
+    TRI_GetTimeStampReplication(_state._lastError._time,
+                                sizeof(_state._lastError._time) - 1);
   }
 
-  // join the thread without the status lock (otherwise it would probably not join)
+  // join the thread without the status lock (otherwise it would probably not
+  // join)
   int res = TRI_JoinThread(&_thread);
 
   setTermination(false);
 
-  LOG_INFO("stopped replication applier for database '%s'", _databaseName.c_str());
+  LOG_INFO("stopped replication applier for database '%s'",
+           _databaseName.c_str());
 
   return res;
 }
@@ -1252,7 +1307,7 @@ int TRI_replication_applier_t::stop (bool resetError) {
 /// @brief stop the applier and "forget" everything
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::forget () {
+int TRI_replication_applier_t::forget() {
   int res = stop(true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1273,7 +1328,7 @@ int TRI_replication_applier_t::forget () {
 /// @brief shut down the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::shutdown () {
+int TRI_replication_applier_t::shutdown() {
   LOG_TRACE("requesting replication applier shutdown");
 
   if (_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
@@ -1283,7 +1338,7 @@ int TRI_replication_applier_t::shutdown () {
   {
     WRITE_LOCKER(_statusLock);
 
-    if (! _state._active) {
+    if (!_state._active) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1299,16 +1354,18 @@ int TRI_replication_applier_t::shutdown () {
 
     _state._lastError._code = TRI_ERROR_NO_ERROR;
 
-    TRI_GetTimeStampReplication(_state._lastError._time, sizeof(_state._lastError._time) - 1);
+    TRI_GetTimeStampReplication(_state._lastError._time,
+                                sizeof(_state._lastError._time) - 1);
   }
 
-
-  // join the thread without the status lock (otherwise it would probably not join)
+  // join the thread without the status lock (otherwise it would probably not
+  // join)
   int res = TRI_JoinThread(&_thread);
 
   setTermination(false);
- 
-  LOG_INFO("stopped replication applier for database '%s'", _databaseName.c_str());
+
+  LOG_INFO("stopped replication applier for database '%s'",
+           _databaseName.c_str());
 
   return res;
 }
@@ -1317,23 +1374,24 @@ int TRI_replication_applier_t::shutdown () {
 /// @brief pauses and checks whether the apply thread should terminate
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_replication_applier_t::wait (uint64_t sleepTime) {
+bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
   if (isTerminated()) {
     return false;
   }
 
   if (sleepTime > 0) {
-    LOG_TRACE("replication applier going to sleep for %llu ns", (unsigned long long) sleepTime);
+    LOG_TRACE("replication applier going to sleep for %llu ns",
+              (unsigned long long)sleepTime);
 
     static uint64_t const SleepChunk = 500 * 1000;
 
     while (sleepTime >= SleepChunk) {
 #ifdef _WIN32
-      usleep((unsigned long) SleepChunk);
+      usleep((unsigned long)SleepChunk);
 #else
-      usleep((useconds_t) SleepChunk);
+      usleep((useconds_t)SleepChunk);
 #endif
-      
+
       sleepTime -= SleepChunk;
 
       if (isTerminated()) {
@@ -1343,9 +1401,9 @@ bool TRI_replication_applier_t::wait (uint64_t sleepTime) {
 
     if (sleepTime > 0) {
 #ifdef _WIN32
-      usleep((unsigned long) sleepTime);
+      usleep((unsigned long)sleepTime);
 #else
-      usleep((useconds_t) sleepTime);
+      usleep((useconds_t)sleepTime);
 #endif
 
       if (isTerminated()) {
@@ -1361,8 +1419,7 @@ bool TRI_replication_applier_t::wait (uint64_t sleepTime) {
 /// @brief set the progress with or without a lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_replication_applier_t::setProgress (char const* msg,
-                                             bool lock) {
+void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
   char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, msg);
 
   if (copy == nullptr) {
@@ -1371,17 +1428,7 @@ void TRI_replication_applier_t::setProgress (char const* msg,
 
   if (lock) {
     WRITE_LOCKER(_statusLock);
-  
-    if (_state._progressMsg != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, _state._progressMsg);
-    }
- 
-    _state._progressMsg = copy;
 
-    // write time in buffer
-    TRI_GetTimeStampReplication(_state._progressTime, sizeof(_state._progressTime) - 1);
-  }
-  else {
     if (_state._progressMsg != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, _state._progressMsg);
     }
@@ -1389,7 +1436,18 @@ void TRI_replication_applier_t::setProgress (char const* msg,
     _state._progressMsg = copy;
 
     // write time in buffer
-    TRI_GetTimeStampReplication(_state._progressTime, sizeof(_state._progressTime) - 1);
+    TRI_GetTimeStampReplication(_state._progressTime,
+                                sizeof(_state._progressTime) - 1);
+  } else {
+    if (_state._progressMsg != nullptr) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, _state._progressMsg);
+    }
+
+    _state._progressMsg = copy;
+
+    // write time in buffer
+    TRI_GetTimeStampReplication(_state._progressTime,
+                                sizeof(_state._progressTime) - 1);
   }
 }
 
@@ -1397,8 +1455,7 @@ void TRI_replication_applier_t::setProgress (char const* msg,
 /// @brief register an applier error
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::setError (int errorCode,
-                                        char const* msg) {
+int TRI_replication_applier_t::setError(int errorCode, char const* msg) {
   WRITE_LOCKER(_statusLock);
   return doSetError(errorCode, msg);
 }
@@ -1408,8 +1465,8 @@ int TRI_replication_applier_t::setError (int errorCode,
 ///        Expects builder to be in an open Object state
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
-  TRI_ASSERT(! builder.isClosed());
+void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(!builder.isClosed());
   TRI_replication_applier_state_t state;
   TRI_replication_applier_configuration_t config;
 
@@ -1425,29 +1482,27 @@ void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
       READ_LOCKER(_statusLock);
       TRI_CopyConfigurationReplicationApplier(&_configuration, &config);
     }
-  }
-  catch (...) {
+  } catch (...) {
     TRI_DestroyStateReplicationApplier(&state);
     throw;
   }
 
   triagens::basics::ScopeGuard guard{
-    []() -> void { },
-    [&state, &config]() -> void {
-      TRI_DestroyStateReplicationApplier(&state);
-    }
-  };
+      []() -> void {},
+      [&state, &config]()
+          -> void { TRI_DestroyStateReplicationApplier(&state); }};
 
   std::unique_ptr<TRI_json_t> stateJson(JsonState(&state));
-  std::shared_ptr<arangodb::velocypack::Builder> b = triagens::basics::JsonHelper::toVelocyPack(stateJson.get());
+  std::shared_ptr<arangodb::velocypack::Builder> b =
+      triagens::basics::JsonHelper::toVelocyPack(stateJson.get());
   builder.add("state", b->slice());
 
   // add server info
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("version", VPackValue(TRI_VERSION));
   builder.add("serverId", VPackValue(TRI_StringUInt64(TRI_GetIdServer())));
-  builder.close(); // server
-  
+  builder.close();  // server
+
   if (config._endpoint != nullptr) {
     builder.add("endpoint", VPackValue(config._endpoint));
   }
@@ -1460,7 +1515,7 @@ void TRI_replication_applier_t::toVelocyPack (VPackBuilder& builder) const {
 /// @brief get a VelocyPack representation
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> TRI_replication_applier_t::toVelocyPack () const {
+std::shared_ptr<VPackBuilder> TRI_replication_applier_t::toVelocyPack() const {
   auto builder = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(builder.get());
@@ -1477,25 +1532,25 @@ std::shared_ptr<VPackBuilder> TRI_replication_applier_t::toVelocyPack () const {
 /// @brief register an applier error
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_replication_applier_t::doSetError (int errorCode,
-                                           char const* msg) {
+int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
   char const* realMsg;
 
   if (msg == nullptr || strlen(msg) == 0) {
     realMsg = TRI_errno_string(errorCode);
-  }
-  else {
+  } else {
     realMsg = msg;
   }
 
   // log error message
   if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-    LOG_ERROR("replication applier error for database '%s': %s", _databaseName.c_str(), realMsg);
+    LOG_ERROR("replication applier error for database '%s': %s",
+              _databaseName.c_str(), realMsg);
   }
 
   _state._lastError._code = errorCode;
 
-  TRI_GetTimeStampReplication(_state._lastError._time, sizeof(_state._lastError._time) - 1);
+  TRI_GetTimeStampReplication(_state._lastError._time,
+                              sizeof(_state._lastError._time) - 1);
 
   if (_state._lastError._msg != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
@@ -1506,12 +1561,12 @@ int TRI_replication_applier_t::doSetError (int errorCode,
   return errorCode;
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

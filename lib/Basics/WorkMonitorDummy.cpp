@@ -44,15 +44,13 @@ using namespace arangodb;
 /// @brief thread deleter
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::DELETE_HANDLER (WorkDescription*) {
-  TRI_ASSERT(false);
-}
+void WorkMonitor::DELETE_HANDLER(WorkDescription*) { TRI_ASSERT(false); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread description string
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::VPACK_HANDLER (VPackBuilder*, WorkDescription*) {
+void WorkMonitor::VPACK_HANDLER(VPackBuilder*, WorkDescription*) {
   TRI_ASSERT(false);
 }
 

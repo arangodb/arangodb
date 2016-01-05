@@ -45,24 +45,19 @@ using namespace triagens::arango;
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-Cursor::Cursor (CursorId id,
-                size_t batchSize,
-                TRI_json_t* extra,
-                double ttl, 
-                bool hasCount) 
-  : _id(id),
-    _batchSize(batchSize),
-    _position(0),
-    _extra(extra),
-    _ttl(ttl),
-    _expires(TRI_microtime() + _ttl),
-    _hasCount(hasCount),
-    _isDeleted(false),
-    _isUsed(false) {
+Cursor::Cursor(CursorId id, size_t batchSize, TRI_json_t* extra, double ttl,
+               bool hasCount)
+    : _id(id),
+      _batchSize(batchSize),
+      _position(0),
+      _extra(extra),
+      _ttl(ttl),
+      _expires(TRI_microtime() + _ttl),
+      _hasCount(hasCount),
+      _isDeleted(false),
+      _isUsed(false) {}
 
-}
-        
-Cursor::~Cursor () {
+Cursor::~Cursor() {
   if (_extra != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _extra);
   }
@@ -76,25 +71,19 @@ Cursor::~Cursor () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-JsonCursor::JsonCursor (TRI_vocbase_t* vocbase,
-                        CursorId id,
-                        TRI_json_t* json,
-                        size_t batchSize,
-                        TRI_json_t* extra,
-                        double ttl, 
-                        bool hasCount,
-                        bool cached) 
-  : Cursor(id, batchSize, extra, ttl, hasCount),
-    _vocbase(vocbase),
-    _json(json),
-    _size(TRI_LengthArrayJson(_json)),
-    _cached(cached) {
-
+JsonCursor::JsonCursor(TRI_vocbase_t* vocbase, CursorId id, TRI_json_t* json,
+                       size_t batchSize, TRI_json_t* extra, double ttl,
+                       bool hasCount, bool cached)
+    : Cursor(id, batchSize, extra, ttl, hasCount),
+      _vocbase(vocbase),
+      _json(json),
+      _size(TRI_LengthArrayJson(_json)),
+      _cached(cached) {
   TRI_UseVocBase(vocbase);
 }
-        
-JsonCursor::~JsonCursor () {
-  freeJson(); 
+
+JsonCursor::~JsonCursor() {
+  freeJson();
 
   TRI_ReleaseVocBase(_vocbase);
 }
@@ -107,12 +96,12 @@ JsonCursor::~JsonCursor () {
 /// @brief check whether the cursor contains more data
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JsonCursor::hasNext () {
+bool JsonCursor::hasNext() {
   if (_position < _size) {
     return true;
   }
 
-  freeJson(); 
+  freeJson();
   return false;
 }
 
@@ -120,26 +109,25 @@ bool JsonCursor::hasNext () {
 /// @brief return the next element
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* JsonCursor::next () {
+TRI_json_t* JsonCursor::next() {
   TRI_ASSERT_EXPENSIVE(_json != nullptr);
   TRI_ASSERT_EXPENSIVE(_position < _size);
 
-  return static_cast<TRI_json_t*>(TRI_AtVector(&_json->_value._objects, _position++));
+  return static_cast<TRI_json_t*>(
+      TRI_AtVector(&_json->_value._objects, _position++));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the cursor size
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t JsonCursor::count () const {
-  return _size;
-}
+size_t JsonCursor::count() const { return _size; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the cursor contents into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
-        
-void JsonCursor::dump (triagens::basics::StringBuffer& buffer) {
+
+void JsonCursor::dump(triagens::basics::StringBuffer& buffer) {
   buffer.appendText("\"result\":[");
 
   size_t const n = batchSize();
@@ -157,14 +145,14 @@ void JsonCursor::dump (triagens::basics::StringBuffer& buffer) {
   }
 
   for (size_t i = 0; i < n; ++i) {
-    if (! hasNext()) {
+    if (!hasNext()) {
       break;
     }
 
     if (i > 0) {
       buffer.appendChar(',');
     }
-    
+
     auto row = next();
     if (row == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -201,8 +189,8 @@ void JsonCursor::dump (triagens::basics::StringBuffer& buffer) {
 
   buffer.appendText(",\"cached\":");
   buffer.appendText(_cached ? "true" : "false");
-    
-  if (! hasNext()) {
+
+  if (!hasNext()) {
     // mark the cursor as deleted
     this->deleted();
   }
@@ -216,7 +204,7 @@ void JsonCursor::dump (triagens::basics::StringBuffer& buffer) {
 /// @brief free the internals
 ////////////////////////////////////////////////////////////////////////////////
 
-void JsonCursor::freeJson () {
+void JsonCursor::freeJson() {
   if (_json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _json);
     _json = nullptr;
@@ -233,21 +221,17 @@ void JsonCursor::freeJson () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-ExportCursor::ExportCursor (TRI_vocbase_t* vocbase,
-                            CursorId id,
-                            triagens::arango::CollectionExport* ex,
-                            size_t batchSize,
-                            double ttl, 
-                            bool hasCount)
-  : Cursor(id, batchSize, nullptr, ttl, hasCount),
-    _vocbase(vocbase),
-    _ex(ex),
-    _size(ex->_documents->size()) {
-
+ExportCursor::ExportCursor(TRI_vocbase_t* vocbase, CursorId id,
+                           triagens::arango::CollectionExport* ex,
+                           size_t batchSize, double ttl, bool hasCount)
+    : Cursor(id, batchSize, nullptr, ttl, hasCount),
+      _vocbase(vocbase),
+      _ex(ex),
+      _size(ex->_documents->size()) {
   TRI_UseVocBase(vocbase);
 }
-        
-ExportCursor::~ExportCursor () {
+
+ExportCursor::~ExportCursor() {
   delete _ex;
   TRI_ReleaseVocBase(_vocbase);
 }
@@ -260,7 +244,7 @@ ExportCursor::~ExportCursor () {
 /// @brief check whether the cursor contains more data
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExportCursor::hasNext () {
+bool ExportCursor::hasNext() {
   if (_ex == nullptr) {
     return false;
   }
@@ -272,7 +256,7 @@ bool ExportCursor::hasNext () {
 /// @brief return the next element (not implemented)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* ExportCursor::next () {
+TRI_json_t* ExportCursor::next() {
   // should not be called directly
   return nullptr;
 }
@@ -281,15 +265,13 @@ TRI_json_t* ExportCursor::next () {
 /// @brief return the cursor size
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t ExportCursor::count () const {
-  return _size;
-}
+size_t ExportCursor::count() const { return _size; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump the cursor contents into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
-        
-void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
+
+void ExportCursor::dump(triagens::basics::StringBuffer& buffer) {
   TRI_ASSERT(_ex != nullptr);
 
   auto shaper = _ex->_document->getShaper();
@@ -300,53 +282,62 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
   size_t const n = batchSize();
 
   for (size_t i = 0; i < n; ++i) {
-    if (! hasNext()) {
+    if (!hasNext()) {
       break;
     }
 
     if (i > 0) {
       buffer.appendChar(',');
     }
-    
-    auto marker = static_cast<TRI_df_marker_t const*>(_ex->_documents->at(_position++));
+
+    auto marker =
+        static_cast<TRI_df_marker_t const*>(_ex->_documents->at(_position++));
 
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
-    triagens::basics::Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+    triagens::basics::Json json(shaper->memoryZone(),
+                                TRI_JsonShapedJson(shaper, &shaped));
 
     // append the internal attributes
 
     // _id, _key, _rev
     char const* key = TRI_EXTRACT_MARKER_KEY(marker);
-    std::string id(_ex->_resolver.getCollectionName(_ex->_document->_info.id()));
+    std::string id(
+        _ex->_resolver.getCollectionName(_ex->_document->_info.id()));
     id.push_back('/');
     id.append(key);
 
     json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
-    json(TRI_VOC_ATTRIBUTE_REV, triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+    json(
+        TRI_VOC_ATTRIBUTE_REV,
+        triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
     json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
 
     if (TRI_IS_EDGE_MARKER(marker)) {
       // _from
-      std::string from(_ex->_resolver.getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(marker)));
+      std::string from(_ex->_resolver.getCollectionNameCluster(
+          TRI_EXTRACT_MARKER_FROM_CID(marker)));
       from.push_back('/');
       from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
       json(TRI_VOC_ATTRIBUTE_FROM, triagens::basics::Json(from));
-        
+
       // _to
-      std::string to(_ex->_resolver.getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
+      std::string to(_ex->_resolver.getCollectionNameCluster(
+          TRI_EXTRACT_MARKER_TO_CID(marker)));
       to.push_back('/');
       to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
       json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
     }
 
-    if (restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
-        restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
+    if (restrictionType ==
+            CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
+        restrictionType ==
+            CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
       // only include the specified fields
       // for this we'll modify the JSON that we already have, in place
       // we'll scan through the JSON attributs from left to right and
       // keep all those that we want to keep. we'll overwrite existing
-      // other values in the JSON 
+      // other values in the JSON
       TRI_json_t* obj = json.json();
       TRI_ASSERT(TRI_IsObjectJson(obj));
 
@@ -354,16 +345,23 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
 
       size_t j = 0;
       for (size_t i = 0; i < n; i += 2) {
-        auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&obj->_value._objects, i));
+        auto key = static_cast<TRI_json_t const*>(
+            TRI_AtVector(&obj->_value._objects, i));
 
-        if (! TRI_IsStringJson(key)) {
+        if (!TRI_IsStringJson(key)) {
           continue;
         }
 
-        bool const keyContainedInRestrictions = (_ex->_restrictions.fields.find(key->_value._string.data) != _ex->_restrictions.fields.end());
+        bool const keyContainedInRestrictions =
+            (_ex->_restrictions.fields.find(key->_value._string.data) !=
+             _ex->_restrictions.fields.end());
 
-        if ((restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE && keyContainedInRestrictions) ||
-            (restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE && ! keyContainedInRestrictions)) {
+        if ((restrictionType ==
+                 CollectionExport::Restrictions::RESTRICTION_INCLUDE &&
+             keyContainedInRestrictions) ||
+            (restrictionType ==
+                 CollectionExport::Restrictions::RESTRICTION_EXCLUDE &&
+             !keyContainedInRestrictions)) {
           // include the field
           if (i != j) {
             // steal the key and the value
@@ -372,11 +370,11 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
             memcpy(dst, src, 2 * sizeof(TRI_json_t));
           }
           j += 2;
-        }
-        else {
+        } else {
           // do not include the field
           // key
-          auto src = static_cast<TRI_json_t*>(TRI_AddressVector(&obj->_value._objects, i));
+          auto src = static_cast<TRI_json_t*>(
+              TRI_AddressVector(&obj->_value._objects, i));
           TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, src);
           // value
           TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, src + 1);
@@ -385,13 +383,13 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
 
       // finally adjust the length of the patched JSON so the NULL fields at
       // the end will not be dumped
-      TRI_SetLengthVector(&obj->_value._objects, j); 
-    }
-    else {
+      TRI_SetLengthVector(&obj->_value._objects, j);
+    } else {
       // no restrictions
-      TRI_ASSERT(restrictionType == CollectionExport::Restrictions::RESTRICTION_NONE);
+      TRI_ASSERT(restrictionType ==
+                 CollectionExport::Restrictions::RESTRICTION_NONE);
     }
-        
+
     int res = TRI_StringifyJson(buffer.stringBuffer(), json.json());
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -414,7 +412,7 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
     buffer.appendInteger(static_cast<uint64_t>(count()));
   }
 
-  if (! hasNext()) {
+  if (!hasNext()) {
     delete _ex;
     _ex = nullptr;
 
@@ -429,5 +427,6 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

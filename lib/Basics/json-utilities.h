@@ -50,16 +50,14 @@
 /// in this case.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CompareValuesJson (TRI_json_t const*, 
-                           TRI_json_t const*,
-                           bool useUTF8 = true);
+int TRI_CompareValuesJson(TRI_json_t const*, TRI_json_t const*,
+                          bool useUTF8 = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if two json values are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckSameValueJson (TRI_json_t const*, 
-                             TRI_json_t const*);
+bool TRI_CheckSameValueJson(TRI_json_t const*, TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief uniquify a sorted json list into a new array
@@ -68,93 +66,83 @@ bool TRI_CheckSameValueJson (TRI_json_t const*,
 /// otherwise the result is unpredictable.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_UniquifyArrayJson (TRI_json_t const*);
+TRI_json_t* TRI_UniquifyArrayJson(TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a json array in place
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_SortArrayJson (TRI_json_t*);
+TRI_json_t* TRI_SortArrayJson(TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a JSON struct has duplicate attribute names
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_HasDuplicateKeyJson (TRI_json_t const*);
+bool TRI_HasDuplicateKeyJson(TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge two JSON documents into one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_MergeJson (TRI_memory_zone_t*,
-                           TRI_json_t const*,
-                           TRI_json_t const*,
-                           bool,
-                           bool);
+TRI_json_t* TRI_MergeJson(TRI_memory_zone_t*, TRI_json_t const*,
+                          TRI_json_t const*, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document.
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashJson (TRI_json_t const* json);
+uint64_t TRI_HashJson(TRI_json_t const* json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document, using fasthash64.
 /// This is slightly faster than the FNV-based hashing
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_FastHashJson (TRI_json_t const* json);
+uint64_t TRI_FastHashJson(TRI_json_t const* json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a hash value for a JSON document depending on a list
 /// of attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
-                                   char const *attributes[],
-                                   int nrAttributes,
-                                   bool docComplete,
-                                   int* error);
+uint64_t TRI_HashJsonByAttributes(TRI_json_t const* json,
+                                  char const* attributes[], int nrAttributes,
+                                  bool docComplete, int* error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hasher for JSON value
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
-    struct JsonHash {
-      inline size_t operator() (TRI_json_t const* value) const {
-        return TRI_FastHashJson(value);
-      }
-    };
+struct JsonHash {
+  inline size_t operator()(TRI_json_t const* value) const {
+    return TRI_FastHashJson(value);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief equality comparator for JSON values
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct JsonEqual {    
-      inline bool operator() (TRI_json_t const* lhs,
-                              TRI_json_t const* rhs) const {
-
-        return (TRI_CompareValuesJson(lhs, rhs, false) == 0);
-      }
-    };
+struct JsonEqual {
+  inline bool operator()(TRI_json_t const* lhs, TRI_json_t const* rhs) const {
+    return (TRI_CompareValuesJson(lhs, rhs, false) == 0);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief less comparator for JSON values
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<bool useUtf8>
-    struct JsonLess {    
-      inline bool operator() (TRI_json_t const* lhs,
-                              TRI_json_t const* rhs) const {
-
-        return TRI_CompareValuesJson(lhs, rhs, useUtf8) < 0;
-      }
-    };
-
+template <bool useUtf8>
+struct JsonLess {
+  inline bool operator()(TRI_json_t const* lhs, TRI_json_t const* rhs) const {
+    return TRI_CompareValuesJson(lhs, rhs, useUtf8) < 0;
   }
+};
+}
 }
 
 #endif
@@ -165,5 +153,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

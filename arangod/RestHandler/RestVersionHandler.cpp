@@ -51,9 +51,8 @@ extern AnyServer* ArangoInstance;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler (HttpRequest* request)
-  : RestBaseHandler(request) {
-}
+RestVersionHandler::RestVersionHandler(HttpRequest* request)
+    : RestBaseHandler(request) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -63,9 +62,7 @@ RestVersionHandler::RestVersionHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVersionHandler::isDirect () const {
-  return true;
-}
+bool RestVersionHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_return
@@ -127,7 +124,7 @@ bool RestVersionHandler::isDirect () const {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestVersionHandler::execute () {
+HttpHandler::status_t RestVersionHandler::execute() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
@@ -150,8 +147,7 @@ HttpHandler::status_t RestVersionHandler::execute () {
     result.close();
     VPackSlice s = result.slice();
     generateResult(s);
-  }
-  catch (...) {
+  } catch (...) {
     // Ignore this error
   }
   return status_t(HANDLER_DONE);
@@ -163,5 +159,6 @@ HttpHandler::status_t RestVersionHandler::execute () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

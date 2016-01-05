@@ -41,7 +41,7 @@
 /// @brief destroys the data of blob, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
+void TRI_DestroyBlob(TRI_memory_zone_t* zone, TRI_blob_t* blob) {
   if (blob != nullptr) {
     if (blob->data != nullptr) {
       TRI_Free(zone, blob->data);
@@ -57,14 +57,14 @@ void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
 /// @brief copies a blob into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
+int TRI_CopyToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                   TRI_blob_t const* src) {
   dst->length = src->length;
 
   if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
     dst->data = nullptr;
-  }
-  else {
+  } else {
     dst->data = static_cast<char*>(TRI_Allocate(zone, dst->length, false));
 
     if (dst->data == nullptr) {
@@ -81,14 +81,14 @@ int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* 
 /// @brief assigns a blob value by reference into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
+int TRI_AssignToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+                     TRI_blob_t const* src) {
   dst->length = src->length;
 
   if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
     dst->data = nullptr;
-  }
-  else {
+  } else {
     dst->length = src->length;
     dst->data = src->data;
   }
@@ -102,5 +102,6 @@ int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

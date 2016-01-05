@@ -34,93 +34,85 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class VelocyPackHelper
 // -----------------------------------------------------------------------------
 
-    class VelocyPackHelper {
+class VelocyPackHelper {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ private:
+  VelocyPackHelper() = delete;
+  ~VelocyPackHelper() = delete;
 
-      private:
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a numeric value
+  ////////////////////////////////////////////////////////////////////////////////
 
-        VelocyPackHelper () = delete;
-        ~VelocyPackHelper () = delete;
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a numeric value
-////////////////////////////////////////////////////////////////////////////////
-
-        template<typename T> 
-        static T getNumericValue (VPackSlice const& slice,
-                                  T defaultValue) {
-          if (slice.isNumber()) {
-            return slice.getNumber<T>();
-          }
-          return defaultValue;
-        }
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a numeric sub-element, or a default if it does not exist
-////////////////////////////////////////////////////////////////////////////////
-
-        template<typename T> 
-        static T getNumericValue (VPackSlice const& slice,
-                                  char const* name,
-                                  T defaultValue) {
-          VPackSlice sub = slice.get(name);
-          if (sub.isNumber()) {
-            return sub.getNumber<T>();
-          }
-          return defaultValue;
-        }
- 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a boolean sub-element, or a default if it does not exist
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool getBooleanValue (VPackSlice const&,
-                                     char const*,
-                                     bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a string sub-element, or throws if <name> does not exist
-/// or it is not a string 
-////////////////////////////////////////////////////////////////////////////////
-
-        static std::string checkAndGetStringValue (VPackSlice const&,
-                                                   char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a string sub-element, or the default value if it does not exist
-/// or it is not a string 
-////////////////////////////////////////////////////////////////////////////////
-
-        static std::string getStringValue (VPackSlice const&,
-                                           char const*,
-                                           std::string const&);
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
-////////////////////////////////////////////////////////////////////////////////
-
-        static TRI_json_t* velocyPackToJson (VPackSlice const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a json file to VelocyPack
-//////////////////////////////////////////////////////////////////////////////////
-
-        static std::shared_ptr<VPackBuilder> velocyPackFromFile (std::string const& path);
-    };
+  template <typename T>
+  static T getNumericValue(VPackSlice const& slice, T defaultValue) {
+    if (slice.isNumber()) {
+      return slice.getNumber<T>();
+    }
+    return defaultValue;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a numeric sub-element, or a default if it does not exist
+  ////////////////////////////////////////////////////////////////////////////////
+
+  template <typename T>
+  static T getNumericValue(VPackSlice const& slice, char const* name,
+                           T defaultValue) {
+    VPackSlice sub = slice.get(name);
+    if (sub.isNumber()) {
+      return sub.getNumber<T>();
+    }
+    return defaultValue;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a boolean sub-element, or a default if it does not exist
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static bool getBooleanValue(VPackSlice const&, char const*, bool);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string sub-element, or throws if <name> does not exist
+  /// or it is not a string
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static std::string checkAndGetStringValue(VPackSlice const&, char const*);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a string sub-element, or the default value if it does not
+  /// exist
+  /// or it is not a string
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static std::string getStringValue(VPackSlice const&, char const*,
+                                    std::string const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Build TRI_json_t from VelocyPack. Just a temporary solution
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static TRI_json_t* velocyPackToJson(VPackSlice const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief parses a json file to VelocyPack
+  //////////////////////////////////////////////////////////////////////////////////
+
+  static std::shared_ptr<VPackBuilder> velocyPackFromFile(
+      std::string const& path);
+};
+}
 }
 
 #endif
@@ -131,5 +123,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

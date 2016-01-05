@@ -35,7 +35,7 @@
 #include <iosfwd>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              struct AttributeName
@@ -47,56 +47,49 @@ namespace triagens {
 ///        it should be expanded. Only works on arrays.
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct AttributeName {
-      std::string name;
-      bool shouldExpand;
+struct AttributeName {
+  std::string name;
+  bool shouldExpand;
 
-      explicit AttributeName (std::string const& name)
-        : AttributeName(name, false) {
-      }
+  explicit AttributeName(std::string const& name)
+      : AttributeName(name, false) {}
 
-      AttributeName (std::string const& name, bool expand)
-        : name(name), 
-          shouldExpand(expand) { 
-      }
+  AttributeName(std::string const& name, bool expand)
+      : name(name), shouldExpand(expand) {}
 
-      AttributeName (AttributeName const& other) 
-        : name(other.name), 
-          shouldExpand(other.shouldExpand) {
-      }
+  AttributeName(AttributeName const& other)
+      : name(other.name), shouldExpand(other.shouldExpand) {}
 
-      bool operator== (AttributeName const& other) const {
-        return name == other.name && shouldExpand == other.shouldExpand;
-      }
+  bool operator==(AttributeName const& other) const {
+    return name == other.name && shouldExpand == other.shouldExpand;
+  }
 
-      bool operator!= (AttributeName const& other) const {
-        return name != other.name || shouldExpand != other.shouldExpand;
-      }
+  bool operator!=(AttributeName const& other) const {
+    return name != other.name || shouldExpand != other.shouldExpand;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two attribute name vectors
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief compare two attribute name vectors
+  ////////////////////////////////////////////////////////////////////////////////
 
-      static bool isIdentical (std::vector<AttributeName> const&,
-                               std::vector<AttributeName> const&,
-                               bool);
+  static bool isIdentical(std::vector<AttributeName> const&,
+                          std::vector<AttributeName> const&, bool);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two attribute name vectors
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief compare two attribute name vectors
+  ////////////////////////////////////////////////////////////////////////////////
 
-      static bool isIdentical (std::vector<std::vector<AttributeName>> const&,
-                               std::vector<std::vector<AttributeName>> const&,
-                               bool);
+  static bool isIdentical(std::vector<std::vector<AttributeName>> const&,
+                          std::vector<std::vector<AttributeName>> const&, bool);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare two attribute name vectors and return true if their names
-/// matches
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief compare two attribute name vectors and return true if their names
+  /// matches
+  ////////////////////////////////////////////////////////////////////////////////
 
-      static bool namesMatch (std::vector<AttributeName> const&,
-                              std::vector<AttributeName> const&);
-    };
+  static bool namesMatch(std::vector<AttributeName> const&,
+                         std::vector<AttributeName> const&);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -106,39 +99,41 @@ namespace triagens {
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
 
-    void TRI_ParseAttributeString (std::string const& input,
-                                   std::vector<AttributeName>& result);
+void TRI_ParseAttributeString(std::string const& input,
+                              std::vector<AttributeName>& result);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames back into a string
 ////////////////////////////////////////////////////////////////////////////////
 
-    void TRI_AttributeNamesToString (std::vector<AttributeName> const& input,
-                                     std::string& result,
-                                     bool excludeExpansion = false);
+void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
+                                std::string& result,
+                                bool excludeExpansion = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames into joined nested strings
-///        The onlyFirst parameter is used to define if we only have to join the first attribute
+///        The onlyFirst parameter is used to define if we only have to join the
+///        first attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-    void TRI_AttributeNamesJoinNested (std::vector<AttributeName> const& input,
-                                       std::vector<std::string>& result,
-                                       bool onlyFirst);
+void TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
+                                  std::vector<std::string>& result,
+                                  bool onlyFirst);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool TRI_AttributeNamesHaveExpansion (std::vector<AttributeName> const& input);
-
-  }
+bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
 }
-      
-std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const*);
-std::ostream& operator<< (std::ostream&, triagens::basics::AttributeName const&);
-std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::AttributeName> const*);
-std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::AttributeName> const&);
+}
+
+std::ostream& operator<<(std::ostream&, triagens::basics::AttributeName const*);
+std::ostream& operator<<(std::ostream&, triagens::basics::AttributeName const&);
+std::ostream& operator<<(std::ostream&,
+                         std::vector<triagens::basics::AttributeName> const*);
+std::ostream& operator<<(std::ostream&,
+                         std::vector<triagens::basics::AttributeName> const&);
 
 #endif
 
@@ -148,5 +143,6 @@ std::ostream& operator<< (std::ostream&, std::vector<triagens::basics::Attribute
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

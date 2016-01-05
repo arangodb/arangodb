@@ -160,7 +160,8 @@ int Dispatcher::addJob(std::unique_ptr<Job>& job) {
   // log success, but do this BEFORE the real add, because the addJob might
   // execute
   // and delete the job before we have a chance to log something
-  LOG_TRACE("added job %p to queue '%lu'", (void*)(job.get()), (unsigned long)qnr);
+  LOG_TRACE("added job %p to queue '%lu'", (void*)(job.get()),
+            (unsigned long)qnr);
 
   // add the job to the list of ready jobs
   return queue->addJob(job);

@@ -37,35 +37,34 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
-  namespace arango {
-    class CollectionNameResolver;
-  }
+namespace arango {
+class CollectionNameResolver;
+}
 }
 
 namespace arangodb {
-  class StorageOptions {
-    public:
-      StorageOptions ();
-      ~StorageOptions ();
+class StorageOptions {
+ public:
+  StorageOptions();
+  ~StorageOptions();
 
-      StorageOptions (StorageOptions const&) = delete;
-      StorageOptions& operator= (StorageOptions const&) = delete;
+  StorageOptions(StorageOptions const&) = delete;
+  StorageOptions& operator=(StorageOptions const&) = delete;
 
-      static VPackOptions getDocumentToJsonTemplate ();
-      static VPackOptions getJsonToDocumentTemplate ();
-      static VPackOptions getNonDocumentTemplate ();
-      static VPackCustomTypeHandler* createCustomHandler (triagens::arango::CollectionNameResolver const*);
+  static VPackOptions getDocumentToJsonTemplate();
+  static VPackOptions getJsonToDocumentTemplate();
+  static VPackOptions getNonDocumentTemplate();
+  static VPackCustomTypeHandler* createCustomHandler(
+      triagens::arango::CollectionNameResolver const*);
 
-    private:
+ private:
+  std::unique_ptr<VPackAttributeTranslator> _translator;
+  std::unique_ptr<VPackAttributeExcludeHandler> _excludeHandler;
 
-      std::unique_ptr<VPackAttributeTranslator>      _translator;
-      std::unique_ptr<VPackAttributeExcludeHandler>  _excludeHandler;
-
-      static VPackOptions JsonToDocumentTemplate;
-      static VPackOptions DocumentToJsonTemplate;
-      static VPackOptions NonDocumentTemplate;
-  };
-  
+  static VPackOptions JsonToDocumentTemplate;
+  static VPackOptions DocumentToJsonTemplate;
+  static VPackOptions NonDocumentTemplate;
+};
 }
 
 #endif
@@ -76,5 +75,6 @@ namespace arangodb {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

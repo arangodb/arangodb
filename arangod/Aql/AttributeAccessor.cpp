@@ -47,17 +47,16 @@ using Json = triagens::basics::Json;
 /// @brief create the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-AttributeAccessor::AttributeAccessor (std::vector<char const*> const& attributeParts,
-                                      Variable const* variable)
-  : _attributeParts(attributeParts),
-    _combinedName(),
-    _variable(variable),
-    _buffer(TRI_UNKNOWN_MEM_ZONE),
-    _shaper(nullptr),
-    _pid(0),
-    _nameCache({ "", 0 }),
-    _attributeType(ATTRIBUTE_TYPE_REGULAR) {
-
+AttributeAccessor::AttributeAccessor(
+    std::vector<char const*> const& attributeParts, Variable const* variable)
+    : _attributeParts(attributeParts),
+      _combinedName(),
+      _variable(variable),
+      _buffer(TRI_UNKNOWN_MEM_ZONE),
+      _shaper(nullptr),
+      _pid(0),
+      _nameCache({"", 0}),
+      _attributeType(ATTRIBUTE_TYPE_REGULAR) {
   TRI_ASSERT(_variable != nullptr);
 
   if (_attributeParts.size() == 1) {
@@ -65,24 +64,20 @@ AttributeAccessor::AttributeAccessor (std::vector<char const*> const& attributeP
 
     if (strcmp(n, TRI_VOC_ATTRIBUTE_KEY) == 0) {
       _attributeType = ATTRIBUTE_TYPE_KEY;
-    }
-    else if (strcmp(n, TRI_VOC_ATTRIBUTE_REV) == 0) {
+    } else if (strcmp(n, TRI_VOC_ATTRIBUTE_REV) == 0) {
       _attributeType = ATTRIBUTE_TYPE_REV;
-    }
-    else if (strcmp(n, TRI_VOC_ATTRIBUTE_ID) == 0) {
+    } else if (strcmp(n, TRI_VOC_ATTRIBUTE_ID) == 0) {
       _attributeType = ATTRIBUTE_TYPE_ID;
-    }
-    else if (strcmp(n, TRI_VOC_ATTRIBUTE_FROM) == 0) {
+    } else if (strcmp(n, TRI_VOC_ATTRIBUTE_FROM) == 0) {
       _attributeType = ATTRIBUTE_TYPE_FROM;
-    }
-    else if (strcmp(n, TRI_VOC_ATTRIBUTE_TO) == 0) {
+    } else if (strcmp(n, TRI_VOC_ATTRIBUTE_TO) == 0) {
       _attributeType = ATTRIBUTE_TYPE_TO;
     }
   }
 
   if (_attributeType == ATTRIBUTE_TYPE_REGULAR) {
     for (auto const& it : _attributeParts) {
-      if (! _combinedName.empty()) {
+      if (!_combinedName.empty()) {
         _combinedName.push_back('.');
       }
       _combinedName.append(it);
@@ -94,8 +89,7 @@ AttributeAccessor::AttributeAccessor (std::vector<char const*> const& attributeP
 /// @brief destroy the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-AttributeAccessor::~AttributeAccessor () {
-}
+AttributeAccessor::~AttributeAccessor() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -105,23 +99,22 @@ AttributeAccessor::~AttributeAccessor () {
 /// @brief execute the accessor
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
-                                 AqlItemBlock const* argv,
-                                 size_t startPos,
-                                 std::vector<Variable const*> const& vars,
-                                 std::vector<RegisterId> const& regs) {
-
+AqlValue AttributeAccessor::get(triagens::arango::AqlTransaction* trx,
+                                AqlItemBlock const* argv, size_t startPos,
+                                std::vector<Variable const*> const& vars,
+                                std::vector<RegisterId> const& regs) {
   size_t i = 0;
   for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
     if ((*it)->id == _variable->id) {
       // get the AQL value
       auto& result = argv->getValueReference(startPos, regs[i]);
-    
+
       // extract the attribute
       if (result.isShaped()) {
         switch (_attributeType) {
           case ATTRIBUTE_TYPE_KEY: {
-            return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(result._marker)));
+            return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE,
+                                     TRI_EXTRACT_MARKER_KEY(result._marker)));
           }
 
           case ATTRIBUTE_TYPE_REV: {
@@ -129,26 +122,27 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
           }
 
           case ATTRIBUTE_TYPE_ID: {
-            TRI_document_collection_t const* collection = argv->getDocumentCollection(regs[i]);
+            TRI_document_collection_t const* collection =
+                argv->getDocumentCollection(regs[i]);
             return extractId(result, trx, collection);
           }
 
           case ATTRIBUTE_TYPE_FROM: {
             return extractFrom(result, trx);
           }
-          
+
           case ATTRIBUTE_TYPE_TO: {
             return extractTo(result, trx);
           }
 
           case ATTRIBUTE_TYPE_REGULAR:
           default: {
-            TRI_document_collection_t const* collection = argv->getDocumentCollection(regs[i]);
+            TRI_document_collection_t const* collection =
+                argv->getDocumentCollection(regs[i]);
             return extractRegular(result, trx, collection);
           }
         }
-      }
-      else if (result.isJson()) {
+      } else if (result.isJson()) {
         TRI_json_t const* json = result._json->json();
         size_t const n = _attributeParts.size();
         size_t i = 0;
@@ -166,8 +160,9 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
 
           if (i == n) {
             // reached the end
-            std::unique_ptr<TRI_json_t> copy(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json));
-            
+            std::unique_ptr<TRI_json_t> copy(
+                TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json));
+
             if (copy == nullptr) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
             }
@@ -185,7 +180,7 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
     }
     // fall-through intentional
   }
-  
+
   return AqlValue(new Json(Json::Null));
 }
 
@@ -193,7 +188,7 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
 /// @brief extract the _rev attribute from a ShapedJson marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::extractRev (AqlValue const& src) {
+AqlValue AttributeAccessor::extractRev(AqlValue const& src) {
   _buffer.reset();
   _buffer.appendInteger(TRI_EXTRACT_MARKER_RID(src._marker));
 
@@ -206,9 +201,9 @@ AqlValue AttributeAccessor::extractRev (AqlValue const& src) {
 /// @brief extract the _id attribute from a ShapedJson marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::extractId (AqlValue const& src,
-                                       triagens::arango::AqlTransaction* trx,
-                                       TRI_document_collection_t const* document) {
+AqlValue AttributeAccessor::extractId(
+    AqlValue const& src, triagens::arango::AqlTransaction* trx,
+    TRI_document_collection_t const* document) {
   if (_nameCache.value.empty()) {
     _nameCache.value = trx->resolver()->getCollectionName(document->_info.id());
   }
@@ -227,13 +222,13 @@ AqlValue AttributeAccessor::extractId (AqlValue const& src,
 /// @brief extract the _from attribute from a ShapedJson marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::extractFrom (AqlValue const& src,
-                                         triagens::arango::AqlTransaction* trx) {
+AqlValue AttributeAccessor::extractFrom(AqlValue const& src,
+                                        triagens::arango::AqlTransaction* trx) {
   if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
       src._marker->_type != TRI_WAL_MARKER_EDGE) {
     return AqlValue(new Json(Json::Null));
   }
-  
+
   auto cid = TRI_EXTRACT_MARKER_FROM_CID(src._marker);
 
   if (_nameCache.value.empty() || _nameCache.cid != cid) {
@@ -245,7 +240,7 @@ AqlValue AttributeAccessor::extractFrom (AqlValue const& src,
   _buffer.appendText(_nameCache.value);
   _buffer.appendChar('/');
   _buffer.appendText(TRI_EXTRACT_MARKER_FROM_KEY(src._marker));
-  
+
   auto json = new Json(TRI_UNKNOWN_MEM_ZONE, _buffer.c_str(), _buffer.length());
 
   return AqlValue(json);
@@ -255,15 +250,15 @@ AqlValue AttributeAccessor::extractFrom (AqlValue const& src,
 /// @brief extract the _to attribute from a ShapedJson marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::extractTo (AqlValue const& src,
-                                       triagens::arango::AqlTransaction* trx) {
+AqlValue AttributeAccessor::extractTo(AqlValue const& src,
+                                      triagens::arango::AqlTransaction* trx) {
   if (src._marker->_type != TRI_DOC_MARKER_KEY_EDGE &&
       src._marker->_type != TRI_WAL_MARKER_EDGE) {
     return AqlValue(new Json(Json::Null));
   }
 
   auto cid = TRI_EXTRACT_MARKER_TO_CID(src._marker);
-  
+
   if (_nameCache.value.empty() || _nameCache.cid != cid) {
     _nameCache.cid = cid;
     _nameCache.value = trx->resolver()->getCollectionNameCluster(cid);
@@ -273,7 +268,7 @@ AqlValue AttributeAccessor::extractTo (AqlValue const& src,
   _buffer.appendText(_nameCache.value);
   _buffer.appendChar('/');
   _buffer.appendText(TRI_EXTRACT_MARKER_TO_KEY(src._marker));
-  
+
   auto json = new Json(TRI_UNKNOWN_MEM_ZONE, _buffer.c_str(), _buffer.length());
 
   return AqlValue(json);
@@ -283,15 +278,15 @@ AqlValue AttributeAccessor::extractTo (AqlValue const& src,
 /// @brief extract any other attribute from a ShapedJson marker
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
-                                            triagens::arango::AqlTransaction* trx,
-                                            TRI_document_collection_t const* document) {
+AqlValue AttributeAccessor::extractRegular(
+    AqlValue const& src, triagens::arango::AqlTransaction* trx,
+    TRI_document_collection_t const* document) {
   if (_shaper == nullptr) {
     _shaper = document->getShaper();
     _pid = _shaper->lookupAttributePathByName(_combinedName.c_str());
   }
-   
-  if (_pid != 0) { 
+
+  if (_pid != 0) {
     // attribute exists
     TRI_ASSERT_EXPENSIVE(_shaper != nullptr);
 
@@ -315,7 +310,7 @@ AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
       return AqlValue(j);
     }
   }
-    
+
   return AqlValue(new Json(Json::Null));
 }
 
@@ -325,5 +320,6 @@ AqlValue AttributeAccessor::extractRegular (AqlValue const& src,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

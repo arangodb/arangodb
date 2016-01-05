@@ -34,142 +34,129 @@
 #include "Basics/AttributeNameParser.h"
 
 namespace triagens {
-  namespace aql { 
-    class Ast;
-    struct AstNode;
-    struct Variable; 
-  }
+namespace aql {
+class Ast;
+struct AstNode;
+struct Variable;
+}
 
-  namespace arango {
-    class Index;
+namespace arango {
+class Index;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                              class SimpleAttributeEqualityMatcher
 // -----------------------------------------------------------------------------
 
-    class SimpleAttributeEqualityMatcher {
+class SimpleAttributeEqualityMatcher {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  explicit SimpleAttributeEqualityMatcher(
+      std::vector<std::vector<triagens::basics::AttributeName>> const&);
 
-      public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-        explicit SimpleAttributeEqualityMatcher (std::vector<std::vector<triagens::basics::AttributeName>> const&);
-         
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief match a single of the attributes
+  /// this is used for the primary index and the edge index
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  bool matchOne(triagens::arango::Index const*, triagens::aql::AstNode const*,
+                triagens::aql::Variable const*, size_t, size_t&, double&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief match a single of the attributes
-/// this is used for the primary index and the edge index
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool matchOne (triagens::arango::Index const*,
-                       triagens::aql::AstNode const*,
-                       triagens::aql::Variable const*,
-                       size_t,
-                       size_t&,
-                       double&);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief match all of the attributes, in any order
+  /// this is used for the hash index
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief match all of the attributes, in any order
-/// this is used for the hash index
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool matchAll (triagens::arango::Index const*,
-                       triagens::aql::AstNode const*,
-                       triagens::aql::Variable const*,
-                       size_t,
-                       size_t&,
-                       double&);
+  bool matchAll(triagens::arango::Index const*, triagens::aql::AstNode const*,
+                triagens::aql::Variable const*, size_t, size_t&, double&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the condition parts that the index is responsible for
-/// this is used for the primary index and the edge index
-/// requires that a previous matchOne() returned true
-/// the caller must not free the returned AstNode*, as it belongs to the ast
-////////////////////////////////////////////////////////////////////////////////
-        
-        triagens::aql::AstNode* getOne (triagens::aql::Ast*,
-                                        triagens::arango::Index const*,
-                                        triagens::aql::AstNode const*,
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the condition parts that the index is responsible for
+  /// this is used for the primary index and the edge index
+  /// requires that a previous matchOne() returned true
+  /// the caller must not free the returned AstNode*, as it belongs to the ast
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::aql::AstNode* getOne(triagens::aql::Ast*,
+                                 triagens::arango::Index const*,
+                                 triagens::aql::AstNode const*,
+                                 triagens::aql::Variable const*);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief specialize the condition for the index
+  /// this is used for the primary index and the edge index
+  /// requires that a previous matchOne() returned true
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::aql::AstNode* specializeOne(triagens::arango::Index const*,
+                                        triagens::aql::AstNode*,
                                         triagens::aql::Variable const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief specialize the condition for the index
-/// this is used for the primary index and the edge index
-/// requires that a previous matchOne() returned true
-////////////////////////////////////////////////////////////////////////////////
-        
-        triagens::aql::AstNode* specializeOne (triagens::arango::Index const*,
-                                               triagens::aql::AstNode*,
-                                               triagens::aql::Variable const*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief specialize the condition for the index
+  /// this is used for the hash index
+  /// requires that a previous matchAll() returned true
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief specialize the condition for the index
-/// this is used for the hash index
-/// requires that a previous matchAll() returned true
-////////////////////////////////////////////////////////////////////////////////
-        
-        triagens::aql::AstNode* specializeAll (triagens::arango::Index const*,
-                                               triagens::aql::AstNode*,
-                                               triagens::aql::Variable const*);
+  triagens::aql::AstNode* specializeAll(triagens::arango::Index const*,
+                                        triagens::aql::AstNode*,
+                                        triagens::aql::Variable const*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-      private:
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief determine the costs of using this index and the number of items
+  /// that will return in average
+  /// cost values have no special meaning, except that multiple cost values are
+  /// comparable, and lower values mean lower costs
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the costs of using this index and the number of items
-/// that will return in average
-/// cost values have no special meaning, except that multiple cost values are 
-/// comparable, and lower values mean lower costs
-////////////////////////////////////////////////////////////////////////////////
+  void calculateIndexCosts(triagens::arango::Index const*, size_t, size_t&,
+                           double&) const;
 
-        void calculateIndexCosts (triagens::arango::Index const*,
-                                  size_t,
-                                  size_t&,
-                                  double&) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the access fits
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the access fits
-////////////////////////////////////////////////////////////////////////////////
+  bool accessFitsIndex(triagens::arango::Index const*,
+                       triagens::aql::AstNode const*,
+                       triagens::aql::AstNode const*,
+                       triagens::aql::AstNode const*,
+                       triagens::aql::Variable const*, bool);
 
-        bool accessFitsIndex (triagens::arango::Index const*,
-                              triagens::aql::AstNode const*,
-                              triagens::aql::AstNode const*,
-                              triagens::aql::AstNode const*,
-                              triagens::aql::Variable const*,
-                              bool);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-      
-      private:
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief array of attributes used for comparisons
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief array of attributes used for comparisons
-////////////////////////////////////////////////////////////////////////////////
+  std::vector<std::vector<triagens::basics::AttributeName>> const _attributes;
 
-        std::vector<std::vector<triagens::basics::AttributeName>> const _attributes;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief an internal map to mark which condition parts were useful and
+  /// covered by the index. Also contains the matching Node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief an internal map to mark which condition parts were useful and 
-/// covered by the index. Also contains the matching Node
-////////////////////////////////////////////////////////////////////////////////
-          
-        std::unordered_map<size_t, triagens::aql::AstNode const*> _found;
-
-    };
-               
-  }
+  std::unordered_map<size_t, triagens::aql::AstNode const*> _found;
+};
+}
 }
 
 #endif
@@ -180,5 +167,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -38,72 +38,59 @@ struct TRI_document_collection_t;
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class CollectionGuard;
-    class DocumentDitch;
+class CollectionGuard;
+class DocumentDitch;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class CollectionExport
 // -----------------------------------------------------------------------------
 
-    class CollectionExport {
+class CollectionExport {
+  friend class ExportCursor;
 
-      friend class ExportCursor;
+ public:
+  struct Restrictions {
+    enum Type { RESTRICTION_NONE, RESTRICTION_INCLUDE, RESTRICTION_EXCLUDE };
 
-      public:
+    Restrictions() : fields(), type(RESTRICTION_NONE) {}
 
-        struct Restrictions {
-          enum Type {
-            RESTRICTION_NONE,
-            RESTRICTION_INCLUDE,
-            RESTRICTION_EXCLUDE
-          };
+    std::unordered_set<std::string> fields;
+    Type type;
+  };
 
-          Restrictions () 
-            : fields(),
-              type(RESTRICTION_NONE) {
-          }
+ public:
+  CollectionExport(CollectionExport const&) = delete;
+  CollectionExport& operator=(CollectionExport const&) = delete;
 
-          std::unordered_set<std::string> fields;
-          Type type;
-        };
+  CollectionExport(TRI_vocbase_t*, std::string const&, Restrictions const&);
 
-      public:
+  ~CollectionExport();
 
-        CollectionExport (CollectionExport const&) = delete;
-        CollectionExport& operator= (CollectionExport const&) = delete;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-        CollectionExport (TRI_vocbase_t*, 
-                          std::string const&,
-                          Restrictions const&);
+ public:
+  void run(uint64_t, size_t);
 
-        ~CollectionExport ();
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-      public:
-
-        void run (uint64_t, size_t);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        triagens::arango::CollectionGuard*           _guard;
-        struct TRI_document_collection_t*            _document;
-        triagens::arango::DocumentDitch*             _ditch;
-        std::string const                            _name;
-        triagens::arango::CollectionNameResolver     _resolver;
-        Restrictions                                 _restrictions;
-        std::vector<void const*>*                    _documents;
-    };
-
-  }
+ private:
+  triagens::arango::CollectionGuard* _guard;
+  struct TRI_document_collection_t* _document;
+  triagens::arango::DocumentDitch* _ditch;
+  std::string const _name;
+  triagens::arango::CollectionNameResolver _resolver;
+  Restrictions _restrictions;
+  std::vector<void const*>* _documents;
+};
+}
 }
 
 #endif
@@ -114,5 +101,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

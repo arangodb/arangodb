@@ -44,19 +44,19 @@ struct TRI_vocbase_t;
 /// @brief creates the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateUserStructuresVocBase (TRI_vocbase_t*);
+void TRI_CreateUserStructuresVocBase(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the user structures for a database
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeUserStructuresVocBase (TRI_vocbase_t*);
+void TRI_FreeUserStructuresVocBase(TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8UserStructures (v8::Isolate* isolate, v8::Handle<v8::Context>);
+void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
 
@@ -66,5 +66,6 @@ void TRI_InitV8UserStructures (v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

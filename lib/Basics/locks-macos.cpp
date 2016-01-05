@@ -44,21 +44,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRI_FAKE_SPIN_LOCKS
-void TRI_InitSpin (TRI_spin_t* spinLock) {
-  *spinLock = 0;
-}
+void TRI_InitSpin(TRI_spin_t* spinLock) { *spinLock = 0; }
 #else
-void locks_macos_cpp_MusntBeEmpty(void){}
+void locks_macos_cpp_MusntBeEmpty(void) {}
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRI_FAKE_SPIN_LOCKS
-void TRI_DestroySpin (TRI_spin_t* spinLock) {
-}
+void TRI_DestroySpin(TRI_spin_t* spinLock) {}
 #endif
 
 // -----------------------------------------------------------------------------
@@ -70,9 +66,7 @@ void TRI_DestroySpin (TRI_spin_t* spinLock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRI_FAKE_SPIN_LOCKS
-void TRI_LockSpin (TRI_spin_t* spinLock) {
-  OSSpinLockLock(spinLock);
-}
+void TRI_LockSpin(TRI_spin_t* spinLock) { OSSpinLockLock(spinLock); }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,9 +74,7 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef TRI_FAKE_SPIN_LOCKS
-void TRI_UnlockSpin (TRI_spin_t* spinLock) {
-  OSSpinLockUnlock(spinLock);
-}
+void TRI_UnlockSpin(TRI_spin_t* spinLock) { OSSpinLockUnlock(spinLock); }
 #endif
 
 #endif
@@ -93,5 +85,6 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

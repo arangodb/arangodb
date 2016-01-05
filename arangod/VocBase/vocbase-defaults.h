@@ -48,20 +48,21 @@ struct TRI_vocbase_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_vocbase_defaults_t {
-  TRI_voc_size_t    defaultMaximalSize;
-  bool              defaultWaitForSync;
-  bool              requireAuthentication;
-  bool              requireAuthenticationUnixSockets;
-  bool              authenticateSystemOnly;
-  bool              forceSyncProperties;
+  TRI_voc_size_t defaultMaximalSize;
+  bool defaultWaitForSync;
+  bool requireAuthentication;
+  bool requireAuthenticationUnixSockets;
+  bool authenticateSystemOnly;
+  bool forceSyncProperties;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-  void toVelocyPack (VPackBuilder&) const;
+  void toVelocyPack(VPackBuilder&) const;
 
-  std::shared_ptr<VPackBuilder> toVelocyPack () const;
+  std::shared_ptr<VPackBuilder> toVelocyPack() const;
 
   void applyToVocBase(TRI_vocbase_t*) const;
 };
@@ -74,5 +75,6 @@ struct TRI_vocbase_defaults_t {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

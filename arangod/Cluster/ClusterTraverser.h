@@ -33,164 +33,139 @@
 #include "VocBase/Traverser.h"
 
 namespace triagens {
-  namespace arango {
-    class CollectionNameResolver;
-    class Transaction;
+namespace arango {
+class CollectionNameResolver;
+class Transaction;
 
-    namespace traverser {
+namespace traverser {
 
-      class ClusterTraversalPath;
+class ClusterTraversalPath;
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class ClusterTraverser
 // -----------------------------------------------------------------------------
 
-      class ClusterTraverser : public Traverser {
-        
-        public:
+class ClusterTraverser : public Traverser {
+ public:
+  ClusterTraverser(
+      std::vector<std::string> edgeCollections, TraverserOptions& opts,
+      std::string dbname, CollectionNameResolver const* resolver,
+      std::unordered_map<size_t, std::vector<TraverserExpression*>> const*
+          expressions)
+      : Traverser(opts, expressions),
+        _edgeCols(edgeCollections),
+        _dbname(dbname),
+        _vertexGetter(this),
+        _edgeGetter(this),
+        _resolver(resolver) {}
 
-          ClusterTraverser (
-            std::vector<std::string> edgeCollections,
-            TraverserOptions& opts,
-            std::string dbname,
-            CollectionNameResolver const* resolver,
-            std::unordered_map<size_t, std::vector<TraverserExpression*>> const* expressions
-          ) : Traverser(opts, expressions),
-            _edgeCols(edgeCollections),
-            _dbname(dbname),
-            _vertexGetter(this),
-            _edgeGetter(this),
-            _resolver(resolver) {
-          }
+  ~ClusterTraverser() {
+    for (auto& it : _vertices) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
+    }
+    for (auto& it : _edges) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
+    }
+  }
 
-          ~ClusterTraverser () {
-            for (auto& it : _vertices) {
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
-            }
-            for (auto& it : _edges) {
-              TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, it.second);
-            }
-          }
+  void setStartVertex(VertexId const& v) override;
 
-          void setStartVertex (VertexId const& v) override;
+  TraversalPath* next() override;
 
-          TraversalPath* next () override;
+  triagens::basics::Json* edgeToJson(std::string const&) const;
 
-          triagens::basics::Json* edgeToJson (std::string const&) const;
+  triagens::basics::Json* vertexToJson(std::string const&) const;
 
-          triagens::basics::Json* vertexToJson (std::string const&) const;
+ private:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-        private:
+  bool vertexMatchesCondition(TRI_json_t*,
+                              std::vector<TraverserExpression*> const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // classes
+  // -----------------------------------------------------------------------------
 
-          bool vertexMatchesCondition (TRI_json_t*, std::vector<TraverserExpression*> const&);
+  class VertexGetter {
+   public:
+    explicit VertexGetter(ClusterTraverser* traverser)
+        : _traverser(traverser) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private classes
-// -----------------------------------------------------------------------------
+    bool operator()(std::string const&, std::string const&, size_t,
+                    std::string&);
 
-          class VertexGetter {
+   private:
+    ClusterTraverser* _traverser;
+  };
 
-            public:
+  class EdgeGetter {
+   public:
+    explicit EdgeGetter(ClusterTraverser* traverser)
+        : _traverser(traverser), _continueConst(1) {}
 
-              explicit VertexGetter (ClusterTraverser* traverser)
-                : _traverser(traverser) {
-                }
+    void operator()(std::string const&, std::vector<std::string>&, size_t*&,
+                    size_t&, bool&);
 
-              bool operator() (std::string const&, std::string const&, size_t, std::string&);
+   private:
+    ClusterTraverser* _traverser;
 
-            private:
+    size_t _continueConst;
+  };
 
-              ClusterTraverser* _traverser;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-          };
+  std::unordered_map<std::string, TRI_json_t*> _edges;
 
-          class EdgeGetter {
+  std::unordered_map<std::string, TRI_json_t*> _vertices;
 
-            public:
+  std::stack<std::stack<std::string>> _iteratorCache;
 
-              explicit EdgeGetter (ClusterTraverser* traverser)
-                : _traverser(traverser),
-                  _continueConst(1) {
-                }
+  std::vector<std::string> _edgeCols;
 
-              void operator() (std::string const&,
-                               std::vector<std::string>&,
-                               size_t*&,
-                               size_t&,
-                               bool&);
+  std::string _dbname;
 
-            private:
+  VertexGetter _vertexGetter;
 
-              ClusterTraverser* _traverser;
+  EdgeGetter _edgeGetter;
 
-              size_t _continueConst;
+  CollectionNameResolver const* _resolver;
 
-          };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief internal cursor to enumerate the paths of a graph
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  std::unique_ptr<triagens::basics::PathEnumerator<std::string, std::string,
+                                                   size_t>> _enumerator;
+};
 
-          std::unordered_map<std::string, TRI_json_t*> _edges;
+class ClusterTraversalPath : public TraversalPath {
+ public:
+  ClusterTraversalPath(
+      ClusterTraverser const* traverser,
+      const triagens::basics::EnumeratedPath<std::string, std::string>& path)
+      : _path(path), _traverser(traverser) {}
 
-          std::unordered_map<std::string, TRI_json_t*> _vertices;
+  triagens::basics::Json* pathToJson(Transaction*, CollectionNameResolver*);
 
-          std::stack<std::stack<std::string>> _iteratorCache;
+  triagens::basics::Json* lastEdgeToJson(Transaction*, CollectionNameResolver*);
 
-          std::vector<std::string> _edgeCols;
+  triagens::basics::Json* lastVertexToJson(Transaction*,
+                                           CollectionNameResolver*);
 
-          std::string _dbname;
+ private:
+  triagens::basics::EnumeratedPath<std::string, std::string> _path;
 
-          VertexGetter _vertexGetter;
+  ClusterTraverser const* _traverser;
+};
 
-          EdgeGetter _edgeGetter;
-
-          CollectionNameResolver const* _resolver;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal cursor to enumerate the paths of a graph
-////////////////////////////////////////////////////////////////////////////////
-
-          std::unique_ptr<triagens::basics::PathEnumerator<std::string,
-                                                           std::string,
-                                                           size_t>> _enumerator;
-
-      };
-
-      class ClusterTraversalPath : public TraversalPath {
-
-        public:
-
-          ClusterTraversalPath (ClusterTraverser const* traverser,
-                                const triagens::basics::EnumeratedPath<std::string, std::string>& path) :
-            _path(path),
-            _traverser(traverser) {
-          }
-
-          triagens::basics::Json* pathToJson (Transaction*,
-                                              CollectionNameResolver*);
-
-          triagens::basics::Json* lastEdgeToJson (Transaction*,
-                                                  CollectionNameResolver*);
-
-          triagens::basics::Json* lastVertexToJson (Transaction*,
-                                                    CollectionNameResolver*);
-
-        private:
-
-          triagens::basics::EnumeratedPath<std::string, std::string> _path;
-
-          ClusterTraverser const* _traverser;
-
-      };
-
-
-
-    } // traverser
-  } // arango
-} // triagens
+}  // traverser
+}  // arango
+}  // triagens
 
 #endif

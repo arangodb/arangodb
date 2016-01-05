@@ -38,38 +38,38 @@ namespace triagens {
 /// @brief rest server
 ////////////////////////////////////////////////////////////////////////////////
 
-  namespace rest {
+namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitializeRest (int argc, char* argv[]);
+extern void InitializeRest(int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void ShutdownRest ();
-  }
+extern void ShutdownRest();
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_REST_INITIALIZE(a,b)           \
-  do {                                          \
-    triagens::rest::InitializeRest((a), (b));   \
+#define TRIAGENS_REST_INITIALIZE(a, b)        \
+  do {                                        \
+    triagens::rest::InitializeRest((a), (b)); \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_REST_SHUTDOWN           \
-  do {                                   \
-    triagens::rest::ShutdownRest();      \
+#define TRIAGENS_REST_SHUTDOWN      \
+  do {                              \
+    triagens::rest::ShutdownRest(); \
   } while (0)
 
 #endif
@@ -79,5 +79,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

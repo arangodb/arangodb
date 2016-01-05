@@ -36,110 +36,108 @@
 #include <v8.h>
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-    class AqlItemBlock;
-    class Query;
-    struct Variable;
+class AqlItemBlock;
+class Query;
+struct Variable;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               struct V8Expression
 // -----------------------------------------------------------------------------
 
-    struct V8Expression {
+struct V8Expression {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the v8 expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the v8 expression
-////////////////////////////////////////////////////////////////////////////////
+  V8Expression(v8::Isolate*, v8::Handle<v8::Function>, v8::Handle<v8::Object>,
+               bool);
 
-      V8Expression (v8::Isolate*,
-                    v8::Handle<v8::Function>, 
-                    v8::Handle<v8::Object>, 
-                    bool);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the v8 expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the v8 expression
-////////////////////////////////////////////////////////////////////////////////
+  ~V8Expression();
 
-      ~V8Expression ();
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sets attribute restrictions. these prevent input variables to be
+  /// fully constructed as V8 objects (which can be very expensive), but limits
+  /// the objects to the actually used attributes only.
+  /// For example, the expression LET x = a.value + 1 will not build the full
+  /// object for "a", but only its "value" attribute
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets attribute restrictions. these prevent input variables to be
-/// fully constructed as V8 objects (which can be very expensive), but limits
-/// the objects to the actually used attributes only.
-/// For example, the expression LET x = a.value + 1 will not build the full
-/// object for "a", but only its "value" attribute
-////////////////////////////////////////////////////////////////////////////////
-    
-      void setAttributeRestrictions (std::unordered_map<Variable const*, std::unordered_set<std::string>> const& attributeRestrictions) {
-        _attributeRestrictions = attributeRestrictions;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the expression
-////////////////////////////////////////////////////////////////////////////////
-
-      AqlValue execute (v8::Isolate* isolate,
-                        Query* query,
-                        triagens::arango::AqlTransaction*,
-                        AqlItemBlock const*,
-                        size_t,
-                        std::vector<Variable const*> const&,
-                        std::vector<RegisterId> const&);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the isolate used when executing and destroying the expression
-////////////////////////////////////////////////////////////////////////////////
-
-       v8::Isolate* isolate;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the compiled expression as a V8 function
-////////////////////////////////////////////////////////////////////////////////
-
-       v8::Persistent<v8::Function> _func;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constants
-////////////////////////////////////////////////////////////////////////////////
-
-       v8::Persistent<v8::Object> _constantValues;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief restrictions for creating the input values
-////////////////////////////////////////////////////////////////////////////////
-      
-       std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributeRestrictions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of times the expression was executed
-////////////////////////////////////////////////////////////////////////////////
-
-       size_t _numExecutions;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression is simple. simple in this case means
-/// that the expression result will always contain non-cyclic data and no 
-/// special JavaScript types such as Date, RegExp, Function etc.
-////////////////////////////////////////////////////////////////////////////////
-       
-       bool const _isSimple;
-
-    };
-
+  void setAttributeRestrictions(std::unordered_map<
+      Variable const*, std::unordered_set<std::string>> const&
+                                    attributeRestrictions) {
+    _attributeRestrictions = attributeRestrictions;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute the expression
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue execute(v8::Isolate* isolate, Query* query,
+                   triagens::arango::AqlTransaction*, AqlItemBlock const*,
+                   size_t, std::vector<Variable const*> const&,
+                   std::vector<RegisterId> const&);
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // variables
+  // -----------------------------------------------------------------------------
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the isolate used when executing and destroying the expression
+  ////////////////////////////////////////////////////////////////////////////////
+
+  v8::Isolate* isolate;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the compiled expression as a V8 function
+  ////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::Function> _func;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constants
+  ////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::Object> _constantValues;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief restrictions for creating the input values
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_map<Variable const*, std::unordered_set<std::string>>
+      _attributeRestrictions;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief number of times the expression was executed
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t _numExecutions;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression is simple. simple in this case means
+  /// that the expression result will always contain non-cyclic data and no
+  /// special JavaScript types such as Date, RegExp, Function etc.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool const _isSimple;
+};
+}
 }
 
 #endif
@@ -150,5 +148,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

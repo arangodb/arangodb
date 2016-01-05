@@ -39,13 +39,14 @@
 /// @brief apply default settings
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_vocbase_defaults_t::applyToVocBase (TRI_vocbase_t* vocbase) const {
-  vocbase->_settings.defaultMaximalSize               = defaultMaximalSize;
-  vocbase->_settings.defaultWaitForSync               = defaultWaitForSync;
-  vocbase->_settings.requireAuthentication            = requireAuthentication;
-  vocbase->_settings.requireAuthenticationUnixSockets = requireAuthenticationUnixSockets;
-  vocbase->_settings.authenticateSystemOnly           = authenticateSystemOnly;
-  vocbase->_settings.forceSyncProperties              = forceSyncProperties;
+void TRI_vocbase_defaults_t::applyToVocBase(TRI_vocbase_t* vocbase) const {
+  vocbase->_settings.defaultMaximalSize = defaultMaximalSize;
+  vocbase->_settings.defaultWaitForSync = defaultWaitForSync;
+  vocbase->_settings.requireAuthentication = requireAuthentication;
+  vocbase->_settings.requireAuthenticationUnixSockets =
+      requireAuthenticationUnixSockets;
+  vocbase->_settings.authenticateSystemOnly = authenticateSystemOnly;
+  vocbase->_settings.forceSyncProperties = forceSyncProperties;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,11 +54,12 @@ void TRI_vocbase_defaults_t::applyToVocBase (TRI_vocbase_t* vocbase) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_vocbase_defaults_t::toVelocyPack(VPackBuilder& builder) const {
-  TRI_ASSERT(! builder.isClosed());
-  
+  TRI_ASSERT(!builder.isClosed());
+
   builder.add("waitForSync", VPackValue(defaultWaitForSync));
   builder.add("requireAuthentication", VPackValue(requireAuthentication));
-  builder.add("requireAuthenticationUnixSockets", VPackValue(requireAuthenticationUnixSockets));
+  builder.add("requireAuthenticationUnixSockets",
+              VPackValue(requireAuthenticationUnixSockets));
   builder.add("authenticateSystemOnly", VPackValue(authenticateSystemOnly));
   builder.add("forceSyncProperties", VPackValue(forceSyncProperties));
   builder.add("defaultMaximalSize", VPackValue(defaultMaximalSize));
@@ -81,5 +83,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_defaults_t::toVelocyPack() const {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

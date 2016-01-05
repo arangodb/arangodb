@@ -32,56 +32,54 @@
 #include "Basics/JsonHelper.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ModificationOptions
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ModificationOptions {
+struct ModificationOptions {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor, using default values
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor, using default values
+  ////////////////////////////////////////////////////////////////////////////////
 
-      ModificationOptions (triagens::basics::Json const&);
+  ModificationOptions(triagens::basics::Json const&);
 
-      ModificationOptions ()
-        : ignoreErrors(false),
-          waitForSync(false),
-          nullMeansRemove(false),
-          mergeObjects(true),
-          ignoreDocumentNotFound(false),
-          readCompleteInput(true) {
-      }
+  ModificationOptions()
+      : ignoreErrors(false),
+        waitForSync(false),
+        nullMeansRemove(false),
+        mergeObjects(true),
+        ignoreDocumentNotFound(false),
+        readCompleteInput(true) {}
 
-      void toJson (triagens::basics::Json&, 
-                   TRI_memory_zone_t*) const;
+  void toJson(triagens::basics::Json&, TRI_memory_zone_t*) const;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // variables
+  // -----------------------------------------------------------------------------
 
-      bool ignoreErrors;
-      bool waitForSync;
-      bool nullMeansRemove;
-      bool mergeObjects;
-      bool ignoreDocumentNotFound;
-      bool readCompleteInput;
+  bool ignoreErrors;
+  bool waitForSync;
+  bool nullMeansRemove;
+  bool mergeObjects;
+  bool ignoreDocumentNotFound;
+  bool readCompleteInput;
+};
 
-    };
-
-  }  // namespace triagens::aql
+}  // namespace triagens::aql
 }  // namespace triagens
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Condition finder, used to build up the Condition object
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -33,8 +33,8 @@
 
 using namespace triagens::aql;
 using EN = triagens::aql::ExecutionNode;
-    
-bool ConditionFinder::before (ExecutionNode* en) {
+
+bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
     case EN::ENUMERATE_LIST:
     case EN::AGGREGATE:
@@ -42,7 +42,7 @@ bool ConditionFinder::before (ExecutionNode* en) {
     case EN::DISTRIBUTE:
     case EN::GATHER:
     case EN::REMOTE:
-    case EN::SUBQUERY:        
+    case EN::SUBQUERY:
     case EN::INDEX:
     case EN::INSERT:
     case EN::REMOVE:
@@ -55,8 +55,8 @@ bool ConditionFinder::before (ExecutionNode* en) {
       // that we have taken care of nodes that could throw exceptions
       // above.
       break;
-    
-    case EN::LIMIT:           
+
+    case EN::LIMIT:
       // LIMIT invalidates the sort expression we already found
       _sorts.clear();
       _filters.clear();
@@ -69,31 +69,34 @@ bool ConditionFinder::before (ExecutionNode* en) {
       return true;
 
     case EN::FILTER: {
-       std::vector<Variable const*> invars(std::move(en->getVariablesUsedHere()));
-       TRI_ASSERT(invars.size() == 1);
-       // register which variable is used in a FILTER
-       _filters.emplace(invars[0]->id);
-       break;
-     }
-    
+      std::vector<Variable const*> invars(
+          std::move(en->getVariablesUsedHere()));
+      TRI_ASSERT(invars.size() == 1);
+      // register which variable is used in a FILTER
+      _filters.emplace(invars[0]->id);
+      break;
+    }
+
     case EN::SORT: {
-       // register which variables are used in a SORT
-       if (_sorts.empty()) {
-         for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
-           _sorts.emplace_back((it.first)->id, it.second);
-           TRI_IF_FAILURE("ConditionFinder::sortNode") {
-             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-           }
-         }
-       }
-       break;
-     }
+      // register which variables are used in a SORT
+      if (_sorts.empty()) {
+        for (auto& it : static_cast<SortNode const*>(en)->getElements()) {
+          _sorts.emplace_back((it.first)->id, it.second);
+          TRI_IF_FAILURE("ConditionFinder::sortNode") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+        }
+      }
+      break;
+    }
 
     case EN::CALCULATION: {
       auto outvars = en->getVariablesSetHere();
       TRI_ASSERT(outvars.size() == 1);
 
-      _variableDefinitions.emplace(outvars[0]->id, static_cast<CalculationNode const*>(en)->expression()->node());
+      _variableDefinitions.emplace(
+          outvars[0]->id,
+          static_cast<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -124,7 +127,8 @@ bool ConditionFinder::before (ExecutionNode* en) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
 
-      bool const conditionIsImpossible = (foundCondition && condition->isEmpty());
+      bool const conditionIsImpossible =
+          (foundCondition && condition->isEmpty());
 
       if (conditionIsImpossible) {
         // condition is always false
@@ -145,18 +149,17 @@ bool ConditionFinder::before (ExecutionNode* en) {
         // this means we can't use the index to restrict the results
         break;
       }
-  
+
       if (condition->root() && condition->root()->canThrow()) {
         // something that can throw is not safe to optimize
         break;
       }
-    
-      std::unique_ptr<SortCondition> sortCondition; 
-      if (! en->isInInnerLoop()) {
+
+      std::unique_ptr<SortCondition> sortCondition;
+      if (!en->isInInnerLoop()) {
         // we cannot optimize away a sort if we're in an inner loop ourselves
         sortCondition.reset(new SortCondition(_sorts, _variableDefinitions));
-      } 
-      else {
+      } else {
         sortCondition.reset(new SortCondition);
       }
 
@@ -166,36 +169,30 @@ bool ConditionFinder::before (ExecutionNode* en) {
       }
 
       std::vector<Index const*> usedIndexes;
-      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto canUseIndex =
+          condition->findIndexes(node, usedIndexes, sortCondition.get());
 
       if (canUseIndex.first || canUseIndex.second) {
         bool reverse = false;
-        if (canUseIndex.second &&
-            sortCondition->isUnidirectional()) {
+        if (canUseIndex.second && sortCondition->isUnidirectional()) {
           reverse = sortCondition->isDescending();
         }
 
-        if (! canUseIndex.first) {
+        if (!canUseIndex.first) {
           // index cannot be used for filtering, but only for sorting
           // remove the condition now
           TRI_ASSERT(canUseIndex.second);
           condition.reset(new Condition(_plan->getAst()));
           condition->normalize(_plan);
         }
-        
-        TRI_ASSERT(! usedIndexes.empty());
 
-        // We either can find indexes for everything or findIndexes will clear out usedIndexes
+        TRI_ASSERT(!usedIndexes.empty());
+
+        // We either can find indexes for everything or findIndexes will clear
+        // out usedIndexes
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-          _plan, 
-          _plan->nextId(), 
-          node->vocbase(), 
-          node->collection(), 
-          node->outVariable(), 
-          usedIndexes, 
-          condition.get(),
-          reverse
-        ));
+            _plan, _plan->nextId(), node->vocbase(), node->collection(),
+            node->outVariable(), usedIndexes, condition.get(), reverse));
         condition.release();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -212,12 +209,12 @@ bool ConditionFinder::before (ExecutionNode* en) {
   return false;
 }
 
-bool ConditionFinder::enterSubquery (ExecutionNode*, ExecutionNode*) {
+bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-

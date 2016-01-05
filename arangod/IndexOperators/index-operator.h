@@ -42,18 +42,18 @@ class VocShaper;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Explanation of what an index operator is capable of and how one has to 
+/// Explanation of what an index operator is capable of and how one has to
 /// use it:
 ///
 /// An index operator is a binary tree of AND, OR or NOT nodes (with 2, 2
-/// and 1 child respectively, of type TRI_logical_index_operator_t) in 
+/// and 1 child respectively, of type TRI_logical_index_operator_t) in
 /// which the leaves are relational nodes (type TRI_relation_index_operator_t).
 /// These leaf nodes have a list of parameters. The length of this
 /// parameter list indicates how many of the attributes of the index
 /// are used, starting from the first and not skipping any. Depending
 /// on the type of index, only certain comparisons are allowed.
 ///
-/// For example for a hash index, only the EQ relation is supported and 
+/// For example for a hash index, only the EQ relation is supported and
 /// there must be exactly as many parameters as attributes used in the
 /// hash index. This is clear from how a hash index works.
 ///
@@ -67,7 +67,7 @@ class VocShaper;
 /// the boundary.
 ///
 /// Note that OR and NOT nodes are not (yet) supported by the skiplist index.
-/// 
+///
 /// Finally, note that the boundaries of LE, GE, LT and GT nodes can not
 /// be arrays or lists at this stage since these would potentially give
 /// rise to new shapes in the shaper which we must not allow. For EQ nodes,
@@ -88,85 +88,70 @@ typedef enum {
   TRI_GT_INDEX_OPERATOR,
 
   TRI_AND_INDEX_OPERATOR
-}
-TRI_index_operator_type_e;
-
-
+} TRI_index_operator_type_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief operands and operators
 ////////////////////////////////////////////////////////////////////////////////
 
 class TRI_index_operator_t {
-  public: 
-    TRI_index_operator_type_e const _type;
-    VocShaper const* _shaper;
+ public:
+  TRI_index_operator_type_e const _type;
+  VocShaper const* _shaper;
 
-    TRI_index_operator_t (TRI_index_operator_type_e const type,
-                          VocShaper const* shaper) 
-    : _type(type),
-      _shaper(shaper) {
-    }
+  TRI_index_operator_t(TRI_index_operator_type_e const type,
+                       VocShaper const* shaper)
+      : _type(type), _shaper(shaper) {}
 
-    virtual ~TRI_index_operator_t () {
-    } 
+  virtual ~TRI_index_operator_t() {}
 };
 
-
 //................................................................................
-// Storage for NOT / AND / OR logical operators used in skip list indexes and others
+// Storage for NOT / AND / OR logical operators used in skip list indexes and
+// others
 // It is a binary or unary operator
 //................................................................................
 
 class TRI_logical_index_operator_t : public TRI_index_operator_t {
-  public:
-    TRI_index_operator_t* _left;  // could be a relation or another logical operator
-    TRI_index_operator_t* _right; // could be a relation or another logical operator or null
+ public:
+  TRI_index_operator_t*
+      _left;  // could be a relation or another logical operator
+  TRI_index_operator_t*
+      _right;  // could be a relation or another logical operator or null
 
-    TRI_logical_index_operator_t (
-      TRI_index_operator_type_e type,
-      VocShaper* shaper,
-      TRI_index_operator_t* left,
-      TRI_index_operator_t* right
-    ) : TRI_index_operator_t(type, shaper),
-        _left(left),
-        _right(right)
-    {};
+  TRI_logical_index_operator_t(TRI_index_operator_type_e type,
+                               VocShaper* shaper, TRI_index_operator_t* left,
+                               TRI_index_operator_t* right)
+      : TRI_index_operator_t(type, shaper), _left(left), _right(right){};
 
-    ~TRI_logical_index_operator_t () {
-      delete _left;
-      delete _right;
-    };
+  ~TRI_logical_index_operator_t() {
+    delete _left;
+    delete _right;
+  };
 };
-
 
 //................................................................................
 // Storage for relation operator, e.g. <, <=, >, >=, ==, in
 //................................................................................
 
 class TRI_relation_index_operator_t : public TRI_index_operator_t {
-  public:
-    TRI_json_t* _parameters;    // parameters with which this relation was called with
-    TRI_shaped_json_t* _fields; // actual data from the parameters converted from
-                                      // a json array to a shaped json array
-    size_t _numFields;          // number of fields in the array above
+ public:
+  TRI_json_t*
+      _parameters;  // parameters with which this relation was called with
+  TRI_shaped_json_t* _fields;  // actual data from the parameters converted from
+                               // a json array to a shaped json array
+  size_t _numFields;           // number of fields in the array above
 
-    TRI_relation_index_operator_t (
-      TRI_index_operator_type_e const type,
-      VocShaper const* shaper,
-      TRI_json_t* parameters,
-      TRI_shaped_json_t* fields,
-      size_t numFields
-    ) : TRI_index_operator_t(type, shaper),
+  TRI_relation_index_operator_t(TRI_index_operator_type_e const type,
+                                VocShaper const* shaper, TRI_json_t* parameters,
+                                TRI_shaped_json_t* fields, size_t numFields)
+      : TRI_index_operator_t(type, shaper),
         _parameters(parameters),
         _fields(fields),
-        _numFields(numFields) {
-    }
+        _numFields(numFields) {}
 
-    ~TRI_relation_index_operator_t ();
-
+  ~TRI_relation_index_operator_t();
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new index operator of the specified type
@@ -175,12 +160,10 @@ class TRI_relation_index_operator_t : public TRI_index_operator_t {
 /// json parameters passed to it
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e,
-                                               TRI_index_operator_t*,
-                                               TRI_index_operator_t*,
-                                               TRI_json_t*,
-                                               VocShaper*,
-                                               size_t);
+TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e,
+                                              TRI_index_operator_t*,
+                                              TRI_index_operator_t*,
+                                              TRI_json_t*, VocShaper*, size_t);
 #endif
 
 // -----------------------------------------------------------------------------
@@ -189,5 +172,6 @@ TRI_index_operator_t* TRI_CreateIndexOperator (TRI_index_operator_type_e,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

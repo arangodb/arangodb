@@ -40,14 +40,13 @@ using TraverserExpression = triagens::arango::traverser::TraverserExpression;
 ///        VertexId is in use
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::traverser::VertexId triagens::arango::traverser::IdStringToVertexId (
-    CollectionNameResolver const* resolver,
-    std::string const& vertex
-  ) {
+triagens::arango::traverser::VertexId
+triagens::arango::traverser::IdStringToVertexId(
+    CollectionNameResolver const* resolver, std::string const& vertex) {
   size_t split;
   char const* str = vertex.c_str();
 
-  if (! TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
+  if (!TRI_ValidateDocumentIdKeyGenerator(str, &split)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
@@ -57,19 +56,19 @@ triagens::arango::traverser::VertexId triagens::arango::traverser::IdStringToVer
   if (cid == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  return VertexId(cid, const_cast<char *>(str + split + 1));
+  return VertexId(cid, const_cast<char*>(str + split + 1));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates an expression from a VelocyPackSlice
 ////////////////////////////////////////////////////////////////////////////////
 
-TraverserExpression::TraverserExpression (VPackSlice const& slice) {
+TraverserExpression::TraverserExpression(VPackSlice const& slice) {
   isEdgeAccess = slice.get("isEdgeAccess").getBool();
-  comparisonType = static_cast<aql::AstNodeType>(slice.get("comparisonType").getNumber<uint32_t>());
-  auto registerNode = [&](aql::AstNode const* node) -> void {
-    _nodeRegister.emplace_back(node);
-  };
+  comparisonType = static_cast<aql::AstNodeType>(
+      slice.get("comparisonType").getNumber<uint32_t>());
+  auto registerNode = [&](aql::AstNode const* node)
+                          -> void { _nodeRegister.emplace_back(node); };
 
   auto registerString = [&](std::string const& str) -> char const* {
     auto copy = std::make_unique<std::string>(str.c_str(), str.size());
@@ -78,15 +77,23 @@ TraverserExpression::TraverserExpression (VPackSlice const& slice) {
     auto p = copy.release();
     TRI_ASSERT(p != nullptr);
     TRI_ASSERT(p->c_str() != nullptr);
-    return p->c_str(); // should never change its position, even if vector grows/shrinks
+    return p->c_str();  // should never change its position, even if vector
+                        // grows/shrinks
   };
 
-  triagens::basics::Json varNode(TRI_UNKNOWN_MEM_ZONE, basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")), triagens::basics::Json::NOFREE);
+  triagens::basics::Json varNode(
+      TRI_UNKNOWN_MEM_ZONE,
+      basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")),
+      triagens::basics::Json::NOFREE);
 
-  compareTo.reset(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, basics::VelocyPackHelper::velocyPackToJson(slice.get("compareTo")), triagens::basics::Json::NOFREE));
+  compareTo.reset(new triagens::basics::Json(
+      TRI_UNKNOWN_MEM_ZONE,
+      basics::VelocyPackHelper::velocyPackToJson(slice.get("compareTo")),
+      triagens::basics::Json::NOFREE));
 
   if (compareTo->json() == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid compareTo value");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid compareTo value");
   }
   // If this fails everything before does not leak
   varAccess = new aql::AstNode(registerNode, registerString, varNode);
@@ -96,12 +103,12 @@ TraverserExpression::TraverserExpression (VPackSlice const& slice) {
 /// @brief transforms the expression into json
 ////////////////////////////////////////////////////////////////////////////////
 
-void TraverserExpression::toJson (triagens::basics::Json& json,
-                                  TRI_memory_zone_t* zone) const {
-
-  json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))
-      ("comparisonType", triagens::basics::Json(static_cast<int32_t>(comparisonType)))
-      ("varAccess", varAccess->toJson(zone, true));
+void TraverserExpression::toJson(triagens::basics::Json& json,
+                                 TRI_memory_zone_t* zone) const {
+  json("isEdgeAccess", triagens::basics::Json(isEdgeAccess))(
+      "comparisonType",
+      triagens::basics::Json(static_cast<int32_t>(comparisonType)))(
+      "varAccess", varAccess->toJson(zone, true));
 
   if (compareTo.get() != nullptr) {
     // We have to copy compareTo. The json is greedy and steals it...
@@ -114,8 +121,8 @@ void TraverserExpression::toJson (triagens::basics::Json& json,
 ///        Returns false whenever the document does not have the required format
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
-                                          DocumentAccessor& accessor) const {
+bool TraverserExpression::recursiveCheck(triagens::aql::AstNode const* node,
+                                         DocumentAccessor& accessor) const {
   switch (node->type) {
     case triagens::aql::NODE_TYPE_REFERENCE:
       // We are on the variable access
@@ -124,10 +131,10 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
       char const* attributeName = node->getStringValue();
       TRI_ASSERT(attributeName != nullptr);
       std::string name(attributeName, node->getStringLength());
-      if (! recursiveCheck(node->getMember(0), accessor)) {
+      if (!recursiveCheck(node->getMember(0), accessor)) {
         return false;
       }
-      if (! accessor.isObject() || ! accessor.hasKey(name)) {
+      if (!accessor.isObject() || !accessor.hasKey(name)) {
         return false;
       }
       accessor.get(name);
@@ -135,14 +142,14 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
     }
     case triagens::aql::NODE_TYPE_INDEXED_ACCESS: {
       auto index = node->getMember(1);
-      if (! index->isIntValue()) {
+      if (!index->isIntValue()) {
         return false;
       }
-      if (! recursiveCheck(node->getMember(0), accessor)) {
+      if (!recursiveCheck(node->getMember(0), accessor)) {
         return false;
       }
       auto idx = index->getIntValue();
-      if (! accessor.isArray()) {
+      if (!accessor.isArray()) {
         return false;
       }
       accessor.at(idx);
@@ -158,8 +165,7 @@ bool TraverserExpression::recursiveCheck (triagens::aql::AstNode const* node,
 /// @brief evalutes if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
-
+bool TraverserExpression::matchesCheck(DocumentAccessor& accessor) const {
   triagens::basics::Json result(triagens::basics::Json::Null);
   if (recursiveCheck(varAccess, accessor)) {
     result = accessor.toJson();
@@ -170,9 +176,11 @@ bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
 
   switch (comparisonType) {
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) == 0;
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) ==
+             0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_NE:
-      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) != 0;
+      return TRI_CompareValuesJson(result.json(), compareTo->json(), false) !=
+             0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT:
       return TRI_CompareValuesJson(result.json(), compareTo->json(), true) < 0;
     case triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE:
@@ -191,7 +199,7 @@ bool TraverserExpression::matchesCheck (DocumentAccessor& accessor) const {
 /// @brief evalutes if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::matchesCheck (TRI_json_t const* element) const {
+bool TraverserExpression::matchesCheck(TRI_json_t const* element) const {
   DocumentAccessor accessor(element);
   return matchesCheck(accessor);
 }
@@ -200,7 +208,7 @@ bool TraverserExpression::matchesCheck (TRI_json_t const* element) const {
 /// @brief evalutes if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::matchesCheck (VPackSlice const& element) const {
+bool TraverserExpression::matchesCheck(VPackSlice const& element) const {
   DocumentAccessor accessor(element);
   return matchesCheck(accessor);
 }
@@ -209,9 +217,9 @@ bool TraverserExpression::matchesCheck (VPackSlice const& element) const {
 /// @brief evalutes if an element matches the given expression
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TraverserExpression::matchesCheck (TRI_doc_mptr_t& element,
-                                        TRI_document_collection_t* collection,
-                                        triagens::arango::CollectionNameResolver const* resolver) const {
+bool TraverserExpression::matchesCheck(
+    TRI_doc_mptr_t& element, TRI_document_collection_t* collection,
+    triagens::arango::CollectionNameResolver const* resolver) const {
   DocumentAccessor accessor(resolver, collection, &element);
   return matchesCheck(accessor);
 }

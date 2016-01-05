@@ -56,9 +56,10 @@ static char const* EMPTY_STR = "";
 // -----------------------------------------------------------------------------
 
 int32_t const HttpRequest::MinCompatibility = 10300L;
-  
-std::string const HttpRequest::BatchContentType = "application/x-arango-batchpart";
-  
+
+std::string const HttpRequest::BatchContentType =
+    "application/x-arango-batchpart";
+
 std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
 
 // -----------------------------------------------------------------------------
@@ -69,33 +70,30 @@ std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
 /// @brief http request constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequest (ConnectionInfo const& info,
-                          char const* header,
-                          size_t length,
-                          int32_t defaultApiCompatibility,
-                          bool allowMethodOverride)
-  : _requestPath(EMPTY_STR),
-    _headers(5),
-    _values(10),
-    _arrayValues(1),
-    _cookies(1),
-    _contentLength(0),
-    _body(nullptr),
-    _bodySize(0),
-    _freeables(),
-    _connectionInfo(info),
-    _type(HTTP_REQUEST_ILLEGAL),
-    _prefix(),
-    _suffix(),
-    _version(HTTP_UNKNOWN),
-    _databaseName(),
-    _user(),
-    _requestContext(nullptr),
-    _defaultApiCompatibility(defaultApiCompatibility),
-    _isRequestContextOwner(false),
-    _allowMethodOverride(allowMethodOverride),
-    _clientTaskId(0) {
-
+HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
+                         size_t length, int32_t defaultApiCompatibility,
+                         bool allowMethodOverride)
+    : _requestPath(EMPTY_STR),
+      _headers(5),
+      _values(10),
+      _arrayValues(1),
+      _cookies(1),
+      _contentLength(0),
+      _body(nullptr),
+      _bodySize(0),
+      _freeables(),
+      _connectionInfo(info),
+      _type(HTTP_REQUEST_ILLEGAL),
+      _prefix(),
+      _suffix(),
+      _version(HTTP_UNKNOWN),
+      _databaseName(),
+      _user(),
+      _requestContext(nullptr),
+      _defaultApiCompatibility(defaultApiCompatibility),
+      _isRequestContextOwner(false),
+      _allowMethodOverride(allowMethodOverride),
+      _clientTaskId(0) {
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
 
@@ -112,10 +110,10 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::~HttpRequest () {
-  basics::Dictionary< vector<char const*>* >::KeyValue const* begin;
-  basics::Dictionary< vector<char const*>* >::KeyValue const* end;
-  for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
+HttpRequest::~HttpRequest() {
+  basics::Dictionary<vector<char const*>*>::KeyValue const* begin;
+  basics::Dictionary<vector<char const*>*>::KeyValue const* end;
+  for (_arrayValues.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -144,15 +142,13 @@ HttpRequest::~HttpRequest () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::requestPath () const {
-  return _requestPath;
-}
+char const* HttpRequest::requestPath() const { return _requestPath; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::write (TRI_string_buffer_t* buffer) const {
+void HttpRequest::write(TRI_string_buffer_t* buffer) const {
   string&& method = translateMethod(_type);
 
   TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
@@ -169,7 +165,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
 
   bool first = true;
 
-  for (_values.range(begin, end);  begin < end;  ++begin) {
+  for (_values.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -179,8 +175,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
     if (first) {
       TRI_AppendCharStringBuffer(buffer, '?');
       first = false;
-    }
-    else {
+    } else {
       TRI_AppendCharStringBuffer(buffer, '&');
     }
 
@@ -194,7 +189,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
   TRI_AppendString2StringBuffer(buffer, " HTTP/1.1\r\n", 11);
 
   // generate the header fields
-  for (_headers.range(begin, end);  begin < end;  ++begin) {
+  for (_headers.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -216,7 +211,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
   }
 
   first = true;
-  for (_cookies.range(begin, end);  begin < end;  ++begin) {
+  for (_cookies.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -226,8 +221,7 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
     if (first) {
       first = false;
       TRI_AppendString2StringBuffer(buffer, "Cookie: ", 8);
-    }
-    else {
+    } else {
       TRI_AppendString2StringBuffer(buffer, "; ", 2);
     }
 
@@ -252,21 +246,18 @@ void HttpRequest::write (TRI_string_buffer_t* buffer) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t HttpRequest::contentLength () const {
-  return _contentLength;
-}
+int64_t HttpRequest::contentLength() const { return _contentLength; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::header (char const* key) const {
+char const* HttpRequest::header(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
     return EMPTY_STR;
-  }
-  else {
+  } else {
     return kv->_value;
   }
 }
@@ -275,14 +266,13 @@ char const* HttpRequest::header (char const* key) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::header (char const* key, bool& found) const {
+char const* HttpRequest::header(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key);
 
   if (kv == nullptr) {
     found = false;
     return EMPTY_STR;
-  }
-  else {
+  } else {
     found = true;
     return kv->_value;
   }
@@ -292,13 +282,13 @@ char const* HttpRequest::header (char const* key, bool& found) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::headers () const {
+map<string, string> HttpRequest::headers() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
   map<string, string> result;
 
-  for (_headers.range(begin, end);  begin < end;  ++begin) {
+  for (_headers.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -317,13 +307,12 @@ map<string, string> HttpRequest::headers () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::value (char const* key) const {
+char const* HttpRequest::value(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
     return EMPTY_STR;
-  }
-  else {
+  } else {
     return kv->_value;
   }
 }
@@ -332,14 +321,13 @@ char const* HttpRequest::value (char const* key) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::value (char const* key, bool& found) const {
+char const* HttpRequest::value(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _values.lookup(key);
 
   if (kv == nullptr) {
     found = false;
     return EMPTY_STR;
-  }
-  else {
+  } else {
     found = true;
     return kv->_value;
   }
@@ -349,13 +337,13 @@ char const* HttpRequest::value (char const* key, bool& found) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::values () const {
+map<string, string> HttpRequest::values() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
   map<string, string> result;
 
-  for (_values.range(begin, end);  begin < end;  ++begin) {
+  for (_values.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -372,13 +360,13 @@ map<string, string> HttpRequest::values () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, vector<char const*>* > HttpRequest::arrayValues () const {
-  basics::Dictionary< vector<char const*>* >::KeyValue const* begin;
-  basics::Dictionary< vector<char const*>* >::KeyValue const* end;
+map<string, vector<char const*>*> HttpRequest::arrayValues() const {
+  basics::Dictionary<vector<char const*>*>::KeyValue const* begin;
+  basics::Dictionary<vector<char const*>*>::KeyValue const* end;
 
-  map<string, vector<char const*>* > result;
+  map<string, vector<char const*>*> result;
 
-  for (_arrayValues.range(begin, end);  begin < end;  ++begin) {
+  for (_arrayValues.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -395,13 +383,12 @@ map<string, vector<char const*>* > HttpRequest::arrayValues () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::cookieValue (char const* key) const {
+char const* HttpRequest::cookieValue(char const* key) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
     return EMPTY_STR;
-  }
-  else {
+  } else {
     return kv->_value;
   }
 }
@@ -410,14 +397,13 @@ char const* HttpRequest::cookieValue (char const* key) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::cookieValue (char const* key, bool& found) const {
+char const* HttpRequest::cookieValue(char const* key, bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _cookies.lookup(key);
 
   if (kv == nullptr) {
     found = false;
     return EMPTY_STR;
-  }
-  else {
+  } else {
     found = true;
     return kv->_value;
   }
@@ -427,13 +413,13 @@ char const* HttpRequest::cookieValue (char const* key, bool& found) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::cookieValues () const {
+map<string, string> HttpRequest::cookieValues() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
   map<string, string> result;
 
-  for (_cookies.range(begin, end);  begin < end;  ++begin) {
+  for (_cookies.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
     if (key == nullptr) {
@@ -450,7 +436,7 @@ map<string, string> HttpRequest::cookieValues () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::body () const {
+char const* HttpRequest::body() const {
   return _body == nullptr ? EMPTY_STR : _body;
 }
 
@@ -458,16 +444,13 @@ char const* HttpRequest::body () const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t HttpRequest::bodySize () const {
-  return _bodySize;
-}
+size_t HttpRequest::bodySize() const { return _bodySize; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpRequest::setBody (char const* newBody,
-                          size_t length) {
+int HttpRequest::setBody(char const* newBody, size_t length) {
   _body = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, newBody, length);
 
   if (_body == nullptr) {
@@ -476,7 +459,7 @@ int HttpRequest::setBody (char const* newBody,
 
   _freeables.push_back(_body);
 
-  _contentLength = (int64_t) length;
+  _contentLength = (int64_t)length;
   _bodySize = length;
 
   return TRI_ERROR_NO_ERROR;
@@ -486,25 +469,26 @@ int HttpRequest::setBody (char const* newBody,
 /// @brief sets a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setHeader (char const* key,
-                             size_t keyLength,
-                             char const* value) {
-  if (keyLength == 14 && memcmp(key, "content-length", keyLength) == 0) { // 14 = strlen("content-length")
+void HttpRequest::setHeader(char const* key, size_t keyLength,
+                            char const* value) {
+  if (keyLength == 14 &&
+      memcmp(key, "content-length", keyLength) ==
+          0) {  // 14 = strlen("content-length")
     _contentLength = TRI_Int64String(value);
-  }
-  else if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) { // 6 = strlen("cookie")
+  } else if (keyLength == 6 &&
+             memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
     parseCookies(value);
-  }
-  else {
-    if (_allowMethodOverride &&
-        keyLength >= 13 &&
-        *key == 'x' && *(key + 1) == '-') {
+  } else {
+    if (_allowMethodOverride && keyLength >= 13 && *key == 'x' &&
+        *(key + 1) == '-') {
       // handle x-... headers
 
       // override HTTP method?
       if ((keyLength == 13 && memcmp(key, "x-http-method", keyLength) == 0) ||
-          (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
-          (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
+          (keyLength == 17 &&
+           memcmp(key, "x-method-override", keyLength) == 0) ||
+          (keyLength == 22 &&
+           memcmp(key, "x-http-method-override", keyLength) == 0)) {
         string overriddenType(value);
         StringUtils::tolowerInPlace(&overriddenType);
 
@@ -523,7 +507,8 @@ void HttpRequest::setHeader (char const* key,
 /// @brief gets the request body as VPackBuilder
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack (VPackOptions const* options) {
+std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack(
+    VPackOptions const* options) {
   VPackParser parser(options);
   parser.parse(body());
   return parser.steal();
@@ -533,7 +518,7 @@ std::shared_ptr<VPackBuilder> HttpRequest::toVelocyPack (VPackOptions const* opt
 /// @brief gets the request body as TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* HttpRequest::toJson (char** errmsg) {
+TRI_json_t* HttpRequest::toJson(char** errmsg) {
   return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, body(), errmsg);
 }
 
@@ -541,13 +526,13 @@ TRI_json_t* HttpRequest::toJson (char** errmsg) {
 /// @brief determine version compatibility
 ////////////////////////////////////////////////////////////////////////////////
 
-int32_t HttpRequest::compatibility () {
+int32_t HttpRequest::compatibility() {
   int32_t result = _defaultApiCompatibility;
 
   bool found;
   char const* apiVersion = header("x-arango-version", found);
 
-  if (! found) {
+  if (!found) {
     return result;
   }
 
@@ -568,8 +553,7 @@ int32_t HttpRequest::compatibility () {
 
         if (result < MinCompatibility) {
           result = MinCompatibility;
-        }
-        else {
+        } else {
           // set patch-level to 0
           result /= 100L;
           result *= 100L;
@@ -589,7 +573,7 @@ int32_t HttpRequest::compatibility () {
     if ((*p == '.' || *p == '-' || *p == '\0') && p != apiVersion) {
       int32_t minor = TRI_Int32String2(apiVersion, (p - apiVersion));
 
-      result = (int32_t) (minor * 100L + major * 10000L);
+      result = (int32_t)(minor * 100L + major * 10000L);
     }
   }
 
@@ -605,23 +589,19 @@ int32_t HttpRequest::compatibility () {
 /// @brief returns the protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-const string& HttpRequest::protocol () const {
-  return _protocol;
-}
+const string& HttpRequest::protocol() const { return _protocol; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setProtocol (const string& protocol) {
-  _protocol = protocol;
-}
+void HttpRequest::setProtocol(const string& protocol) { _protocol = protocol; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-ConnectionInfo const& HttpRequest::connectionInfo () const {
+ConnectionInfo const& HttpRequest::connectionInfo() const {
   return _connectionInfo;
 }
 
@@ -629,7 +609,7 @@ ConnectionInfo const& HttpRequest::connectionInfo () const {
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setConnectionInfo (ConnectionInfo const& info) {
+void HttpRequest::setConnectionInfo(ConnectionInfo const& info) {
   _connectionInfo = info;
 }
 
@@ -637,65 +617,49 @@ void HttpRequest::setConnectionInfo (ConnectionInfo const& info) {
 /// @brief returns the http request type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::requestType () const {
-  return _type;
-}
+HttpRequest::HttpRequestType HttpRequest::requestType() const { return _type; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the http request type
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setRequestType (HttpRequestType newType) {
-  _type = newType;
-}
+void HttpRequest::setRequestType(HttpRequestType newType) { _type = newType; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the database name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpRequest::databaseName () const {
-  return _databaseName;
-}
+string const& HttpRequest::databaseName() const { return _databaseName; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpRequest::user () const {
-  return _user;
-}
+string const& HttpRequest::user() const { return _user; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setUser (string const& user) {
-  _user = user;
-}
+void HttpRequest::setUser(string const& user) { _user = user; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the path of the request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setRequestPath (char const* path) {
-  _requestPath = path;
-}
+void HttpRequest::setRequestPath(char const* path) { _requestPath = path; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the client task id
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t HttpRequest::clientTaskId () const {
-  return _clientTaskId;
-}
+uint64_t HttpRequest::clientTaskId() const { return _clientTaskId; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the client task id
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setClientTaskId (uint64_t id) {
-  _clientTaskId = id;
-}
+void HttpRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -705,8 +669,8 @@ void HttpRequest::setClientTaskId (uint64_t id) {
 /// @brief determine the header type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr,
-                                                          const size_t length) {
+HttpRequest::HttpRequestType HttpRequest::getRequestType(const char* ptr,
+                                                         const size_t length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
@@ -727,19 +691,22 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr,
       break;
 
     case 5:
-      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' && ptr[4] == 'h') {
+      if (ptr[0] == 'p' && ptr[1] == 'a' && ptr[2] == 't' && ptr[3] == 'c' &&
+          ptr[4] == 'h') {
         return HTTP_REQUEST_PATCH;
       }
       break;
 
     case 6:
-      if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' && ptr[4] == 't' && ptr[5] == 'e') {
+      if (ptr[0] == 'd' && ptr[1] == 'e' && ptr[2] == 'l' && ptr[3] == 'e' &&
+          ptr[4] == 't' && ptr[5] == 'e') {
         return HTTP_REQUEST_DELETE;
       }
       break;
 
     case 7:
-      if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' && ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
+      if (ptr[0] == 'o' && ptr[1] == 'p' && ptr[2] == 't' && ptr[3] == 'i' &&
+          ptr[4] == 'o' && ptr[5] == 'n' && ptr[6] == 's') {
         return HTTP_REQUEST_OPTIONS;
       }
       break;
@@ -752,7 +719,7 @@ HttpRequest::HttpRequestType HttpRequest::getRequestType (const char* ptr,
 /// @brief parses the http header
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::parseHeader (char* ptr, size_t length) {
+void HttpRequest::parseHeader(char* ptr, size_t length) {
   char* start = ptr;
   char* end = start + length;
   size_t const versionLength = strlen("http/1.x");
@@ -773,11 +740,10 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 
     // check for request type (GET/POST in line 0), path and parameters
     if (lineNum == 0) {
-
       // split line at space
       char* e = lineBegin;
 
-      for (;  e < end && *e != ' ' && *e != '\n';  ++e) {
+      for (; e < end && *e != ' ' && *e != '\n'; ++e) {
         *e = ::tolower(*e);
       }
 
@@ -790,7 +756,6 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 
       // we found a space (*end is '\0')
       if (*e == ' ') {
-
         // extract the value
         keyEnd = e;
 
@@ -824,8 +789,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           if (e == end) {
             valueEnd = e;
             start = end;
-          }
-          else {
+          } else {
             if (*e == '\n') {
               valueEnd = e;
               start = e + 1;
@@ -834,8 +798,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
               if (valueBegin < valueEnd && valueEnd[-1] == '\r') {
                 --valueEnd;
               }
-            }
-            else {
+            } else {
               valueEnd = e;
 
               // HTTP protocol version is expected next
@@ -848,17 +811,13 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
                 if ((e[0] == 'h' || e[0] == 'H') &&
                     (e[1] == 't' || e[1] == 'T') &&
                     (e[2] == 't' || e[2] == 'T') &&
-                    (e[3] == 'p' || e[3] == 'P') &&
-                     e[4] == '/' &&
-                     e[5] == '1' &&
-                     e[6] == '.') {
+                    (e[3] == 'p' || e[3] == 'P') && e[4] == '/' &&
+                    e[5] == '1' && e[6] == '.') {
                   if (e[7] == '1') {
                     _version = HTTP_1_1;
-                  }
-                  else if (e[7] == '0') {
+                  } else if (e[7] == '0') {
                     _version = HTTP_1_0;
-                  }
-                  else {
+                  } else {
                     _version = HTTP_UNKNOWN;
                   }
 
@@ -873,8 +832,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 
               if (e == end) {
                 start = end;
-              }
-              else {
+              } else {
                 start = e + 1;
               }
             }
@@ -911,15 +869,16 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
             char* q = pathBegin;
 
             // check if the prefix is "_db"
-            if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
-
+            if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' &&
+                q[4] == '/') {
               // request contains database name
               q += 5;
               pathBegin = q;
 
               // read until end of database name
               while (*q != '\0') {
-                if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
+                if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' ||
+                    *q == '\r') {
                   break;
                 }
                 ++q;
@@ -954,7 +913,8 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
             paramBegin = f + 1;
             paramEnd = paramBegin;
 
-            while (paramEnd < valueEnd && *paramEnd != ' ' && *paramEnd != '\n') {
+            while (paramEnd < valueEnd && *paramEnd != ' ' &&
+                   *paramEnd != '\n') {
               ++paramEnd;
             }
 
@@ -981,8 +941,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
         if (e < end) {
           *keyEnd = '\0';
           start = e + 1;
-        }
-        else {
+        } else {
           start = end;
         }
 
@@ -996,11 +955,10 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
     // .............................................................................
 
     else {
-
       // split line at colon
       char* e = lineBegin;
 
-      for (;  e < end && *e != ':' && *e != '\n';  ++e) {
+      for (; e < end && *e != ':' && *e != '\n'; ++e) {
         *e = ::tolower(*e);
       }
 
@@ -1030,8 +988,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
         if (e == end) {
           valueBegin = valueEnd = keyEnd;
           start = end;
-        }
-        else if (*e == '\n') {
+        } else if (*e == '\n') {
           valueBegin = valueEnd = keyEnd;
           start = e + 1;
         }
@@ -1047,8 +1004,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
           if (e == end) {
             valueEnd = e;
             start = end;
-          }
-          else {
+          } else {
             valueEnd = e;
             start = e + 1;
           }
@@ -1076,8 +1032,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
         if (e < end) {
           *keyEnd = '\0';
           start = e + 1;
-        }
-        else {
+        } else {
           start = end;
         }
 
@@ -1103,7 +1058,7 @@ void HttpRequest::parseHeader (char* ptr, size_t length) {
 /// range can be modified afterwards
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setFullUrl (char const* begin, char const* end) {
+void HttpRequest::setFullUrl(char const* begin, char const* end) {
   TRI_ASSERT(begin != nullptr);
   TRI_ASSERT(end != nullptr);
   TRI_ASSERT(begin <= end);
@@ -1115,7 +1070,7 @@ void HttpRequest::setFullUrl (char const* begin, char const* end) {
 /// @brief sets the header values
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setValues (char* buffer, char* end) {
+void HttpRequest::setValues(char* buffer, char* end) {
   char* keyBegin = nullptr;
   char* key = nullptr;
 
@@ -1127,10 +1082,10 @@ void HttpRequest::setValues (char* buffer, char* end) {
 
   int hex = 0;
 
-  char const AMB     = '&';
-  char const EQUAL   = '=';
+  char const AMB = '&';
+  char const EQUAL = '=';
   char const PERCENT = '%';
-  char const PLUS    = '+';
+  char const PLUS = '+';
 
   for (keyBegin = key = buffer; buffer < end; buffer++) {
     char next = *buffer;
@@ -1141,8 +1096,7 @@ void HttpRequest::setValues (char* buffer, char* end) {
       valueBegin = value = buffer + 1;
 
       continue;
-    }
-    else if (next == AMB) {
+    } else if (next == AMB) {
       phase = KEY;
 
       *key = '\0';
@@ -1150,17 +1104,15 @@ void HttpRequest::setValues (char* buffer, char* end) {
       // check for missing value phase
       if (valueBegin == nullptr) {
         valueBegin = value = key;
-      }
-      else {
+      } else {
         *value = '\0';
       }
 
-      if (key - keyBegin > 2 && (*(key - 2)) == '[' &&  (*(key - 1)) == ']') {
+      if (key - keyBegin > 2 && (*(key - 2)) == '[' && (*(key - 1)) == ']') {
         // found parameter xxx[]
         *(key - 2) = '\0';
         setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
-      }
-      else {
+      } else {
         _values.insert(keyBegin, key - keyBegin, valueBegin);
       }
 
@@ -1168,12 +1120,10 @@ void HttpRequest::setValues (char* buffer, char* end) {
       valueBegin = value = 0;
 
       continue;
-    }
-    else if (next == PERCENT) {
+    } else if (next == PERCENT) {
       reader = HEX1;
       continue;
-    }
-    else if (reader == HEX1) {
+    } else if (reader == HEX1) {
       int h1 = StringUtils::hex2int(next, -1);
 
       if (h1 == -1) {
@@ -1185,28 +1135,24 @@ void HttpRequest::setValues (char* buffer, char* end) {
       hex = h1 * 16;
       reader = HEX2;
       continue;
-    }
-    else if (reader == HEX2) {
+    } else if (reader == HEX2) {
       int h1 = StringUtils::hex2int(next, -1);
 
       if (h1 == -1) {
         --buffer;
-      }
-      else {
+      } else {
         hex += h1;
       }
 
       reader = NORMAL;
       next = static_cast<char>(hex);
-    }
-    else if (next == PLUS) {
+    } else if (next == PLUS) {
       next = ' ';
     }
 
     if (phase == KEY) {
       *key++ = next;
-    }
-    else {
+    } else {
       *value++ = next;
     }
   }
@@ -1217,20 +1163,17 @@ void HttpRequest::setValues (char* buffer, char* end) {
     // check for missing value phase
     if (valueBegin == nullptr) {
       valueBegin = value = key;
-    }
-    else {
+    } else {
       *value = '\0';
     }
 
-    if (key - keyBegin > 2 && (*(key - 2)) == '[' &&  (*(key - 1)) == ']') {
+    if (key - keyBegin > 2 && (*(key - 2)) == '[' && (*(key - 1)) == ']') {
       // found parameter xxx[]
       *(key - 2) = '\0';
       setArrayValue(keyBegin, key - keyBegin - 2, valueBegin);
-    }
-    else {
+    } else {
       _values.insert(keyBegin, key - keyBegin, valueBegin);
     }
-
   }
 }
 
@@ -1242,39 +1185,33 @@ void HttpRequest::setValues (char* buffer, char* end) {
 /// @brief returns the prefix path of the request
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* HttpRequest::prefix () const {
-  return _prefix.c_str();
-}
+char const* HttpRequest::prefix() const { return _prefix.c_str(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the path of the request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setPrefix (char const* path) {
-  _prefix = path;
-}
+void HttpRequest::setPrefix(char const* path) { _prefix = path; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all suffix parts
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> const& HttpRequest::suffix () const {
-  return _suffix;
-}
+vector<string> const& HttpRequest::suffix() const { return _suffix; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a suffix part
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::addSuffix (std::string const& part) {
+void HttpRequest::addSuffix(std::string const& part) {
   string decoded = StringUtils::urlDecode(part);
   size_t tmpLength = 0;
-  char* utf8_nfc = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
+  char* utf8_nfc = TRI_normalize_utf8_to_NFC(
+      TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
   if (utf8_nfc) {
     _suffix.emplace_back(utf8_nfc);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8_nfc);
-  }
-  else {
+  } else {
     _suffix.emplace_back(decoded);
   }
 }
@@ -1283,8 +1220,8 @@ void HttpRequest::addSuffix (std::string const& part) {
 /// @brief set the request context
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setRequestContext (RequestContext* requestContext,
-                                     bool isRequestContextOwner) {
+void HttpRequest::setRequestContext(RequestContext* requestContext,
+                                    bool isRequestContextOwner) {
   if (_requestContext) {
     // if we have a shared context, we should not have got here
     TRI_ASSERT(isRequestContextOwner);
@@ -1294,7 +1231,7 @@ void HttpRequest::setRequestContext (RequestContext* requestContext,
     delete _requestContext;
   }
 
-  _requestContext        = requestContext;
+  _requestContext = requestContext;
   _isRequestContextOwner = isRequestContextOwner;
 }
 
@@ -1306,16 +1243,14 @@ void HttpRequest::setRequestContext (RequestContext* requestContext,
 /// @brief translate the HTTP protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string HttpRequest::translateVersion (HttpVersion version) {
+std::string HttpRequest::translateVersion(HttpVersion version) {
   switch (version) {
     case HTTP_1_1: {
       return "HTTP/1.1";
     }
     case HTTP_1_0:
     case HTTP_UNKNOWN:
-    default: {
-      return "HTTP/1.0";
-    }
+    default: { return "HTTP/1.0"; }
   }
 }
 
@@ -1323,26 +1258,20 @@ std::string HttpRequest::translateVersion (HttpVersion version) {
 /// @brief translate an enum value into an HTTP method string
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpRequest::translateMethod (const HttpRequestType method) {
+string HttpRequest::translateMethod(const HttpRequestType method) {
   if (method == HTTP_REQUEST_DELETE) {
     return "DELETE";
-  }
-  else if (method == HTTP_REQUEST_GET) {
+  } else if (method == HTTP_REQUEST_GET) {
     return "GET";
-  }
-  else if (method == HTTP_REQUEST_HEAD) {
+  } else if (method == HTTP_REQUEST_HEAD) {
     return "HEAD";
-  }
-  else if (method == HTTP_REQUEST_OPTIONS) {
+  } else if (method == HTTP_REQUEST_OPTIONS) {
     return "OPTIONS";
-  }
-  else if (method == HTTP_REQUEST_PATCH) {
+  } else if (method == HTTP_REQUEST_PATCH) {
     return "PATCH";
-  }
-  else if (method == HTTP_REQUEST_POST) {
+  } else if (method == HTTP_REQUEST_POST) {
     return "POST";
-  }
-  else if (method == HTTP_REQUEST_PUT) {
+  } else if (method == HTTP_REQUEST_PUT) {
     return "PUT";
   }
 
@@ -1354,28 +1283,23 @@ string HttpRequest::translateMethod (const HttpRequestType method) {
 /// @brief translate an HTTP method string into an enum value
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::translateMethod (const string& method) {
+HttpRequest::HttpRequestType HttpRequest::translateMethod(
+    const string& method) {
   const string methodString = StringUtils::toupper(method);
 
   if (methodString == "DELETE") {
     return HTTP_REQUEST_DELETE;
-  }
-  else if (methodString == "GET") {
+  } else if (methodString == "GET") {
     return HTTP_REQUEST_GET;
-  }
-  else if (methodString == "HEAD") {
+  } else if (methodString == "HEAD") {
     return HTTP_REQUEST_HEAD;
-  }
-  else if (methodString == "OPTIONS") {
+  } else if (methodString == "OPTIONS") {
     return HTTP_REQUEST_OPTIONS;
-  }
-  else if (methodString == "PATCH") {
+  } else if (methodString == "PATCH") {
     return HTTP_REQUEST_PATCH;
-  }
-  else if (methodString == "POST") {
+  } else if (methodString == "POST") {
     return HTTP_REQUEST_POST;
-  }
-  else if (methodString == "PUT") {
+  } else if (methodString == "PUT") {
     return HTTP_REQUEST_PUT;
   }
 
@@ -1386,7 +1310,7 @@ HttpRequest::HttpRequestType HttpRequest::translateMethod (const string& method)
 /// @brief append the request method string to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
+void HttpRequest::appendMethod(HttpRequestType method, StringBuffer* buffer) {
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
 }
@@ -1395,15 +1319,15 @@ void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
 /// @brief set array value
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setArrayValue (char* key, size_t length, char const* value) {
-  Dictionary< vector<char const*>* >::KeyValue const* kv = _arrayValues.lookup(key);
+void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
+  Dictionary<vector<char const*>*>::KeyValue const* kv =
+      _arrayValues.lookup(key);
   vector<char const*>* v = nullptr;
 
   if (kv == nullptr) {
     v = new vector<char const*>;
     _arrayValues.insert(key, length, v);
-  }
-  else {
+  } else {
     v = kv->_value;
   }
 
@@ -1414,7 +1338,7 @@ void HttpRequest::setArrayValue (char* key, size_t length, char const* value) {
 /// @brief set cookie
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setCookie (char* key, size_t length, char const* value) {
+void HttpRequest::setCookie(char* key, size_t length, char const* value) {
   _cookies.insert(key, length, value);
 }
 
@@ -1422,7 +1346,7 @@ void HttpRequest::setCookie (char* key, size_t length, char const* value) {
 /// @brief parse value of a cookie header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::parseCookies (const char* buffer) {
+void HttpRequest::parseCookies(const char* buffer) {
   char* keyBegin = nullptr;
   char* key = nullptr;
 
@@ -1434,12 +1358,12 @@ void HttpRequest::parseCookies (const char* buffer) {
 
   int hex = 0;
 
-  char const AMB     = ';';
-  char const EQUAL   = '=';
+  char const AMB = ';';
+  char const EQUAL = '=';
   char const PERCENT = '%';
-  char const SPACE   = ' ';
+  char const SPACE = ' ';
 
-  char* buffer2 = (char*) buffer;
+  char* buffer2 = (char*)buffer;
   char* end = buffer2 + strlen(buffer);
 
   for (keyBegin = key = buffer2; buffer2 < end; buffer2++) {
@@ -1451,8 +1375,7 @@ void HttpRequest::parseCookies (const char* buffer) {
       valueBegin = value = buffer2 + 1;
 
       continue;
-    }
-    else if (next == AMB) {
+    } else if (next == AMB) {
       phase = KEY;
 
       *key = '\0';
@@ -1460,26 +1383,23 @@ void HttpRequest::parseCookies (const char* buffer) {
       // check for missing value phase
       if (valueBegin == nullptr) {
         valueBegin = value = key;
-      }
-      else {
+      } else {
         *value = '\0';
       }
 
       setCookie(keyBegin, key - keyBegin, valueBegin);
 
-      //keyBegin = key = buffer2 + 1;
-      while ( *(keyBegin = key = buffer2 + 1) == SPACE && buffer2 < end) {
+      // keyBegin = key = buffer2 + 1;
+      while (*(keyBegin = key = buffer2 + 1) == SPACE && buffer2 < end) {
         buffer2++;
       }
       valueBegin = value = nullptr;
 
       continue;
-    }
-    else if (next == PERCENT) {
+    } else if (next == PERCENT) {
       reader = HEX1;
       continue;
-    }
-    else if (reader == HEX1) {
+    } else if (reader == HEX1) {
       int h1 = StringUtils::hex2int(next, -1);
 
       if (h1 == -1) {
@@ -1491,14 +1411,12 @@ void HttpRequest::parseCookies (const char* buffer) {
       hex = h1 * 16;
       reader = HEX2;
       continue;
-    }
-    else if (reader == HEX2) {
+    } else if (reader == HEX2) {
       int h1 = StringUtils::hex2int(next, -1);
 
       if (h1 == -1) {
         --buffer2;
-      }
-      else {
+      } else {
         hex += h1;
       }
 
@@ -1508,8 +1426,7 @@ void HttpRequest::parseCookies (const char* buffer) {
 
     if (phase == KEY) {
       *key++ = next;
-    }
-    else {
+    } else {
       *value++ = next;
     }
   }
@@ -1520,8 +1437,7 @@ void HttpRequest::parseCookies (const char* buffer) {
     // check for missing value phase
     if (valueBegin == nullptr) {
       valueBegin = value = key;
-    }
-    else {
+    } else {
       *value = '\0';
     }
 
@@ -1535,5 +1451,6 @@ void HttpRequest::parseCookies (const char* buffer) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

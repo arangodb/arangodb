@@ -44,26 +44,23 @@ using namespace std;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::GeneralClientConnection (Endpoint* endpoint,
-                                                  double requestTimeout,
-                                                  double connectTimeout,
-                                                  size_t connectRetries) :
-  _endpoint(endpoint),
-  _requestTimeout(requestTimeout),
-  _connectTimeout(connectTimeout),
-  _connectRetries(connectRetries),
-  _numConnectRetries(0),
-  _isConnected(false),
-  _isInterrupted(false) {
-
-}
+GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
+                                                 double requestTimeout,
+                                                 double connectTimeout,
+                                                 size_t connectRetries)
+    : _endpoint(endpoint),
+      _requestTimeout(requestTimeout),
+      _connectTimeout(connectTimeout),
+      _connectRetries(connectRetries),
+      _numConnectRetries(0),
+      _isConnected(false),
+      _isInterrupted(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::~GeneralClientConnection () {
-}
+GeneralClientConnection::~GeneralClientConnection() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -73,18 +70,17 @@ GeneralClientConnection::~GeneralClientConnection () {
 /// @brief create a new connection from an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
-                                                           double requestTimeout,
-                                                           double connectTimeout,
-                                                           size_t numRetries,
-                                                           uint32_t sslProtocol) {
+GeneralClientConnection* GeneralClientConnection::factory(
+    Endpoint* endpoint, double requestTimeout, double connectTimeout,
+    size_t numRetries, uint32_t sslProtocol) {
   if (endpoint->getEncryption() == Endpoint::ENCRYPTION_NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
+    return new ClientConnection(endpoint, requestTimeout, connectTimeout,
+                                numRetries);
+  } else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
+    return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
+                                   numRetries, sslProtocol);
   }
-  else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
-    return new SslClientConnection(endpoint, requestTimeout, connectTimeout, numRetries, sslProtocol);
-  }
-    
+
   return nullptr;
 }
 
@@ -92,20 +88,19 @@ GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
 /// @brief connect
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::connect () {
+bool GeneralClientConnection::connect() {
   _isInterrupted = false;
   disconnect();
 
   if (_numConnectRetries < _connectRetries + 1) {
     _numConnectRetries++;
-  }
-  else {
+  } else {
     return false;
   }
 
   connectSocket();
 
-  if (! _isConnected) {
+  if (!_isConnected) {
     return false;
   }
 
@@ -118,7 +113,7 @@ bool GeneralClientConnection::connect () {
 /// @brief disconnect
 ////////////////////////////////////////////////////////////////////////////////
 
-void GeneralClientConnection::disconnect () {
+void GeneralClientConnection::disconnect() {
   if (isConnected()) {
     disconnectSocket();
   }
@@ -143,7 +138,8 @@ void GeneralClientConnection::disconnect () {
 /// what is described here.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::handleWrite (double timeout, void const* buffer, size_t length, size_t* bytesWritten) {
+bool GeneralClientConnection::handleWrite(double timeout, void const* buffer,
+                                          size_t length, size_t* bytesWritten) {
   *bytesWritten = 0;
 
   if (prepare(timeout, true)) {
@@ -168,7 +164,8 @@ bool GeneralClientConnection::handleWrite (double timeout, void const* buffer, s
 /// what is described here.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer, bool& connectionClosed) {
+bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
+                                         bool& connectionClosed) {
   connectionClosed = false;
 
   if (prepare(timeout, false)) {
@@ -185,5 +182,6 @@ bool GeneralClientConnection::handleRead (double timeout, StringBuffer& buffer, 
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

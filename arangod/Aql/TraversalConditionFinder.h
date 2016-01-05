@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Condition finder, used to build up the Condition object
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -33,45 +33,36 @@
 #include "Aql/WalkerWorker.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal condition finder
 ////////////////////////////////////////////////////////////////////////////////
 
-    class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
+class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
+ public:
+  TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered)
+      : _plan(plan), _variableDefinitions(), _planAltered(planAltered) {}
 
-      public:
+  ~TraversalConditionFinder() {}
 
-        TraversalConditionFinder (ExecutionPlan* plan,
-                                  bool* planAltered)
-          : _plan(plan),
-            _variableDefinitions(),
-            _planAltered(planAltered) {
-        }
+  bool before(ExecutionNode*) override final;
 
-        ~TraversalConditionFinder () {
-        }
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
-        bool before (ExecutionNode*) override final;
-
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final;
-
-      private:
-
-        ExecutionPlan*                                          _plan;
-        std::unordered_map<VariableId, CalculationNode const*>  _variableDefinitions;
-        std::unordered_map<VariableId, ExecutionNode const*>    _filters;
-        bool*                                                   _planAltered;
-    
-    };
-  }
+ private:
+  ExecutionPlan* _plan;
+  std::unordered_map<VariableId, CalculationNode const*> _variableDefinitions;
+  std::unordered_map<VariableId, ExecutionNode const*> _filters;
+  bool* _planAltered;
+};
+}
 }
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-

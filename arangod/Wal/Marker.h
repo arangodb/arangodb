@@ -41,10 +41,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
-  namespace wal {
+namespace wal {
 
-    static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
-
+static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                   low level structs, used for on-disk persistence
@@ -54,989 +53,860 @@ namespace triagens {
 /// @brief wal attribute marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct attribute_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
+struct attribute_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
 
-      TRI_shape_aid_t  _attributeId;
-      // char* name
-    };
+  TRI_shape_aid_t _attributeId;
+  // char* name
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal shape marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct shape_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
-      // char* shape
-    };
+struct shape_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  // char* shape
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal create database marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct database_create_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      // char* properties
-    };
+struct database_create_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  // char* properties
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal drop database marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct database_drop_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-    };
+struct database_drop_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal create collection marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct collection_create_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
-      // char* properties
-    };
+struct collection_create_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  // char* properties
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal drop collection marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct collection_drop_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
-    };
+struct collection_drop_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal rename collection marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct collection_rename_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
-      // char* name
-    };
+struct collection_rename_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  // char* name
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal change collection marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct collection_change_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
-      // char* properties
-    };
+struct collection_change_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  // char* properties
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal create index marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct index_create_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
-      TRI_idx_iid_t    _indexId;
-      // char* properties
-    };
+struct index_create_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  TRI_idx_iid_t _indexId;
+  // char* properties
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal drop index marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct index_drop_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t   _databaseId;
-      TRI_voc_cid_t    _collectionId;
-      TRI_idx_iid_t    _indexId;
-    };
+struct index_drop_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  TRI_idx_iid_t _indexId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal transaction begin marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_begin_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_tid_t   _transactionId;
-    };
+struct transaction_begin_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_tid_t _transactionId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal transaction commit marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_commit_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_tid_t   _transactionId;
-    };
+struct transaction_commit_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_tid_t _transactionId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal transaction abort marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_abort_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_tid_t   _transactionId;
-    };
+struct transaction_abort_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_tid_t _transactionId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal remote transaction begin marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_remote_begin_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_tid_t   _transactionId;
-      TRI_voc_tid_t   _externalId;
-    };
+struct transaction_remote_begin_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_tid_t _transactionId;
+  TRI_voc_tid_t _externalId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal remote transaction commit marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_remote_commit_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_tid_t   _transactionId;
-      TRI_voc_tid_t   _externalId;
-    };
+struct transaction_remote_commit_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_tid_t _transactionId;
+  TRI_voc_tid_t _externalId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal remote transaction abort marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct transaction_remote_abort_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_tid_t   _transactionId;
-      TRI_voc_tid_t   _externalId;
-    };
+struct transaction_remote_abort_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_tid_t _transactionId;
+  TRI_voc_tid_t _externalId;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal document marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct document_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_cid_t   _collectionId;
+struct document_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
 
-      TRI_voc_rid_t   _revisionId;        // this is the tick for a create and update
-      TRI_voc_tid_t   _transactionId;
+  TRI_voc_rid_t _revisionId;  // this is the tick for a create and update
+  TRI_voc_tid_t _transactionId;
 
-      TRI_shape_sid_t _shape;
+  TRI_shape_sid_t _shape;
 
-      uint16_t        _offsetKey;
-      uint16_t        _offsetLegend;
-      uint32_t        _offsetJson;
+  uint16_t _offsetKey;
+  uint16_t _offsetLegend;
+  uint32_t _offsetJson;
 
-      // char* key
-      // char* shapedJson
-    };
+  // char* key
+  // char* shapedJson
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal vpack document marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct vpack_document_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_cid_t   _collectionId;
-      TRI_voc_tid_t   _transactionId;
-      // uint8_t* vpack
-    };
+struct vpack_document_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  TRI_voc_tid_t _transactionId;
+  // uint8_t* vpack
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal vpack remove marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct vpack_remove_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_cid_t   _collectionId;
-      TRI_voc_tid_t   _transactionId;
-      // uint8_t* vpack
-    };
+struct vpack_remove_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
+  TRI_voc_tid_t _transactionId;
+  // uint8_t* vpack
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal edge marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct edge_marker_t : document_marker_t {
-      TRI_voc_cid_t   _toCid;
-      TRI_voc_cid_t   _fromCid;
+struct edge_marker_t : document_marker_t {
+  TRI_voc_cid_t _toCid;
+  TRI_voc_cid_t _fromCid;
 
-      uint16_t        _offsetToKey;
-      uint16_t        _offsetFromKey;
+  uint16_t _offsetToKey;
+  uint16_t _offsetFromKey;
 
 #ifdef TRI_PADDING_32
-      char            _padding_df_marker[4];
+  char _padding_df_marker[4];
 #endif
 
-      // char* key
-      // char* toKey
-      // char* fromKey
-      // char* shapedJson
-    };
+  // char* key
+  // char* toKey
+  // char* fromKey
+  // char* shapedJson
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal remove marker
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct remove_marker_t : TRI_df_marker_t {
-      TRI_voc_tick_t  _databaseId;
-      TRI_voc_cid_t   _collectionId;
+struct remove_marker_t : TRI_df_marker_t {
+  TRI_voc_tick_t _databaseId;
+  TRI_voc_cid_t _collectionId;
 
-      TRI_voc_rid_t   _revisionId;   // this is the tick for the deletion
-      TRI_voc_tid_t   _transactionId;
+  TRI_voc_rid_t _revisionId;  // this is the tick for the deletion
+  TRI_voc_tid_t _transactionId;
 
-      // char* key
-    };
+  // char* key
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Marker
 // -----------------------------------------------------------------------------
 
-    class Marker {
+class Marker {
+ protected:
+  Marker& operator=(Marker const&) = delete;
+  Marker(Marker&&) = delete;
+  Marker(Marker const&) = delete;
 
-      protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a marker from a marker existing in memory
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Marker& operator= (Marker const&) = delete;
-        Marker (Marker&&) = delete;
-        Marker (Marker const&) = delete;
+  Marker(TRI_df_marker_t const*, TRI_voc_fid_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a marker from a marker existing in memory
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a marker that manages its own memory
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Marker (TRI_df_marker_t const*,
-                TRI_voc_fid_t);
+  Marker(TRI_df_marker_type_e, size_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a marker that manages its own memory
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-        Marker (TRI_df_marker_type_e,
-                size_t);
+ public:
+  virtual ~Marker();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  inline void freeBuffer() {
+    if (_buffer != nullptr && _mustFree) {
+      delete[] _buffer;
 
-      public:
+      _buffer = nullptr;
+      _mustFree = false;
+    }
+  }
 
-        virtual ~Marker ();
-        
-        inline void freeBuffer () {
-          if (_buffer != nullptr && _mustFree) {
-            delete[] _buffer;
-            
-            _buffer = nullptr;
-            _mustFree = false;
-          }
-        }
+  inline char* steal() {
+    char* buffer = _buffer;
+    _buffer = nullptr;
+    _mustFree = false;
+    return buffer;
+  }
 
-        inline char* steal () {
-          char* buffer = _buffer;
-          _buffer = nullptr;
-          _mustFree = false;
-          return buffer;
-        }
+  inline TRI_voc_fid_t fid() const { return _fid; }
 
-        inline TRI_voc_fid_t fid () const {
-          return _fid;
-        }
+  static inline size_t alignedSize(size_t size) {
+    return TRI_DF_ALIGN_BLOCK(size);
+  }
 
-        static inline size_t alignedSize (size_t size) {
-          return TRI_DF_ALIGN_BLOCK(size);
-        }
+  inline void* mem() const { return static_cast<void*>(_buffer); }
 
-        inline void* mem () const {
-          return static_cast<void*>(_buffer);
-        }
+  inline char* begin() const { return _buffer; }
 
-        inline char* begin () const {
-          return _buffer;
-        }
+  inline char* end() const { return _buffer + _size; }
 
-        inline char* end () const {
-          return _buffer + _size;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the size of the marker
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the size of the marker
-////////////////////////////////////////////////////////////////////////////////
+  inline uint32_t size() const { return _size; }
 
-        inline uint32_t size () const {
-          return _size;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return a hex representation of a marker part
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a hex representation of a marker part
-////////////////////////////////////////////////////////////////////////////////
+  std::string hexifyPart(char const*, size_t) const;
 
-        std::string hexifyPart (char const*, size_t) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return a printable string representation of a marker part
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a printable string representation of a marker part
-////////////////////////////////////////////////////////////////////////////////
+  std::string stringifyPart(char const*, size_t) const;
 
-        std::string stringifyPart (char const*, size_t) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief print the marker in binary form
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief print the marker in binary form
-////////////////////////////////////////////////////////////////////////////////
+  void dumpBinary() const;
 
-        void dumpBinary () const;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 protected
+  // methods
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief store a null-terminated string inside the marker
+  ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
+  void storeSizedString(size_t, std::string const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief store a null-terminated string inside the marker
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief store a null-terminated string inside the marker
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void storeSizedString (size_t,
-                               std::string const&);
+  void storeSizedString(size_t, char const*, size_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief store a null-terminated string inside the marker
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                               protected
+  // variables
+  // -----------------------------------------------------------------------------
 
-        void storeSizedString (size_t,
-                               char const*,
-                               size_t);
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief pointer to marker data
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
+  char* _buffer;
 
-      protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief size of marker data
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pointer to marker data
-////////////////////////////////////////////////////////////////////////////////
+  uint32_t const _size;
 
-        char*          _buffer;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the destructor must free the memory
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief size of marker data
-////////////////////////////////////////////////////////////////////////////////
+  bool _mustFree;
 
-        uint32_t const _size;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief id of the logfile the marker is stored in
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the destructor must free the memory
-////////////////////////////////////////////////////////////////////////////////
-
-        bool           _mustFree;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief id of the logfile the marker is stored in
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_voc_fid_t  _fid;
-    };
+  TRI_voc_fid_t _fid;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    EnvelopeMarker
 // -----------------------------------------------------------------------------
 
-    class EnvelopeMarker : public Marker {
+class EnvelopeMarker : public Marker {
+ public:
+  explicit EnvelopeMarker(TRI_df_marker_t const*, TRI_voc_fid_t);
 
-      public:
-
-        explicit EnvelopeMarker (TRI_df_marker_t const*, 
-                                 TRI_voc_fid_t);
-
-        ~EnvelopeMarker ();
-    };
+  ~EnvelopeMarker();
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   AttributeMarker
 // -----------------------------------------------------------------------------
 
-    class AttributeMarker : public Marker {
+class AttributeMarker : public Marker {
+ public:
+  AttributeMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_shape_aid_t,
+                  std::string const&);
 
-      public:
+  ~AttributeMarker();
 
-        AttributeMarker (TRI_voc_tick_t,
-                         TRI_voc_cid_t,
-                         TRI_shape_aid_t,
-                         std::string const&);
+ public:
+  inline char* attributeName() const {
+    // pointer to attribute name
+    return begin() + sizeof(attribute_marker_t);
+  }
 
-        ~AttributeMarker ();
+  void setType(TRI_df_marker_type_t);
 
-      public:
-
-        inline char* attributeName () const {
-          // pointer to attribute name
-          return begin() + sizeof(attribute_marker_t);
-        }
-
-        void setType (TRI_df_marker_type_t);
-
-        void dump () const;
-    };
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ShapeMarker
 // -----------------------------------------------------------------------------
 
-    class ShapeMarker : public Marker {
+class ShapeMarker : public Marker {
+ public:
+  ShapeMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_shape_t const*);
 
-      public:
+  ~ShapeMarker();
 
-        ShapeMarker (TRI_voc_tick_t,
-                     TRI_voc_cid_t,
-                     TRI_shape_t const*);
+ public:
+  inline char* shape() const { return begin() + sizeof(shape_marker_t); }
 
-        ~ShapeMarker ();
+  inline TRI_shape_sid_t shapeId() const {
+    return reinterpret_cast<TRI_shape_t*>(shape())->_sid;
+  }
 
-      public:
-
-        inline char* shape () const {
-          return begin() + sizeof(shape_marker_t);
-        }
-
-        inline TRI_shape_sid_t shapeId () const {
-          return reinterpret_cast<TRI_shape_t*>(shape())->_sid;
-        }
-
-        void dump () const;
-    };
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CreateDatabaseMarker
 // -----------------------------------------------------------------------------
 
-    class CreateDatabaseMarker : public Marker {
+class CreateDatabaseMarker : public Marker {
+ public:
+  CreateDatabaseMarker(TRI_voc_tick_t, std::string const&);
 
-      public:
+  ~CreateDatabaseMarker();
 
-        CreateDatabaseMarker (TRI_voc_tick_t,
-                              std::string const&);
+ public:
+  inline char* properties() const {
+    return begin() + sizeof(database_create_marker_t);
+  }
 
-        ~CreateDatabaseMarker ();
-
-      public:
-
-        inline char* properties () const {
-          return begin() + sizeof(database_create_marker_t);
-        }
-
-        void dump () const;
-    };
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                DropDatabaseMarker
 // -----------------------------------------------------------------------------
 
-    class DropDatabaseMarker : public Marker {
+class DropDatabaseMarker : public Marker {
+ public:
+  explicit DropDatabaseMarker(TRI_voc_tick_t);
 
-      public:
+  ~DropDatabaseMarker();
 
-        explicit DropDatabaseMarker (TRI_voc_tick_t);
-
-        ~DropDatabaseMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            CreateCollectionMarker
 // -----------------------------------------------------------------------------
 
-    class CreateCollectionMarker : public Marker {
+class CreateCollectionMarker : public Marker {
+ public:
+  CreateCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, std::string const&);
 
-      public:
+  ~CreateCollectionMarker();
 
-        CreateCollectionMarker (TRI_voc_tick_t,
-                                TRI_voc_cid_t,
-                                std::string const&);
+ public:
+  inline char* properties() const {
+    return begin() + sizeof(collection_create_marker_t);
+  }
 
-        ~CreateCollectionMarker ();
-
-      public:
-
-        inline char* properties () const {
-          return begin() + sizeof(collection_create_marker_t);
-        }
-
-        void dump () const;
-    };
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              DropCollectionMarker
 // -----------------------------------------------------------------------------
 
-    class DropCollectionMarker : public Marker {
+class DropCollectionMarker : public Marker {
+ public:
+  DropCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t);
 
-      public:
+  ~DropCollectionMarker();
 
-        DropCollectionMarker (TRI_voc_tick_t,
-                              TRI_voc_cid_t);
-
-        ~DropCollectionMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            RenameCollectionMarker
 // -----------------------------------------------------------------------------
 
-    class RenameCollectionMarker : public Marker {
+class RenameCollectionMarker : public Marker {
+ public:
+  RenameCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, std::string const&);
 
-      public:
+  ~RenameCollectionMarker();
 
-        RenameCollectionMarker (TRI_voc_tick_t,
-                                TRI_voc_cid_t,
-                                std::string const&);
+ public:
+  inline char* name() const {
+    return begin() + sizeof(collection_rename_marker_t);
+  }
 
-        ~RenameCollectionMarker ();
-
-      public:
-
-        inline char* name () const {
-          return begin() + sizeof(collection_rename_marker_t);
-        }
-
-        void dump () const;
-    };
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            ChangeCollectionMarker
 // -----------------------------------------------------------------------------
 
-    class ChangeCollectionMarker : public Marker {
+class ChangeCollectionMarker : public Marker {
+ public:
+  ChangeCollectionMarker(TRI_voc_tick_t, TRI_voc_cid_t, std::string const&);
 
-      public:
+  ~ChangeCollectionMarker();
 
-        ChangeCollectionMarker (TRI_voc_tick_t,
-                                TRI_voc_cid_t,
-                                std::string const&);
+ public:
+  inline char* properties() const {
+    return begin() + sizeof(collection_change_marker_t);
+  }
 
-        ~ChangeCollectionMarker ();
-
-      public:
-
-        inline char* properties () const {
-          return begin() + sizeof(collection_change_marker_t);
-        }
-
-        void dump () const;
-    };
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 CreateIndexMarker
 // -----------------------------------------------------------------------------
 
-    class CreateIndexMarker : public Marker {
+class CreateIndexMarker : public Marker {
+ public:
+  CreateIndexMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t,
+                    std::string const&);
 
-      public:
+  ~CreateIndexMarker();
 
-        CreateIndexMarker (TRI_voc_tick_t,
-                           TRI_voc_cid_t,
-                           TRI_idx_iid_t,
-                           std::string const&);
+ public:
+  inline char* properties() const {
+    return begin() + sizeof(index_create_marker_t);
+  }
 
-        ~CreateIndexMarker ();
-
-      public:
-
-        inline char* properties () const {
-          return begin() + sizeof(index_create_marker_t);
-        }
-
-        void dump () const;
-    };
-
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   DropIndexMarker
 // -----------------------------------------------------------------------------
 
-    class DropIndexMarker : public Marker {
+class DropIndexMarker : public Marker {
+ public:
+  DropIndexMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t);
 
-      public:
+  ~DropIndexMarker();
 
-        DropIndexMarker (TRI_voc_tick_t,
-                         TRI_voc_cid_t,
-                         TRI_idx_iid_t);
-
-        ~DropIndexMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            BeginTransactionMarker
 // -----------------------------------------------------------------------------
 
-    class BeginTransactionMarker : public Marker {
+class BeginTransactionMarker : public Marker {
+ public:
+  BeginTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
 
-      public:
+  ~BeginTransactionMarker();
 
-        BeginTransactionMarker (TRI_voc_tick_t,
-                                TRI_voc_tid_t);
-
-        ~BeginTransactionMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           CommitTransactionMarker
 // -----------------------------------------------------------------------------
 
-    class CommitTransactionMarker : public Marker {
+class CommitTransactionMarker : public Marker {
+ public:
+  CommitTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
 
-      public:
+  ~CommitTransactionMarker();
 
-        CommitTransactionMarker (TRI_voc_tick_t,
-                                 TRI_voc_tid_t);
-
-        ~CommitTransactionMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            AbortTransactionMarker
 // -----------------------------------------------------------------------------
 
-    class AbortTransactionMarker : public Marker {
+class AbortTransactionMarker : public Marker {
+ public:
+  AbortTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t);
 
-      public:
+  ~AbortTransactionMarker();
 
-        AbortTransactionMarker (TRI_voc_tick_t,
-                                TRI_voc_tid_t);
-
-        ~AbortTransactionMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      BeginRemoteTransactionMarker
 // -----------------------------------------------------------------------------
 
-    class BeginRemoteTransactionMarker : public Marker {
+class BeginRemoteTransactionMarker : public Marker {
+ public:
+  BeginRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
 
-      public:
+  ~BeginRemoteTransactionMarker();
 
-        BeginRemoteTransactionMarker (TRI_voc_tick_t,
-                                      TRI_voc_tid_t,
-                                      TRI_voc_tid_t);
-
-        ~BeginRemoteTransactionMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     CommitRemoteTransactionMarker
 // -----------------------------------------------------------------------------
 
-    class CommitRemoteTransactionMarker : public Marker {
+class CommitRemoteTransactionMarker : public Marker {
+ public:
+  CommitRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
 
-      public:
+  ~CommitRemoteTransactionMarker();
 
-        CommitRemoteTransactionMarker (TRI_voc_tick_t,
-                                       TRI_voc_tid_t,
-                                       TRI_voc_tid_t);
-
-        ~CommitRemoteTransactionMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      AbortRemoteTransactionMarker
 // -----------------------------------------------------------------------------
 
-    class AbortRemoteTransactionMarker : public Marker {
+class AbortRemoteTransactionMarker : public Marker {
+ public:
+  AbortRemoteTransactionMarker(TRI_voc_tick_t, TRI_voc_tid_t, TRI_voc_tid_t);
 
-      public:
+  ~AbortRemoteTransactionMarker();
 
-        AbortRemoteTransactionMarker (TRI_voc_tick_t,
-                                      TRI_voc_tid_t,
-                                      TRI_voc_tid_t);
-
-        ~AbortRemoteTransactionMarker ();
-
-      public:
-
-        void dump () const;
-    };
+ public:
+  void dump() const;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               VPackDocumentMarker
 // -----------------------------------------------------------------------------
 
-    class VPackDocumentMarker : public Marker {
+class VPackDocumentMarker : public Marker {
+ public:
+  VPackDocumentMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_tid_t,
+                      VPackSlice const*);
 
-      public:
+  ~VPackDocumentMarker();
 
-        VPackDocumentMarker (TRI_voc_tick_t,
-                             TRI_voc_cid_t,
-                             TRI_voc_tid_t,
-                             VPackSlice const*);
-        
-        ~VPackDocumentMarker ();
+ public:
+  inline TRI_voc_tid_t transactionId() const {
+    auto const* m = reinterpret_cast<vpack_document_marker_t const*>(begin());
+    return m->_transactionId;
+  }
 
-      public:
+  inline uint8_t* vpack() const {
+    // pointer to vpack
+    return reinterpret_cast<uint8_t*>(begin()) +
+           sizeof(vpack_document_marker_t);
+  }
 
-        inline TRI_voc_tid_t transactionId () const {
-          auto const* m = reinterpret_cast<vpack_document_marker_t const*>(begin());
-          return m->_transactionId;
-        }
-
-        inline uint8_t* vpack () const {
-          // pointer to vpack
-          return reinterpret_cast<uint8_t*>(begin()) + sizeof(vpack_document_marker_t);
-        }
-
-        inline size_t vpackLength () const {
-          VPackSlice slice(vpack());
-          return slice.byteSize();
-        }
-
-    };
+  inline size_t vpackLength() const {
+    VPackSlice slice(vpack());
+    return slice.byteSize();
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 VPackRemoveMarker
 // -----------------------------------------------------------------------------
 
-    class VPackRemoveMarker : public Marker {
+class VPackRemoveMarker : public Marker {
+ public:
+  VPackRemoveMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_tid_t,
+                    VPackSlice const*);
 
-      public:
+  ~VPackRemoveMarker();
 
-        VPackRemoveMarker (TRI_voc_tick_t,
-                           TRI_voc_cid_t,
-                           TRI_voc_tid_t,
-                           VPackSlice const*);
-        
-        ~VPackRemoveMarker ();
+ public:
+  inline TRI_voc_tid_t transactionId() const {
+    auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(begin());
+    return m->_transactionId;
+  }
 
-      public:
+  inline uint8_t* vpack() const {
+    // pointer to vpack
+    return reinterpret_cast<uint8_t*>(begin()) + sizeof(vpack_remove_marker_t);
+  }
 
-        inline TRI_voc_tid_t transactionId () const {
-          auto const* m = reinterpret_cast<vpack_remove_marker_t const*>(begin());
-          return m->_transactionId;
-        }
-
-        inline uint8_t* vpack () const {
-          // pointer to vpack
-          return reinterpret_cast<uint8_t*>(begin()) + sizeof(vpack_remove_marker_t);
-        }
-
-        inline size_t vpackLength () const {
-          VPackSlice slice(vpack());
-          return slice.byteSize();
-        }
-
-    };
+  inline size_t vpackLength() const {
+    VPackSlice slice(vpack());
+    return slice.byteSize();
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    DocumentMarker
 // -----------------------------------------------------------------------------
 
-    class DocumentMarker : public Marker {
+class DocumentMarker : public Marker {
+ public:
+  DocumentMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
+                 std::string const&, size_t, TRI_shaped_json_t const*);
 
-      public:
+  ~DocumentMarker();
 
-        DocumentMarker (TRI_voc_tick_t,
-                        TRI_voc_cid_t,
-                        TRI_voc_rid_t,
-                        TRI_voc_tid_t,
-                        std::string const&,
-                        size_t,
-                        TRI_shaped_json_t const*);
-        
-        ~DocumentMarker ();
+ public:
+  inline TRI_voc_rid_t revisionId() const {
+    document_marker_t const* m =
+        reinterpret_cast<document_marker_t const*>(begin());
+    return m->_revisionId;
+  }
 
-      public:
+  inline TRI_voc_tid_t transactionId() const {
+    document_marker_t const* m =
+        reinterpret_cast<document_marker_t const*>(begin());
+    return m->_transactionId;
+  }
 
-        inline TRI_voc_rid_t revisionId () const {
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return m->_revisionId;
-        }
+  inline char* key() const {
+    // pointer to key
+    return begin() + sizeof(document_marker_t);
+  }
 
-        inline TRI_voc_tid_t transactionId () const {
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return m->_transactionId;
-        }
+  inline char const* legend() const {
+    // pointer to legend
+    document_marker_t const* m =
+        reinterpret_cast<document_marker_t const*>(begin());
+    return begin() + m->_offsetLegend;
+  }
 
-        inline char* key () const {
-          // pointer to key
-          return begin() + sizeof(document_marker_t);
-        }
+  inline size_t legendLength() const {
+    document_marker_t const* m =
+        reinterpret_cast<document_marker_t const*>(begin());
+    return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
+  }
 
-        inline char const* legend () const {
-          // pointer to legend
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return begin() + m->_offsetLegend;
-        }
+  inline char const* json() const {
+    // pointer to json
+    document_marker_t const* m =
+        reinterpret_cast<document_marker_t const*>(begin());
+    return begin() + m->_offsetJson;
+  }
 
-        inline size_t legendLength () const {
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
-        }
+  inline size_t jsonLength() const {
+    document_marker_t const* m =
+        reinterpret_cast<document_marker_t const*>(begin());
+    return static_cast<size_t>(size() - m->_offsetJson);
+  }
 
-        inline char const* json () const {
-          // pointer to json
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return begin() + m->_offsetJson;
-        }
+  void storeLegend(triagens::basics::JsonLegend&);
 
-        inline size_t jsonLength () const {
-          document_marker_t const* m = reinterpret_cast<document_marker_t const*>(begin());
-          return static_cast<size_t>(size() - m->_offsetJson);
-        }
+  void dump() const;
 
-        void storeLegend (triagens::basics::JsonLegend&);
-
-        void dump () const;
-
-        static DocumentMarker* clone (TRI_df_marker_t const*,
-                                      TRI_voc_tick_t,
-                                      TRI_voc_cid_t,
-                                      TRI_voc_rid_t,
-                                      TRI_voc_tid_t,
-                                      size_t,
-                                      TRI_shaped_json_t const*);
-    };
+  static DocumentMarker* clone(TRI_df_marker_t const*, TRI_voc_tick_t,
+                               TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
+                               size_t, TRI_shaped_json_t const*);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        EdgeMarker
 // -----------------------------------------------------------------------------
 
-    class EdgeMarker : public Marker {
+class EdgeMarker : public Marker {
+ public:
+  EdgeMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
+             std::string const&, TRI_document_edge_t const*, size_t,
+             TRI_shaped_json_t const*);
 
-      public:
+  ~EdgeMarker();
 
-        EdgeMarker (TRI_voc_tick_t,
-                    TRI_voc_cid_t,
-                    TRI_voc_rid_t,
-                    TRI_voc_tid_t,
-                    std::string const&,
-                    TRI_document_edge_t const*,
-                    size_t,
-                    TRI_shaped_json_t const*);
-        
-        ~EdgeMarker ();
+  inline TRI_voc_rid_t revisionId() const {
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return m->_revisionId;
+  }
 
-        inline TRI_voc_rid_t revisionId () const {
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return m->_revisionId;
-        }
+  inline TRI_voc_rid_t transactionId() const {
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return m->_transactionId;
+  }
 
-        inline TRI_voc_rid_t transactionId () const {
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return m->_transactionId;
-        }
+  inline char const* key() const {
+    // pointer to key
+    return begin() + sizeof(edge_marker_t);
+  }
 
-        inline char const* key () const {
-          // pointer to key
-          return begin() + sizeof(edge_marker_t);
-        }
+  inline char const* fromKey() const {
+    // pointer to _from key
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return begin() + m->_offsetFromKey;
+  }
 
-        inline char const* fromKey () const {
-          // pointer to _from key
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return begin() + m->_offsetFromKey;
-        }
+  inline char const* toKey() const {
+    // pointer to _to key
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return begin() + m->_offsetToKey;
+  }
 
-        inline char const* toKey () const {
-          // pointer to _to key
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return begin() + m->_offsetToKey;
-        }
+  inline char const* legend() const {
+    // pointer to legend
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return begin() + m->_offsetLegend;
+  }
 
-        inline char const* legend () const {
-          // pointer to legend
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return begin() + m->_offsetLegend;
-        }
+  inline size_t legendLength() const {
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
+  }
 
-        inline size_t legendLength () const {
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return static_cast<size_t>(m->_offsetJson - m->_offsetLegend);
-        }
+  inline char const* json() const {
+    // pointer to json
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return begin() + m->_offsetJson;
+  }
 
-        inline char const* json () const {
-          // pointer to json
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return begin() + m->_offsetJson;
-        }
+  inline size_t jsonLength() const {
+    edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
+    return static_cast<size_t>(size() - m->_offsetJson);
+  }
 
-        inline size_t jsonLength () const {
-          edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
-          return static_cast<size_t>(size() - m->_offsetJson);
-        }
-        
-        void storeLegend (triagens::basics::JsonLegend&);
+  void storeLegend(triagens::basics::JsonLegend&);
 
-        void dump () const;
+  void dump() const;
 
-        static EdgeMarker* clone (TRI_df_marker_t const*,
-                                  TRI_voc_tick_t,
-                                  TRI_voc_cid_t,
-                                  TRI_voc_rid_t,
-                                  TRI_voc_tid_t,
-                                  size_t,
-                                  TRI_shaped_json_t const*);
-    };
+  static EdgeMarker* clone(TRI_df_marker_t const*, TRI_voc_tick_t,
+                           TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t, size_t,
+                           TRI_shaped_json_t const*);
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      RemoveMarker
 // -----------------------------------------------------------------------------
 
-    class RemoveMarker : public Marker {
+class RemoveMarker : public Marker {
+ public:
+  RemoveMarker(TRI_voc_tick_t, TRI_voc_cid_t, TRI_voc_rid_t, TRI_voc_tid_t,
+               std::string const&);
 
-      public:
+  ~RemoveMarker();
 
-        RemoveMarker (TRI_voc_tick_t,
-                      TRI_voc_cid_t,
-                      TRI_voc_rid_t,
-                      TRI_voc_tid_t,
-                      std::string const&);
-
-        ~RemoveMarker ();
-
-      public:
-
-        inline char const* key () const {
-          // pointer to key
-          return begin() + sizeof(remove_marker_t);
-        }
-
-        inline TRI_voc_tid_t transactionId () const {
-          remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
-          return m->_transactionId;
-        }
-
-        inline TRI_voc_rid_t revisionId () const {
-          remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(begin());
-          return m->_revisionId;
-        }
-
-        void dump () const;
-    };
-
+ public:
+  inline char const* key() const {
+    // pointer to key
+    return begin() + sizeof(remove_marker_t);
   }
+
+  inline TRI_voc_tid_t transactionId() const {
+    remove_marker_t const* m =
+        reinterpret_cast<remove_marker_t const*>(begin());
+    return m->_transactionId;
+  }
+
+  inline TRI_voc_rid_t revisionId() const {
+    remove_marker_t const* m =
+        reinterpret_cast<remove_marker_t const*>(begin());
+    return m->_revisionId;
+  }
+
+  void dump() const;
+};
+}
 }
 
 #endif
@@ -1047,5 +917,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -34,39 +34,36 @@
 #include "Wal/Logfile.h"
 
 namespace triagens {
-  namespace wal {
-    class Slots;
+namespace wal {
+class Slots;
 
-    struct SyncRegion {
-      SyncRegion ()
-        : logfileId(0),
-          logfile(nullptr),
-          mem(nullptr),
-          size(0),
-          logfileStatus(Logfile::StatusType::UNKNOWN),
-          firstSlotIndex(0),
-          lastSlotIndex(0),
-          waitForSync(false),
-          checkMore(false),
-          canSeal(false) {
-      }
+struct SyncRegion {
+  SyncRegion()
+      : logfileId(0),
+        logfile(nullptr),
+        mem(nullptr),
+        size(0),
+        logfileStatus(Logfile::StatusType::UNKNOWN),
+        firstSlotIndex(0),
+        lastSlotIndex(0),
+        waitForSync(false),
+        checkMore(false),
+        canSeal(false) {}
 
-      ~SyncRegion () {
-      }
+  ~SyncRegion() {}
 
-      Logfile::IdType      logfileId;
-      Logfile*             logfile;
-      char*                mem;
-      uint32_t             size;
-      Logfile::StatusType  logfileStatus;
-      size_t               firstSlotIndex;
-      size_t               lastSlotIndex;
-      bool                 waitForSync;
-      bool                 checkMore;
-      bool                 canSeal;
-    };
-
-  }
+  Logfile::IdType logfileId;
+  Logfile* logfile;
+  char* mem;
+  uint32_t size;
+  Logfile::StatusType logfileStatus;
+  size_t firstSlotIndex;
+  size_t lastSlotIndex;
+  bool waitForSync;
+  bool checkMore;
+  bool canSeal;
+};
+}
 }
 
 #endif
@@ -77,5 +74,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

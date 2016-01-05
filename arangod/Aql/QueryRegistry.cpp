@@ -45,7 +45,7 @@ using namespace triagens::arango;
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryRegistry::~QueryRegistry () {
+QueryRegistry::~QueryRegistry() {
   std::vector<std::pair<std::string, QueryId>> toDelete;
 
   {
@@ -61,8 +61,7 @@ QueryRegistry::~QueryRegistry () {
           toDelete.emplace_back(x.first, y.first);
         }
       }
-    }
-    catch (...) {
+    } catch (...) {
       // the emplace_back() above might fail
       // prevent throwing exceptions in the destructor
     }
@@ -73,8 +72,7 @@ QueryRegistry::~QueryRegistry () {
   for (auto& p : toDelete) {
     try {  // just in case
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
-    }
-    catch (...) {
+    } catch (...) {
     }
   }
 }
@@ -83,10 +81,7 @@ QueryRegistry::~QueryRegistry () {
 /// @brief insert
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::insert (QueryId id,
-                            Query* query,
-                            double ttl) {
-
+void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
   auto vocbase = query->vocbase();
@@ -95,7 +90,8 @@ void QueryRegistry::insert (QueryId id,
 
   auto m = _queries.find(vocbase->_name);
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase->_name, std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries.emplace(vocbase->_name,
+                         std::unordered_map<QueryId, QueryInfo*>()).first;
 
     TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name) != _queries.end());
   }
@@ -111,22 +107,22 @@ void QueryRegistry::insert (QueryId id,
     m->second.emplace(id, p.get());
     p.release();
 
-    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) != _queries.find(vocbase->_name)->second.end());
-  
+    TRI_ASSERT_EXPENSIVE(_queries.find(vocbase->_name)->second.find(id) !=
+                         _queries.find(vocbase->_name)->second.end());
+
     // If we have set _makeNolockHeaders, we need to unset it:
     if (Transaction::_makeNolockHeaders != nullptr) {
       if (Transaction::_makeNolockHeaders == query->engine()->lockedShards()) {
         Transaction::_makeNolockHeaders = nullptr;
       }
       // else {
-        // We have not set it, just leave it alone. This happens in particular
-        // on the DBServers, who do not set lockedShards() themselves.
+      // We have not set it, just leave it alone. This happens in particular
+      // on the DBServers, who do not set lockedShards() themselves.
       // }
     }
-  }
-  else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                     "query with given vocbase and id already there");
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
   }
 }
 
@@ -134,15 +130,14 @@ void QueryRegistry::insert (QueryId id,
 /// @brief open
 ////////////////////////////////////////////////////////////////////////////////
 
-Query* QueryRegistry::open (TRI_vocbase_t* vocbase, 
-                            QueryId id) {
-
+Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
   // std::cout << "Taking out query with ID " << id << std::endl;
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase->_name);
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase->_name, std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries.emplace(vocbase->_name,
+                         std::unordered_map<QueryId, QueryInfo*>()).first;
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
@@ -150,8 +145,8 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
   }
   QueryInfo* qi = q->second;
   if (qi->_isOpen) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                "query with given vocbase and id is already open");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "query with given vocbase and id is already open");
   }
   qi->_isOpen = true;
 
@@ -160,8 +155,7 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
     if (Transaction::_makeNolockHeaders == nullptr) {
       // std::cout << "Setting _makeNolockHeaders\n";
       Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
-    }
-    else {
+    } else {
       LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
     }
   }
@@ -172,41 +166,42 @@ Query* QueryRegistry::open (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief close
 ////////////////////////////////////////////////////////////////////////////////
-        
-void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 
+void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
   // std::cout << "Returning query with ID " << id << std::endl;
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase->_name);
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase->_name, std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries.emplace(vocbase->_name,
+                         std::unordered_map<QueryId, QueryInfo*>()).first;
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                "query with given vocbase and id not found");
+                                   "query with given vocbase and id not found");
   }
   QueryInfo* qi = q->second;
-  if (! qi->_isOpen) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                "query with given vocbase and id is not open");
+  if (!qi->_isOpen) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "query with given vocbase and id is not open");
   }
 
   // If we have set _makeNolockHeaders, we need to unset it:
   if (Transaction::_makeNolockHeaders != nullptr) {
-    if (Transaction::_makeNolockHeaders == qi->_query->engine()->lockedShards()) {
+    if (Transaction::_makeNolockHeaders ==
+        qi->_query->engine()->lockedShards()) {
       // std::cout << "Resetting _makeNolockHeaders to nullptr\n";
       Transaction::_makeNolockHeaders = nullptr;
-    }
-    else {
+    } else {
       if (Transaction::_makeNolockHeaders != nullptr) {
-        if (Transaction::_makeNolockHeaders == qi->_query->engine()->lockedShards()) {
+        if (Transaction::_makeNolockHeaders ==
+            qi->_query->engine()->lockedShards()) {
           Transaction::_makeNolockHeaders = nullptr;
         }
         // else {
-          // We have not set it, just leave it alone. This happens in particular
-          // on the DBServers, who do not set lockedShards() themselves.
+        // We have not set it, just leave it alone. This happens in particular
+        // on the DBServers, who do not set lockedShards() themselves.
         // }
       }
     }
@@ -220,32 +215,31 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 /// @brief destroy
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::destroy (std::string const& vocbase, 
-                             QueryId id,
-                             int errorCode) {
+void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
+                            int errorCode) {
   WRITE_LOCKER(_lock);
 
   auto m = _queries.find(vocbase);
   if (m == _queries.end()) {
-    m = _queries.emplace(vocbase, std::unordered_map<QueryId, QueryInfo*>()).first;
+    m = _queries.emplace(vocbase, std::unordered_map<QueryId, QueryInfo*>())
+            .first;
   }
   auto q = m->second.find(id);
   if (q == m->second.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                "query with given vocbase and id not found");
+                                   "query with given vocbase and id not found");
   }
   QueryInfo* qi = q->second;
 
   // If the query is open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust
   // the debugging counters for transactions:
-  if (! qi->_isOpen) {
+  if (!qi->_isOpen) {
     // If we had set _makeNolockHeaders, we need to reset it:
     if (qi->_query->engine()->lockedShards() != nullptr) {
       if (Transaction::_makeNolockHeaders == nullptr) {
         Transaction::_makeNolockHeaders = qi->_query->engine()->lockedShards();
-      }
-      else {
+      } else {
         LOG_WARNING("Found strange lockedShards in thread, not overwriting!");
       }
     }
@@ -268,9 +262,7 @@ void QueryRegistry::destroy (std::string const& vocbase,
 /// @brief destroy
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::destroy (TRI_vocbase_t* vocbase, 
-                             QueryId id,
-                             int errorCode) {
+void QueryRegistry::destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode) {
   destroy(vocbase->_name, id, errorCode);
 }
 
@@ -278,7 +270,7 @@ void QueryRegistry::destroy (TRI_vocbase_t* vocbase,
 /// @brief expireQueries
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryRegistry::expireQueries () {
+void QueryRegistry::expireQueries() {
   double now = TRI_microtime();
   std::vector<std::pair<std::string, QueryId>> toDelete;
 
@@ -291,7 +283,7 @@ void QueryRegistry::expireQueries () {
         // y.first is a QueryId and
         // y.second is a QueryInfo*
         QueryInfo*& qi = y.second;
-        if (! qi->_isOpen && now > qi->_expires) {
+        if (!qi->_isOpen && now > qi->_expires) {
           toDelete.emplace_back(x.first, y.first);
         }
       }
@@ -299,17 +291,15 @@ void QueryRegistry::expireQueries () {
   }
 
   for (auto& p : toDelete) {
-    try { // just in case
+    try {  // just in case
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED);
-    }
-    catch (...) {
+    } catch (...) {
     }
   }
 }
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

@@ -54,13 +54,13 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ColumnsWidth (void);
+int TRI_ColumnsWidth(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetStdinVisibility (bool);
+void TRI_SetStdinVisibility(bool);
 
 #endif
 
@@ -70,5 +70,6 @@ void TRI_SetStdinVisibility (bool);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

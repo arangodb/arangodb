@@ -61,18 +61,18 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool defaultLoop)
-  : Thread("scheduler"),
-    _scheduler(scheduler),
-    _defaultLoop(defaultLoop),
-    _loop(loop),
-    _stopping(false),
-    _stopped(false),
-    _open(false),
-    _hasWork(false),
-    _numberTasks(0),
-    _taskData(100) {
-
+SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
+                                 bool defaultLoop)
+    : Thread("scheduler"),
+      _scheduler(scheduler),
+      _defaultLoop(defaultLoop),
+      _loop(loop),
+      _stopping(false),
+      _stopped(false),
+      _open(false),
+      _hasWork(false),
+      _numberTasks(0),
+      _taskData(100) {
   // allow cancelation
   allowAsynchronousCancelation();
 }
@@ -81,8 +81,7 @@ SchedulerThread::SchedulerThread (Scheduler* scheduler, EventLoop loop, bool def
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-SchedulerThread::~SchedulerThread () {
-}
+SchedulerThread::~SchedulerThread() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -92,15 +91,13 @@ SchedulerThread::~SchedulerThread () {
 /// @brief checks if the scheduler thread is up and running
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SchedulerThread::isStarted () {
-  return true;
-}
+bool SchedulerThread::isStarted() { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens the scheduler thread for business
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SchedulerThread::open () {
+bool SchedulerThread::open() {
   _open = true;
   return true;
 }
@@ -109,8 +106,9 @@ bool SchedulerThread::open () {
 /// @brief begin shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::beginShutdown () {
-  LOG_TRACE("beginning shutdown sequence of scheduler thread (%llu)", (unsigned long long) threadId());
+void SchedulerThread::beginShutdown() {
+  LOG_TRACE("beginning shutdown sequence of scheduler thread (%llu)",
+            (unsigned long long)threadId());
 
   _stopping = true;
   _scheduler->wakeupLoop(_loop);
@@ -120,8 +118,7 @@ void SchedulerThread::beginShutdown () {
 /// @brief registers a task
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
-
+bool SchedulerThread::registerTask(Scheduler* scheduler, Task* task) {
   // thread has already been stopped
   if (_stopped.load()) {
     // do nothing
@@ -137,8 +134,7 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 
     if (ok) {
       ++_numberTasks;
-    }
-    else {
+    } else {
       LOG_WARNING("In SchedulerThread::registerTask setupTask has failed");
       cleanupTask(task);
       deleteTask(task);
@@ -165,8 +161,7 @@ bool SchedulerThread::registerTask (Scheduler* scheduler, Task* task) {
 /// @brief unregisters a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::unregisterTask (Task* task) {
-
+void SchedulerThread::unregisterTask(Task* task) {
   // thread has already been stopped
   if (_stopped.load()) {
     // do nothing
@@ -196,8 +191,7 @@ void SchedulerThread::unregisterTask (Task* task) {
 /// @brief unregisters a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::destroyTask (Task* task) {
-
+void SchedulerThread::destroyTask(Task* task) {
   // thread has already been stopped
   if (_stopped.load()) {
     deleteTask(task);
@@ -212,7 +206,6 @@ void SchedulerThread::destroyTask (Task* task) {
 
   // different thread, be careful - we have to stop the event loop
   else {
-
     // put the unregister request into the queue
     Work w(DESTROY, nullptr, task);
 
@@ -229,7 +222,7 @@ void SchedulerThread::destroyTask (Task* task) {
 /// @brief sends data to a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::signalTask (std::unique_ptr<TaskData>& data) {
+void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
   _taskData.push(data.release());
   _scheduler->wakeupLoop(_loop);
 }
@@ -242,8 +235,8 @@ void SchedulerThread::signalTask (std::unique_ptr<TaskData>& data) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void SchedulerThread::run () {
-  LOG_TRACE("scheduler thread started (%llu)", (unsigned long long) threadId());
+void SchedulerThread::run() {
+  LOG_TRACE("scheduler thread started (%llu)", (unsigned long long)threadId());
 
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -253,15 +246,14 @@ void SchedulerThread::run () {
 #endif
   }
 
-  while (! _stopping.load() && ! _open.load()) {
+  while (!_stopping.load() && !_open.load()) {
     usleep(1000);
   }
 
-  while (! _stopping.load()) {
-
+  while (!_stopping.load()) {
     // handle the returned data
     TaskData* data;
-    
+
     while (_taskData.pop(data)) {
       Task* task = _scheduler->lookupTaskById(data->_taskId);
 
@@ -275,8 +267,7 @@ void SchedulerThread::run () {
     // handle the events
     try {
       _scheduler->eventLoop(_loop);
-    }
-    catch (...) {
+    } catch (...) {
 #ifdef TRI_HAVE_POSIX_THREADS
       if (_stopping.load()) {
         LOG_WARNING("caught cancelation exception during work");
@@ -288,16 +279,16 @@ void SchedulerThread::run () {
     }
 
 #if defined(DEBUG_SCHEDULER_THREAD)
-    LOG_TRACE("left scheduler loop %d", (int) threadId());
+    LOG_TRACE("left scheduler loop %d", (int)threadId());
 #endif
 
     while (true) {
       Work w;
 
       {
-        SCHEDULER_LOCKER(_queueLock); // TODO(fc) XXX goto boost lockfree
+        SCHEDULER_LOCKER(_queueLock);  // TODO(fc) XXX goto boost lockfree
 
-        if (! _hasWork.load() || _queue.empty()) {
+        if (!_hasWork.load() || _queue.empty()) {
           break;
         }
 
@@ -318,8 +309,7 @@ void SchedulerThread::run () {
 
           if (ok) {
             ++_numberTasks;
-          }
-          else {
+          } else {
             cleanupTask(w.task);
             deleteTask(w.task);
           }
@@ -342,7 +332,7 @@ void SchedulerThread::run () {
     }
   }
 
-  LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long) threadId());
+  LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long)threadId());
 
   _stopped = true;
 
@@ -365,7 +355,7 @@ void SchedulerThread::run () {
       if (_queue.empty()) {
         break;
       }
-    
+
       w = _queue.front();
       _queue.pop_front();
     }
@@ -382,7 +372,7 @@ void SchedulerThread::run () {
         deleteTask(w.task);
         break;
 
-      case INVALID: 
+      case INVALID:
         LOG_ERROR("logic error. got invalid Work item");
         break;
     }

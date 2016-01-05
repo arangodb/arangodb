@@ -35,65 +35,56 @@
 #include "Aql/WalkerWorker.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class NodeFinder
 // -----------------------------------------------------------------------------
 
-    template<typename T>
-    class NodeFinder final : public WalkerWorker<ExecutionNode> {
+template <typename T>
+class NodeFinder final : public WalkerWorker<ExecutionNode> {
+  T _lookingFor;
 
-        T _lookingFor;
+  std::vector<ExecutionNode*>& _out;
 
-        std::vector<ExecutionNode*>& _out;
+  bool _enterSubqueries;
 
-        bool _enterSubqueries;
+ public:
+  NodeFinder(T, std::vector<ExecutionNode*>&, bool);
 
-      public:
+  bool before(ExecutionNode*) override final;
 
-        NodeFinder (T,
-                    std::vector<ExecutionNode*>&,
-                    bool);
-
-        bool before (ExecutionNode*) override final;
-
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
-          return _enterSubqueries;
-        }
-
-    };
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return _enterSubqueries;
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class EndNodeFinder
 // -----------------------------------------------------------------------------
 
-    class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
+class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
+  std::vector<ExecutionNode*>& _out;
 
-        std::vector<ExecutionNode*>& _out;
+  std::vector<bool> _found;
 
-        std::vector<bool> _found;
+  bool _enterSubqueries;
 
-        bool _enterSubqueries;
+ public:
+  EndNodeFinder(std::vector<ExecutionNode*>&, bool);
 
-      public:
+  bool before(ExecutionNode*) override final;
 
-        EndNodeFinder (std::vector<ExecutionNode*>&,
-                       bool);
-
-        bool before (ExecutionNode*) override final;
-
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
-          _found.push_back(false);
-          return _enterSubqueries;
-        }
-        
-        void leaveSubquery (ExecutionNode*, ExecutionNode*) override final {
-          _found.pop_back();
-        }
-
-    };
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    _found.push_back(false);
+    return _enterSubqueries;
   }
+
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+    _found.pop_back();
+  }
+};
+}
 }
 
 #endif
@@ -104,5 +95,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

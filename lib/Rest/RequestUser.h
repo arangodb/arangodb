@@ -33,35 +33,31 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class RequestUser
 // -----------------------------------------------------------------------------
 
-    class RequestUser {
+class RequestUser {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the request user
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  RequestUser();
+  virtual ~RequestUser();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the request user
-////////////////////////////////////////////////////////////////////////////////
-
-        RequestUser ();
-        virtual ~RequestUser ();
-
-    private:
-
-        RequestUser (const RequestUser&);
-        RequestUser& operator= (const RequestUser&);
-
-    };
-
-  }
+ private:
+  RequestUser(const RequestUser&);
+  RequestUser& operator=(const RequestUser&);
+};
+}
 }
 
 #endif
@@ -72,5 +68,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

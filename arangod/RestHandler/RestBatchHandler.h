@@ -39,7 +39,7 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -49,105 +49,100 @@ namespace triagens {
 /// @brief container for complete multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct MultipartMessage {
-      MultipartMessage (const char* boundary,
-                        const size_t boundaryLength,
-                        const char* messageStart,
-                        const char* messageEnd)
+struct MultipartMessage {
+  MultipartMessage(const char* boundary, const size_t boundaryLength,
+                   const char* messageStart, const char* messageEnd)
       : boundary(boundary),
         boundaryLength(boundaryLength),
         messageStart(messageStart),
-        messageEnd(messageEnd) {
-      };
+        messageEnd(messageEnd){};
 
-      const char* boundary;
-      const size_t boundaryLength;
-      const char* messageStart;
-      const char* messageEnd;
-    };
+  const char* boundary;
+  const size_t boundaryLength;
+  const char* messageStart;
+  const char* messageEnd;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container for search data within multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct SearchHelper {
-      MultipartMessage* message;
-      char* searchStart;
-      char* foundStart;
-      size_t foundLength;
-      char* contentId;
-      size_t contentIdLength;
-      bool containsMore;
-    };
+struct SearchHelper {
+  MultipartMessage* message;
+  char* searchStart;
+  char* foundStart;
+  size_t foundLength;
+  char* contentId;
+  size_t contentIdLength;
+  bool containsMore;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestBatchHandler : public RestVocbaseBaseHandler {
+class RestBatchHandler : public RestVocbaseBaseHandler {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  explicit RestBatchHandler(rest::HttpRequest*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-        explicit RestBatchHandler (rest::HttpRequest*);
+  ~RestBatchHandler();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                               HttpHandler
+  // methods
+  // -----------------------------------------------------------------------------
 
-        ~RestBatchHandler ();
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
-// -----------------------------------------------------------------------------
+  HttpHandler::status_t execute();
 
-      public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the boundary from the body of a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-        HttpHandler::status_t execute ();
+  bool getBoundaryBody(std::string*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the boundary from the HTTP header of a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  bool getBoundaryHeader(std::string*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the boundary from the body of a multipart message
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the boundary of a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool getBoundaryBody (std::string*);
+  bool getBoundary(std::string*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the boundary from the HTTP header of a multipart message
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the next part from a multipart message
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool getBoundaryHeader (std::string*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the boundary of a multipart message
-////////////////////////////////////////////////////////////////////////////////
-
-        bool getBoundary (std::string*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the next part from a multipart message
-////////////////////////////////////////////////////////////////////////////////
-
-        bool extractPart (SearchHelper*);
-
-     };
-  }
+  bool extractPart(SearchHelper*);
+};
+}
 }
 
 #endif
@@ -158,5 +153,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

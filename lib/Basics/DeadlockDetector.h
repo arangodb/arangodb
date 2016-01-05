@@ -36,162 +36,158 @@
 #include "Basics/threads.h"
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  DeadlockDetector
 // -----------------------------------------------------------------------------
 
-    template<typename T>
-    class DeadlockDetector {
+template <typename T>
+class DeadlockDetector {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  DeadlockDetector() = default;
+  ~DeadlockDetector() = default;
 
-      public:
+  DeadlockDetector(DeadlockDetector const&) = delete;
+  DeadlockDetector& operator=(DeadlockDetector const&) = delete;
 
-        DeadlockDetector () = default;
-        ~DeadlockDetector () = default;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-        DeadlockDetector (DeadlockDetector const&) = delete;
-        DeadlockDetector& operator= (DeadlockDetector const&) = delete;
+ public:
+  bool isDeadlocked(T const* value) {
+    auto tid = TRI_CurrentThreadId();
+    std::unordered_set<TRI_tid_t> watchFor({tid});
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+    std::vector<TRI_tid_t> stack;
 
-      public:
+    TRI_tid_t writerTid = value->getCurrentWriterThread();
 
-        bool isDeadlocked (T const* value) {
-          auto tid = TRI_CurrentThreadId();
-          std::unordered_set<TRI_tid_t> watchFor({ tid });
+    if (writerTid == 0) {
+      return false;
+    }
 
-          std::vector<TRI_tid_t> stack;
+    stack.push_back(writerTid);
 
-          TRI_tid_t writerTid = value->getCurrentWriterThread();
+    MUTEX_LOCKER(_readersLock);
 
-          if (writerTid == 0) {
-            return false;
-          }
-            
-          stack.push_back(writerTid);
-          
-          MUTEX_LOCKER(_readersLock);
+    while (!stack.empty()) {
+      TRI_tid_t current = stack.back();
+      stack.pop_back();
 
-          while (! stack.empty()) {
-            TRI_tid_t current = stack.back();
-            stack.pop_back();
+      watchFor.emplace(current);
+      auto it2 = _readersBlocked.find(current);
 
-            watchFor.emplace(current);
-            auto it2 = _readersBlocked.find(current);
+      if (it2 == _readersBlocked.end()) {
+        return false;
+      }
 
-            if (it2 == _readersBlocked.end()) {
-              return false;
-            }
+      if (watchFor.find((*it2).second) != watchFor.end()) {
+        // deadlock!
+        return true;
+      }
 
-            if (watchFor.find((*it2).second) != watchFor.end()) {
-              // deadlock!
-              return true; 
-            }
+      stack.push_back((*it2).second);
+    }
 
-            stack.push_back((*it2).second);
-          }
+    // no deadlock found
+    return false;
+  }
 
-          // no deadlock found
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief insert a reader into the list of blocked readers
+  /// returns true if a deadlock was detected and false otherwise
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool setReaderBlocked(T const* value) {
+    auto tid = TRI_CurrentThreadId();
+    std::unordered_set<TRI_tid_t> watchFor({tid});
+
+    std::vector<TRI_tid_t> stack;
+
+    TRI_tid_t writerTid = value->getCurrentWriterThread();
+
+    if (writerTid == 0) {
+      return false;
+    }
+
+    stack.push_back(writerTid);
+
+    MUTEX_LOCKER(_readersLock);
+    _readersBlocked.emplace(tid, writerTid);
+
+    try {
+      while (!stack.empty()) {
+        TRI_tid_t current = stack.back();
+        stack.pop_back();
+
+        watchFor.emplace(current);
+        auto it2 = _readersBlocked.find(current);
+
+        if (it2 == _readersBlocked.end()) {
           return false;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a reader into the list of blocked readers
-/// returns true if a deadlock was detected and false otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-        bool setReaderBlocked (T const* value) {
-          auto tid = TRI_CurrentThreadId();
-          std::unordered_set<TRI_tid_t> watchFor({ tid });
-
-          std::vector<TRI_tid_t> stack;
-
-          TRI_tid_t writerTid = value->getCurrentWriterThread();
-
-          if (writerTid == 0) {
-            return false;
-          }
-            
-          stack.push_back(writerTid);
-          
-          MUTEX_LOCKER(_readersLock);
-          _readersBlocked.emplace(tid, writerTid);
-
-          try {
-            while (! stack.empty()) {
-              TRI_tid_t current = stack.back();
-              stack.pop_back();
-
-              watchFor.emplace(current);
-              auto it2 = _readersBlocked.find(current);
-
-              if (it2 == _readersBlocked.end()) {
-                return false;
-              }
-
-              if (watchFor.find((*it2).second) != watchFor.end()) {
-                // deadlock!
-                _readersBlocked.erase(tid); 
-                return true; 
-              }
-
-              stack.push_back((*it2).second);
-            }
-
-            // no deadlock found
-            return false;
-          }
-          catch (...) {
-            // clean up and re-throw
-            _readersBlocked.erase(tid); 
-            throw;
-          }
+        if (watchFor.find((*it2).second) != watchFor.end()) {
+          // deadlock!
+          _readersBlocked.erase(tid);
+          return true;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a reader from the list of blocked readers
-////////////////////////////////////////////////////////////////////////////////
+        stack.push_back((*it2).second);
+      }
 
-        void setReaderUnblocked (T const* value) noexcept {
-          auto tid = TRI_CurrentThreadId();
+      // no deadlock found
+      return false;
+    } catch (...) {
+      // clean up and re-throw
+      _readersBlocked.erase(tid);
+      throw;
+    }
+  }
 
-          try {
-            MUTEX_LOCKER(_readersLock);
-            _readersBlocked.erase(tid); 
-          }
-          catch (...) {
-          }
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove a reader from the list of blocked readers
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  void setReaderUnblocked(T const* value) noexcept {
+    auto tid = TRI_CurrentThreadId();
 
-      private:
+    try {
+      MUTEX_LOCKER(_readersLock);
+      _readersBlocked.erase(tid);
+    } catch (...) {
+    }
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock for managing the readers
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-        triagens::basics::Mutex _readersLock;
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lock for managing the readers
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief readers that are blocked on writers
-////////////////////////////////////////////////////////////////////////////////
+  triagens::basics::Mutex _readersLock;
 
-        std::unordered_map<TRI_tid_t, TRI_tid_t> _readersBlocked;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief readers that are blocked on writers
+  ////////////////////////////////////////////////////////////////////////////////
 
-    };
+  std::unordered_map<TRI_tid_t, TRI_tid_t> _readersBlocked;
+};
 
-  }   // namespace triagens::basics
-}   // namespace triagens
+}  // namespace triagens::basics
+}  // namespace triagens
 
 #endif
 
@@ -201,5 +197,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

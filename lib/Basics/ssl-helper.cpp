@@ -44,8 +44,8 @@ using namespace std;
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-SSL_CTX* triagens::basics::sslContext (protocol_e protocol, string const& keyfile) {
-
+SSL_CTX* triagens::basics::sslContext(protocol_e protocol,
+                                      string const& keyfile) {
   // create our context
   SSL_METHOD SSL_CONST* meth = nullptr;
 
@@ -73,15 +73,17 @@ SSL_CTX* triagens::basics::sslContext (protocol_e protocol, string const& keyfil
   }
 
   SSL_CTX* sslctx = SSL_CTX_new(meth);
-            
+
   // load our keys and certificates
-  if (! SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
-    LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
+  if (!SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
+    LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(),
+              triagens::basics::lastSSLError().c_str());
     return nullptr;
   }
 
-  if (! SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
+  if (!SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
+    LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(),
+              triagens::basics::lastSSLError().c_str());
     return nullptr;
   }
 
@@ -96,7 +98,7 @@ SSL_CTX* triagens::basics::sslContext (protocol_e protocol, string const& keyfil
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-string triagens::basics::protocolName (const protocol_e protocol) {
+string triagens::basics::protocolName(const protocol_e protocol) {
   switch (protocol) {
     case SSL_V2:
       return "SSLv2";
@@ -119,7 +121,7 @@ string triagens::basics::protocolName (const protocol_e protocol) {
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-string triagens::basics::lastSSLError () {
+string triagens::basics::lastSSLError() {
   char buf[122];
   memset(buf, 0, sizeof(buf));
 
@@ -135,5 +137,6 @@ string triagens::basics::lastSSLError () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -49,41 +49,34 @@ class VocShaper;
 /// @brief converts a TRI_shaped_json_t into an existing V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
-                                         v8::Handle<v8::Value>,
-                                         VocShaper*,
-                                         TRI_shape_t const*,
-                                         char const* data,
-                                         size_t size);
+v8::Handle<v8::Value> TRI_JsonShapeData(v8::Isolate* isolate,
+                                        v8::Handle<v8::Value>, VocShaper*,
+                                        TRI_shape_t const*, char const* data,
+                                        size_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into a new V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_JsonShapeData (v8::Isolate* isolate,
-                                         VocShaper*,
-                                         TRI_shape_t const*,
-                                         char const* data,
-                                         size_t size);
+v8::Handle<v8::Value> TRI_JsonShapeData(v8::Isolate* isolate, VocShaper*,
+                                        TRI_shape_t const*, char const* data,
+                                        size_t size);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Isolate* isolate,
-                                           v8::Handle<v8::Value> const,
-                                           VocShaper*,
-                                           bool);
+TRI_shaped_json_t* TRI_ShapedJsonV8Object(v8::Isolate* isolate,
+                                          v8::Handle<v8::Value> const,
+                                          VocShaper*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a V8 object to a TRI_shaped_json_t in place
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
-                                v8::Handle<v8::Value> const,
-                                TRI_shaped_json_t*,
-                                VocShaper*,
-                                bool);
+int TRI_FillShapedJsonV8Object(v8::Isolate* isolate,
+                               v8::Handle<v8::Value> const, TRI_shaped_json_t*,
+                               VocShaper*, bool);
 
 #endif
 
@@ -93,5 +86,6 @@ int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

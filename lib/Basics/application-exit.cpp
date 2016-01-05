@@ -37,16 +37,12 @@ static void defaultExitFunction(int, void*);
 
 TRI_ExitFunction_t TRI_EXIT_FUNCTION = defaultExitFunction;
 
+void defaultExitFunction(int exitCode, void* data) { _exit(exitCode); }
 
-void defaultExitFunction (int exitCode, void* data) {
-  _exit(exitCode);
-}
-
-void TRI_Application_Exit_SetExit (TRI_ExitFunction_t exitFunction) {
+void TRI_Application_Exit_SetExit(TRI_ExitFunction_t exitFunction) {
   if (exitFunction != NULL) {
     TRI_EXIT_FUNCTION = exitFunction;
-  }
-  else {
+  } else {
     TRI_EXIT_FUNCTION = defaultExitFunction;
   }
 }
@@ -57,5 +53,6 @@ void TRI_Application_Exit_SetExit (TRI_ExitFunction_t exitFunction) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

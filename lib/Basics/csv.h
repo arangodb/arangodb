@@ -47,8 +47,7 @@ typedef enum {
   TRI_CSV_PARSER_WITHIN_FIELD,
   TRI_CSV_PARSER_WITHIN_QUOTED_FIELD,
   TRI_CSV_PARSER_CORRUPTED
-}
-TRI_csv_parser_states_e;
+} TRI_csv_parser_states_e;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief template for CSV parser
@@ -64,12 +63,12 @@ typedef struct TRI_csv_parser_s {
   bool _useQuote;
   bool _useBackslash;
 
-  char* _begin;       // beginning of the input buffer
-  char* _start;       // start of the unproccessed part
-  char* _written;     // pointer to currently written character
-  char* _current;     // pointer to currently processed character
-  char* _stop;        // end of unproccessed part
-  char* _end;         // end of the input buffer
+  char* _begin;    // beginning of the input buffer
+  char* _start;    // start of the unproccessed part
+  char* _written;  // pointer to currently written character
+  char* _current;  // pointer to currently processed character
+  char* _stop;     // end of unproccessed part
+  char* _end;      // end of the input buffer
 
   size_t _row;
   size_t _column;
@@ -78,16 +77,17 @@ typedef struct TRI_csv_parser_s {
   void* _dataAdd;
   void* _dataEnd;
 
-  void (*begin) (struct TRI_csv_parser_s*, size_t row);
-  void (*add) (struct TRI_csv_parser_s*, char const*, size_t, size_t row, size_t column, bool escaped);
-  void (*end) (struct TRI_csv_parser_s*, char const*, size_t, size_t row, size_t column, bool escaped);
+  void (*begin)(struct TRI_csv_parser_s*, size_t row);
+  void (*add)(struct TRI_csv_parser_s*, char const*, size_t, size_t row,
+              size_t column, bool escaped);
+  void (*end)(struct TRI_csv_parser_s*, char const*, size_t, size_t row,
+              size_t column, bool escaped);
 
   size_t _nResize;
   size_t _nMemmove;
   size_t _nMemcpy;
-  void *_data;
-}
-TRI_csv_parser_t;
+  void* _data;
+} TRI_csv_parser_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -97,18 +97,17 @@ TRI_csv_parser_t;
 /// @brief inits a CSV parser
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitCsvParser (TRI_csv_parser_t*,
-                        TRI_memory_zone_t*,
-                        void (*) (TRI_csv_parser_t*, size_t),
-                        void (*) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-                        void (*) (TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
-                        void *vData);
+void TRI_InitCsvParser(
+    TRI_csv_parser_t*, TRI_memory_zone_t*, void (*)(TRI_csv_parser_t*, size_t),
+    void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+    void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
+    void* vData);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a CSV parser
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCsvParser (TRI_csv_parser_t* parser);
+void TRI_DestroyCsvParser(TRI_csv_parser_t* parser);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -120,29 +119,25 @@ void TRI_DestroyCsvParser (TRI_csv_parser_t* parser);
 /// note that the separator string must be valid until the parser is destroyed
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser,
-                                char separator);
+void TRI_SetSeparatorCsvParser(TRI_csv_parser_t* parser, char separator);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the quote character
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser,
-                            char quote,
-                            bool useQuote);
+void TRI_SetQuoteCsvParser(TRI_csv_parser_t* parser, char quote, bool useQuote);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a backslash is used to escape quotes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UseBackslashCsvParser (TRI_csv_parser_t* parser,
-                                bool value);
+void TRI_UseBackslashCsvParser(TRI_csv_parser_t* parser, bool value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseCsvString (TRI_csv_parser_t*, char const*, size_t);
+int TRI_ParseCsvString(TRI_csv_parser_t*, char const*, size_t);
 
 #endif
 
@@ -152,5 +147,6 @@ int TRI_ParseCsvString (TRI_csv_parser_t*, char const*, size_t);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -34,90 +34,86 @@
 #include "HttpServer/HttpHandler.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class PathHandler : public HttpHandler {
-      public:
+class PathHandler : public HttpHandler {
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief path options
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief path options
-////////////////////////////////////////////////////////////////////////////////
+  struct Options {
+    Options() : allowSymbolicLink(false), cacheMaxAge(0) {}
 
-        struct Options {
-          Options ()
-            : allowSymbolicLink(false), cacheMaxAge(0) {
-          }
+    explicit Options(std::string const& path)
+        : path(path),
+          contentType("text/html"),
+          allowSymbolicLink(false),
+          cacheMaxAge(0) {}
 
-          explicit Options (std::string const& path)
-            : path(path), contentType("text/html"), allowSymbolicLink(false), cacheMaxAge(0) {
-          }
+    Options(std::string const& path, std::string const& contentType)
+        : path(path),
+          contentType(contentType),
+          allowSymbolicLink(false),
+          cacheMaxAge(0) {}
 
-          Options (std::string const& path, std::string const& contentType)
-            : path(path), contentType(contentType), allowSymbolicLink(false), cacheMaxAge(0) {
-          }
+    std::string path;
+    std::string contentType;
+    bool allowSymbolicLink;
+    std::string defaultFile;
+    int64_t cacheMaxAge;
+  };
 
-          std::string path;
-          std::string contentType;
-          bool allowSymbolicLink;
-          std::string defaultFile;
-          int64_t cacheMaxAge;
-        };
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief factory methods
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  static HttpHandler* create(HttpRequest* request, void* data) {
+    Options* options = static_cast<Options*>(data);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory methods
-////////////////////////////////////////////////////////////////////////////////
-
-        static HttpHandler* create (HttpRequest* request, void* data) {
-          Options* options = static_cast<Options*>(data);
-
-          return new PathHandler(request, options);
-        }
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-        PathHandler (HttpRequest* request, Options const* options);
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect () const override {
-          return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void handleError (const basics::Exception&) override;
-
-      private:
-        std::string path;
-        std::string contentType;
-        bool allowSymbolicLink;
-        std::string defaultFile;
-        int64_t cacheMaxAge;
-        std::string maxAgeHeader;
-    };
+    return new PathHandler(request, options);
   }
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
+
+  PathHandler(HttpRequest* request, Options const* options);
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool isDirect() const override { return true; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
+
+  status_t execute() override;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void handleError(const basics::Exception&) override;
+
+ private:
+  std::string path;
+  std::string contentType;
+  bool allowSymbolicLink;
+  std::string defaultFile;
+  int64_t cacheMaxAge;
+  std::string maxAgeHeader;
+};
+}
 }
 
 #endif
@@ -128,5 +124,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

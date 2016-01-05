@@ -63,11 +63,10 @@ typedef enum {
 
 typedef struct TRI_PO_desc_s {
   TRI_PO_description_types_e _type;
-  char * _name;
+  char* _name;
   char _short;
-  char * _desc;
+  char* _desc;
 } TRI_PO_desc_t;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief description of attribute of type string
@@ -76,7 +75,7 @@ typedef struct TRI_PO_desc_s {
 typedef struct TRI_PO_string_s {
   TRI_PO_desc_t base;
 
-  char ** _value;
+  char** _value;
 } TRI_PO_string_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -86,7 +85,7 @@ typedef struct TRI_PO_string_s {
 typedef struct TRI_PO_vector_string_s {
   TRI_PO_desc_t base;
 
-  TRI_vector_string_t * _value;
+  TRI_vector_string_t* _value;
 } TRI_PO_vector_string_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +95,7 @@ typedef struct TRI_PO_vector_string_s {
 typedef struct TRI_PO_section_s {
   TRI_PO_desc_t base;
 
-  struct TRI_PO_section_s * _parent;
+  struct TRI_PO_section_s* _parent;
   TRI_vector_pointer_t _children;
 } TRI_PO_section_t;
 
@@ -112,9 +111,9 @@ typedef struct TRI_PO_section_s {
 
 typedef struct TRI_PO_item_s {
   bool _used;
-  TRI_PO_desc_t * _desc;
+  TRI_PO_desc_t* _desc;
 
-  int (*parse) (char const * arg, void * value);
+  int (*parse)(char const* arg, void* value);
 } TRI_PO_item_t;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,31 +138,31 @@ typedef struct TRI_program_options_s {
 /// @brief creates a new program options description
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_PO_section_t* TRI_CreatePODescription (char const *description);
+TRI_PO_section_t* TRI_CreatePODescription(char const* description);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees all pointers for a program options description
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreePODescription (TRI_PO_section_t* desc);
+void TRI_FreePODescription(TRI_PO_section_t* desc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the runtime structures which handles the user options
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_program_options_t * TRI_CreateProgramOptions (TRI_PO_section_t * desc);
+TRI_program_options_t* TRI_CreateProgramOptions(TRI_PO_section_t* desc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroyes alls allocated memory, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyProgramOptions (TRI_program_options_t * options);
+void TRI_DestroyProgramOptions(TRI_program_options_t* options);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroyes alls allocated memory and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeProgramOptions (TRI_program_options_t * options);
+void TRI_FreeProgramOptions(TRI_program_options_t* options);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -179,11 +178,9 @@ void TRI_FreeProgramOptions (TRI_program_options_t * options);
 /// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
-                               char const * name,
-                               char shortName,
-                               char const * description,
-                               bool * variable);
+void TRI_AddFlagPODescription(TRI_PO_section_t* desc, char const* name,
+                              char shortName, char const* description,
+                              bool* variable);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a string option
@@ -195,11 +192,9 @@ void TRI_AddFlagPODescription (TRI_PO_section_t * desc,
 /// @param variable             that will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddStringPODescription (TRI_PO_section_t * desc,
-                                 char const * name,
-                                 char shortName,
-                                 char const * description,
-                                 char ** variable);
+void TRI_AddStringPODescription(TRI_PO_section_t* desc, char const* name,
+                                char shortName, char const* description,
+                                char** variable);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a vector string option
@@ -211,28 +206,23 @@ void TRI_AddStringPODescription (TRI_PO_section_t * desc,
 /// @param variable             will hold the result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddVectorStringPODescription (TRI_PO_section_t * desc,
-                                       char const * name,
-                                       char shortName,
-                                       char const * description,
-                                       TRI_vector_string_t * variable);
+void TRI_AddVectorStringPODescription(TRI_PO_section_t* desc, char const* name,
+                                      char shortName, char const* description,
+                                      TRI_vector_string_t* variable);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a command line of arguments according the description desc_ptr
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
-                                       char const*,
-                                       int argc,
-                                       char ** argv);
+bool TRI_ParseArgumentsProgramOptions(TRI_program_options_t* options,
+                                      char const*, int argc, char** argv);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a text file containing the configuration variables
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
-                                  char const * programName,
-                                  char const * filename);
+bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
+                                 char const* programName, char const* filename);
 
 #endif
 
@@ -246,5 +236,6 @@ bool TRI_ParseFileProgramOptions (TRI_program_options_t * options,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

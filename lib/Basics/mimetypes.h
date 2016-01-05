@@ -42,13 +42,13 @@
 /// @brief register a mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterMimetype (char const*, char const*, bool);
+bool TRI_RegisterMimetype(char const*, char const*, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetMimetype (char const*);
+char* TRI_GetMimetype(char const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
@@ -62,13 +62,13 @@ char* TRI_GetMimetype (char const*);
 /// @brief initializes mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeMimetypes ();
+void TRI_InitializeMimetypes();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownMimetypes ();
+void TRI_ShutdownMimetypes();
 
 #endif
 
@@ -78,5 +78,6 @@ void TRI_ShutdownMimetypes ();
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

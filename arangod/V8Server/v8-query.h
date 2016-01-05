@@ -42,8 +42,7 @@
 /// @brief creates the query functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Queries (v8::Isolate* isolate,
-                        v8::Handle<v8::Context> context);
+void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 #endif
 
@@ -53,5 +52,6 @@ void TRI_InitV8Queries (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

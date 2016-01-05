@@ -37,18 +37,20 @@
 /// @brief create a result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t size) {
-  TRI_fulltext_result_t* result = static_cast<TRI_fulltext_result_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_result_t), false));
+TRI_fulltext_result_t* TRI_CreateResultFulltextIndex(const uint32_t size) {
+  TRI_fulltext_result_t* result = static_cast<TRI_fulltext_result_t*>(
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_result_t), false));
 
   if (result == nullptr) {
     return nullptr;
   }
 
-  result->_documents    = nullptr;
+  result->_documents = nullptr;
   result->_numDocuments = 0;
 
   if (size > 0) {
-    result->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * size, false));
+    result->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(
+        TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * size, false));
 
     if (result->_documents == nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
@@ -63,7 +65,7 @@ TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t size) {
 /// @brief destroy a result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyResultFulltextIndex (TRI_fulltext_result_t* result) {
+void TRI_DestroyResultFulltextIndex(TRI_fulltext_result_t* result) {
   if (result->_documents != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, result->_documents);
   }
@@ -73,7 +75,7 @@ void TRI_DestroyResultFulltextIndex (TRI_fulltext_result_t* result) {
 /// @brief free a result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeResultFulltextIndex (TRI_fulltext_result_t* result) {
+void TRI_FreeResultFulltextIndex(TRI_fulltext_result_t* result) {
   TRI_DestroyResultFulltextIndex(result);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
 }
@@ -84,5 +86,6 @@ void TRI_FreeResultFulltextIndex (TRI_fulltext_result_t* result) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -35,209 +35,199 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Utils/transactions.h"
 
-#define RestImportTransaction triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX>
+#define RestImportTransaction \
+  triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 RestImportHandler
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  RestImportResult
 // -----------------------------------------------------------------------------
 
-    struct RestImportResult {
+struct RestImportResult {
+ public:
+  RestImportResult()
+      : _numErrors(0),
+        _numEmpty(0),
+        _numCreated(0),
+        _numIgnored(0),
+        _numUpdated(0),
+        _errors() {}
 
-      public:
-        RestImportResult () :
-          _numErrors(0),
-          _numEmpty(0),
-          _numCreated(0),
-          _numIgnored(0),
-          _numUpdated(0),
-          _errors() {
-        }
+  ~RestImportResult() {}
 
-        ~RestImportResult () { }
+  size_t _numErrors;
+  size_t _numEmpty;
+  size_t _numCreated;
+  size_t _numIgnored;
+  size_t _numUpdated;
 
-        size_t _numErrors;
-        size_t _numEmpty;
-        size_t _numCreated;
-        size_t _numIgnored;
-        size_t _numUpdated;
-
-        std::vector<std::string> _errors;
-    };
+  std::vector<std::string> _errors;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief import request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestImportHandler : public RestVocbaseBaseHandler {
+class RestImportHandler : public RestVocbaseBaseHandler {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  explicit RestImportHandler(rest::HttpRequest*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   Handler
+  // methods
+  // -----------------------------------------------------------------------------
 
-        explicit RestImportHandler (rest::HttpRequest*);
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
+  status_t execute() override final;
 
-      public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief determine the collection type from the request
+  ////////////////////////////////////////////////////////////////////////////////
 
-        status_t execute () override final;
+  TRI_col_type_e getCollectionType();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extracts the "overwrite" value
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  bool extractOverwrite() const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the collection type from the request
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extracts the "complete" value
+  ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_col_type_e getCollectionType (); 
+  bool extractComplete() const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the "overwrite" value
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a position string
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool extractOverwrite () const;
+  std::string positionise(size_t) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extracts the "complete" value
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief register an error
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool extractComplete () const;
+  void registerError(RestImportResult&, std::string const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a position string
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief construct an error message
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::string positionise (size_t) const;
+  std::string buildParseError(size_t, char const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register an error
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief process a single VelocyPack document
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void registerError (RestImportResult&,
-                            std::string const&);
+  int handleSingleDocument(RestImportTransaction&, RestImportResult&,
+                           char const*, VPackSlice const&, bool, bool, size_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief construct an error message
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates documents by JSON objects
+  /// each line of the input stream contains an individual JSON object
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::string buildParseError (size_t,
-                                     char const*);
+  bool createFromJson(std::string const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process a single VelocyPack document
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates documents by JSON objects
+  /// the input stream is one big JSON array containing all documents
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int handleSingleDocument (RestImportTransaction&,
-                                  RestImportResult&, 
-                                  char const*,
-                                  VPackSlice const&,
-                                  bool,
-                                  bool,
-                                  size_t);
+  bool createByDocumentsList();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates documents by JSON objects
-/// each line of the input stream contains an individual JSON object
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a documents from key/value lists
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool createFromJson (std::string const&);
+  bool createFromKeyValueList();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates documents by JSON objects
-/// the input stream is one big JSON array containing all documents
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief creates the result
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool createByDocumentsList ();
+  void generateDocumentsCreated(RestImportResult const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a documents from key/value lists
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief parses a string
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool createFromKeyValueList ();
+  std::shared_ptr<VPackBuilder> parseVelocyPackLine(std::string const&, bool&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates the result
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief parses a string
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void generateDocumentsCreated (RestImportResult const&);
+  std::shared_ptr<VPackBuilder> parseVelocyPackLine(char const*, char const*,
+                                                    bool&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a string
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief builds a VPackBuilder object from a key and value list
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<VPackBuilder> parseVelocyPackLine (std::string const&,
-                                                           bool&);
+  std::shared_ptr<VPackBuilder> createVelocyPackObject(VPackSlice const&,
+                                                       VPackSlice const&,
+                                                       std::string&, size_t);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a string
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks the keys, returns true if all values in the list are
+  /// strings.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<VPackBuilder> parseVelocyPackLine (char const*,
-                                                           char const*,
-                                                           bool&);
+  bool checkKeys(VPackSlice const&) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds a VPackBuilder object from a key and value list
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-        std::shared_ptr<VPackBuilder> createVelocyPackObject (VPackSlice const&,
-                                                              VPackSlice const&,
-                                                              std::string&,
-                                                              size_t);
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enumeration for unique constraint handling
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the keys, returns true if all values in the list are strings.
-////////////////////////////////////////////////////////////////////////////////
+  enum OnDuplicateActionType {
+    DUPLICATE_ERROR,    // fail on unique constraint violation
+    DUPLICATE_UPDATE,   // try updating existing document on unique constraint
+                        // violation
+    DUPLICATE_REPLACE,  // try replacing existing document on unique constraint
+                        // violation
+    DUPLICATE_IGNORE    // ignore document on unique constraint violation
+  };
 
-        bool checkKeys (VPackSlice const&) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unique constraint handling
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enumeration for unique constraint handling
-////////////////////////////////////////////////////////////////////////////////
-
-        enum OnDuplicateActionType {
-          DUPLICATE_ERROR,       // fail on unique constraint violation
-          DUPLICATE_UPDATE,      // try updating existing document on unique constraint violation
-          DUPLICATE_REPLACE,     // try replacing existing document on unique constraint violation
-          DUPLICATE_IGNORE       // ignore document on unique constraint violation
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unique constraint handling
-////////////////////////////////////////////////////////////////////////////////
-
-        OnDuplicateActionType _onDuplicateAction;
-
-    };
-  }
+  OnDuplicateActionType _onDuplicateAction;
+};
+}
 }
 
 #endif
@@ -248,5 +238,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -43,8 +43,8 @@
 /// @brief initializes a new mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitMutex (TRI_mutex_t* mutex) {
-  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
+int TRI_InitMutex(TRI_mutex_t* mutex) {
+// as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   mutex->_mutex = CreateMutex(nullptr, FALSE, nullptr);
 
@@ -61,13 +61,15 @@ int TRI_InitMutex (TRI_mutex_t* mutex) {
 /// @brief destroys a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyMutex (TRI_mutex_t* mutex) {
-  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
+int TRI_DestroyMutex(TRI_mutex_t* mutex) {
+// as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   if (CloseHandle(mutex->_mutex) == 0) {
     DWORD result = GetLastError();
 
-    LOG_FATAL_AND_EXIT("locks-win32.c:TRI_DestroyMutex:could not destroy the mutex -->%d",result);
+    LOG_FATAL_AND_EXIT(
+        "locks-win32.c:TRI_DestroyMutex:could not destroy the mutex -->%d",
+        result);
   }
 #else
 #endif
@@ -82,14 +84,16 @@ int TRI_DestroyMutex (TRI_mutex_t* mutex) {
 /// @brief locks mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockMutex (TRI_mutex_t* mutex) {
-  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
+void TRI_LockMutex(TRI_mutex_t* mutex) {
+// as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   DWORD result = WaitForSingleObject(mutex->_mutex, INFINITE);
 
   switch (result) {
     case WAIT_ABANDONED: {
-      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_ABANDONED");
+      LOG_FATAL_AND_EXIT(
+          "locks-win32.c:TRI_LockMutex:could not lock the condition --> "
+          "WAIT_ABANDONED");
     }
 
     case WAIT_OBJECT_0: {
@@ -98,12 +102,17 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
     }
 
     case WAIT_TIMEOUT: {
-      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_TIMEOUT");
+      LOG_FATAL_AND_EXIT(
+          "locks-win32.c:TRI_LockMutex:could not lock the condition --> "
+          "WAIT_TIMEOUT");
     }
 
     case WAIT_FAILED: {
       result = GetLastError();
-      LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
+      LOG_FATAL_AND_EXIT(
+          "locks-win32.c:TRI_LockMutex:could not lock the condition --> "
+          "WAIT_FAILED - reason -->%d",
+          result);
     }
   }
 #else
@@ -115,12 +124,12 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 /// @brief unlocks mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockMutex (TRI_mutex_t* mutex) {
-  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
+void TRI_UnlockMutex(TRI_mutex_t* mutex) {
+// as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   BOOL ok = ReleaseMutex(mutex->_mutex);
 
-  if (! ok) {
+  if (!ok) {
     LOG_FATAL_AND_EXIT("could not unlock the mutex");
   }
 #else
@@ -140,17 +149,13 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 /// @brief initializes a new spin
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitSpin (TRI_spin_t* spin) {
-  InitializeCriticalSection(spin);
-}
+void TRI_InitSpin(TRI_spin_t* spin) { InitializeCriticalSection(spin); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a spin
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroySpin (TRI_spin_t* spin) {
-  DeleteCriticalSection(spin);
-}
+void TRI_DestroySpin(TRI_spin_t* spin) { DeleteCriticalSection(spin); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -160,17 +165,13 @@ void TRI_DestroySpin (TRI_spin_t* spin) {
 /// @brief locks spin
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockSpin (TRI_spin_t* spin) {
-  EnterCriticalSection(spin);
-}
+void TRI_LockSpin(TRI_spin_t* spin) { EnterCriticalSection(spin); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks spin
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockSpin (TRI_spin_t* spin) {
-  LeaveCriticalSection(spin);
-}
+void TRI_UnlockSpin(TRI_spin_t* spin) { LeaveCriticalSection(spin); }
 #endif
 
 // -----------------------------------------------------------------------------
@@ -186,7 +187,7 @@ void TRI_UnlockSpin (TRI_spin_t* spin) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_WINDOWS_VISTA_LOCKS
-static void IncrementReaders (TRI_read_write_lock_t* lock) {
+static void IncrementReaders(TRI_read_write_lock_t* lock) {
   // ...........................................................................
   // increment the number of readers we have on the read_write lock
   // ...........................................................................
@@ -206,7 +207,7 @@ static void IncrementReaders (TRI_read_write_lock_t* lock) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #if TRI_WINDOWS_VISTA_LOCKS
-static void DecrementReaders (TRI_read_write_lock_t* lock) {
+static void DecrementReaders(TRI_read_write_lock_t* lock) {
   // ...........................................................................
   // reduce the number of readers using the read_write lock by 1
   // ...........................................................................
@@ -220,8 +221,7 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
 
   if (lock->_readers == 0) {
     SetEvent(lock->_readersEvent);
-  }
-  else if (lock->_readers < 0) {
+  } else if (lock->_readers < 0) {
     LOG_FATAL_AND_EXIT("reader count is negative");
   }
 }
@@ -235,7 +235,7 @@ static void DecrementReaders (TRI_read_write_lock_t* lock) {
 /// @brief initializes a new read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_InitReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
   // ...........................................................................
   // set the number of readers reading on the read_write lock to 0
@@ -278,7 +278,7 @@ void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief destroys a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
   DeleteCriticalSection(&lock->_lockWriter);
   DeleteCriticalSection(&lock->_lockReaders);
@@ -296,9 +296,9 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief tries to read lock a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
+bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
-  WaitForSingleObject(lock->_writerEvent, 10); // 10 millis timeout
+  WaitForSingleObject(lock->_writerEvent, 10);  // 10 millis timeout
 
   EnterCriticalSection(&lock->_lockReaders);
   IncrementReaders(lock);
@@ -321,7 +321,7 @@ bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief read locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
   while (true) {
     // ........................................................................
@@ -332,7 +332,8 @@ void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
     WaitForSingleObject(lock->_writerEvent, INFINITE);
 
     // .........................................................................
-    // This thread will wait here until this resource becomes excusively available
+    // This thread will wait here until this resource becomes excusively
+    // available
     // .........................................................................
 
     EnterCriticalSection(&lock->_lockReaders);
@@ -351,8 +352,7 @@ void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
       EnterCriticalSection(&lock->_lockReaders);
       DecrementReaders(lock);
       LeaveCriticalSection(&lock->_lockReaders);
-    }
-    else {
+    } else {
       break;
     }
   }
@@ -365,7 +365,7 @@ void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief read unlocks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
   EnterCriticalSection(&lock->_lockReaders);
 
@@ -407,7 +407,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief tries to write lock a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
+bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
   BOOL result;
   // ...........................................................................
@@ -466,7 +466,7 @@ bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief write locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
   // ...........................................................................
   // Lock so no other thread can access this
@@ -509,7 +509,7 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief write unlocks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
 #if TRI_WINDOWS_VISTA_LOCKS
   // ...........................................................................
   // Write lock this _lockReader so no other threads can access this
@@ -571,7 +571,7 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief initializes a new condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitCondition (TRI_condition_t* cond) {
+void TRI_InitCondition(TRI_condition_t* cond) {
   InitializeCriticalSection(&cond->_lockWaiters);
   InitializeConditionVariable(&cond->_conditionVariable);
 }
@@ -580,7 +580,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
 /// @brief destroys a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCondition (TRI_condition_t* cond) {
+void TRI_DestroyCondition(TRI_condition_t* cond) {
   DeleteCriticalSection(&cond->_lockWaiters);
 }
 
@@ -594,7 +594,7 @@ void TRI_DestroyCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SignalCondition (TRI_condition_t* cond) {
+void TRI_SignalCondition(TRI_condition_t* cond) {
   WakeConditionVariable(&cond->_conditionVariable);
 }
 
@@ -604,7 +604,7 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_BroadcastCondition (TRI_condition_t* cond) {
+void TRI_BroadcastCondition(TRI_condition_t* cond) {
   WakeAllConditionVariable(&cond->_conditionVariable);
 }
 
@@ -614,8 +614,9 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WaitCondition (TRI_condition_t* cond) {
-  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, INFINITE);
+void TRI_WaitCondition(TRI_condition_t* cond) {
+  SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
+                           INFINITE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -624,7 +625,7 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
+bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   // ...........................................................................
   // The POSIX threads function pthread_cond_timedwait accepts microseconds
   // while the Windows function accepts milliseconds
@@ -633,7 +634,8 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 
   delay = delay / 1000;
 
-  if (SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters, (DWORD) delay) != 0) {
+  if (SleepConditionVariableCS(&cond->_conditionVariable, &cond->_lockWaiters,
+                               (DWORD)delay) != 0) {
     return true;
   }
 
@@ -649,7 +651,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 /// @brief locks the mutex of a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockCondition (TRI_condition_t* cond) {
+void TRI_LockCondition(TRI_condition_t* cond) {
   EnterCriticalSection(&cond->_lockWaiters);
 }
 
@@ -657,7 +659,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
 /// @brief unlocks the mutex of a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockCondition (TRI_condition_t* cond) {
+void TRI_UnlockCondition(TRI_condition_t* cond) {
   LeaveCriticalSection(&cond->_lockWaiters);
 }
 
@@ -735,5 +737,6 @@ bool TRI_ComparePointer(void* volatile* theValue, void* oldValue) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -1,4 +1,5 @@
-/* lib/Basics/local-configuration.h.  Generated from local-configuration.h.in by configure.  */
+/* lib/Basics/local-configuration.h.  Generated from local-configuration.h.in by
+ * configure.  */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief High-Performance Database Framework made by triagens
 ///
@@ -53,5 +54,6 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -31,8 +31,8 @@
 
 #include "V8/v8-globals.h"
 
-v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
-                                          char const* text, char** error);
+v8::Handle<v8::Value> TRI_FromJsonString(v8::Isolate* isolate, char const* text,
+                                         char** error);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -40,5 +40,6 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

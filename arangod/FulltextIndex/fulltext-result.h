@@ -41,10 +41,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_fulltext_result_s {
-  uint32_t             _numDocuments;
-  TRI_fulltext_doc_t*  _documents;
-}
-TRI_fulltext_result_t;
+  uint32_t _numDocuments;
+  TRI_fulltext_doc_t* _documents;
+} TRI_fulltext_result_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -54,19 +53,19 @@ TRI_fulltext_result_t;
 /// @brief create a result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_result_t* TRI_CreateResultFulltextIndex (const uint32_t);
+TRI_fulltext_result_t* TRI_CreateResultFulltextIndex(const uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyResultFulltextIndex (TRI_fulltext_result_t*);
+void TRI_DestroyResultFulltextIndex(TRI_fulltext_result_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a result
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeResultFulltextIndex (TRI_fulltext_result_t*);
+void TRI_FreeResultFulltextIndex(TRI_fulltext_result_t*);
 
 #endif
 
@@ -76,5 +75,6 @@ void TRI_FreeResultFulltextIndex (TRI_fulltext_result_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

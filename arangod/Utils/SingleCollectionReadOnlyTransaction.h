@@ -40,53 +40,49 @@
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
+class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                         class
+  // SingleCollectionReadOnlyTransaction
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                         class SingleCollectionReadOnlyTransaction
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the transaction, using a collection object
+  ///
+  /// A self-contained read transaction is a transaction on a single collection
+  /// that only allows read operations. Write operations are not supported.
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  SingleCollectionReadOnlyTransaction(TransactionContext* transactionContext,
+                                      TRI_vocbase_t* vocbase, TRI_voc_cid_t cid)
+      : SingleCollectionTransaction(transactionContext, vocbase, cid,
+                                    TRI_TRANSACTION_READ) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the transaction, using a collection object
-///
-/// A self-contained read transaction is a transaction on a single collection
-/// that only allows read operations. Write operations are not supported.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief same as above, but create using collection name
+  ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
-                                             TRI_vocbase_t* vocbase,
-                                             TRI_voc_cid_t cid) 
-          : SingleCollectionTransaction(transactionContext, vocbase, cid, TRI_TRANSACTION_READ) {
-        }
+  SingleCollectionReadOnlyTransaction(TransactionContext* transactionContext,
+                                      TRI_vocbase_t* vocbase,
+                                      std::string const& name)
+      : SingleCollectionTransaction(transactionContext, vocbase, name,
+                                    TRI_TRANSACTION_READ) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief same as above, but create using collection name
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief end the transaction
+  ////////////////////////////////////////////////////////////////////////////////
 
-        SingleCollectionReadOnlyTransaction (TransactionContext* transactionContext,
-                                             TRI_vocbase_t* vocbase,
-                                             std::string const& name) 
-          : SingleCollectionTransaction(transactionContext, vocbase, name, TRI_TRANSACTION_READ) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief end the transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        ~SingleCollectionReadOnlyTransaction () {
-        }
-
-    };
-
-  }
+  ~SingleCollectionReadOnlyTransaction() {}
+};
+}
 }
 
 #endif
@@ -97,5 +93,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

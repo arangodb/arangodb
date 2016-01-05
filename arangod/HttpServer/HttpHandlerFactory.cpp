@@ -45,7 +45,7 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 namespace {
-  sig_atomic_t MaintenanceMode = 0;
+sig_atomic_t MaintenanceMode = 0;
 }
 
 // -----------------------------------------------------------------------------
@@ -53,26 +53,22 @@ namespace {
 // -----------------------------------------------------------------------------
 
 namespace {
-  class MaintenanceHandler : public HttpHandler {
-    public:
-      explicit MaintenanceHandler (HttpRequest* request) 
-        : HttpHandler(request) {
-      };
+class MaintenanceHandler : public HttpHandler {
+ public:
+  explicit MaintenanceHandler(HttpRequest* request) : HttpHandler(request){};
 
-      bool isDirect () const override {
-        return true;
-      };
+  bool isDirect() const override { return true; };
 
-      status_t execute () override {
-        createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+  status_t execute() override {
+    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
 
-        return status_t(HANDLER_DONE);
-      };
-
-      void handleError (const Exception& error) override {
-        createResponse(HttpResponse::SERVICE_UNAVAILABLE);
-      };
+    return status_t(HANDLER_DONE);
   };
+
+  void handleError(const Exception& error) override {
+    createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+  };
+};
 }
 
 // -----------------------------------------------------------------------------
@@ -83,40 +79,39 @@ namespace {
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory (std::string const& authenticationRealm,
-                                        int32_t minCompatibility,
-                                        bool allowMethodOverride,
-                                        context_fptr setContext,
-                                        void* setContextData)
-  : _authenticationRealm(authenticationRealm),
-    _minCompatibility(minCompatibility),
-    _allowMethodOverride(allowMethodOverride),
-    _setContext(setContext),
-    _setContextData(setContextData),
-    _notFound(nullptr) {
-}
+HttpHandlerFactory::HttpHandlerFactory(std::string const& authenticationRealm,
+                                       int32_t minCompatibility,
+                                       bool allowMethodOverride,
+                                       context_fptr setContext,
+                                       void* setContextData)
+    : _authenticationRealm(authenticationRealm),
+      _minCompatibility(minCompatibility),
+      _allowMethodOverride(allowMethodOverride),
+      _setContext(setContext),
+      _setContextData(setContextData),
+      _notFound(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::HttpHandlerFactory (HttpHandlerFactory const& that)
-  : _authenticationRealm(that._authenticationRealm),
-    _minCompatibility(that._minCompatibility),
-    _allowMethodOverride(that._allowMethodOverride),
-    _setContext(that._setContext),
-    _setContextData(that._setContextData),
-    _constructors(that._constructors),
-    _datas(that._datas),
-    _prefixes(that._prefixes),
-    _notFound(that._notFound) {
-}
+HttpHandlerFactory::HttpHandlerFactory(HttpHandlerFactory const& that)
+    : _authenticationRealm(that._authenticationRealm),
+      _minCompatibility(that._minCompatibility),
+      _allowMethodOverride(that._allowMethodOverride),
+      _setContext(that._setContext),
+      _setContextData(that._setContextData),
+      _constructors(that._constructors),
+      _datas(that._datas),
+      _prefixes(that._prefixes),
+      _notFound(that._notFound) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& that) {
+HttpHandlerFactory& HttpHandlerFactory::operator=(
+    HttpHandlerFactory const& that) {
   if (this != &that) {
     _authenticationRealm = that._authenticationRealm;
     _minCompatibility = that._minCompatibility;
@@ -136,8 +131,7 @@ HttpHandlerFactory& HttpHandlerFactory::operator= (HttpHandlerFactory const& tha
 /// @brief destructs a handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandlerFactory::~HttpHandlerFactory () {
-}
+HttpHandlerFactory::~HttpHandlerFactory() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -147,7 +141,7 @@ HttpHandlerFactory::~HttpHandlerFactory () {
 /// @brief sets maintenance mode
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::setMaintenance (bool value) {
+void HttpHandlerFactory::setMaintenance(bool value) {
   MaintenanceMode = value ? 1 : 0;
 }
 
@@ -161,11 +155,12 @@ void HttpHandlerFactory::setMaintenance (bool value) {
 /// wrapper method that will consider disabled authentication etc.
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
+HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest(
+    HttpRequest* request) {
   auto context = request->getRequestContext();
 
   if (context == nullptr) {
-    if (! setRequestContext(request)) {
+    if (!setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
 
@@ -181,7 +176,7 @@ HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequ
 /// @brief set request context, wrapper method
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
+bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
   return _setContext(request, _setContextData);
 }
 
@@ -189,7 +184,7 @@ bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpHandlerFactory::authenticationRealm (HttpRequest* request) const {
+string HttpHandlerFactory::authenticationRealm(HttpRequest* request) const {
   auto context = request->getRequestContext();
 
   if (context != nullptr) {
@@ -206,10 +201,10 @@ string HttpHandlerFactory::authenticationRealm (HttpRequest* request) const {
 /// @brief creates a new request
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
-                                                char const* ptr,
-                                                size_t length) {
-  HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility, _allowMethodOverride);
+HttpRequest* HttpHandlerFactory::createRequest(ConnectionInfo const& info,
+                                               char const* ptr, size_t length) {
+  HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility,
+                                         _allowMethodOverride);
 
   if (request != nullptr) {
     setRequestContext(request);
@@ -222,7 +217,7 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
+HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
   if (MaintenanceMode) {
     return new MaintenanceHandler(request);
   }
@@ -307,13 +302,11 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
       notFoundHandler->setServer(this);
 
       return notFoundHandler;
-    }
-    else {
+    } else {
       LOG_TRACE("no not-found handler, giving up");
       return nullptr;
     }
   }
-
 
   // look up data
   {
@@ -336,7 +329,8 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addHandler (string const& path, create_fptr func, void* data) {
+void HttpHandlerFactory::addHandler(string const& path, create_fptr func,
+                                    void* data) {
   _constructors[path] = func;
   _datas[path] = data;
 }
@@ -345,7 +339,8 @@ void HttpHandlerFactory::addHandler (string const& path, create_fptr func, void*
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addPrefixHandler (string const& path, create_fptr func, void* data) {
+void HttpHandlerFactory::addPrefixHandler(string const& path, create_fptr func,
+                                          void* data) {
   _constructors[path] = func;
   _datas[path] = data;
   _prefixes.emplace_back(path);
@@ -355,7 +350,7 @@ void HttpHandlerFactory::addPrefixHandler (string const& path, create_fptr func,
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addNotFoundHandler (create_fptr func) {
+void HttpHandlerFactory::addNotFoundHandler(create_fptr func) {
   _notFound = func;
 }
 
@@ -365,5 +360,6 @@ void HttpHandlerFactory::addNotFoundHandler (create_fptr func) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

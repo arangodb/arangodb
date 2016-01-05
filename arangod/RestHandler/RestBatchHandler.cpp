@@ -49,16 +49,14 @@ using namespace std;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestBatchHandler::RestBatchHandler (HttpRequest* request)
-  : RestVocbaseBaseHandler(request) {
-}
+RestBatchHandler::RestBatchHandler(HttpRequest* request)
+    : RestVocbaseBaseHandler(request) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestBatchHandler::~RestBatchHandler () {
-}
+RestBatchHandler::~RestBatchHandler() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               HttpHandler methods
@@ -68,7 +66,8 @@ RestBatchHandler::~RestBatchHandler () {
 /// @startDocuBlock JSF_batch_processing
 /// @brief executes a batch request
 ///
-/// @RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER: contentype
+/// @RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER:
+/// contentype
 ///
 /// @RESTALLBODYPARAM{body,string,required}
 /// The multipart batch request, consisting of the envelope and the individual
@@ -146,14 +145,21 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
 ///     var parts = [
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id: myId1\r\n\r\nGET /_api/version HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id: myId2\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id: someId\r\n\r\nPOST /_api/collection/products HTTP/1.1\r\n\r\n{ \"name\": \"products\" }\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id: nextId\r\n\r\nGET /_api/collection/products/figures HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id: otherId\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n"
+///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
+///       myId1\r\n\r\nGET /_api/version HTTP/1.1\r\n",
+///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
+///       myId2\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n",
+///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
+///       someId\r\n\r\nPOST /_api/collection/products HTTP/1.1\r\n\r\n{
+///       \"name\": \"products\" }\r\n",
+///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
+///       nextId\r\n\r\nGET /_api/collection/products/figures HTTP/1.1\r\n",
+///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
+///       otherId\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n"
 ///     ];
 ///     var boundary = "SomeBoundaryValue";
-///     var headers = { "Content-Type" : "multipart/form-data; boundary=" + boundary };
+///     var headers = { "Content-Type" : "multipart/form-data; boundary=" +
+///     boundary };
 ///     var body = "--" + boundary + "\r\n" +
 ///                parts.join("\r\n" + "--" + boundary + "\r\n") +
 ///                "--" + boundary + "--\r\n";
@@ -170,8 +176,10 @@ RestBatchHandler::~RestBatchHandler () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
 ///     var parts = [
-///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE /_api/collection/notexisting1 HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE /_api/collection/notexisting2 HTTP/1.1\r\n"
+///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE
+///       /_api/collection/notexisting1 HTTP/1.1\r\n",
+///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE
+///       /_api/collection/notexisting2 HTTP/1.1\r\n"
 ///     ];
 ///     var boundary = "SomeBoundaryValue";
 ///     var body = "--" + boundary + "\r\n" +
@@ -188,20 +196,23 @@ RestBatchHandler::~RestBatchHandler () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestBatchHandler::execute () {
+HttpHandler::status_t RestBatchHandler::execute() {
   // extract the request type
   const HttpRequest::HttpRequestType type = _request->requestType();
 
-  if (type != HttpRequest::HTTP_REQUEST_POST && type != HttpRequest::HTTP_REQUEST_PUT) {
-    generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  if (type != HttpRequest::HTTP_REQUEST_POST &&
+      type != HttpRequest::HTTP_REQUEST_PUT) {
+    generateError(HttpResponse::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return status_t(HttpHandler::HANDLER_DONE);
   }
 
   string boundary;
 
   // invalid content-type or boundary sent
-  if (! getBoundary(&boundary)) {
-    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid content-type or boundary received");
+  if (!getBoundary(&boundary)) {
+    generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid content-type or boundary received");
     return status_t(HttpHandler::HANDLER_FAILED);
   }
 
@@ -217,21 +228,20 @@ HttpHandler::status_t RestBatchHandler::execute () {
   _response->setContentType(_request->header("content-type"));
 
   // setup some auxiliary structures to parse the multipart message
-  MultipartMessage message(boundary.c_str(),
-                           boundary.size(),
-                           _request->body(),
+  MultipartMessage message(boundary.c_str(), boundary.size(), _request->body(),
                            _request->body() + _request->bodySize());
 
   SearchHelper helper;
   helper.message = &message;
-  helper.searchStart = (char*) message.messageStart;
+  helper.searchStart = (char*)message.messageStart;
 
   // iterate over all parts of the multipart message
   while (true) {
     // get the next part from the multipart message
-    if (! extractPart(&helper)) {
+    if (!extractPart(&helper)) {
       // error
-      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid multipart message received");
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid multipart message received");
       LOG_WARNING("received a corrupted multipart message");
 
       return status_t(HttpHandler::HANDLER_FAILED);
@@ -248,23 +258,21 @@ HttpHandler::status_t RestBatchHandler::execute () {
     size_t bodyLength = 0;
 
     // assume Windows linebreak \r\n\r\n as delimiter
-    char* p = strstr((char*) headerStart, "\r\n\r\n");
+    char* p = strstr((char*)headerStart, "\r\n\r\n");
 
     if (p != nullptr && p + 4 <= partEnd) {
       headerLength = p - partStart;
       bodyStart = p + 4;
       bodyLength = partEnd - bodyStart;
-    }
-    else {
+    } else {
       // test Unix linebreak
-      p = strstr((char*) headerStart, "\n\n");
+      p = strstr((char*)headerStart, "\n\n");
 
       if (p != nullptr && p + 2 <= partEnd) {
         headerLength = p - partStart;
         bodyStart = p + 2;
         bodyLength = partEnd - bodyStart;
-      }
-      else {
+      } else {
         // no delimiter found, assume we have only a header
         headerLength = partLength;
       }
@@ -272,7 +280,9 @@ HttpHandler::status_t RestBatchHandler::execute () {
 
     // set up request object for the part
     LOG_TRACE("part header is: %s", string(headerStart, headerLength).c_str());
-    HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength, _request->compatibility(), false);
+    HttpRequest* request =
+        new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
+                        _request->compatibility(), false);
 
     if (request == nullptr) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -300,10 +310,11 @@ HttpHandler::status_t RestBatchHandler::execute () {
 
     HttpHandler* handler = _server->createHandler(request);
 
-    if (! handler) {
+    if (!handler) {
       delete request;
 
-      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create handler for batch part processing");
+      generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+                    "could not create handler for batch part processing");
 
       return status_t(HttpHandler::HANDLER_FAILED);
     }
@@ -314,7 +325,8 @@ HttpHandler::status_t RestBatchHandler::execute () {
       HttpHandler::status_t status = handler->executeFull();
 
       if (status._status == HttpHandler::HANDLER_FAILED) {
-        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "executing a handler for batch part failed");
+        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+                      "executing a handler for batch part failed");
 
         return status_t(HttpHandler::HANDLER_FAILED);
       }
@@ -322,7 +334,8 @@ HttpHandler::status_t RestBatchHandler::execute () {
       HttpResponse* partResponse = handler->getResponse();
 
       if (partResponse == nullptr) {
-        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create a response for batch part request");
+        generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL,
+                      "could not create a response for batch part request");
 
         return status_t(HttpHandler::HANDLER_FAILED);
       }
@@ -336,11 +349,14 @@ HttpHandler::status_t RestBatchHandler::execute () {
 
       // append the boundary for this subpart
       _response->body().appendText(boundary + "\r\nContent-Type: ");
-      _response->body().appendText(triagens::rest::HttpRequest::BatchContentType);
+      _response->body().appendText(
+          triagens::rest::HttpRequest::BatchContentType);
 
       // append content-id if it is present
       if (helper.contentId != 0) {
-        _response->body().appendText("\r\nContent-Id: " + string(helper.contentId, helper.contentIdLength));
+        _response->body().appendText(
+            "\r\nContent-Id: " +
+            string(helper.contentId, helper.contentIdLength));
       }
 
       _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
@@ -358,7 +374,7 @@ HttpHandler::status_t RestBatchHandler::execute () {
     }
 
     // we've read the last part
-    if (! helper.containsMore) {
+    if (!helper.containsMore) {
       break;
     }
   }
@@ -367,7 +383,8 @@ HttpHandler::status_t RestBatchHandler::execute () {
   _response->body().appendText(boundary + "--");
 
   if (errors > 0) {
-    _response->setHeader(HttpResponse::BatchErrorHeader, StringUtils::itoa(errors));
+    _response->setHeader(HttpResponse::BatchErrorHeader,
+                         StringUtils::itoa(errors));
   }
 
   // success
@@ -378,7 +395,7 @@ HttpHandler::status_t RestBatchHandler::execute () {
 /// @brief extract the boundary from the body of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryBody (string* result) {
+bool RestBatchHandler::getBoundaryBody(string* result) {
   char const* p = _request->body();
   char const* e = p + _request->bodySize();
 
@@ -398,9 +415,7 @@ bool RestBatchHandler::getBoundaryBody (string* result) {
 
   const char* q = p;
 
-  while (q < e &&
-         *q &&
-         *q != ' ' && *q != '\t' && *q != '\r' && *q != '\n') {
+  while (q < e && *q && *q != ' ' && *q != '\t' && *q != '\r' && *q != '\n') {
     ++q;
   }
 
@@ -419,7 +434,7 @@ bool RestBatchHandler::getBoundaryBody (string* result) {
 /// @brief extract the boundary from the HTTP header of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryHeader (string* result) {
+bool RestBatchHandler::getBoundaryHeader(string* result) {
   // extract content type
   string contentType = StringUtils::trim(_request->header("content-type"));
 
@@ -432,7 +447,7 @@ bool RestBatchHandler::getBoundaryHeader (string* result) {
     return false;
   }
 
-  static const size_t boundaryLength = 9; // strlen("boundary=");
+  static const size_t boundaryLength = 9;  // strlen("boundary=");
 
   // trim 2nd part and lowercase it
   StringUtils::trimInPlace(parts[1]);
@@ -458,7 +473,7 @@ bool RestBatchHandler::getBoundaryHeader (string* result) {
 /// @brief extract the boundary of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundary (string* result) {
+bool RestBatchHandler::getBoundary(string* result) {
   TRI_ASSERT(_request);
 
   // try peeking at header first
@@ -474,7 +489,7 @@ bool RestBatchHandler::getBoundary (string* result) {
 /// @brief extract the next part from a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::extractPart (SearchHelper* helper) {
+bool RestBatchHandler::extractPart(SearchHelper* helper) {
   TRI_ASSERT(helper->searchStart != nullptr);
 
   // init the response
@@ -550,8 +565,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
       if (eol == found) {
         break;
       }
-    }
-    else {
+    } else {
       char* eol2 = strchr(found, '\n');
 
       if (eol2 != nullptr && eol2 < eol) {
@@ -565,7 +579,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
     }
 
     // split key/value of header
-    char* colon = (char*) memchr(found, (int) ':', eol - found);
+    char* colon = (char*)memchr(found, (int)':', eol - found);
 
     if (nullptr == colon) {
       // invalid header, not containing ':'
@@ -579,7 +593,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
     if (key[0] == 'c' || key[0] == 'C') {
       // got an interesting key. now process it
       StringUtils::tolowerInPlace(&key);
-    
+
       // skip the colon itself
       ++colon;
       // skip any whitespace
@@ -594,28 +608,27 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
         if (triagens::rest::HttpRequest::BatchContentType == value) {
           hasTypeHeader = true;
+        } else {
+          LOG_WARNING(
+              "unexpected content-type '%s' for multipart-message. expected: "
+              "'%s'",
+              value.c_str(),
+              triagens::rest::HttpRequest::BatchContentType.c_str());
         }
-        else {
-          LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'",
-                      value.c_str(),
-                      triagens::rest::HttpRequest::BatchContentType.c_str());
-        }
-      }
-      else if ("content-id" == key) {
+      } else if ("content-id" == key) {
         helper->contentId = colon;
         helper->contentIdLength = eol - colon;
-      }
-      else {
+      } else {
         // ignore other headers
       }
     }
 
-    found = eol + breakLength; // plus the \n
+    found = eol + breakLength;  // plus the \n
   }
 
-  found += breakLength; // for 2nd \n
+  found += breakLength;  // for 2nd \n
 
-  if (! hasTypeHeader) {
+  if (!hasTypeHeader) {
     // no Content-Type header. this is an error
     return false;
   }
@@ -655,5 +668,6 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

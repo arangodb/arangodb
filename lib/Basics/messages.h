@@ -60,22 +60,13 @@
 #define TRI_BYE_MESSAGE_SV "Adjö!"
 #define TRI_BYE_MESSAGE_PT "Até Breve!"
 
-#define TRI_BYE_MESSAGE \
-  TRI_BYE_MESSAGE_CH " " \
-  TRI_BYE_MESSAGE_CZ " " \
-  TRI_BYE_MESSAGE_DE " " \
-  TRI_BYE_MESSAGE_EN " " \
-  TRI_BYE_MESSAGE_EO " " \
-  TRI_BYE_MESSAGE_ES " " \
-  TRI_BYE_MESSAGE_FR "\n" \
-  TRI_BYE_MESSAGE_IL " " \
-  TRI_BYE_MESSAGE_IT " " \
-  TRI_BYE_MESSAGE_NL " " \
-  TRI_BYE_MESSAGE_SV " " \
-  TRI_BYE_MESSAGE_GR " " \
-  TRI_BYE_MESSAGE_JP " " \
-  TRI_BYE_MESSAGE_RU " " \
-  TRI_BYE_MESSAGE_PT
+#define TRI_BYE_MESSAGE                                                     \
+  TRI_BYE_MESSAGE_CH                                                        \
+      " " TRI_BYE_MESSAGE_CZ " " TRI_BYE_MESSAGE_DE " " TRI_BYE_MESSAGE_EN  \
+      " " TRI_BYE_MESSAGE_EO " " TRI_BYE_MESSAGE_ES " " TRI_BYE_MESSAGE_FR  \
+      "\n" TRI_BYE_MESSAGE_IL " " TRI_BYE_MESSAGE_IT " " TRI_BYE_MESSAGE_NL \
+      " " TRI_BYE_MESSAGE_SV " " TRI_BYE_MESSAGE_GR " " TRI_BYE_MESSAGE_JP  \
+      " " TRI_BYE_MESSAGE_RU " " TRI_BYE_MESSAGE_PT
 
 #endif
 
@@ -85,5 +76,6 @@
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

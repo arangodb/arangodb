@@ -41,596 +41,562 @@
 struct TRI_json_t;
 
 namespace triagens {
-  namespace basics {
-    class Json;
-  }
+namespace basics {
+class Json;
+}
 
-  namespace aql {
+namespace aql {
 
-    class AqlItemBlock;
-    struct AqlValue;
-    class Ast;
-    class AttributeAccessor;
-    class Executor;
-    struct V8Expression;
+class AqlItemBlock;
+struct AqlValue;
+class Ast;
+class AttributeAccessor;
+class Executor;
+struct V8Expression;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AqlExpression, used in execution plans and execution blocks
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Expression {
+class Expression {
+  enum ExpressionType : uint32_t { UNPROCESSED, JSON, V8, SIMPLE, ATTRIBUTE };
 
-      enum ExpressionType : uint32_t {
-        UNPROCESSED,
-        JSON,
-        V8,
-        SIMPLE,
-        ATTRIBUTE
-      };
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-      
-      public:
+ public:
+  Expression(Expression const&) = delete;
+  Expression& operator=(Expression const&) = delete;
+  Expression() = delete;
 
-        Expression (Expression const&) = delete;
-        Expression& operator= (Expression const&) = delete;
-        Expression () = delete;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor, using an AST start node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor, using an AST start node
-////////////////////////////////////////////////////////////////////////////////
+  Expression(Ast*, AstNode*);
 
-        Expression (Ast*,
-                    AstNode*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor, using JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor, using JSON
-////////////////////////////////////////////////////////////////////////////////
+  Expression(Ast*, triagens::basics::Json const&);
 
-        Expression (Ast*,
-                    triagens::basics::Json const&);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  ~Expression();
 
-        ~Expression ();
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the underlying AST node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying AST node
-////////////////////////////////////////////////////////////////////////////////
+  inline AstNode const* node() const { return _node; }
 
-        inline AstNode const* node () const {
-          return _node;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the underlying AST node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the underlying AST node
-////////////////////////////////////////////////////////////////////////////////
+  inline AstNode* nodeForModification() const { return _node; }
 
-        inline AstNode* nodeForModification () const {
-          return _node;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression can throw an exception
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression can throw an exception
-////////////////////////////////////////////////////////////////////////////////
+  inline bool canThrow() {
+    if (_type == UNPROCESSED) {
+      analyzeExpression();
+    }
+    return _canThrow;
+  }
 
-        inline bool canThrow () {
-          if (_type == UNPROCESSED) {
-            analyzeExpression();
-          }
-          return _canThrow;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression can safely run on a DB server
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression can safely run on a DB server
-////////////////////////////////////////////////////////////////////////////////
+  inline bool canRunOnDBServer() {
+    if (_type == UNPROCESSED) {
+      analyzeExpression();
+    }
+    return _canRunOnDBServer;
+  }
 
-        inline bool canRunOnDBServer () {
-          if (_type == UNPROCESSED) {
-            analyzeExpression();
-          }
-          return _canRunOnDBServer;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression is deterministic
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression is deterministic
-////////////////////////////////////////////////////////////////////////////////
+  inline bool isDeterministic() {
+    if (_type == UNPROCESSED) {
+      analyzeExpression();
+    }
+    return _isDeterministic;
+  }
 
-        inline bool isDeterministic () {
-          if (_type == UNPROCESSED) {
-            analyzeExpression();
-          }
-          return _isDeterministic;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone the expression, needed to clone execution plans
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone the expression, needed to clone execution plans
-////////////////////////////////////////////////////////////////////////////////
+  Expression* clone() {
+    // We do not need to copy the _ast, since it is managed by the
+    // query object and the memory management of the ASTs
+    return new Expression(_ast, _node);
+  }
 
-        Expression* clone () {
-          // We do not need to copy the _ast, since it is managed by the
-          // query object and the memory management of the ASTs
-          return new Expression(_ast, _node);
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return all variables used in the expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all variables used in the expression
-////////////////////////////////////////////////////////////////////////////////
+  void variables(std::unordered_set<Variable const*>&) const;
 
-        void variables (std::unordered_set<Variable const*>&) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return a Json representation of the expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a Json representation of the expression
-////////////////////////////////////////////////////////////////////////////////
+  triagens::basics::Json toJson(TRI_memory_zone_t* zone, bool verbose) const {
+    return triagens::basics::Json(zone, _node->toJson(zone, verbose));
+  }
 
-        triagens::basics::Json toJson (TRI_memory_zone_t* zone,
-                                       bool verbose) const {
-          return triagens::basics::Json(zone, _node->toJson(zone, verbose));
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute the expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute the expression
-////////////////////////////////////////////////////////////////////////////////
+  AqlValue execute(triagens::arango::AqlTransaction* trx, AqlItemBlock const*,
+                   size_t, std::vector<Variable const*> const&,
+                   std::vector<RegisterId> const&,
+                   TRI_document_collection_t const**);
 
-        AqlValue execute (triagens::arango::AqlTransaction* trx,
-                          AqlItemBlock const*,
-                          size_t,
-                          std::vector<Variable const*> const&,
-                          std::vector<RegisterId> const&,
-                          TRI_document_collection_t const**);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check whether this is a JSON expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a JSON expression
-////////////////////////////////////////////////////////////////////////////////
+  inline bool isJson() {
+    if (_type == UNPROCESSED) {
+      analyzeExpression();
+    }
+    return _type == JSON;
+  }
 
-        inline bool isJson () {
-          if (_type == UNPROCESSED) {
-            analyzeExpression();
-          }
-          return _type == JSON;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check whether this is a V8 expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a V8 expression
-////////////////////////////////////////////////////////////////////////////////
+  inline bool isV8() {
+    if (_type == UNPROCESSED) {
+      analyzeExpression();
+    }
+    return _type == V8;
+  }
 
-        inline bool isV8 () {
-          if (_type == UNPROCESSED) {
-            analyzeExpression();
-          }
-          return _type == V8;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get expression type as string
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get expression type as string
-////////////////////////////////////////////////////////////////////////////////
+  std::string typeString() {
+    if (_type == UNPROCESSED) {
+      analyzeExpression();
+    }
 
-        std::string typeString () {
-          if (_type == UNPROCESSED) {
-            analyzeExpression();
-          }
+    switch (_type) {
+      case JSON:
+        return "json";
+      case SIMPLE:
+        return "simple";
+      case ATTRIBUTE:
+        return "attribute";
+      case V8:
+        return "v8";
+      case UNPROCESSED: {
+      }
+    }
+    TRI_ASSERT(false);
+    return "unknown";
+  }
 
-          switch (_type) {
-            case JSON:
-              return "json";
-            case SIMPLE:
-              return "simple";
-            case ATTRIBUTE:
-              return "attribute";
-            case V8:
-              return "v8";
-            case UNPROCESSED: {
-            }
-          }
-          TRI_ASSERT(false);
-          return "unknown";
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check whether this is an attribute access of any degree (e.g. a.b,
+  /// a.b.c, ...)
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is an attribute access of any degree (e.g. a.b, 
-/// a.b.c, ...)
-////////////////////////////////////////////////////////////////////////////////
+  bool isAttributeAccess() const;
 
-        bool isAttributeAccess () const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check whether this is only a reference access
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is only a reference access
-////////////////////////////////////////////////////////////////////////////////
+  bool isReference() const;
 
-        bool isReference () const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check whether this is a constant node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a constant node
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool isConstant () const;
+  bool isConstant() const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify an expression
-/// note that currently stringification is only supported for certain node types
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stringify an expression
+  /// note that currently stringification is only supported for certain node
+  /// types
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void stringify (triagens::basics::StringBuffer*) const;
+  void stringify(triagens::basics::StringBuffer*) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify an expression, if it is not too long
-/// if the stringified version becomes too long, this method will throw
-/// note that currently stringification is only supported for certain node types
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stringify an expression, if it is not too long
+  /// if the stringified version becomes too long, this method will throw
+  /// note that currently stringification is only supported for certain node
+  /// types
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void stringifyIfNotTooLong (triagens::basics::StringBuffer*) const;
+  void stringifyIfNotTooLong(triagens::basics::StringBuffer*) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace variables in the expression with other variables
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief replace variables in the expression with other variables
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void replaceVariables (std::unordered_map<VariableId, Variable const*> const&);
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a variable reference in the expression with another
-/// expression (e.g. inserting c = `a + b` into expression `c + 1` so the latter 
-/// becomes `a + b + 1`
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief replace a variable reference in the expression with another
+  /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
+  /// latter
+  /// becomes `a + b + 1`
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void replaceVariableReference (Variable const*, AstNode const*);
+  void replaceVariableReference(Variable const*, AstNode const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidates an expression
-/// this only has an effect for V8-based functions, which need to be created,
-/// used and destroyed in the same context. when a V8 function is used across
-/// multiple V8 contexts, it must be invalidated in between
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidates an expression
+  /// this only has an effect for V8-based functions, which need to be created,
+  /// used and destroyed in the same context. when a V8 function is used across
+  /// multiple V8 contexts, it must be invalidated in between
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void invalidate ();
+  void invalidate();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-      private:
-        
-        void setVariable (Variable const* variable, TRI_json_t const* value) {
-          _variables.emplace(variable, value);
-        }
+ private:
+  void setVariable(Variable const* variable, TRI_json_t const* value) {
+    _variables.emplace(variable, value);
+  }
 
-        void clearVariable (Variable const* variable) {
-          _variables.erase(variable);
-        }
+  void clearVariable(Variable const* variable) { _variables.erase(variable); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find a value in an array
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find a value in an array
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool findInArray (AqlValue const&, 
-                          AqlValue const&, 
-                          TRI_document_collection_t const*, 
-                          TRI_document_collection_t const*,
-                          triagens::arango::AqlTransaction*,
-                          AstNode const*) const;
+  bool findInArray(AqlValue const&, AqlValue const&,
+                   TRI_document_collection_t const*,
+                   TRI_document_collection_t const*,
+                   triagens::arango::AqlTransaction*, AstNode const*) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief analyze the expression (determine its type etc.)
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief analyze the expression (determine its type etc.)
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void analyzeExpression ();
+  void analyzeExpression();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build the expression (if appropriate, compile it into 
-/// executable code)
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief build the expression (if appropriate, compile it into
+  /// executable code)
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void buildExpression ();
+  void buildExpression();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE
+  ////////////////////////////////////////////////////////////////////////////////
 
-        AqlValue executeSimpleExpression (AstNode const*,
-                                          TRI_document_collection_t const**,
+  AqlValue executeSimpleExpression(AstNode const*,
+                                   TRI_document_collection_t const**,
+                                   triagens::arango::AqlTransaction*,
+                                   AqlItemBlock const*, size_t,
+                                   std::vector<Variable const*> const&,
+                                   std::vector<RegisterId> const&, bool);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionAttributeAccess(
+      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      size_t, std::vector<Variable const*> const&,
+      std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionIndexedAccess(
+      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      size_t, std::vector<Variable const*> const&,
+      std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with ARRAY
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionArray(AstNode const*,
+                                        triagens::arango::AqlTransaction*,
+                                        AqlItemBlock const*, size_t,
+                                        std::vector<Variable const*> const&,
+                                        std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with OBJECT
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionObject(AstNode const*,
+                                         triagens::arango::AqlTransaction*,
+                                         AqlItemBlock const*, size_t,
+                                         std::vector<Variable const*> const&,
+                                         std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with VALUE
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionValue(AstNode const*);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with REFERENCE
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionReference(AstNode const*,
+                                            TRI_document_collection_t const**,
+                                            AqlItemBlock const*, size_t,
+                                            std::vector<Variable const*> const&,
+                                            std::vector<RegisterId> const&,
+                                            bool);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with FCALL
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionFCall(AstNode const*,
+                                        triagens::arango::AqlTransaction*,
+                                        AqlItemBlock const*, size_t,
+                                        std::vector<Variable const*> const&,
+                                        std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with RANGE
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionRange(AstNode const*,
+                                        triagens::arango::AqlTransaction*,
+                                        AqlItemBlock const*, size_t,
+                                        std::vector<Variable const*> const&,
+                                        std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with NOT
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionNot(AstNode const*,
+                                      triagens::arango::AqlTransaction*,
+                                      AqlItemBlock const*, size_t,
+                                      std::vector<Variable const*> const&,
+                                      std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with AND or OR
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionAndOr(AstNode const*,
+                                        triagens::arango::AqlTransaction*,
+                                        AqlItemBlock const*, size_t,
+                                        std::vector<Variable const*> const&,
+                                        std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with COMPARISON
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionComparison(
+      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      size_t, std::vector<Variable const*> const&,
+      std::vector<RegisterId> const&);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with TERNARY
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AqlValue executeSimpleExpressionTernary(AstNode const*,
                                           triagens::arango::AqlTransaction*,
-                                          AqlItemBlock const*,
-                                          size_t,
+                                          AqlItemBlock const*, size_t,
                                           std::vector<Variable const*> const&,
-                                          std::vector<RegisterId> const&,
-                                          bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with ATTRIBUTE ACCESS
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionAttributeAccess (AstNode const*,
-                                                         triagens::arango::AqlTransaction*,
-                                                         AqlItemBlock const*,
-                                                         size_t,
-                                                         std::vector<Variable const*> const&,
-                                                         std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with INDEXED ACCESS
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionIndexedAccess (AstNode const*,
-                                                       triagens::arango::AqlTransaction*,
-                                                       AqlItemBlock const*,
-                                                       size_t,
-                                                       std::vector<Variable const*> const&,
-                                                       std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with ARRAY
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionArray (AstNode const*,
-                                               triagens::arango::AqlTransaction*,
-                                               AqlItemBlock const*,
-                                               size_t,
-                                               std::vector<Variable const*> const&,
-                                               std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with OBJECT
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionObject (AstNode const*,
-                                                triagens::arango::AqlTransaction*,
-                                                AqlItemBlock const*,
-                                                size_t,
-                                                std::vector<Variable const*> const&,
-                                                std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with VALUE
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionValue (AstNode const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with REFERENCE
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionReference (AstNode const*,
-                                                   TRI_document_collection_t const**, 
-                                                   AqlItemBlock const*,
-                                                   size_t,
-                                                   std::vector<Variable const*> const&,
-                                                   std::vector<RegisterId> const&,
-                                                   bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with FCALL
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionFCall (AstNode const*,
-                                               triagens::arango::AqlTransaction*,
-                                               AqlItemBlock const*,
-                                               size_t,
-                                               std::vector<Variable const*> const&,
-                                               std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with RANGE
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionRange (AstNode const*,
-                                               triagens::arango::AqlTransaction*,
-                                               AqlItemBlock const*,
-                                               size_t,
-                                               std::vector<Variable const*> const&,
-                                               std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with NOT
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionNot (AstNode const*,
-                                             triagens::arango::AqlTransaction*,
-                                             AqlItemBlock const*,
-                                             size_t,
-                                             std::vector<Variable const*> const&,
-                                             std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with AND or OR
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionAndOr (AstNode const*,
-                                               triagens::arango::AqlTransaction*,
-                                               AqlItemBlock const*,
-                                               size_t,
-                                               std::vector<Variable const*> const&,
-                                               std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with COMPARISON
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionComparison (AstNode const*,
-                                                    triagens::arango::AqlTransaction*,
-                                                    AqlItemBlock const*,
-                                                    size_t,
-                                                    std::vector<Variable const*> const&,
-                                                    std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with TERNARY
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionTernary (AstNode const*,
-                                                 triagens::arango::AqlTransaction*,
-                                                 AqlItemBlock const*,
-                                                 size_t,
-                                                 std::vector<Variable const*> const&,
-                                                 std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with EXPANSION
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionExpansion (AstNode const*,
-                                                   triagens::arango::AqlTransaction*,
-                                                   AqlItemBlock const*,
-                                                   size_t,
-                                                   std::vector<Variable const*> const&,
-                                                   std::vector<RegisterId> const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with EXPANSION
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlValue executeSimpleExpressionIterator (AstNode const*,
-                                                  TRI_document_collection_t const**, 
-                                                  triagens::arango::AqlTransaction*,
-                                                  AqlItemBlock const*,
-                                                  size_t,
-                                                  std::vector<Variable const*> const&,
-                                                  std::vector<RegisterId> const&);
+                                          std::vector<RegisterId> const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with EXPANSION
+  ////////////////////////////////////////////////////////////////////////////////
 
-        AqlValue executeSimpleExpressionArithmetic (AstNode const*,
-                                                    triagens::arango::AqlTransaction*,
-                                                    AqlItemBlock const*,
-                                                    size_t,
-                                                    std::vector<Variable const*> const&,
-                                                    std::vector<RegisterId> const&);
+  AqlValue executeSimpleExpressionExpansion(AstNode const*,
+                                            triagens::arango::AqlTransaction*,
+                                            AqlItemBlock const*, size_t,
+                                            std::vector<Variable const*> const&,
+                                            std::vector<RegisterId> const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with EXPANSION
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  AqlValue executeSimpleExpressionIterator(AstNode const*,
+                                           TRI_document_collection_t const**,
+                                           triagens::arango::AqlTransaction*,
+                                           AqlItemBlock const*, size_t,
+                                           std::vector<Variable const*> const&,
+                                           std::vector<RegisterId> const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the AST
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Ast*                      _ast;
+  AqlValue executeSimpleExpressionArithmetic(
+      AstNode const*, triagens::arango::AqlTransaction*, AqlItemBlock const*,
+      size_t, std::vector<Variable const*> const&,
+      std::vector<RegisterId> const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the V8 executor
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-        Executor*                 _executor;
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the AST
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the AST node that contains the expression to execute
-////////////////////////////////////////////////////////////////////////////////
+  Ast* _ast;
 
-        AstNode*                  _node;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the V8 executor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a v8 function that will be executed for the expression
-/// if the expression is a constant, it will be stored as plain JSON instead
-////////////////////////////////////////////////////////////////////////////////
+  Executor* _executor;
 
-        union {
-          V8Expression*           _func;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the AST node that contains the expression to execute
+  ////////////////////////////////////////////////////////////////////////////////
 
-          struct TRI_json_t*      _data;
+  AstNode* _node;
 
-          AttributeAccessor*      _accessor;
-        };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief a v8 function that will be executed for the expression
+  /// if the expression is a constant, it will be stored as plain JSON instead
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of expression
-////////////////////////////////////////////////////////////////////////////////
+  union {
+    V8Expression* _func;
 
-        ExpressionType            _type;
+    struct TRI_json_t* _data;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression may throw a runtime exception
-////////////////////////////////////////////////////////////////////////////////
+    AttributeAccessor* _accessor;
+  };
 
-        bool                      _canThrow;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief type of expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression can be run safely on a DB server
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool                      _canRunOnDBServer;
+  ExpressionType _type;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression is deterministic
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression may throw a runtime exception
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool                      _isDeterministic;
+  bool _canThrow;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the top-level attributes of the expression were
-/// determined
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression can be run safely on a DB server
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool                      _hasDeterminedAttributes;
+  bool _canRunOnDBServer;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the expression has been built/compiled
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression is deterministic
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool                      _built;
+  bool _isDeterministic;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the top-level attributes used in the expression, grouped 
-/// by variable name
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the top-level attributes of the expression were
+  /// determined
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributes;
+  bool _hasDeterminedAttributes;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief buffer for temporary strings
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the expression has been built/compiled
+  ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::StringBuffer _buffer;
+  bool _built;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief variables only temporarily valid during execution
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the top-level attributes used in the expression, grouped
+  /// by variable name
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<Variable const*, TRI_json_t const*> _variables;
+  std::unordered_map<Variable const*, std::unordered_set<std::string>>
+      _attributes;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static members
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief buffer for temporary strings
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  triagens::basics::StringBuffer _buffer;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "constant" global object for NULL which can be shared by all 
-/// expressions but must never be freed
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief variables only temporarily valid during execution
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static TRI_json_t const NullJson; 
+  std::unordered_map<Variable const*, TRI_json_t const*> _variables;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "constant" global object for TRUE which can be shared by all 
-/// expressions but must never be freed
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                             public static
+  // members
+  // -----------------------------------------------------------------------------
 
-        static TRI_json_t const TrueJson;  
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief "constant" global object for NULL which can be shared by all
+  /// expressions but must never be freed
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief "constant" global object for FALSE which can be shared by all 
-/// expressions but must never be freed
-////////////////////////////////////////////////////////////////////////////////
+  static TRI_json_t const NullJson;
 
-        static TRI_json_t const FalseJson;  
-    };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief "constant" global object for TRUE which can be shared by all
+  /// expressions but must never be freed
+  ////////////////////////////////////////////////////////////////////////////////
 
-  }  // namespace triagens::aql
+  static TRI_json_t const TrueJson;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief "constant" global object for FALSE which can be shared by all
+  /// expressions but must never be freed
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static TRI_json_t const FalseJson;
+};
+
+}  // namespace triagens::aql
 }  // namespace triagens
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

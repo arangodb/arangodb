@@ -40,11 +40,8 @@
 // @brief flush memory mapped file to disk
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FlushMMFile (int fileDescriptor,
-                     void* startingAddress,
-                     size_t numOfBytesToFlush,
-                     int flags) {
-
+int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
+                    size_t numOfBytesToFlush, int flags) {
   // ...........................................................................
   // Possible flags to send are (based upon the Ubuntu Linux ASM include files:
   // #define MS_ASYNC        1             /* sync memory asynchronously */
@@ -70,7 +67,8 @@ int TRI_FlushMMFile (int fileDescriptor,
     // we have synced a region that was not mapped
 
     // set a special error. ENOMEM (out of memory) is not appropriate
-    LOG_ERROR("msync failed for range %p - %p", startingAddress, (void*) (((char*) startingAddress) + numOfBytesToFlush));
+    LOG_ERROR("msync failed for range %p - %p", startingAddress,
+              (void*)(((char*)startingAddress) + numOfBytesToFlush));
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
   }
@@ -82,22 +80,17 @@ int TRI_FlushMMFile (int fileDescriptor,
 // @brief memory map a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile (void* memoryAddress,
-                size_t numOfBytesToInitialize,
-                int memoryProtection,
-                int flags,
-                int fileDescriptor,
-                void** mmHandle,
-                int64_t offset,
-                void** result) {
-
+int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
+               int memoryProtection, int flags, int fileDescriptor,
+               void** mmHandle, int64_t offset, void** result) {
   TRI_ASSERT(memoryAddress == nullptr);
-  off_t offsetRetyped = (off_t) offset;
+  off_t offsetRetyped = (off_t)offset;
   TRI_ASSERT(offsetRetyped == 0);
 
-  *mmHandle = nullptr; // only useful for Windows
+  *mmHandle = nullptr;  // only useful for Windows
 
-  *result = mmap(memoryAddress, numOfBytesToInitialize, memoryProtection, flags, fileDescriptor, offsetRetyped);
+  *result = mmap(memoryAddress, numOfBytesToInitialize, memoryProtection, flags,
+                 fileDescriptor, offsetRetyped);
 
   if (*result != MAP_FAILED) {
     return TRI_ERROR_NO_ERROR;
@@ -114,11 +107,9 @@ int TRI_MMFile (void* memoryAddress,
 // @brief unmap a memory-mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile (void* memoryAddress,
-                  size_t numOfBytesToUnMap,
-                  int fileDescriptor,
-                  void** mmHandle) {
-  TRI_ASSERT(*mmHandle == nullptr); // only useful for Windows
+int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+                 int fileDescriptor, void** mmHandle) {
+  TRI_ASSERT(*mmHandle == nullptr);  // only useful for Windows
 
   int res = munmap(memoryAddress, numOfBytesToUnMap);
 
@@ -140,12 +131,9 @@ int TRI_UNMMFile (void* memoryAddress,
 // @brief protect a region in a memory-mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ProtectMMFile (void* memoryAddress,
-                       size_t numOfBytesToProtect,
-                       int flags,
-                       int fileDescriptor,
-                       void** mmHandle) {
-  TRI_ASSERT(*mmHandle == nullptr); // only useful for Windows
+int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
+                      int flags, int fileDescriptor, void** mmHandle) {
+  TRI_ASSERT(*mmHandle == nullptr);  // only useful for Windows
 
   int res = mprotect(memoryAddress, numOfBytesToProtect, flags);
 
@@ -160,20 +148,20 @@ int TRI_ProtectMMFile (void* memoryAddress,
 /// @brief gives hints about upcoming sequential memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice) {
+int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
   LOG_DEBUG("Doing madvise %d for %llu length %llu", advice,
-            (unsigned long long) memoryAddress, (unsigned long long) numOfBytes);
+            (unsigned long long)memoryAddress, (unsigned long long)numOfBytes);
   int res = madvise(memoryAddress, numOfBytes, advice);
 
   if (res == 0) {
     return TRI_ERROR_NO_ERROR;
-  }
-  else {
+  } else {
     char buffer[256];
     char* p = strerror_r(errno, buffer, 256);
-    LOG_INFO("madvise %d for %llu length %llu failed with: %s ",
-             advice, (unsigned long long) memoryAddress, (unsigned long long) numOfBytes, p);
+    LOG_INFO("madvise %d for %llu length %llu failed with: %s ", advice,
+             (unsigned long long)memoryAddress, (unsigned long long)numOfBytes,
+             p);
     return TRI_ERROR_INTERNAL;
   }
 #else
@@ -189,5 +177,6 @@ int TRI_MMFileAdvise (void* memoryAddress, size_t numOfBytes, int advice) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

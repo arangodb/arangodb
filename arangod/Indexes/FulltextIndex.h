@@ -36,7 +36,7 @@
 #include "VocBase/shaped-json.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
- 
+
 struct TRI_fulltext_wordlist_s;
 
 // -----------------------------------------------------------------------------
@@ -44,103 +44,92 @@ struct TRI_fulltext_wordlist_s;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class FulltextIndex final : public Index {
+class FulltextIndex final : public Index {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  FulltextIndex() = delete;
 
-      public:
+  FulltextIndex(TRI_idx_iid_t, struct TRI_document_collection_t*,
+                std::string const&, int);
 
-        FulltextIndex () = delete;
+  ~FulltextIndex();
 
-        FulltextIndex (TRI_idx_iid_t,
-                       struct TRI_document_collection_t*,
-                       std::string const&,
-                       int);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-        ~FulltextIndex ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-        
-        IndexType type () const override final {
-          return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
-        }
-        
-        bool isSorted () const override final {
-          return false;
-        }
-
-        bool hasSelectivityEstimate () const override final {
-          return false;
-        }
-        
-        bool dumpFields () const override final {
-          return true;
-        }
-
-        size_t memory () const override final;
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
-  
-        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-        
-        int cleanup () override final;
-
-        bool isSame (std::string const& field, int minWordLength) const {
-          std::string fieldString;
-          TRI_AttributeNamesToString(fields()[0], fieldString);
-          return (_minWordLength == minWordLength && fieldString == field);
-        }
-
-        TRI_fts_index_t* internals () {
-          return _fulltextIndex;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-        struct TRI_fulltext_wordlist_s* wordlist (struct TRI_doc_mptr_t const*);
-        
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the indexed attribute (path)
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_shape_pid_t _pid;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the fulltext index
-////////////////////////////////////////////////////////////////////////////////
-        
-        TRI_fts_index_t* _fulltextIndex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum word length
-////////////////////////////////////////////////////////////////////////////////
-
-        int _minWordLength;
-
-    };
-
+ public:
+  IndexType type() const override final {
+    return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
   }
+
+  bool isSorted() const override final { return false; }
+
+  bool hasSelectivityEstimate() const override final { return false; }
+
+  bool dumpFields() const override final { return true; }
+
+  size_t memory() const override final;
+
+  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+
+  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int cleanup() override final;
+
+  bool isSame(std::string const& field, int minWordLength) const {
+    std::string fieldString;
+    TRI_AttributeNamesToString(fields()[0], fieldString);
+    return (_minWordLength == minWordLength && fieldString == field);
+  }
+
+  TRI_fts_index_t* internals() { return _fulltextIndex; }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
+
+ private:
+  struct TRI_fulltext_wordlist_s* wordlist(struct TRI_doc_mptr_t const*);
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the indexed attribute (path)
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_shape_pid_t _pid;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the fulltext index
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_fts_index_t* _fulltextIndex;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief minimum word length
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int _minWordLength;
+};
+}
 }
 
 #endif
@@ -151,5 +140,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

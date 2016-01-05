@@ -46,76 +46,59 @@ class VocShaper;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class ExampleMatcher {
+class ExampleMatcher {
+  struct DocumentId {
+    TRI_voc_cid_t cid;
+    std::string key;
 
-      struct DocumentId {
-        TRI_voc_cid_t cid;
-        std::string   key;
+    DocumentId(TRI_voc_cid_t cid, std::string const& key)
+        : cid(cid), key(key) {}
+  };
 
-        DocumentId (TRI_voc_cid_t cid,
-                    std::string const& key) 
-          : cid(cid), 
-            key(key) {
-        }
-      };
+  enum internalAttr { key, id, rev, from, to };
 
-      enum internalAttr {
-        key, id, rev, from, to
-      };
+  // Has no destructor.
+  // The using ExampleMatcher will free all pointers.
+  // Should not directly be used from outside.
+  struct ExampleDefinition {
+    std::map<internalAttr, DocumentId> _internal;
+    std::vector<TRI_shape_pid_t> _pids;
+    std::vector<TRI_shaped_json_t*> _values;
+  };
 
-      // Has no destructor.
-      // The using ExampleMatcher will free all pointers.
-      // Should not directly be used from outside.
-      struct ExampleDefinition {
-        std::map<internalAttr, DocumentId> _internal;
-        std::vector<TRI_shape_pid_t> _pids;
-        std::vector<TRI_shaped_json_t*> _values;
-      };
+  VocShaper* _shaper;
+  std::vector<ExampleDefinition> definitions;
 
-      VocShaper* _shaper;
-      std::vector<ExampleDefinition> definitions;
+  void fillExampleDefinition(
+      TRI_json_t const* example,
+      triagens::arango::CollectionNameResolver const* resolver,
+      ExampleDefinition& def);
 
-      void fillExampleDefinition (TRI_json_t const* example,
-                                  triagens::arango::CollectionNameResolver const* resolver,
-                                  ExampleDefinition& def);
+  void fillExampleDefinition(v8::Isolate* isolate,
+                             v8::Handle<v8::Object> const& example,
+                             v8::Handle<v8::Array> const& names, size_t& n,
+                             std::string& errorMessage, ExampleDefinition& def);
 
-      void fillExampleDefinition (v8::Isolate* isolate,
-                                  v8::Handle<v8::Object> const& example,
-                                  v8::Handle<v8::Array> const& names,
-                                  size_t& n,
-                                  std::string& errorMessage,
-                                  ExampleDefinition& def);
+ public:
+  ExampleMatcher(v8::Isolate* isolate, v8::Handle<v8::Object> const example,
+                 VocShaper* shaper, std::string& errorMessage);
 
-      public:
+  ExampleMatcher(v8::Isolate* isolate, v8::Handle<v8::Array> const examples,
+                 VocShaper* shaper, std::string& errorMessage);
 
-        ExampleMatcher (v8::Isolate* isolate,
-                        v8::Handle<v8::Object> const example,
-                        VocShaper* shaper,
-                        std::string& errorMessage);
+  ExampleMatcher(TRI_json_t const* example, VocShaper* shaper,
+                 triagens::arango::CollectionNameResolver const* resolver);
 
-        ExampleMatcher (v8::Isolate* isolate,
-                        v8::Handle<v8::Array> const examples,
-                        VocShaper* shaper,
-                        std::string& errorMessage);
+  ~ExampleMatcher() { cleanup(); }
 
-        ExampleMatcher (TRI_json_t const* example,
-                        VocShaper* shaper,
-                        triagens::arango::CollectionNameResolver const* resolver);
+  bool matches(TRI_voc_cid_t cid, TRI_doc_mptr_t const* mptr) const;
 
-        ~ExampleMatcher () {
-          cleanup();
-        }
-
-        bool matches (TRI_voc_cid_t cid, 
-                      TRI_doc_mptr_t const* mptr) const;
-
-      private:
-
-        void cleanup ();
-    };
-  }
+ private:
+  void cleanup();
+};
+}
 }
 
 #endif
@@ -126,4 +109,5 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"

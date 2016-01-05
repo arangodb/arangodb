@@ -48,8 +48,7 @@ using namespace triagens::arango;
 /// @brief constructs a loader
 ////////////////////////////////////////////////////////////////////////////////
 
-JSLoader::JSLoader () {
-}
+JSLoader::JSLoader() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -59,9 +58,9 @@ JSLoader::JSLoader () {
 /// @brief executes a named script in the global context
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Isolate* isolate,
-                                                     v8::Handle<v8::Context> context,
-                                                     std::string const& name) {
+v8::Handle<v8::Value> JSLoader::executeGlobalScript(
+    v8::Isolate* isolate, v8::Handle<v8::Context> context,
+    std::string const& name) {
   v8::TryCatch tryCatch;
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Value> result;
@@ -76,18 +75,17 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Isolate* isolate,
     return v8::Undefined(isolate);
   }
 
-  result = TRI_ExecuteJavaScriptString(isolate,
-                                       context,
+  result = TRI_ExecuteJavaScriptString(isolate, context,
                                        TRI_V8_STD_STRING(i->second),
-                                       TRI_V8_STD_STRING(name),
-                                       false);
+                                       TRI_V8_STD_STRING(name), false);
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      TRI_LogV8Exception(isolate, &tryCatch); // TODO: could this be the place where we lose the information about parse errors of scripts?
+      TRI_LogV8Exception(isolate, &tryCatch);  // TODO: could this be the place
+                                               // where we lose the information
+                                               // about parse errors of scripts?
       return v8::Undefined(isolate);
-    }
-    else {
+    } else {
       TRI_GET_GLOBALS();
 
       v8g->_canceled = true;
@@ -118,19 +116,15 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
 
   // Enter the newly created execution environment.
   v8::Context::Scope context_scope(context);
-  
-  TRI_ExecuteJavaScriptString(isolate,
-                              context,
-                              TRI_V8_STD_STRING(i->second),
-                              TRI_V8_STD_STRING(name),
-                              false);
+
+  TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(i->second),
+                              TRI_V8_STD_STRING(name), false);
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       TRI_LogV8Exception(isolate, &tryCatch);
       return eFailExecute;
-    }
-    else {
+    } else {
       TRI_GET_GLOBALS();
 
       v8g->_canceled = true;
@@ -145,8 +139,8 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
 /// @brief loads all scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JSLoader::loadAllScripts (v8::Isolate* isolate,
-                               v8::Handle<v8::Context>& context) {
+bool JSLoader::loadAllScripts(v8::Isolate* isolate,
+                              v8::Handle<v8::Context>& context) {
   v8::HandleScope scope(isolate);
 
   if (_directory.empty()) {
@@ -158,7 +152,8 @@ bool JSLoader::loadAllScripts (v8::Isolate* isolate,
   bool result = true;
 
   for (size_t i = 0; i < parts.size(); i++) {
-    result = result && TRI_ExecuteGlobalJavaScriptDirectory(isolate, parts.at(i).c_str());
+    result = result &&
+             TRI_ExecuteGlobalJavaScriptDirectory(isolate, parts.at(i).c_str());
   }
 
   return result;
@@ -168,9 +163,9 @@ bool JSLoader::loadAllScripts (v8::Isolate* isolate,
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JSLoader::executeScript (v8::Isolate* isolate,
-                              v8::Handle<v8::Context>& context,
-                              string const& name) {
+bool JSLoader::executeScript(v8::Isolate* isolate,
+                             v8::Handle<v8::Context>& context,
+                             string const& name) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
 
@@ -182,18 +177,16 @@ bool JSLoader::executeScript (v8::Isolate* isolate,
     return false;
   }
 
-  string content = "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
+  string content =
+      "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
 
   // Enter the newly created execution environment.
   v8::Context::Scope context_scope(context);
 
-  TRI_ExecuteJavaScriptString(isolate,
-                              context,
-                              TRI_V8_STD_STRING(content),
-                              TRI_V8_STD_STRING(name),
-                              false);
+  TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(content),
+                              TRI_V8_STD_STRING(name), false);
 
-  if (! tryCatch.HasCaught()) {
+  if (!tryCatch.HasCaught()) {
     TRI_LogV8Exception(isolate, &tryCatch);
     return false;
   }
@@ -205,8 +198,8 @@ bool JSLoader::executeScript (v8::Isolate* isolate,
 /// @brief executes all scripts
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JSLoader::executeAllScripts (v8::Isolate* isolate,
-                                  v8::Handle<v8::Context>& context) {
+bool JSLoader::executeAllScripts(v8::Isolate* isolate,
+                                 v8::Handle<v8::Context>& context) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
   bool ok;
@@ -226,5 +219,6 @@ bool JSLoader::executeAllScripts (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

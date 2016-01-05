@@ -40,7 +40,7 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ColumnsWidth () {
+int TRI_ColumnsWidth() {
   unsigned short values[4];
 
   int ret;
@@ -58,5 +58,6 @@ int TRI_ColumnsWidth () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

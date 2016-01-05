@@ -43,22 +43,21 @@
 struct TRI_json_t;
 
 typedef struct {
-  TRI_shaped_json_t* _fields;   // list of shaped json objects which the
-                                // collection should know about
-  size_t _numFields;   // Note that the number of fields coming from
-                       // a query can be smaller than the number of
-                       // fields indexed
-}
-TRI_skiplist_index_key_t;
+  TRI_shaped_json_t* _fields;  // list of shaped json objects which the
+                               // collection should know about
+  size_t _numFields;           // Note that the number of fields coming from
+                               // a query can be smaller than the number of
+                               // fields indexed
+} TRI_skiplist_index_key_t;
 
 namespace triagens {
-  namespace aql {
-    class SortCondition;
-    struct Variable;
-  }
+namespace aql {
+class SortCondition;
+struct Variable;
+}
 
-  namespace arango {
-    class Transaction;
+namespace arango {
+class Transaction;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Iterator structure for skip list. We require a start and stop node
@@ -70,313 +69,280 @@ namespace triagens {
 /// are non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SkiplistIterator {
+class SkiplistIterator {
+ private:
+  friend class SkiplistIndex;
 
-      private:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // structs
+  // -----------------------------------------------------------------------------
 
-        friend class SkiplistIndex;
+ private:
+  // Shorthand for the skiplist node
+  typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t,
+                                         TRI_index_element_t> Node;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private structs
-// -----------------------------------------------------------------------------
-      
-      private:
+  struct SkiplistIteratorInterval {
+    Node* _leftEndPoint;
+    Node* _rightEndPoint;
 
-        // Shorthand for the skiplist node
-        typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t, TRI_index_element_t> Node;
+    SkiplistIteratorInterval()
+        : _leftEndPoint(nullptr), _rightEndPoint(nullptr) {}
+  };
 
-        struct SkiplistIteratorInterval {
-          Node* _leftEndPoint;
-          Node* _rightEndPoint;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-          SkiplistIteratorInterval ()
-            : _leftEndPoint(nullptr),
-              _rightEndPoint(nullptr) { 
-          }
-        };
+ private:
+  SkiplistIndex const* _index;
+  size_t _currentInterval;  // starts with 0, current interval used
+  bool _reverse;
+  Node* _cursor;
+  std::vector<SkiplistIteratorInterval> _intervals;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-      
-      private:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-        SkiplistIndex const* _index;
-        size_t _currentInterval; // starts with 0, current interval used
-        bool _reverse;
-        Node* _cursor;
-        std::vector<SkiplistIteratorInterval> _intervals;
+ public:
+  SkiplistIterator(SkiplistIndex const* idx, bool reverse)
+      : _index(idx), _currentInterval(0), _reverse(reverse), _cursor(nullptr) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-      
-      public:
+  ~SkiplistIterator() {}
 
-        SkiplistIterator (SkiplistIndex const* idx,
-                          bool reverse) 
-          : _index(idx),
-            _currentInterval(0),
-            _reverse(reverse),
-            _cursor(nullptr) {
-        }
+  // always holds the last node returned, initially equal to
+  // the _leftEndPoint of the first interval (or the
+  // _rightEndPoint of the last interval in the reverse
+  // case), can be nullptr if there are no intervals
+  // (yet), or, in the reverse case, if the cursor is
+  // at the end of the last interval. Additionally
+  // in the non-reverse case _cursor is set to nullptr
+  // if the cursor is exhausted.
+  // See SkiplistNextIterationCallback and
+  // SkiplistPrevIterationCallback for the exact
+  // condition for the iterator to be exhausted.
 
-        ~SkiplistIterator () {
-        }
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-        // always holds the last node returned, initially equal to
-        // the _leftEndPoint of the first interval (or the 
-        // _rightEndPoint of the last interval in the reverse
-        // case), can be nullptr if there are no intervals
-        // (yet), or, in the reverse case, if the cursor is
-        // at the end of the last interval. Additionally
-        // in the non-reverse case _cursor is set to nullptr
-        // if the cursor is exhausted.
-        // See SkiplistNextIterationCallback and
-        // SkiplistPrevIterationCallback for the exact
-        // condition for the iterator to be exhausted.
-        
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-      
-      public:
-        
-        size_t size () const;
+ public:
+  size_t size() const;
 
-        bool hasNext () const;
+  bool hasNext() const;
 
-        TRI_index_element_t* next ();
+  TRI_index_element_t* next();
 
-        void initCursor ();
+  void initCursor();
 
-        void findHelper (
-          TRI_index_operator_t const* indexOperator,
-          std::vector<SkiplistIteratorInterval>& interval
-        );
+  void findHelper(TRI_index_operator_t const* indexOperator,
+                  std::vector<SkiplistIteratorInterval>& interval);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-      private:
+ private:
+  bool hasPrevIteration() const;
+  TRI_index_element_t* prevIteration();
 
-        bool hasPrevIteration () const;
-        TRI_index_element_t* prevIteration ();
+  bool hasNextIteration() const;
+  TRI_index_element_t* nextIteration();
 
-        bool hasNextIteration () const;
-        TRI_index_element_t* nextIteration ();
+  bool findHelperIntervalIntersectionValid(
+      SkiplistIteratorInterval const& lInterval,
+      SkiplistIteratorInterval const& rInterval,
+      SkiplistIteratorInterval& interval);
 
-        bool findHelperIntervalIntersectionValid (
-          SkiplistIteratorInterval const& lInterval,
-          SkiplistIteratorInterval const& rInterval,
-          SkiplistIteratorInterval& interval
-        );
+  bool findHelperIntervalValid(SkiplistIteratorInterval const& interval);
+};
 
-        bool findHelperIntervalValid (SkiplistIteratorInterval const& interval);
-    };
+class SkiplistIndexIterator final : public IndexIterator {
+ public:
+  SkiplistIndexIterator(triagens::arango::Transaction* trx,
+                        SkiplistIndex const* index,
+                        std::vector<TRI_index_operator_t*> op, bool reverse)
+      : _trx(trx),
+        _index(index),
+        _operators(op),
+        _reverse(reverse),
+        _currentOperator(0),
+        _iterator(nullptr) {}
 
-    class SkiplistIndexIterator final : public IndexIterator {
+  ~SkiplistIndexIterator() {
+    for (auto& op : _operators) {
+      delete op;
+    }
+    delete _iterator;
+  }
 
-      public:
-        
-        SkiplistIndexIterator (triagens::arango::Transaction* trx,
-                               SkiplistIndex const* index,
-                               std::vector<TRI_index_operator_t*> op,
-                               bool reverse)
-        : _trx(trx),
-          _index(index),
-          _operators(op),
-          _reverse(reverse),
-          _currentOperator(0),
-          _iterator(nullptr) {
-        }
+  TRI_doc_mptr_t* next() override;
 
-        ~SkiplistIndexIterator () {
-          for (auto& op : _operators) {
-            delete op;
-          }
-          delete _iterator;
-        }
+  void reset() override;
 
-        TRI_doc_mptr_t* next () override;
-
-        void reset () override;
-
-
-      private:
-
-        triagens::arango::Transaction*       _trx; 
-        SkiplistIndex const*                 _index;
-        std::vector<TRI_index_operator_t*>   _operators;
-        bool                                 _reverse;
-        size_t                               _currentOperator;
-        SkiplistIterator*                    _iterator;
-
-    };
+ private:
+  triagens::arango::Transaction* _trx;
+  SkiplistIndex const* _index;
+  std::vector<TRI_index_operator_t*> _operators;
+  bool _reverse;
+  size_t _currentOperator;
+  SkiplistIterator* _iterator;
+};
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class SkiplistIndex
 // -----------------------------------------------------------------------------
 
-    class SkiplistIndex final : public PathBasedIndex {
+class SkiplistIndex final : public PathBasedIndex {
+  struct KeyElementComparator {
+    int operator()(TRI_skiplist_index_key_t const* leftKey,
+                   TRI_index_element_t const* rightElement) const;
 
-      struct KeyElementComparator {
-        int operator() (TRI_skiplist_index_key_t const* leftKey,
-                        TRI_index_element_t const* rightElement) const;
+    explicit KeyElementComparator(SkiplistIndex* idx) { _idx = idx; }
 
-        explicit KeyElementComparator (SkiplistIndex* idx) {
-          _idx = idx;
-        }
+   private:
+    SkiplistIndex* _idx;
+  };
 
-        private:
-          SkiplistIndex* _idx;
+  struct ElementElementComparator {
+    int operator()(TRI_index_element_t const* leftElement,
+                   TRI_index_element_t const* rightElement,
+                   triagens::basics::SkipListCmpType cmptype) const;
 
-      };
+    explicit ElementElementComparator(SkiplistIndex* idx) { _idx = idx; }
 
-      struct ElementElementComparator {
-        int operator() (TRI_index_element_t const* leftElement,
-                        TRI_index_element_t const* rightElement,
-                        triagens::basics::SkipListCmpType cmptype) const;
+   private:
+    SkiplistIndex* _idx;
+  };
 
-        explicit ElementElementComparator (SkiplistIndex* idx) {
-          _idx = idx;
-        }
+  friend class SkiplistIterator;
+  friend struct KeyElementComparator;
+  friend struct ElementElementComparator;
 
-        private:
-          SkiplistIndex* _idx;
+  typedef triagens::basics::SkipList<TRI_skiplist_index_key_t,
+                                     TRI_index_element_t> TRI_Skiplist;
 
-      };
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-      friend class SkiplistIterator;
-      friend struct KeyElementComparator;
-      friend struct ElementElementComparator;
+ public:
+  SkiplistIndex() = delete;
 
-      typedef triagens::basics::SkipList<TRI_skiplist_index_key_t, TRI_index_element_t> TRI_Skiplist;
+  SkiplistIndex(
+      TRI_idx_iid_t, struct TRI_document_collection_t*,
+      std::vector<std::vector<triagens::basics::AttributeName>> const&, bool,
+      bool);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  explicit SkiplistIndex(struct TRI_json_t const*);
 
-      public:
+  ~SkiplistIndex();
 
-        SkiplistIndex () = delete;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-        SkiplistIndex (TRI_idx_iid_t,
-                        struct TRI_document_collection_t*,
-                        std::vector<std::vector<triagens::basics::AttributeName>> const&,
-                        bool,
-                        bool);
-        
-        explicit SkiplistIndex (struct TRI_json_t const*);
-
-        ~SkiplistIndex ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-        
-        IndexType type () const override final {
-          return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
-        }
-        
-        bool isSorted () const override final {
-          return true;
-        }
-
-        bool hasSelectivityEstimate () const override final {
-          return false;
-        }
-        
-        size_t memory () const override final;
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
-  
-        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to locate an entry in the skip list index
-///
-/// Note: this function will not destroy the passed slOperator before it returns
-/// Warning: who ever calls this function is responsible for destroying
-/// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
-////////////////////////////////////////////////////////////////////////////////
-
-        SkiplistIterator* lookup (triagens::arango::Transaction*, TRI_index_operator_t*, bool) const;
-
-        bool supportsFilterCondition (triagens::aql::AstNode const*,
-                                      triagens::aql::Variable const*,
-                                      size_t,
-                                      size_t&,
-                                      double&) const override;
-        
-        bool supportsSortCondition (triagens::aql::SortCondition const*,
-                                    triagens::aql::Variable const*,
-                                    size_t,
-                                    double&) const override;
-
-        IndexIterator* iteratorForCondition (triagens::arango::Transaction*,
-                                             IndexIteratorContext*,
-                                             triagens::aql::Ast*,
-                                             triagens::aql::AstNode const*,
-                                             triagens::aql::Variable const*,
-                                             bool) const override;
-
-        triagens::aql::AstNode* specializeCondition (triagens::aql::AstNode*,
-                                                     triagens::aql::Variable const*) const override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-        bool isDuplicateOperator (triagens::aql::AstNode const*,
-                                  std::unordered_set<int> const&) const;
-
-        int _CmpElmElm (TRI_index_element_t const* leftElement,
-                       TRI_index_element_t const* rightElement,
-                       triagens::basics::SkipListCmpType cmptype);
-
-        int _CmpKeyElm (TRI_skiplist_index_key_t const* leftKey,
-                       TRI_index_element_t const* rightElement);
-
-        bool accessFitsIndex (triagens::aql::AstNode const*,
-                              triagens::aql::AstNode const*,
-                              triagens::aql::AstNode const*,
-                              triagens::aql::Variable const*,
-                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
-                              bool) const;
-
-        void matchAttributes (triagens::aql::AstNode const*,
-                              triagens::aql::Variable const*,
-                              std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
-                              size_t&,
-                              bool) const;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        ElementElementComparator CmpElmElm;
-
-        KeyElementComparator CmpKeyElm;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_Skiplist* _skiplistIndex;
-
-    };
-
+ public:
+  IndexType type() const override final {
+    return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
   }
+
+  bool isSorted() const override final { return true; }
+
+  bool hasSelectivityEstimate() const override final { return false; }
+
+  size_t memory() const override final;
+
+  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+
+  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief attempts to locate an entry in the skip list index
+  ///
+  /// Note: this function will not destroy the passed slOperator before it
+  /// returns
+  /// Warning: who ever calls this function is responsible for destroying
+  /// the TRI_index_operator_t* and the TRI_skiplist_iterator_t* results
+  ////////////////////////////////////////////////////////////////////////////////
+
+  SkiplistIterator* lookup(triagens::arango::Transaction*,
+                           TRI_index_operator_t*, bool) const;
+
+  bool supportsFilterCondition(triagens::aql::AstNode const*,
+                               triagens::aql::Variable const*, size_t, size_t&,
+                               double&) const override;
+
+  bool supportsSortCondition(triagens::aql::SortCondition const*,
+                             triagens::aql::Variable const*, size_t,
+                             double&) const override;
+
+  IndexIterator* iteratorForCondition(triagens::arango::Transaction*,
+                                      IndexIteratorContext*,
+                                      triagens::aql::Ast*,
+                                      triagens::aql::AstNode const*,
+                                      triagens::aql::Variable const*,
+                                      bool) const override;
+
+  triagens::aql::AstNode* specializeCondition(
+      triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
+
+ private:
+  bool isDuplicateOperator(triagens::aql::AstNode const*,
+                           std::unordered_set<int> const&) const;
+
+  int _CmpElmElm(TRI_index_element_t const* leftElement,
+                 TRI_index_element_t const* rightElement,
+                 triagens::basics::SkipListCmpType cmptype);
+
+  int _CmpKeyElm(TRI_skiplist_index_key_t const* leftKey,
+                 TRI_index_element_t const* rightElement);
+
+  bool accessFitsIndex(
+      triagens::aql::AstNode const*, triagens::aql::AstNode const*,
+      triagens::aql::AstNode const*, triagens::aql::Variable const*,
+      std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+      bool) const;
+
+  void matchAttributes(
+      triagens::aql::AstNode const*, triagens::aql::Variable const*,
+      std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
+      size_t&, bool) const;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ElementElementComparator CmpElmElm;
+
+  KeyElementComparator CmpKeyElm;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the actual skiplist index
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_Skiplist* _skiplistIndex;
+};
+}
 }
 
 #endif
@@ -387,5 +353,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

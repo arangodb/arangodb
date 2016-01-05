@@ -40,18 +40,13 @@ using namespace triagens::basics;
 /// @brief constructs a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-Mutex::Mutex ()
-  : _mutex() {
-  TRI_InitMutex(&_mutex);
-}
+Mutex::Mutex() : _mutex() { TRI_InitMutex(&_mutex); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-Mutex::~Mutex () {
-  TRI_DestroyMutex(&_mutex);
-}
+Mutex::~Mutex() { TRI_DestroyMutex(&_mutex); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -61,17 +56,13 @@ Mutex::~Mutex () {
 /// @brief acquires the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Mutex::lock () {
-  TRI_LockMutex(&_mutex);
-}
+void Mutex::lock() { TRI_LockMutex(&_mutex); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Mutex::unlock () {
-  TRI_UnlockMutex(&_mutex);
-}
+void Mutex::unlock() { TRI_UnlockMutex(&_mutex); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -79,5 +70,6 @@ void Mutex::unlock () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL EnumerateCollectionBlock
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -43,15 +43,14 @@ using Json = triagens::basics::Json;
 // --SECTION--                                    class EnumerateCollectionBlock
 // -----------------------------------------------------------------------------
 
-EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
-                                                    EnumerateCollectionNode const* ep)
-  : ExecutionBlock(engine, ep),
-    _collection(ep->_collection),
-    _scanner(nullptr),
-    _posInDocuments(0),
-    _random(ep->_random),
-    _mustStoreResult(true) {
-
+EnumerateCollectionBlock::EnumerateCollectionBlock(
+    ExecutionEngine* engine, EnumerateCollectionNode const* ep)
+    : ExecutionBlock(engine, ep),
+      _collection(ep->_collection),
+      _scanner(nullptr),
+      _posInDocuments(0),
+      _random(ep->_random),
+      _mustStoreResult(true) {
   auto trxCollection = _trx->trxCollection(_collection->cid());
   if (trxCollection != nullptr) {
     _trx->orderDitch(trxCollection);
@@ -60,22 +59,19 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
   if (_random) {
     // random scan
     _scanner = new RandomCollectionScanner(_trx, trxCollection);
-  }
-  else {
+  } else {
     // default: linear scan
     _scanner = new LinearCollectionScanner(_trx, trxCollection);
   }
 }
 
-EnumerateCollectionBlock::~EnumerateCollectionBlock () {
-  delete _scanner;
-}
+EnumerateCollectionBlock::~EnumerateCollectionBlock() { delete _scanner; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize fetching of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateCollectionBlock::initializeDocuments () {
+void EnumerateCollectionBlock::initializeDocuments() {
   _scanner->reset();
   _documents.clear();
   _posInDocuments = 0;
@@ -85,8 +81,8 @@ void EnumerateCollectionBlock::initializeDocuments () {
 /// @brief skip instead of fetching
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EnumerateCollectionBlock::skipDocuments (size_t toSkip, size_t& skipped) {
-  throwIfKilled(); // check if we were aborted
+bool EnumerateCollectionBlock::skipDocuments(size_t toSkip, size_t& skipped) {
+  throwIfKilled();  // check if we were aborted
   size_t skippedHere = 0;
 
   int res = _scanner->forward(toSkip, skippedHere);
@@ -114,12 +110,12 @@ bool EnumerateCollectionBlock::skipDocuments (size_t toSkip, size_t& skipped) {
 /// @brief continue fetching of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EnumerateCollectionBlock::moreDocuments (size_t hint) {
+bool EnumerateCollectionBlock::moreDocuments(size_t hint) {
   if (hint < DefaultBatchSize) {
     hint = DefaultBatchSize;
   }
 
-  throwIfKilled(); // check if we were aborted
+  throwIfKilled();  // check if we were aborted
 
   TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -133,7 +129,7 @@ bool EnumerateCollectionBlock::moreDocuments (size_t hint) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   if (newDocs.empty()) {
     return false;
   }
@@ -146,15 +142,15 @@ bool EnumerateCollectionBlock::moreDocuments (size_t hint) {
   return true;
 }
 
-int EnumerateCollectionBlock::initialize () {
+int EnumerateCollectionBlock::initialize() {
   auto ep = static_cast<EnumerateCollectionNode const*>(_exeNode);
   _mustStoreResult = ep->isVarUsedLater(ep->_outVariable);
-  
+
   return ExecutionBlock::initialize();
 }
 
-int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, 
-                                                size_t pos) {
+int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
+                                               size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -170,26 +166,24 @@ int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items,
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
-                                                 size_t atMost) {
-
+AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
+                                                size_t atMost) {
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
-  //   either empty (at the beginning, with _posInDocuments == 0) 
+  //   either empty (at the beginning, with _posInDocuments == 0)
   //   or is non-empty and _posInDocuments < _documents.size()
   if (_done) {
     return nullptr;
   }
 
   if (_buffer.empty()) {
-
     size_t toFetch = (std::min)(DefaultBatchSize, atMost);
-    if (! ExecutionBlock::getBlock(toFetch, toFetch)) {
+    if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
       return nullptr;
     }
-    _pos = 0;           // this is in the first block
+    _pos = 0;  // this is in the first block
     initializeDocuments();
   }
 
@@ -199,7 +193,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
 
   // Get more documents from collection if _documents is empty:
   if (_posInDocuments >= _documents.size()) {
-    if (! moreDocuments(atMost)) {
+    if (!moreDocuments(atMost)) {
       _done = true;
       return nullptr;
     }
@@ -207,7 +201,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
 
   size_t available = _documents.size() - _posInDocuments;
   size_t toSend = (std::min)(atMost, available);
-  RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  RegisterId nrRegs =
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
   std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
   // automatically freed if we throw
@@ -217,7 +212,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   inheritRegisters(cur, res.get(), _pos);
 
   // set our collection for our output register
-  res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs), _trx->documentCollection(_collection->cid()));
+  res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs),
+                             _trx->documentCollection(_collection->cid()));
 
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
@@ -233,9 +229,9 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setShaped(j, 
-                     static_cast<triagens::aql::RegisterId>(curRegs),
-                     reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInDocuments].getDataPtr()));
+      res->setShaped(j, static_cast<triagens::aql::RegisterId>(curRegs),
+                     reinterpret_cast<TRI_df_marker_t const*>(
+                         _documents[_posInDocuments].getDataPtr()));
       // No harm done, if the setValue throws!
     }
 
@@ -246,7 +242,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   if (_posInDocuments >= _documents.size()) {
     // we have exhausted our local documents buffer
     // fetch more documents into our buffer
-    if (! moreDocuments(atMost)) {
+    if (!moreDocuments(atMost)) {
       // nothing more to read, re-initialize fetching of documents
       initializeDocuments();
 
@@ -264,14 +260,14 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   return res.release();
 }
 
-size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
+size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   size_t skipped = 0;
 
   if (_done) {
     return skipped;
   }
 
-  if (! _documents.empty()) {
+  if (!_documents.empty()) {
     if (_posInDocuments < _documents.size()) {
       // We still have unread documents in the _documents buffer
       // Just skip them
@@ -295,18 +291,18 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
   while (skipped < atLeast) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
-      if (! getBlock(toFetch, toFetch)) {
+      if (!getBlock(toFetch, toFetch)) {
         _done = true;
         return skipped;
       }
-      _pos = 0;           // this is in the first block
+      _pos = 0;  // this is in the first block
       initializeDocuments();
     }
 
     // if we get here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
 
-    if (! skipDocuments(atMost - skipped, skipped)) {
+    if (!skipDocuments(atMost - skipped, skipped)) {
       // nothing more to read, re-initialize fetching of documents
       initializeDocuments();
       if (++_pos >= cur->size()) {
@@ -322,5 +318,6 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

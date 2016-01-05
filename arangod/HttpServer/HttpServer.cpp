@@ -56,7 +56,7 @@ using namespace triagens::rest;
 /// @brief map of ChunkedTask
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::unordered_map<uint64_t, HttpCommTask *> HttpCommTaskMap;
+static std::unordered_map<uint64_t, HttpCommTask*> HttpCommTaskMap;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for the above map
@@ -76,10 +76,10 @@ static Mutex HttpCommTaskMapLock;
 /// @brief destroys an endpoint server
 ////////////////////////////////////////////////////////////////////////////////
 
-int HttpServer::sendChunk(uint64_t taskId, std::string const &data) {
+int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
   MUTEX_LOCKER(HttpCommTaskMapLock);
 
-  auto &&it = HttpCommTaskMap.find(taskId);
+  auto&& it = HttpCommTaskMap.find(taskId);
 
   if (it == HttpCommTaskMap.end()) {
     return TRI_ERROR_TASK_NOT_FOUND;
@@ -105,9 +105,9 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const &data) {
 /// @brief constructs a new general server with dispatcher and job manager
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpServer::HttpServer(Scheduler *scheduler, Dispatcher *dispatcher,
-                       HttpHandlerFactory *handlerFactory,
-                       AsyncJobManager *jobManager, double keepAliveTimeout)
+HttpServer::HttpServer(Scheduler* scheduler, Dispatcher* dispatcher,
+                       HttpHandlerFactory* handlerFactory,
+                       AsyncJobManager* jobManager, double keepAliveTimeout)
     : _scheduler(scheduler),
       _dispatcher(dispatcher),
       _handlerFactory(handlerFactory),
@@ -122,7 +122,7 @@ HttpServer::HttpServer(Scheduler *scheduler, Dispatcher *dispatcher,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServer::~HttpServer() {
-  for (auto &task : _commTasks) {
+  for (auto& task : _commTasks) {
     unregisterChunkedTask(task);
     _scheduler->destroyTask(task);
   }
@@ -138,8 +138,8 @@ HttpServer::~HttpServer() {
 /// @brief generates a suitable communication task
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpCommTask *HttpServer::createCommTask(TRI_socket_t s,
-                                         ConnectionInfo const &info) {
+HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
+                                         ConnectionInfo const& info) {
   return new HttpCommTask(this, s, info, _keepAliveTimeout);
 }
 
@@ -151,7 +151,7 @@ HttpCommTask *HttpServer::createCommTask(TRI_socket_t s,
 /// @brief add the endpoint list
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::setEndpointList(EndpointList const *list) {
+void HttpServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
 }
 
@@ -162,7 +162,7 @@ void HttpServer::setEndpointList(EndpointList const *list) {
 void HttpServer::startListening() {
   auto endpoints = _endpointList->getByPrefix(encryptionType());
 
-  for (auto &&i : endpoints) {
+  for (auto&& i : endpoints) {
     LOG_TRACE("trying to bind to endpoint '%s' for requests", i.first.c_str());
 
     bool ok = openEndpoint(i.second);
@@ -184,7 +184,7 @@ void HttpServer::startListening() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpServer::stopListening() {
-  for (auto &task : _listenTasks) {
+  for (auto& task : _listenTasks) {
     _scheduler->destroyTask(task);
   }
 
@@ -195,7 +195,7 @@ void HttpServer::stopListening() {
 /// @brief registers a chunked task
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::registerChunkedTask(HttpCommTask *task, ssize_t n) {
+void HttpServer::registerChunkedTask(HttpCommTask* task, ssize_t n) {
   auto id = task->taskId();
   MUTEX_LOCKER(HttpCommTaskMapLock);
 
@@ -206,7 +206,7 @@ void HttpServer::registerChunkedTask(HttpCommTask *task, ssize_t n) {
 /// @brief unregisters a chunked task
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::unregisterChunkedTask(HttpCommTask *task) {
+void HttpServer::unregisterChunkedTask(HttpCommTask* task) {
   auto id = task->taskId();
   MUTEX_LOCKER(HttpCommTaskMapLock);
 
@@ -219,7 +219,7 @@ void HttpServer::unregisterChunkedTask(HttpCommTask *task) {
 
 void HttpServer::stop() {
   while (true) {
-    HttpCommTask *task = nullptr;
+    HttpCommTask* task = nullptr;
 
     {
       MUTEX_LOCKER(_commTasksLock);
@@ -241,8 +241,8 @@ void HttpServer::stop() {
 /// @brief handles connection request
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const &info) {
-  HttpCommTask *task = createCommTask(s, info);
+void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const& info) {
+  HttpCommTask* task = createCommTask(s, info);
 
   try {
     MUTEX_LOCKER(_commTasksLock);
@@ -269,7 +269,7 @@ void HttpServer::handleConnected(TRI_socket_t s, ConnectionInfo const &info) {
 /// @brief handles a connection close
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationClosed(HttpCommTask *task) {
+void HttpServer::handleCommunicationClosed(HttpCommTask* task) {
   {
     MUTEX_LOCKER(_commTasksLock);
     _commTasks.erase(task);
@@ -282,7 +282,7 @@ void HttpServer::handleCommunicationClosed(HttpCommTask *task) {
 /// @brief handles a connection failure
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleCommunicationFailure(HttpCommTask *task) {
+void HttpServer::handleCommunicationFailure(HttpCommTask* task) {
   {
     MUTEX_LOCKER(_commTasksLock);
     _commTasks.erase(task);
@@ -295,23 +295,24 @@ void HttpServer::handleCommunicationFailure(HttpCommTask *task) {
 /// @brief create a job for asynchronous execution (using the dispatcher)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler> &handler,
-                                    uint64_t *jobId) {
-
+bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler>& handler,
+                                    uint64_t* jobId) {
   // extract the coordinator flag
   bool found;
-  char const* hdr = handler->getRequest()->header("x-arango-coordinator", found);
+  char const* hdr =
+      handler->getRequest()->header("x-arango-coordinator", found);
 
-  if (! found) {
+  if (!found) {
     hdr = nullptr;
   }
 
   // execute the handler using the dispatcher
-  std::unique_ptr<Job> job = std::make_unique<HttpServerJob>(this, handler, true);
+  std::unique_ptr<Job> job =
+      std::make_unique<HttpServerJob>(this, handler, true);
 
   // register the job with the job manager
   if (jobId != nullptr) {
-    _jobManager->initAsyncJob(static_cast<HttpServerJob *>(job.get()), hdr);
+    _jobManager->initAsyncJob(static_cast<HttpServerJob*>(job.get()), hdr);
     *jobId = job->jobId();
   }
 
@@ -335,8 +336,8 @@ bool HttpServer::handleRequestAsync(WorkItem::uptr<HttpHandler> &handler,
 /// @brief executes the handler directly or add it to the queue
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpServer::handleRequest(HttpCommTask *task,
-                               WorkItem::uptr<HttpHandler> &handler) {
+bool HttpServer::handleRequest(HttpCommTask* task,
+                               WorkItem::uptr<HttpHandler>& handler) {
   // direct handlers
   if (handler->isDirect()) {
     HandlerWorkStack work(handler);
@@ -386,8 +387,8 @@ bool HttpServer::openEndpoint(Endpoint* endpoint) {
 /// @brief handle request directly
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServer::handleRequestDirectly(HttpCommTask *task,
-                                       HttpHandler *handler) {
+void HttpServer::handleRequestDirectly(HttpCommTask* task,
+                                       HttpHandler* handler) {
   handler->executeFull();
   task->handleResponse(handler->getResponse());
 }

@@ -41,10 +41,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_fulltext_wordlist_s {
-  uint32_t  _numWords;
-  char**    _words;
-}
-TRI_fulltext_wordlist_t;
+  uint32_t _numWords;
+  char** _words;
+} TRI_fulltext_wordlist_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -56,20 +55,19 @@ TRI_fulltext_wordlist_t;
 /// freed when the wordlist is freed
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex (char**,
-                                                          size_t);
+TRI_fulltext_wordlist_t* TRI_CreateWordlistFulltextIndex(char**, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a wordlist
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
+void TRI_DestroyWordlistFulltextIndex(TRI_fulltext_wordlist_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a wordlist
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
+void TRI_FreeWordlistFulltextIndex(TRI_fulltext_wordlist_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -79,7 +77,7 @@ void TRI_FreeWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
 /// @brief sort a wordlist in place
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
+void TRI_SortWordlistFulltextIndex(TRI_fulltext_wordlist_t*);
 
 #endif
 
@@ -89,5 +87,6 @@ void TRI_SortWordlistFulltextIndex (TRI_fulltext_wordlist_t*);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

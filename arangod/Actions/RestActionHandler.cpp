@@ -46,13 +46,12 @@ using namespace triagens::arango;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestActionHandler::RestActionHandler (HttpRequest* request,
-                                      action_options_t* data)
-  : RestVocbaseBaseHandler(request),
-    _action(nullptr),
-    _dataLock(),
-    _data(nullptr) {
-
+RestActionHandler::RestActionHandler(HttpRequest* request,
+                                     action_options_t* data)
+    : RestVocbaseBaseHandler(request),
+      _action(nullptr),
+      _dataLock(),
+      _data(nullptr) {
   _action = TRI_LookupActionVocBase(request);
 }
 
@@ -64,15 +63,13 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestActionHandler::isDirect () const {
-  return _action == nullptr;
-}
+bool RestActionHandler::isDirect() const { return _action == nullptr; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestActionHandler::execute () {
+HttpHandler::status_t RestActionHandler::execute() {
   TRI_action_result_t result;
 
   // check the request path
@@ -89,7 +86,6 @@ HttpHandler::status_t RestActionHandler::execute () {
 
   // execute
   else {
-
     // extract the sub-request type
     HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -121,9 +117,7 @@ HttpHandler::status_t RestActionHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestActionHandler::cancel () {
-  return _action->cancel(&_dataLock, &_data);
-}
+bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -133,18 +127,17 @@ bool RestActionHandler::cancel () {
 /// @brief executes an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_result_t RestActionHandler::executeAction () {
-  TRI_action_result_t result = _action->execute(_vocbase, _request, &_dataLock, &_data);
+TRI_action_result_t RestActionHandler::executeAction() {
+  TRI_action_result_t result =
+      _action->execute(_vocbase, _request, &_dataLock, &_data);
 
   if (result.isValid) {
     _response = result.response;
     result.response = nullptr;
-  }
-  else if (result.canceled) {
+  } else if (result.canceled) {
     result.isValid = true;
     generateCanceled();
-  }
-  else {
+  } else {
     result.isValid = true;
     generateNotImplemented(_action->_url);
   }
@@ -152,7 +145,7 @@ TRI_action_result_t RestActionHandler::executeAction () {
   if (result.response != nullptr) {
     delete result.response;
   }
-  
+
   return result;
 }
 

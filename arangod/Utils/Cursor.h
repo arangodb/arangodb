@@ -38,204 +38,170 @@ struct TRI_json_t;
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class CollectionExport;
+class CollectionExport;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      class Cursor
 // -----------------------------------------------------------------------------
 
-    typedef TRI_voc_tick_t CursorId;
+typedef TRI_voc_tick_t CursorId;
 
-    class Cursor {
-      public:
+class Cursor {
+ public:
+  Cursor(Cursor const&) = delete;
+  Cursor& operator=(Cursor const&) = delete;
 
-        Cursor (Cursor const&) = delete;
-        Cursor& operator= (Cursor const&) = delete;
+  Cursor(CursorId, size_t, struct TRI_json_t*, double, bool);
 
-        Cursor (CursorId,
-                size_t,
-                struct TRI_json_t*,
-                double,
-                bool);
+  virtual ~Cursor();
 
-        virtual ~Cursor ();
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+ public:
+  CursorId id() const { return _id; }
 
-      public:
+  size_t batchSize() const { return _batchSize; }
 
-        CursorId id () const {
-          return _id;
-        }
+  struct TRI_json_t* extra() const {
+    return _extra;
+  }
 
-        size_t batchSize () const {
-          return _batchSize;
-        }
+  bool hasCount() const { return _hasCount; }
 
-        struct TRI_json_t* extra () const {
-          return _extra;
-        }
+  double ttl() const { return _ttl; }
 
-        bool hasCount () const {
-          return _hasCount;
-        }
+  double expires() const { return _expires; }
 
-        double ttl () const {
-          return _ttl;
-        }
-        
-        double expires () const {
-          return _expires;
-        }
+  bool isUsed() const { return _isUsed; }
 
-        bool isUsed () const {
-          return _isUsed;
-        }
+  bool isDeleted() const { return _isDeleted; }
 
-        bool isDeleted () const {
-          return _isDeleted;
-        }
+  void deleted() { _isDeleted = true; }
 
-        void deleted () {
-          _isDeleted = true;
-        }
+  void use() {
+    TRI_ASSERT(!_isDeleted);
+    TRI_ASSERT(!_isUsed);
 
-        void use () {
-          TRI_ASSERT(! _isDeleted);
-          TRI_ASSERT(! _isUsed);
+    _isUsed = true;
+    _expires = TRI_microtime() + _ttl;
+  }
 
-          _isUsed = true;
-          _expires = TRI_microtime() + _ttl;
-        }
+  void release() {
+    TRI_ASSERT(_isUsed);
+    _isUsed = false;
+  }
 
-        void release () {
-          TRI_ASSERT(_isUsed);
-          _isUsed = false;
-        }
-        
-        virtual bool hasNext () = 0;
+  virtual bool hasNext() = 0;
 
-        virtual struct TRI_json_t* next () = 0;
-        
-        virtual size_t count () const = 0;
+  virtual struct TRI_json_t* next() = 0;
 
-        virtual void dump (triagens::basics::StringBuffer&) = 0;
+  virtual size_t count() const = 0;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
+  virtual void dump(triagens::basics::StringBuffer&) = 0;
 
-      protected:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                               protected
+  // variables
+  // -----------------------------------------------------------------------------
 
-        CursorId const        _id;
-        size_t const          _batchSize;
-        size_t                _position;
-        struct TRI_json_t*    _extra;
-        double                _ttl;
-        double                _expires;
-        bool const            _hasCount;
-        bool                  _isDeleted;
-        bool                  _isUsed;
-    };
+ protected:
+  CursorId const _id;
+  size_t const _batchSize;
+  size_t _position;
+  struct TRI_json_t* _extra;
+  double _ttl;
+  double _expires;
+  bool const _hasCount;
+  bool _isDeleted;
+  bool _isUsed;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class JsonCursor
 // -----------------------------------------------------------------------------
-    
-    class JsonCursor : public Cursor {
-      public:
 
-        JsonCursor (TRI_vocbase_t*,
-                    CursorId,
-                    struct TRI_json_t*, 
-                    size_t,
-                    struct TRI_json_t*,
-                    double,
-                    bool,
-                    bool);
+class JsonCursor : public Cursor {
+ public:
+  JsonCursor(TRI_vocbase_t*, CursorId, struct TRI_json_t*, size_t,
+             struct TRI_json_t*, double, bool, bool);
 
-        ~JsonCursor ();
+  ~JsonCursor();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-      public:
+ public:
+  bool hasNext() override final;
 
-        bool hasNext () override final;
+  struct TRI_json_t* next() override final;
 
-        struct TRI_json_t* next () override final;
-        
-        size_t count () const override final;
+  size_t count() const override final;
 
-        void dump (triagens::basics::StringBuffer&) override final;
+  void dump(triagens::basics::StringBuffer&) override final;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // functions
+  // -----------------------------------------------------------------------------
 
-      private:
+ private:
+  void freeJson();
 
-        void freeJson ();
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        TRI_vocbase_t*        _vocbase;
-        struct TRI_json_t*    _json;
-        size_t const          _size;
-        bool                  _cached;
-    };
+ private:
+  TRI_vocbase_t* _vocbase;
+  struct TRI_json_t* _json;
+  size_t const _size;
+  bool _cached;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ExportCursor
 // -----------------------------------------------------------------------------
-    
-    class ExportCursor : public Cursor {
-      public:
 
-        ExportCursor (TRI_vocbase_t*,
-                      CursorId,
-                      triagens::arango::CollectionExport*,
-                      size_t,
-                      double,
-                      bool);
+class ExportCursor : public Cursor {
+ public:
+  ExportCursor(TRI_vocbase_t*, CursorId, triagens::arango::CollectionExport*,
+               size_t, double, bool);
 
-        ~ExportCursor ();
+  ~ExportCursor();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-      public:
+ public:
+  bool hasNext() override final;
 
-        bool hasNext () override final;
+  struct TRI_json_t* next() override final;
 
-        struct TRI_json_t* next () override final;
-        
-        size_t count () const override final;
+  size_t count() const override final;
 
-        void dump (triagens::basics::StringBuffer&) override final;
+  void dump(triagens::basics::StringBuffer&) override final;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-      private:
-
-        TRI_vocbase_t*                      _vocbase;
-        triagens::arango::CollectionExport* _ex;
-        size_t const                        _size;
-    };
-
-  }
+ private:
+  TRI_vocbase_t* _vocbase;
+  triagens::arango::CollectionExport* _ex;
+  size_t const _size;
+};
+}
 }
 
 #endif
@@ -246,5 +212,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

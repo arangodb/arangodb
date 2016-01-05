@@ -45,18 +45,19 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define READ_UNLOCKER_VAR_A(a) _read_unlock_variable ## a
+#define READ_UNLOCKER_VAR_A(a) _read_unlock_variable##a
 #define READ_UNLOCKER_VAR_B(a) READ_UNLOCKER_VAR_A(a)
 
-#define READ_UNLOCKER(b) \
-  triagens::basics::ReadUnlocker<std::remove_reference<decltype(b)>::type> READ_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+#define READ_UNLOCKER(b)                                                   \
+  triagens::basics::ReadUnlocker<std::remove_reference<decltype(b)>::type> \
+      READ_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ReadUnlocker
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read unlocker
@@ -65,71 +66,70 @@ namespace triagens {
 /// the read-lock again when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename T>
-    class ReadUnlocker {
-        ReadUnlocker (ReadUnlocker const&);
-        ReadUnlocker& operator= (ReadUnlocker const&);
+template <typename T>
+class ReadUnlocker {
+  ReadUnlocker(ReadUnlocker const&);
+  ReadUnlocker& operator=(ReadUnlocker const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-      public:
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief unlocks the lock
+  ///
+  /// The constructor unlocks the lock, the destructors aquires a read-lock.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks the lock
-///
-/// The constructor unlocks the lock, the destructors aquires a read-lock.
-////////////////////////////////////////////////////////////////////////////////
-
-        explicit ReadUnlocker (T* readWriteLock);
+  explicit ReadUnlocker(T* readWriteLock);
           : ReadUnlocker(readWriteLock, nullptr, 0) {
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks the lock
-///
-/// The constructor unlocks the lock, the destructors aquires a read-lock.
-////////////////////////////////////////////////////////////////////////////////
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief unlocks the lock
+          ///
+          /// The constructor unlocks the lock, the destructors aquires a
+          /// read-lock.
+          ////////////////////////////////////////////////////////////////////////////////
 
-        ReadUnlocker (T* readWriteLock, char const* file, int line)
-          : _readWriteLock(readWriteLock), _file(file), _line(line) {
-          _readWriteLock->unlock();
-        }
+          ReadUnlocker(T* readWriteLock, char const* file, int line)
+              : _readWriteLock(readWriteLock), _file(file), _line(line) {
+            _readWriteLock->unlock();
+          }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aquires the read-lock
-////////////////////////////////////////////////////////////////////////////////
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief aquires the read-lock
+          ////////////////////////////////////////////////////////////////////////////////
 
-        ~ReadUnlocker () {
-          _readWriteLock->readLock();
-        }
+          ~ReadUnlocker() { _readWriteLock->readLock(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+          // -----------------------------------------------------------------------------
+          // --SECTION--                                                 private
+          // variables
+          // -----------------------------------------------------------------------------
 
-      private:
+         private:
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief the read-write lock
+          ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the read-write lock
-////////////////////////////////////////////////////////////////////////////////
+          T* _readWriteLock;
 
-        T* _readWriteLock;
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief file
+          ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief file
-////////////////////////////////////////////////////////////////////////////////
+          char const* _file;
 
-        char const* _file;
+          ////////////////////////////////////////////////////////////////////////////////
+          /// @brief line number
+          ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line number
-////////////////////////////////////////////////////////////////////////////////
-
-        int _line;
-    };
-  }
+          int _line;
+};
+}
 }
 
 #endif
@@ -140,5 +140,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

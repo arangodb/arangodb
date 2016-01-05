@@ -45,9 +45,8 @@
 typedef struct mimetype_s {
   char* _extension;
   char* _mimetype;
-  bool  _appendCharset;
-}
-mimetype_t;
+  bool _appendCharset;
+} mimetype_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -73,23 +72,21 @@ static TRI_associative_pointer_t Mimetypes;
 /// @brief Hash function used to hash errors messages (not used)
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashMimetype (TRI_associative_pointer_t* array,
-                              void const* element) {
-
-  mimetype_t* entry = (mimetype_t*) element;
-  return (uint64_t) TRI_FnvHashString(entry->_extension);
+static uint64_t HashMimetype(TRI_associative_pointer_t* array,
+                             void const* element) {
+  mimetype_t* entry = (mimetype_t*)element;
+  return (uint64_t)TRI_FnvHashString(entry->_extension);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Comparison function used to determine error equality
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualMimetype (TRI_associative_pointer_t* array,
-                           void const* key,
-                           void const* element) {
-  mimetype_t* entry = (mimetype_t*) element;
+static bool EqualMimetype(TRI_associative_pointer_t* array, void const* key,
+                          void const* element) {
+  mimetype_t* entry = (mimetype_t*)element;
 
-  return (strcmp((const char*) key, entry->_extension) == 0);
+  return (strcmp((const char*)key, entry->_extension) == 0);
 }
 
 // -----------------------------------------------------------------------------
@@ -100,21 +97,21 @@ static bool EqualMimetype (TRI_associative_pointer_t* array,
 /// @brief register a mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterMimetype (const char* extension,
-                           const char* mimetype,
-                           bool appendCharset) {
-  mimetype_t* entry = static_cast<mimetype_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(mimetype_t), false));
+bool TRI_RegisterMimetype(const char* extension, const char* mimetype,
+                          bool appendCharset) {
+  mimetype_t* entry = static_cast<mimetype_t*>(
+      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(mimetype_t), false));
   entry->_extension = TRI_DuplicateString(extension);
   entry->_appendCharset = appendCharset;
 
   if (appendCharset) {
     entry->_mimetype = TRI_Concatenate2String(mimetype, "; charset=utf-8");
-  }
-  else {
+  } else {
     entry->_mimetype = TRI_DuplicateString(mimetype);
   }
 
-  void* found = TRI_InsertKeyAssociativePointer(&Mimetypes, extension, entry, false);
+  void* found =
+      TRI_InsertKeyAssociativePointer(&Mimetypes, extension, entry, false);
 
   return (found != nullptr);
 }
@@ -123,8 +120,9 @@ bool TRI_RegisterMimetype (const char* extension,
 /// @brief gets the mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetMimetype (const char* extension) {
-  mimetype_t* entry = static_cast<mimetype_t*>(TRI_LookupByKeyAssociativePointer(&Mimetypes, (void const*) extension));
+char* TRI_GetMimetype(const char* extension) {
+  mimetype_t* entry = static_cast<mimetype_t*>(
+      TRI_LookupByKeyAssociativePointer(&Mimetypes, (void const*)extension));
 
   if (entry == nullptr) {
     return nullptr;
@@ -145,17 +143,14 @@ char* TRI_GetMimetype (const char* extension) {
 /// @brief initializes the mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeMimetypes () {
+void TRI_InitializeMimetypes() {
   if (Initialized) {
     return;
   }
 
-  TRI_InitAssociativePointer(&Mimetypes,
-                             TRI_CORE_MEM_ZONE,
-                             &TRI_HashStringKeyAssociativePointer,
-                             HashMimetype,
-                             EqualMimetype,
-                             0);
+  TRI_InitAssociativePointer(&Mimetypes, TRI_CORE_MEM_ZONE,
+                             &TRI_HashStringKeyAssociativePointer, HashMimetype,
+                             EqualMimetype, 0);
 
   TRI_InitializeEntriesMimetypes();
   Initialized = true;
@@ -165,10 +160,10 @@ void TRI_InitializeMimetypes () {
 /// @brief shuts down the mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownMimetypes () {
+void TRI_ShutdownMimetypes() {
   size_t i;
 
-  if (! Initialized) {
+  if (!Initialized) {
     return;
   }
 
@@ -193,5 +188,6 @@ void TRI_ShutdownMimetypes () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

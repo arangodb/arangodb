@@ -40,126 +40,115 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
-    class CapConstraint final : public Index {
+class CapConstraint final : public Index {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  CapConstraint() = delete;
 
-      public:
+  CapConstraint(TRI_idx_iid_t, struct TRI_document_collection_t*, size_t,
+                int64_t);
 
-        CapConstraint () = delete;
+  ~CapConstraint();
 
-        CapConstraint (TRI_idx_iid_t,
-                       struct TRI_document_collection_t*,
-                       size_t,
-                       int64_t);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-        ~CapConstraint ();
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum number of documents in the collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  int64_t count() const { return _count; }
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum size of documents in the collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum number of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-  
-        int64_t count () const {
-          return _count;
-        }
+  int64_t size() const { return _size; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum size of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int64_t size () const {
-          return _size;
-        }
-        
-        IndexType type () const override final {
-          return Index::TRI_IDX_TYPE_CAP_CONSTRAINT;
-        }
-        
-        bool isSorted () const override final {
-          return false;
-        }
-
-        bool hasSelectivityEstimate () const override final {
-          return false;
-        }
-        
-        bool dumpFields () const override final {
-          return false;
-        }
-
-        size_t memory () const override final;
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*, bool) const override final;
-        triagens::basics::Json toJsonFigures (TRI_memory_zone_t*) const override final;
-  
-        int insert (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-         
-        int remove (triagens::arango::Transaction*, struct TRI_doc_mptr_t const*, bool) override final;
-        
-        int postInsert (triagens::arango::Transaction*, struct TRI_transaction_collection_s*, struct TRI_doc_mptr_t const*) override final;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the cap constraint
-////////////////////////////////////////////////////////////////////////////////
-
-        int initialize (triagens::arango::Transaction*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief apply the cap constraint for the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int apply (triagens::arango::Transaction*,
-                   TRI_document_collection_t*,
-                   struct TRI_transaction_collection_s*);
-        
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum number of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-  
-        int64_t const _count;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum size of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int64_t const _size;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum size
-////////////////////////////////////////////////////////////////////////////////
-
-        static int64_t const MinSize;
-    };
-
+  IndexType type() const override final {
+    return Index::TRI_IDX_TYPE_CAP_CONSTRAINT;
   }
+
+  bool isSorted() const override final { return false; }
+
+  bool hasSelectivityEstimate() const override final { return false; }
+
+  bool dumpFields() const override final { return false; }
+
+  size_t memory() const override final;
+
+  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const override final;
+  triagens::basics::Json toJsonFigures(TRI_memory_zone_t*) const override final;
+
+  int insert(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int remove(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
+             bool) override final;
+
+  int postInsert(triagens::arango::Transaction*,
+                 struct TRI_transaction_collection_s*,
+                 struct TRI_doc_mptr_t const*) override final;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize the cap constraint
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int initialize(triagens::arango::Transaction*);
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief apply the cap constraint for the collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int apply(triagens::arango::Transaction*, TRI_document_collection_t*,
+            struct TRI_transaction_collection_s*);
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum number of documents in the collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int64_t const _count;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum size of documents in the collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int64_t const _size;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // variables
+  // -----------------------------------------------------------------------------
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief minimum size
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static int64_t const MinSize;
+};
+}
 }
 
 #endif
@@ -170,5 +159,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -69,13 +69,13 @@ static ReadWriteLock ActionsLock;
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_DefineActionVocBase (string const& name,
-                                       TRI_action_t* action) {
+TRI_action_t* TRI_DefineActionVocBase(string const& name,
+                                      TRI_action_t* action) {
   WRITE_LOCKER(ActionsLock);
 
   string url = name;
 
-  while (! url.empty() && url[0] == '/') {
+  while (!url.empty() && url[0] == '/') {
     url = url.substr(1);
   }
 
@@ -86,40 +86,37 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
   if (action->_isPrefix) {
     if (PrefixActions.find(url) == PrefixActions.end()) {
       PrefixActions[url] = action;
-    }
-    else {
+    } else {
       TRI_action_t* oldAction = PrefixActions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG_ERROR("trying to define two incompatible actions of type '%s' and '%s' for prefix url '%s'",
-                  oldAction->_type.c_str(),
-                  action->_type.c_str(),
-                  action->_url.c_str());
+        LOG_ERROR(
+            "trying to define two incompatible actions of type '%s' and '%s' "
+            "for prefix url '%s'",
+            oldAction->_type.c_str(), action->_type.c_str(),
+            action->_url.c_str());
 
         delete oldAction;
-      }
-      else {
+      } else {
         delete action;
         action = oldAction;
       }
     }
-  }
-  else {
+  } else {
     if (Actions.find(url) == Actions.end()) {
       Actions[url] = action;
-    }
-    else {
+    } else {
       TRI_action_t* oldAction = Actions[url];
 
       if (oldAction->_type != action->_type) {
-        LOG_ERROR("trying to define two incompatible actions of type '%s' and type '%s' for url '%s'",
-                  oldAction->_type.c_str(),
-                  action->_type.c_str(),
-                  action->_url.c_str());
+        LOG_ERROR(
+            "trying to define two incompatible actions of type '%s' and type "
+            "'%s' for url '%s'",
+            oldAction->_type.c_str(), action->_type.c_str(),
+            action->_url.c_str());
 
         delete oldAction;
-      }
-      else {
+      } else {
         delete action;
         action = oldAction;
       }
@@ -127,10 +124,8 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
   }
 
   // some debug output
-  LOG_DEBUG("created %s %saction '%s'",
-            action->_type.c_str(),
-            (action->_isPrefix ? "prefix " : ""),
-            url.c_str());
+  LOG_DEBUG("created %s %saction '%s'", action->_type.c_str(),
+            (action->_isPrefix ? "prefix " : ""), url.c_str());
 
   // return old or new action description
   return action;
@@ -140,13 +135,12 @@ TRI_action_t* TRI_DefineActionVocBase (string const& name,
 /// @brief looks up an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
+TRI_action_t* TRI_LookupActionVocBase(triagens::rest::HttpRequest* request) {
   // check if we know a callback
   vector<string> suffix = request->suffix();
 
   // find a direct match
   string name = StringUtils::join(suffix, '/');
-  
 
   READ_LOCKER(ActionsLock);
   map<string, TRI_action_t*>::iterator i = Actions.find(name);
@@ -178,13 +172,13 @@ TRI_action_t* TRI_LookupActionVocBase (triagens::rest::HttpRequest* request) {
 /// @brief deletes all defined actions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CleanupActions () {
-  for (auto& it: Actions) {
+void TRI_CleanupActions() {
+  for (auto& it : Actions) {
     delete it.second;
   }
   Actions.clear();
 
-  for (auto& it: PrefixActions) {
+  for (auto& it : PrefixActions) {
     delete it.second;
   }
   PrefixActions.clear();
@@ -196,5 +190,6 @@ void TRI_CleanupActions () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

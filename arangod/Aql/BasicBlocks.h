@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL basic execution blocks
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -33,318 +33,259 @@
 #include "Utils/AqlTransaction.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-    class AqlItemBlock;
+class AqlItemBlock;
 
-    class ExecutionEngine;
+class ExecutionEngine;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SingletonBlock
 // -----------------------------------------------------------------------------
 
-    class SingletonBlock : public ExecutionBlock {
+class SingletonBlock : public ExecutionBlock {
+  void deleteInputVariables() {
+    delete _inputRegisterValues;
+    _inputRegisterValues = nullptr;
+  }
 
-      void deleteInputVariables() {
-        delete _inputRegisterValues;
-        _inputRegisterValues = nullptr;
-      }
+ public:
+  SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
+      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr) {}
 
-      public:
+  ~SingletonBlock() { deleteInputVariables(); }
 
-        SingletonBlock (ExecutionEngine* engine, 
-                        SingletonNode const* ep)
-          : ExecutionBlock(engine, ep), 
-            _inputRegisterValues(nullptr) {
-        }
+  int initialize() override {
+    _inputRegisterValues = nullptr;  // just in case
+    return ExecutionBlock::initialize();
+  }
 
-        ~SingletonBlock () {
-          deleteInputVariables();
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initializeCursor, store a copy of the register values coming from
+  /// above
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int initialize () override {
-          _inputRegisterValues = nullptr;   // just in case
-          return ExecutionBlock::initialize();
-        }
+  int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor, store a copy of the register values coming from above
-////////////////////////////////////////////////////////////////////////////////
+  int shutdown(int) override final;
 
-        int initializeCursor (AqlItemBlock* items, size_t pos) override;
+  bool hasMore() override final { return !_done; }
 
-        int shutdown (int) override final;
+  int64_t count() const override final { return 1; }
 
-        bool hasMore () override final {
-          return ! _done;
-        }
+  int64_t remaining() override final { return _done ? 0 : 1; }
 
-        int64_t count () const override final {
-          return 1;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the bind data coming from outside
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int64_t remaining () override final {
-          return _done ? 0 : 1;
-        }
+ private:
+  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                    AqlItemBlock*& result, size_t& skipped) override;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the bind data coming from outside
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _inputRegisterValues
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-
-        int getOrSkipSome (size_t atLeast,
-                           size_t atMost,
-                           bool skipping,
-                           AqlItemBlock*& result,
-                           size_t& skipped) override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _inputRegisterValues
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* _inputRegisterValues;
-
-    };
+  AqlItemBlock* _inputRegisterValues;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       FilterBlock
 // -----------------------------------------------------------------------------
 
-    class FilterBlock : public ExecutionBlock {
+class FilterBlock : public ExecutionBlock {
+ public:
+  FilterBlock(ExecutionEngine*, FilterNode const*);
 
-      public:
+  ~FilterBlock();
 
-        FilterBlock (ExecutionEngine*,
-                     FilterNode const*);
+  int initialize() override final;
 
-        ~FilterBlock ();
-        
-        int initialize () override final;
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief internal function to actually decide if the document should be used
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  inline bool takeItem(AqlItemBlock* items, size_t index) const {
+    return items->getValueReference(index, _inReg).isTrue();
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function to actually decide if the document should be used
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief internal function to get another block
+  ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool takeItem (AqlItemBlock* items, size_t index) const {
-          return items->getValueReference(index, _inReg).isTrue();
-        }
+  bool getBlock(size_t atLeast, size_t atMost);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function to get another block
-////////////////////////////////////////////////////////////////////////////////
+  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                    AqlItemBlock*& result, size_t& skipped) override;
 
-        bool getBlock (size_t atLeast, size_t atMost);
+  bool hasMore() override final;
 
-        int getOrSkipSome (size_t atLeast,
-                           size_t atMost,
-                           bool skipping,
-                           AqlItemBlock*& result,
-                           size_t& skipped) override;
+  int64_t count() const override final {
+    return -1;  // refuse to work
+  }
 
-        bool hasMore () override final;
+  int64_t remaining() override final {
+    return -1;  // refuse to work
+  }
 
-        int64_t count () const override final {
-          return -1;   // refuse to work
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief input register
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int64_t remaining () override final {
-          return -1;   // refuse to work
-        }
+ private:
+  RegisterId _inReg;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief input register
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief vector of indices of those documents in the current block
+  /// that are chosen
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-
-        RegisterId _inReg;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vector of indices of those documents in the current block
-/// that are chosen
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<size_t> _chosen;
-
-    };
+  std::vector<size_t> _chosen;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        LimitBlock
 // -----------------------------------------------------------------------------
 
-    class LimitBlock : public ExecutionBlock {
+class LimitBlock : public ExecutionBlock {
+ public:
+  LimitBlock(ExecutionEngine* engine, LimitNode const* ep)
+      : ExecutionBlock(engine, ep),
+        _offset(ep->_offset),
+        _limit(ep->_limit),
+        _count(0),
+        _state(0),  // start in the beginning
+        _fullCount(ep->_fullCount) {}
 
-      public:
+  ~LimitBlock() {}
 
-        LimitBlock (ExecutionEngine* engine, 
-                    LimitNode const* ep) 
-          : ExecutionBlock(engine, ep), 
-            _offset(ep->_offset), 
-            _limit(ep->_limit),
-            _count(0),
-            _state(0), // start in the beginning
-            _fullCount(ep->_fullCount) { 
-        }
+  int initialize() override;
 
-        ~LimitBlock () {
-        }
+  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-        int initialize () override;
+  virtual int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                            AqlItemBlock*& result, size_t& skipped) override;
 
-        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _offset
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int getOrSkipSome (size_t atLeast,
-                                   size_t atMost,
-                                   bool skipping,
-                                   AqlItemBlock*& result,
-                                   size_t& skipped) override;
+  size_t _offset;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _offset
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _limit
+  ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _offset;
+  size_t _limit;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _limit
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _count, number of items already handed on
+  ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _limit;
+  size_t _count;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _count, number of items already handed on
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _state, 0 is beginning, 1 is after offset, 2 is done
+  ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _count;
+  int _state;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _state, 0 is beginning, 1 is after offset, 2 is done
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the block should count what it limits
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int _state;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the block should count what it limits
-////////////////////////////////////////////////////////////////////////////////
-
-        bool const _fullCount;
-    };
+  bool const _fullCount;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ReturnBlock
 // -----------------------------------------------------------------------------
 
-    class ReturnBlock : public ExecutionBlock {
+class ReturnBlock : public ExecutionBlock {
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  ReturnBlock(ExecutionEngine* engine, ReturnNode const* ep)
+      : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ReturnBlock (ExecutionEngine* engine,
-                     ReturnNode const* ep)
-          : ExecutionBlock(engine, ep),
-            _returnInheritedResults(false) {
+  ~ReturnBlock() {}
 
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getSome
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
-        ~ReturnBlock () {
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief make the return block return the results inherited from above,
+  /// without creating new blocks
+  /// returns the id of the register the final result can be found in
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
+  RegisterId returnInheritedResults();
 
-        AqlItemBlock* getSome (size_t atLeast,
-                               size_t atMost) override final;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief make the return block return the results inherited from above, 
-/// without creating new blocks
-/// returns the id of the register the final result can be found in
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief if set to true, the return block will return the AqlItemBlocks it
+  /// gets from above directly. if set to false, the return block will create a
+  /// new AqlItemBlock with one output register and copy the data from its input
+  /// block into it
+  ////////////////////////////////////////////////////////////////////////////////
 
-        RegisterId returnInheritedResults ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if set to true, the return block will return the AqlItemBlocks it
-/// gets from above directly. if set to false, the return block will create a
-/// new AqlItemBlock with one output register and copy the data from its input
-/// block into it
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _returnInheritedResults;
-
-    };
+  bool _returnInheritedResults;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    NoResultsBlock
 // -----------------------------------------------------------------------------
 
-    class NoResultsBlock : public ExecutionBlock {
+class NoResultsBlock : public ExecutionBlock {
+ public:
+  NoResultsBlock(ExecutionEngine* engine, NoResultsNode const* ep)
+      : ExecutionBlock(engine, ep) {}
 
-      public:
+  ~NoResultsBlock() {}
 
-        NoResultsBlock (ExecutionEngine* engine,
-                        NoResultsNode const* ep)
-          : ExecutionBlock(engine, ep) {
-        }
+  int initialize() override { return ExecutionBlock::initialize(); }
 
-        ~NoResultsBlock () {
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initializeCursor, store a copy of the register values coming from
+  /// above
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int initialize () override {
-          return ExecutionBlock::initialize();
-        }
+  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializeCursor, store a copy of the register values coming from above
-////////////////////////////////////////////////////////////////////////////////
+  bool hasMore() override final { return false; }
 
-        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
+  int64_t count() const override final { return 0; }
 
-        bool hasMore () override final {
-          return false;
-        }
+  int64_t remaining() override final { return 0; }
 
-        int64_t count () const override final {
-          return 0;
-        }
+ private:
+  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                    AqlItemBlock*& result, size_t& skipped) override;
+};
 
-        int64_t remaining () override final {
-          return 0;
-        }
-
-      private:
-
-        int getOrSkipSome (size_t atLeast,
-                           size_t atMost,
-                           bool skipping,
-                           AqlItemBlock*& result,
-                           size_t& skipped) override;
-
-    };
-
-  }  // namespace triagens::aql
+}  // namespace triagens::aql
 }  // namespace triagens
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

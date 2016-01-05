@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction context base class
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -38,15 +38,13 @@ using namespace triagens::arango;
 /// @brief create the context
 ////////////////////////////////////////////////////////////////////////////////
 
-TransactionContext::TransactionContext () { 
-}
+TransactionContext::TransactionContext() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
-        
-TransactionContext::~TransactionContext () {
-}
+
+TransactionContext::~TransactionContext() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -54,5 +52,6 @@ TransactionContext::~TransactionContext () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -44,23 +44,23 @@
 /// @brief initialize a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMasterInfoReplication (TRI_replication_master_info_t* info,
-                                    const char* endpoint) {
+void TRI_InitMasterInfoReplication(TRI_replication_master_info_t* info,
+                                   const char* endpoint) {
   TRI_ASSERT(endpoint != nullptr);
 
-  info->_endpoint            = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
-  info->_serverId            = 0;
-  info->_majorVersion        = 0;
-  info->_minorVersion        = 0;
-  info->_lastLogTick         = 0;
-  info->_active              = false;
+  info->_endpoint = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, endpoint);
+  info->_serverId = 0;
+  info->_majorVersion = 0;
+  info->_minorVersion = 0;
+  info->_lastLogTick = 0;
+  info->_active = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
+void TRI_DestroyMasterInfoReplication(TRI_replication_master_info_t* info) {
   if (info->_endpoint != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, info->_endpoint);
     info->_endpoint = nullptr;
@@ -71,17 +71,14 @@ void TRI_DestroyMasterInfoReplication (TRI_replication_master_info_t* info) {
 /// @brief log information about the master state
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
-                                   const char* prefix) {
+void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const* info,
+                                  const char* prefix) {
   TRI_ASSERT(info->_endpoint != nullptr);
 
   LOG_INFO("%s master at %s, id %llu, version %d.%d, last log tick %llu",
-           prefix,
-           info->_endpoint,
-           (unsigned long long) info->_serverId,
-           info->_majorVersion,
-           info->_minorVersion,
-           (unsigned long long) info->_lastLogTick);
+           prefix, info->_endpoint, (unsigned long long)info->_serverId,
+           info->_majorVersion, info->_minorVersion,
+           (unsigned long long)info->_lastLogTick);
 }
 
 // -----------------------------------------------------------------------------
@@ -90,5 +87,6 @@ void TRI_LogMasterInfoReplication (TRI_replication_master_info_t const* info,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

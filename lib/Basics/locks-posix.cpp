@@ -49,7 +49,7 @@
 /// loop until we can acquire the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-#define BUSY_LOCK_DELAY        (10 * 1000)
+#define BUSY_LOCK_DELAY (10 * 1000)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             MUTEX
@@ -63,7 +63,7 @@
 /// @brief initializes a new mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitMutex (TRI_mutex_t* mutex) {
+int TRI_InitMutex(TRI_mutex_t* mutex) {
   return pthread_mutex_init(mutex, nullptr);
 }
 
@@ -71,7 +71,7 @@ int TRI_InitMutex (TRI_mutex_t* mutex) {
 /// @brief destroys a mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyMutex (TRI_mutex_t* mutex) {
+int TRI_DestroyMutex(TRI_mutex_t* mutex) {
   return pthread_mutex_destroy(mutex);
 }
 
@@ -83,7 +83,7 @@ int TRI_DestroyMutex (TRI_mutex_t* mutex) {
 /// @brief locks mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockMutex (TRI_mutex_t* mutex) {
+void TRI_LockMutex(TRI_mutex_t* mutex) {
   int rc = pthread_mutex_lock(mutex);
 
   if (rc != 0) {
@@ -98,7 +98,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 /// @brief unlocks mutex
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockMutex (TRI_mutex_t* mutex) {
+void TRI_UnlockMutex(TRI_mutex_t* mutex) {
   int rc = pthread_mutex_unlock(mutex);
 
   if (rc != 0) {
@@ -122,17 +122,13 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 /// @brief initializes a new spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitSpin (TRI_spin_t* spinLock) {
-  pthread_spin_init(spinLock, 0);
-}
+void TRI_InitSpin(TRI_spin_t* spinLock) { pthread_spin_init(spinLock, 0); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroySpin (TRI_spin_t* spinLock) {
-  pthread_spin_destroy(spinLock);
-}
+void TRI_DestroySpin(TRI_spin_t* spinLock) { pthread_spin_destroy(spinLock); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -142,7 +138,7 @@ void TRI_DestroySpin (TRI_spin_t* spinLock) {
 /// @brief locks spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockSpin (TRI_spin_t* spinLock) {
+void TRI_LockSpin(TRI_spin_t* spinLock) {
   int rc = pthread_spin_lock(spinLock);
 
   if (rc != 0) {
@@ -160,7 +156,7 @@ void TRI_LockSpin (TRI_spin_t* spinLock) {
 /// @brief unlocks spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockSpin (TRI_spin_t* spinLock) {
+void TRI_UnlockSpin(TRI_spin_t* spinLock) {
   int rc = pthread_spin_unlock(spinLock);
 
   if (rc != 0) {
@@ -187,7 +183,7 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
 /// @brief initializes a new read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_InitReadWriteLock(TRI_read_write_lock_t* lock) {
   pthread_rwlock_init(lock, nullptr);
 }
 
@@ -195,7 +191,7 @@ void TRI_InitReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief destroys a read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_DestroyReadWriteLock(TRI_read_write_lock_t* lock) {
   pthread_rwlock_destroy(lock);
 }
 
@@ -207,7 +203,7 @@ void TRI_DestroyReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief tries to read lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
+bool TRI_TryReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_tryrdlock(lock);
 
   return (rc == 0);
@@ -217,7 +213,7 @@ bool TRI_TryReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief read locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadLockReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_ReadLockReadWriteLock(TRI_read_write_lock_t* lock) {
   bool complained = false;
 
 again:
@@ -228,7 +224,7 @@ again:
       // use busy waiting if we cannot acquire the read-lock in case of too many
       // concurrent read locks ("resource temporarily unavailable").
       // in this case we'll wait in a busy loop until we can acquire the lock
-      if (! complained) {
+      if (!complained) {
         LOG_WARNING("too many read-locks on read-write lock");
         complained = true;
       }
@@ -249,7 +245,8 @@ again:
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s", strerror(rc));
+    LOG_FATAL_AND_EXIT("could not read-lock the read-write lock: %s",
+                       strerror(rc));
   }
 }
 
@@ -257,14 +254,15 @@ again:
 /// @brief read unlocks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_ReadUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s", strerror(rc));
+    LOG_FATAL_AND_EXIT("could not read-unlock the read-write lock: %s",
+                       strerror(rc));
   }
 }
 
@@ -272,7 +270,7 @@ void TRI_ReadUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief tries to write lock read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
+bool TRI_TryWriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_trywrlock(lock);
 
   return (rc == 0);
@@ -282,7 +280,7 @@ bool TRI_TryWriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief write locks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
+void TRI_WriteLockReadWriteLock(TRI_read_write_lock_t* lock) {
   int rc = pthread_rwlock_wrlock(lock);
 
   if (rc != 0) {
@@ -292,7 +290,8 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s", strerror(rc));
+    LOG_FATAL_AND_EXIT("could not write-lock the read-write lock: %s",
+                       strerror(rc));
   }
 }
 
@@ -300,14 +299,15 @@ void TRI_WriteLockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief write unlocks read-write lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
-  int rc  = pthread_rwlock_unlock(lock);
+void TRI_WriteUnlockReadWriteLock(TRI_read_write_lock_t* lock) {
+  int rc = pthread_rwlock_unlock(lock);
 
   if (rc != 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not write-unlock the read-write lock: %s", strerror(rc));
+    LOG_FATAL_AND_EXIT("could not write-unlock the read-write lock: %s",
+                       strerror(rc));
   }
 }
 
@@ -323,13 +323,15 @@ void TRI_WriteUnlockReadWriteLock (TRI_read_write_lock_t* lock) {
 /// @brief initializes a new condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitCondition (TRI_condition_t* cond) {
+void TRI_InitCondition(TRI_condition_t* cond) {
   pthread_cond_init(&cond->_cond, nullptr);
 
-  cond->_mutex = static_cast<pthread_mutex_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false));
+  cond->_mutex = static_cast<pthread_mutex_t*>(
+      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false));
 
   if (cond->_mutex == nullptr) {
-    LOG_FATAL_AND_EXIT("could not allocate memory for condition variable mutex");
+    LOG_FATAL_AND_EXIT(
+        "could not allocate memory for condition variable mutex");
   }
 
   pthread_mutex_init(cond->_mutex, nullptr);
@@ -339,7 +341,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
 /// @brief destroys a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyCondition (TRI_condition_t* cond) {
+void TRI_DestroyCondition(TRI_condition_t* cond) {
   pthread_cond_destroy(&cond->_cond);
   pthread_mutex_destroy(cond->_mutex);
   TRI_Free(TRI_CORE_MEM_ZONE, cond->_mutex);
@@ -355,7 +357,7 @@ void TRI_DestroyCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_SignalCondition (TRI_condition_t* cond) {
+void TRI_SignalCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_signal(&cond->_cond);
 
   if (rc != 0) {
@@ -372,7 +374,7 @@ void TRI_SignalCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_BroadcastCondition (TRI_condition_t* cond) {
+void TRI_BroadcastCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_broadcast(&cond->_cond);
 
   if (rc != 0) {
@@ -389,7 +391,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_WaitCondition (TRI_condition_t* cond) {
+void TRI_WaitCondition(TRI_condition_t* cond) {
   int rc = pthread_cond_wait(&cond->_cond, cond->_mutex);
 
   if (rc != 0) {
@@ -406,7 +408,7 @@ void TRI_WaitCondition (TRI_condition_t* cond) {
 /// Note that you must hold the lock.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
+bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) {
   struct timespec ts;
   struct timeval tp;
   uint64_t x, y;
@@ -420,7 +422,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   x = (tp.tv_usec * 1000) + (delay * 1000);
   y = (x % 1000000000);
   ts.tv_nsec = y;
-  ts.tv_sec  = ts.tv_sec + ((x - y) / 1000000000);
+  ts.tv_sec = ts.tv_sec + ((x - y) / 1000000000);
 
   // and wait
   int rc = pthread_cond_timedwait(&cond->_cond, cond->_mutex, &ts);
@@ -443,7 +445,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
 /// @brief locks the mutex of a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_LockCondition (TRI_condition_t* cond) {
+void TRI_LockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_lock(cond->_mutex);
 
   if (rc != 0) {
@@ -458,7 +460,7 @@ void TRI_LockCondition (TRI_condition_t* cond) {
 /// @brief unlocks the mutex of a condition variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UnlockCondition (TRI_condition_t* cond) {
+void TRI_UnlockCondition(TRI_condition_t* cond) {
   int rc = pthread_mutex_unlock(cond->_mutex);
 
   if (rc != 0) {
@@ -477,5 +479,6 @@ void TRI_UnlockCondition (TRI_condition_t* cond) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

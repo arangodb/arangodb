@@ -82,40 +82,37 @@ typedef unsigned int GeoFix;
 typedef struct {
   double latitude;
   double longitude;
-  void * data;
-}
-GeoCoordinate;
+  void* data;
+} GeoCoordinate;
 
 typedef struct {
   size_t length;
-  GeoCoordinate * coordinates;
-  double * distances;
-}
-GeoCoordinates;
+  GeoCoordinate* coordinates;
+  double* distances;
+} GeoCoordinates;
 
-typedef char GeoIndex;   /* to keep the structure private  */
-typedef char GeoCursor;  /* to keep the structure private  */
+typedef char GeoIndex;  /* to keep the structure private  */
+typedef char GeoCursor; /* to keep the structure private  */
 
+size_t GeoIndex_MemoryUsage(void*);
 
-size_t GeoIndex_MemoryUsage (void*);
-
-GeoIndex * GeoIndex_new(void);
-void GeoIndex_free(GeoIndex * gi);
-double GeoIndex_distance(GeoCoordinate * c1, GeoCoordinate * c2);
-int GeoIndex_insert(GeoIndex * gi, GeoCoordinate * c);
-int GeoIndex_remove(GeoIndex * gi, GeoCoordinate * c);
-int GeoIndex_hint(GeoIndex * gi, int hint);
-GeoCoordinates * GeoIndex_PointsWithinRadius(GeoIndex * gi,
-                    GeoCoordinate * c, double d);
-GeoCoordinates * GeoIndex_NearestCountPoints(GeoIndex * gi,
-                    GeoCoordinate * c, int count);
-GeoCursor * GeoIndex_NewCursor(GeoIndex * gi, GeoCoordinate * c);
-GeoCoordinates * GeoIndex_ReadCursor(GeoCursor * gc, int count);
-void GeoIndex_CursorFree(GeoCursor * gc);
-void GeoIndex_CoordinatesFree(GeoCoordinates * clist);
+GeoIndex* GeoIndex_new(void);
+void GeoIndex_free(GeoIndex* gi);
+double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
+int GeoIndex_insert(GeoIndex* gi, GeoCoordinate* c);
+int GeoIndex_remove(GeoIndex* gi, GeoCoordinate* c);
+int GeoIndex_hint(GeoIndex* gi, int hint);
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIndex* gi, GeoCoordinate* c,
+                                            double d);
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIndex* gi, GeoCoordinate* c,
+                                            int count);
+GeoCursor* GeoIndex_NewCursor(GeoIndex* gi, GeoCoordinate* c);
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count);
+void GeoIndex_CursorFree(GeoCursor* gc);
+void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
 #ifdef TRI_GEO_DEBUG
-void GeoIndex_INDEXDUMP(GeoIndex * gi, FILE * f);
-int  GeoIndex_INDEXVALID(GeoIndex * gi);
+void GeoIndex_INDEXDUMP(GeoIndex* gi, FILE* f);
+int GeoIndex_INDEXVALID(GeoIndex* gi);
 #endif
 
 #endif
@@ -127,5 +124,6 @@ int  GeoIndex_INDEXVALID(GeoIndex * gi);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

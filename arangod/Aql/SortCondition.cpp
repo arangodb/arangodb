@@ -31,7 +31,7 @@
 #include "Aql/AstNode.h"
 
 using namespace triagens::aql;
- 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class SortCondition
 // -----------------------------------------------------------------------------
@@ -44,56 +44,58 @@ using namespace triagens::aql;
 /// @brief create an empty condition
 ////////////////////////////////////////////////////////////////////////////////
 
-SortCondition::SortCondition ()
-  : _expressions(),
-    _fields(),
-    _unidirectional(false),
-    _onlyAttributeAccess(false),
-    _ascending(true) {
-
-}
+SortCondition::SortCondition()
+    : _expressions(),
+      _fields(),
+      _unidirectional(false),
+      _onlyAttributeAccess(false),
+      _ascending(true) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the sort condition
 ////////////////////////////////////////////////////////////////////////////////
 
-SortCondition::SortCondition (std::vector<std::pair<AstNode const*, bool>> const& expressions) 
-  : _expressions(expressions),
-    _fields(),
-    _unidirectional(true),
-    _onlyAttributeAccess(true),
-    _ascending(true) {
-
+SortCondition::SortCondition(
+    std::vector<std::pair<AstNode const*, bool>> const& expressions)
+    : _expressions(expressions),
+      _fields(),
+      _unidirectional(true),
+      _onlyAttributeAccess(true),
+      _ascending(true) {
   size_t const n = _expressions.size();
 
   for (size_t i = 0; i < n; ++i) {
-    if (_unidirectional && i > 0 && _expressions[i].second != _expressions[i - 1].second) {
+    if (_unidirectional && i > 0 &&
+        _expressions[i].second != _expressions[i - 1].second) {
       _unidirectional = false;
     }
 
     bool handled = false;
     auto node = _expressions[i].first;
 
-    if (node != nullptr && 
-        node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       std::vector<triagens::basics::AttributeName> fieldNames;
       while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        fieldNames.emplace_back(triagens::basics::AttributeName(node->getStringValue()));
+        fieldNames.emplace_back(
+            triagens::basics::AttributeName(node->getStringValue()));
         node = node->getMember(0);
       }
       if (node->type == NODE_TYPE_REFERENCE) {
         handled = true;
 
-        _fields.emplace_back(std::make_pair(static_cast<Variable const*>(node->getData()), fieldNames));
+        _fields.emplace_back(std::make_pair(
+            static_cast<Variable const*>(node->getData()), fieldNames));
       }
     }
-    
-    if (! handled) {
-      _fields.emplace_back(std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>());
+
+    if (!handled) {
+      _fields.emplace_back(
+          std::pair<Variable const*,
+                    std::vector<triagens::basics::AttributeName>>());
       _onlyAttributeAccess = false;
     }
   }
-  
+
   if (n == 0) {
     _onlyAttributeAccess = false;
   }
@@ -103,13 +105,13 @@ SortCondition::SortCondition (std::vector<std::pair<AstNode const*, bool>> const
 /// @brief create the sort condition
 ////////////////////////////////////////////////////////////////////////////////
 
-SortCondition::SortCondition (std::vector<std::pair<VariableId, bool>> const& sorts, 
-                              std::unordered_map<VariableId, AstNode const*> const& variableDefinitions) 
-  : _expressions(),
-    _unidirectional(true),
-    _onlyAttributeAccess(true),
-    _ascending(true) {
- 
+SortCondition::SortCondition(
+    std::vector<std::pair<VariableId, bool>> const& sorts,
+    std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
+    : _expressions(),
+      _unidirectional(true),
+      _onlyAttributeAccess(true),
+      _ascending(true) {
   size_t const n = sorts.size();
 
   for (size_t i = 0; i < n; ++i) {
@@ -122,30 +124,33 @@ SortCondition::SortCondition (std::vector<std::pair<VariableId, bool>> const& so
 
     bool handled = false;
     auto variableId = sorts[i].first;
-    
+
     auto it = variableDefinitions.find(variableId);
 
     if (it != variableDefinitions.end()) {
       auto node = (*it).second;
 
-      if (node != nullptr && 
-          node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      if (node != nullptr && node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         std::vector<triagens::basics::AttributeName> fieldNames;
         while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          fieldNames.emplace_back(triagens::basics::AttributeName(node->getStringValue()));
+          fieldNames.emplace_back(
+              triagens::basics::AttributeName(node->getStringValue()));
           node = node->getMember(0);
         }
 
         if (node->type == NODE_TYPE_REFERENCE) {
           handled = true;
 
-          _fields.emplace_back(std::make_pair(static_cast<Variable const*>(node->getData()), fieldNames));
+          _fields.emplace_back(std::make_pair(
+              static_cast<Variable const*>(node->getData()), fieldNames));
         }
       }
     }
-    
-    if (! handled) {
-      _fields.emplace_back(std::pair<Variable const*, std::vector<triagens::basics::AttributeName>>());
+
+    if (!handled) {
+      _fields.emplace_back(
+          std::pair<Variable const*,
+                    std::vector<triagens::basics::AttributeName>>());
       _onlyAttributeAccess = false;
     }
   }
@@ -159,8 +164,7 @@ SortCondition::SortCondition (std::vector<std::pair<VariableId, bool>> const& so
 /// @brief destroy the sort condition
 ////////////////////////////////////////////////////////////////////////////////
 
-SortCondition::~SortCondition () {
-}
+SortCondition::~SortCondition() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -171,8 +175,10 @@ SortCondition::~SortCondition () {
 /// by the specified index fields
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t SortCondition::coveredAttributes (Variable const* reference,
-                                         std::vector<std::vector<triagens::basics::AttributeName>> const& indexAttributes) const {
+size_t SortCondition::coveredAttributes(
+    Variable const* reference,
+    std::vector<std::vector<triagens::basics::AttributeName>> const&
+        indexAttributes) const {
   size_t numAttributes = 0;
 
   for (size_t i = 0; i < indexAttributes.size(); ++i) {
@@ -200,7 +206,7 @@ size_t SortCondition::coveredAttributes (Variable const* reference,
       }
     }
 
-    if (! found) {
+    if (!found) {
       break;
     }
 
@@ -217,5 +223,6 @@ size_t SortCondition::coveredAttributes (Variable const* reference,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -53,9 +53,8 @@ using namespace triagens::arango;
 /// @brief hashes a string
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_associative_pointer_t* array,
-                         void const* key) {
-  char const* k = (char const*) key;
+static uint64_t HashKey(TRI_associative_pointer_t* array, void const* key) {
+  char const* k = (char const*)key;
 
   return TRI_FnvHashString(k);
 }
@@ -64,8 +63,8 @@ static uint64_t HashKey (TRI_associative_pointer_t* array,
 /// @brief hashes the auth info
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array,
-                                     void const* element) {
+static uint64_t HashElementAuthInfo(TRI_associative_pointer_t* array,
+                                    void const* element) {
   VocbaseAuthInfo const* e = static_cast<VocbaseAuthInfo const*>(element);
   return e->hash();
 }
@@ -74,10 +73,9 @@ static uint64_t HashElementAuthInfo (TRI_associative_pointer_t* array,
 /// @brief compares an auth info and a username
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array,
-                              void const* key,
-                              void const* element) {
-  char const* k = (char const*) key;
+static bool EqualKeyAuthInfo(TRI_associative_pointer_t* array, void const* key,
+                             void const* element) {
+  char const* k = (char const*)key;
   VocbaseAuthInfo const* e = static_cast<VocbaseAuthInfo const*>(element);
   return e->isEqualName(k);
 }
@@ -86,9 +84,10 @@ static bool EqualKeyAuthInfo (TRI_associative_pointer_t* array,
 /// @brief hashes the cache entry
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashElementAuthCache (TRI_associative_pointer_t* array,
-                                      void const* element) {
-  TRI_vocbase_auth_cache_t const* e = static_cast<TRI_vocbase_auth_cache_t const*>(element);
+static uint64_t HashElementAuthCache(TRI_associative_pointer_t* array,
+                                     void const* element) {
+  TRI_vocbase_auth_cache_t const* e =
+      static_cast<TRI_vocbase_auth_cache_t const*>(element);
 
   return TRI_FnvHashString(e->_hash);
 }
@@ -97,11 +96,11 @@ static uint64_t HashElementAuthCache (TRI_associative_pointer_t* array,
 /// @brief compares a auth cache entry and a hash
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualKeyAuthCache (TRI_associative_pointer_t* array,
-                               void const* key,
-                               void const* element) {
-  char const* k = (char const*) key;
-  TRI_vocbase_auth_cache_t const* e = static_cast<TRI_vocbase_auth_cache_t const*>(element);
+static bool EqualKeyAuthCache(TRI_associative_pointer_t* array, void const* key,
+                              void const* element) {
+  char const* k = (char const*)key;
+  TRI_vocbase_auth_cache_t const* e =
+      static_cast<TRI_vocbase_auth_cache_t const*>(element);
 
   return TRI_EqualString(k, e->_hash);
 }
@@ -110,7 +109,7 @@ static bool EqualKeyAuthCache (TRI_associative_pointer_t* array,
 /// @brief frees the cache information
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
+static void FreeAuthCacheInfo(TRI_vocbase_auth_cache_t* cached) {
   if (cached->_hash != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, cached->_hash);
   }
@@ -126,28 +125,28 @@ static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
 /// @brief constructs auth information from VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-static VocbaseAuthInfo* AuthFromVelocyPack (VPackSlice const& slice) {
-  if (! slice.isObject()) {
+static VocbaseAuthInfo* AuthFromVelocyPack(VPackSlice const& slice) {
+  if (!slice.isObject()) {
     return nullptr;
   }
 
   // extract "user" attribute
   VPackSlice const userSlice = slice.get("user");
 
-  if (! userSlice.isString()) {
+  if (!userSlice.isString()) {
     LOG_DEBUG("cannot extract username");
     return nullptr;
   }
   VPackSlice const authDataSlice = slice.get("authData");
 
-  if (! authDataSlice.isObject()) {
+  if (!authDataSlice.isObject()) {
     LOG_DEBUG("cannot extract authData");
     return nullptr;
   }
 
   VPackSlice const simpleSlice = authDataSlice.get("simple");
 
-  if (! simpleSlice.isObject()) {
+  if (!simpleSlice.isObject()) {
     LOG_DEBUG("cannot extract simple");
     return nullptr;
   }
@@ -156,9 +155,8 @@ static VocbaseAuthInfo* AuthFromVelocyPack (VPackSlice const& slice) {
   VPackSlice const saltSlice = simpleSlice.get("salt");
   VPackSlice const hashSlice = simpleSlice.get("hash");
 
-  if (! methodSlice.isString() ||
-      ! saltSlice.isString() ||
-      ! hashSlice.isString()) {
+  if (!methodSlice.isString() || !saltSlice.isString() ||
+      !hashSlice.isString()) {
     LOG_DEBUG("cannot extract password internals");
     return nullptr;
   }
@@ -167,20 +165,18 @@ static VocbaseAuthInfo* AuthFromVelocyPack (VPackSlice const& slice) {
   bool active;
   VPackSlice const activeSlice = authDataSlice.get("active");
 
-  if (! activeSlice.isBoolean()) {
+  if (!activeSlice.isBoolean()) {
     LOG_DEBUG("cannot extract active flag");
     return nullptr;
   }
   active = activeSlice.getBool();
 
   // extract "changePassword" attribute
-  bool mustChange = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "changePassword", false);
-  auto result = std::make_unique<VocbaseAuthInfo>(userSlice.copyString(),
-                                                  methodSlice.copyString(),
-                                                  saltSlice.copyString(),
-                                                  hashSlice.copyString(),
-                                                  active,
-                                                  mustChange); 
+  bool mustChange = triagens::basics::VelocyPackHelper::getBooleanValue(
+      slice, "changePassword", false);
+  auto result = std::make_unique<VocbaseAuthInfo>(
+      userSlice.copyString(), methodSlice.copyString(), saltSlice.copyString(),
+      hashSlice.copyString(), active, mustChange);
 
   if (result == nullptr) {
     LOG_ERROR("couldn't load auth information - out of memory");
@@ -194,13 +190,15 @@ static VocbaseAuthInfo* AuthFromVelocyPack (VPackSlice const& slice) {
 /// @brief extracts the auth information
 ////////////////////////////////////////////////////////////////////////////////
 
-static VocbaseAuthInfo* ConvertAuthInfo (TRI_vocbase_t* vocbase,
-                                         TRI_document_collection_t* document,
-                                         TRI_doc_mptr_t const* mptr) {
-  auto shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
+static VocbaseAuthInfo* ConvertAuthInfo(TRI_vocbase_t* vocbase,
+                                        TRI_document_collection_t* document,
+                                        TRI_doc_mptr_t const* mptr) {
+  auto shaper =
+      document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
 
   TRI_shaped_json_t shapedJson;
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_EXTRACT_SHAPED_JSON_MARKER(
+      shapedJson, mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
     return nullptr;
@@ -212,9 +210,10 @@ static VocbaseAuthInfo* ConvertAuthInfo (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
-  std::shared_ptr<VPackBuilder> parsed = triagens::basics::JsonHelper::toVelocyPack(json.get());
+  std::shared_ptr<VPackBuilder> parsed =
+      triagens::basics::JsonHelper::toVelocyPack(json.get());
   std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(parsed->slice()));
-  return auth.release(); // maybe a nullptr
+  return auth.release();  // maybe a nullptr
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,13 +222,13 @@ static VocbaseAuthInfo* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 /// @note the caller must acquire the lock itself
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
+static void ClearAuthInfo(TRI_vocbase_t* vocbase) {
   // clear auth info table
   void** beg = vocbase->_authInfo._table;
   void** end = vocbase->_authInfo._table + vocbase->_authInfo._nrAlloc;
   void** ptr = beg;
 
-  for (;  ptr < end;  ++ptr) {
+  for (; ptr < end; ++ptr) {
     if (*ptr) {
       VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(*ptr);
       delete auth;
@@ -244,9 +243,10 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
   end = vocbase->_authCache._table + vocbase->_authCache._nrAlloc;
   ptr = beg;
 
-  for (;  ptr < end;  ++ptr) {
+  for (; ptr < end; ++ptr) {
     if (*ptr) {
-      TRI_vocbase_auth_cache_t* auth = static_cast<TRI_vocbase_auth_cache_t*>(*ptr);
+      TRI_vocbase_auth_cache_t* auth =
+          static_cast<TRI_vocbase_auth_cache_t*>(*ptr);
 
       FreeAuthCacheInfo(auth);
       *ptr = nullptr;
@@ -260,56 +260,42 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-uint64_t VocbaseAuthInfo::hash () const {
+uint64_t VocbaseAuthInfo::hash() const {
   return TRI_FnvHashString(_username.c_str());
 }
 
-bool VocbaseAuthInfo::isEqualName (char const* compare) const {
+bool VocbaseAuthInfo::isEqualName(char const* compare) const {
   return TRI_EqualString(compare, _username.c_str());
 }
 
-bool VocbaseAuthInfo::isEqualPasswordHash (char const* compare) const {
+bool VocbaseAuthInfo::isEqualPasswordHash(char const* compare) const {
   return TRI_EqualString(_passwordHash.c_str(), compare);
 }
 
-char const* VocbaseAuthInfo::username () const {
-  return _username.c_str();
-}
+char const* VocbaseAuthInfo::username() const { return _username.c_str(); }
 
-char const* VocbaseAuthInfo::passwordSalt () const {
+char const* VocbaseAuthInfo::passwordSalt() const {
   return _passwordSalt.c_str();
 }
 
-char const* VocbaseAuthInfo::passwordMethod () const {
+char const* VocbaseAuthInfo::passwordMethod() const {
   return _passwordMethod.c_str();
 }
 
-bool VocbaseAuthInfo::isActive () const {
-  return _active;
-}
+bool VocbaseAuthInfo::isActive() const { return _active; }
 
-bool VocbaseAuthInfo::mustChange () const {
-  return _mustChange;
-}
+bool VocbaseAuthInfo::mustChange() const { return _mustChange; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitAuthInfo (TRI_vocbase_t* vocbase) {
-  TRI_InitAssociativePointer(&vocbase->_authInfo,
-                             TRI_CORE_MEM_ZONE,
-                             HashKey,
-                             HashElementAuthInfo,
-                             EqualKeyAuthInfo,
-                             nullptr);
+int TRI_InitAuthInfo(TRI_vocbase_t* vocbase) {
+  TRI_InitAssociativePointer(&vocbase->_authInfo, TRI_CORE_MEM_ZONE, HashKey,
+                             HashElementAuthInfo, EqualKeyAuthInfo, nullptr);
 
-  TRI_InitAssociativePointer(&vocbase->_authCache,
-                             TRI_CORE_MEM_ZONE,
-                             HashKey,
-                             HashElementAuthCache,
-                             EqualKeyAuthCache,
-                             nullptr);
+  TRI_InitAssociativePointer(&vocbase->_authCache, TRI_CORE_MEM_ZONE, HashKey,
+                             HashElementAuthCache, EqualKeyAuthCache, nullptr);
 
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
 
@@ -320,7 +306,7 @@ int TRI_InitAuthInfo (TRI_vocbase_t* vocbase) {
 /// @brief destroys the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
+void TRI_DestroyAuthInfo(TRI_vocbase_t* vocbase) {
   TRI_ClearAuthInfo(vocbase);
 
   TRI_DestroyReadWriteLock(&vocbase->_authInfoLock);
@@ -332,7 +318,7 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
 /// @brief insert initial authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
+bool TRI_InsertInitialAuthInfo(TRI_vocbase_t* vocbase) {
   try {
     VPackBuilder infoBuilder;
     infoBuilder.openArray();
@@ -347,17 +333,17 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
     infoBuilder.add("method", VPackValue("sha256"));
     char const* salt = "c776f5f4";
     infoBuilder.add("salt", VPackValue(salt));
-    char const* hash = "ef74bc6fd59ac713bf5929c5ac2f42233e50d4d58748178132ea46dec433bd5b";
+    char const* hash =
+        "ef74bc6fd59ac713bf5929c5ac2f42233e50d4d58748178132ea46dec433bd5b";
     infoBuilder.add("hash", VPackValue(hash));
-    infoBuilder.close(); // simple
+    infoBuilder.close();  // simple
 
     infoBuilder.add("active", VPackValue(true));
-    infoBuilder.close(); // authData
-    infoBuilder.close(); // The user object
-    infoBuilder.close(); // The Array
+    infoBuilder.close();  // authData
+    infoBuilder.close();  // The user object
+    infoBuilder.close();  // The Array
     return true;
-  }
-  catch (...) {
+  } catch (...) {
     // No action
   }
   // We get here only through error
@@ -368,18 +354,19 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 /// @brief loads the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
+bool TRI_LoadAuthInfo(TRI_vocbase_t* vocbase) {
   LOG_DEBUG("starting to load authentication and authorization information");
 
-  TRI_vocbase_col_t* collection = TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
+  TRI_vocbase_col_t* collection =
+      TRI_LookupCollectionByNameVocBase(vocbase, TRI_COL_NAME_USERS);
 
   if (collection == nullptr) {
     LOG_INFO("collection '_users' does not exist, no authentication available");
     return false;
   }
 
-
-  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), vocbase, collection->_cid);
+  SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(),
+                                          vocbase, collection->_cid);
 
   int res = trx.begin();
 
@@ -392,9 +379,12 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
   auto work = [&](TRI_doc_mptr_t const* ptr) -> void {
-    std::unique_ptr<VocbaseAuthInfo> auth(ConvertAuthInfo(vocbase, document, ptr));
+    std::unique_ptr<VocbaseAuthInfo> auth(
+        ConvertAuthInfo(vocbase, document, ptr));
     if (auth.get() != nullptr) {
-      VocbaseAuthInfo* old = static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->username(), auth.get(), true));
+      VocbaseAuthInfo* old =
+          static_cast<VocbaseAuthInfo*>(TRI_InsertKeyAssociativePointer(
+              &vocbase->_authInfo, auth->username(), auth.get(), true));
       auth.release();
 
       if (old != nullptr) {
@@ -415,25 +405,20 @@ bool TRI_LoadAuthInfo (TRI_vocbase_t* vocbase) {
 /// @brief populate the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
-                           VPackSlice const& slice) {
+bool TRI_PopulateAuthInfo(TRI_vocbase_t* vocbase, VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
 
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
 
-
-  for (VPackSlice const& authSlice: VPackArrayIterator(slice)) {
+  for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     std::unique_ptr<VocbaseAuthInfo> auth(AuthFromVelocyPack(authSlice));
 
     if (auth.get() != nullptr) {
-      TRI_InsertKeyAssociativePointer(&vocbase->_authInfo,
-                                      auth->username(),
-                                      auth.get(),
-                                      false);
+      TRI_InsertKeyAssociativePointer(&vocbase->_authInfo, auth->username(),
+                                      auth.get(), false);
       auth.release();
     }
-
   }
 
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
@@ -446,7 +431,7 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
 /// this must be executed after the underlying _users collection is modified
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
+bool TRI_ReloadAuthInfo(TRI_vocbase_t* vocbase) {
   bool result = TRI_LoadAuthInfo(vocbase);
 
   vocbase->_authInfoLoaded = result;
@@ -457,7 +442,7 @@ bool TRI_ReloadAuthInfo (TRI_vocbase_t* vocbase) {
 /// @brief clears the authentication info
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
+void TRI_ClearAuthInfo(TRI_vocbase_t* vocbase) {
   TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
   ClearAuthInfo(vocbase);
   TRI_WriteUnlockReadWriteLock(&vocbase->_authInfoLock);
@@ -467,13 +452,13 @@ void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
 /// @brief looks up authentication data in the cache
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
-                              char const* hash,
-                              bool* mustChange) {
+char* TRI_CheckCacheAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
+                             bool* mustChange) {
   char* username = nullptr;
 
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
-  TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
+  TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(
+      TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
 
   if (cached != nullptr) {
     username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, cached->_username);
@@ -490,16 +475,17 @@ char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
 /// @brief checks the authentication - note: only checks whether the user exists
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExistsAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
-                                       char const* username) {
+bool TRI_ExistsAuthenticationAuthInfo(TRI_vocbase_t* vocbase,
+                                      char const* username) {
   TRI_ASSERT(vocbase != nullptr);
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
 
   // We do not take responsiblity for the data
-  VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
- 
+  VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(
+      TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
+
   bool result = (auth != nullptr && auth->isActive());
   TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
 
@@ -510,19 +496,18 @@ bool TRI_ExistsAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
-                                      char const* hash,
-                                      char const* username,
-                                      char const* password,
-                                      bool* mustChange) {
+bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
+                                     char const* username, char const* password,
+                                     bool* mustChange) {
   TRI_ASSERT(vocbase != nullptr);
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
   // We do not take responsibilty for the data
-  VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
+  VocbaseAuthInfo* auth = static_cast<VocbaseAuthInfo*>(
+      TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
 
-  if (auth == nullptr || ! auth->isActive()) {
+  if (auth == nullptr || !auth->isActive()) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
     return false;
   }
@@ -532,7 +517,8 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
   size_t const n = strlen(auth->passwordSalt());
   size_t const p = strlen(password);
 
-  char* salted = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + p + 1, false));
+  char* salted =
+      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + p + 1, false));
 
   if (salted == nullptr) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
@@ -554,30 +540,30 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   try {
     if (strcmp(passwordMethod, "sha1") == 0) {
-      triagens::rest::SslInterface::sslSHA1(salted, n + p, crypted, cryptedLength);
-    }
-    else if (strcmp(passwordMethod, "sha512") == 0) {
-      triagens::rest::SslInterface::sslSHA512(salted, n + p, crypted, cryptedLength);
-    }
-    else if (strcmp(passwordMethod, "sha384") == 0) {
-      triagens::rest::SslInterface::sslSHA384(salted, n + p, crypted, cryptedLength);
-    }
-    else if (strcmp(passwordMethod, "sha256") == 0) {
-      triagens::rest::SslInterface::sslSHA256(salted, n + p, crypted, cryptedLength);
-    }
-    else if (strcmp(passwordMethod, "sha224") == 0) {
-      triagens::rest::SslInterface::sslSHA224(salted, n + p, crypted, cryptedLength);
-    }
-    else if (strcmp(passwordMethod, "md5") == 0) {
-      triagens::rest::SslInterface::sslMD5(salted, n + p, crypted, cryptedLength);
-    }
-    else {
+      triagens::rest::SslInterface::sslSHA1(salted, n + p, crypted,
+                                            cryptedLength);
+    } else if (strcmp(passwordMethod, "sha512") == 0) {
+      triagens::rest::SslInterface::sslSHA512(salted, n + p, crypted,
+                                              cryptedLength);
+    } else if (strcmp(passwordMethod, "sha384") == 0) {
+      triagens::rest::SslInterface::sslSHA384(salted, n + p, crypted,
+                                              cryptedLength);
+    } else if (strcmp(passwordMethod, "sha256") == 0) {
+      triagens::rest::SslInterface::sslSHA256(salted, n + p, crypted,
+                                              cryptedLength);
+    } else if (strcmp(passwordMethod, "sha224") == 0) {
+      triagens::rest::SslInterface::sslSHA224(salted, n + p, crypted,
+                                              cryptedLength);
+    } else if (strcmp(passwordMethod, "md5") == 0) {
+      triagens::rest::SslInterface::sslMD5(salted, n + p, crypted,
+                                           cryptedLength);
+    } else {
       // invalid algorithm...
       res = false;
     }
-  }
-  catch (...) {
-    // SslInterface::ssl....() allocate strings with new, which might throw exceptions
+  } catch (...) {
+    // SslInterface::ssl....() allocate strings with new, which might throw
+    // exceptions
     // if we get one, we can ignore it because res is set to false anyway
   }
 
@@ -601,11 +587,13 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   if (res && hash != nullptr) {
     // insert item into the cache
-    TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false));
+    TRI_vocbase_auth_cache_t* cached =
+        static_cast<TRI_vocbase_auth_cache_t*>(TRI_Allocate(
+            TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false));
 
     if (cached != nullptr) {
-      cached->_hash       = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
-      cached->_username   = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
+      cached->_hash = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
+      cached->_username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
       cached->_mustChange = auth->mustChange();
 
       if (cached->_hash == nullptr || cached->_username == nullptr) {
@@ -614,7 +602,8 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
       }
 
       TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
-      void* old = TRI_InsertKeyAssociativePointer(&vocbase->_authCache, cached->_hash, cached, false);
+      void* old = TRI_InsertKeyAssociativePointer(&vocbase->_authCache,
+                                                  cached->_hash, cached, false);
 
       // duplicate entry?
       if (old != nullptr) {
@@ -634,5 +623,6 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

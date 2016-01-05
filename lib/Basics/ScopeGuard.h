@@ -33,22 +33,19 @@
 #include "Basics/Common.h"
 
 namespace triagens {
-  namespace basics {
-    class ScopeGuard {
-      public:
-        ScopeGuard (std::function<void()> onEnter,
-                    std::function<void()> onExit) 
-          : _onExit(onExit) {
-            onEnter();
-        }
-
-        ~ScopeGuard () {
-          _onExit();
-        }
-
-        std::function<void()> _onExit;
-    };
+namespace basics {
+class ScopeGuard {
+ public:
+  ScopeGuard(std::function<void()> onEnter, std::function<void()> onExit)
+      : _onExit(onExit) {
+    onEnter();
   }
+
+  ~ScopeGuard() { _onExit(); }
+
+  std::function<void()> _onExit;
+};
+}
 }
 
 #endif
@@ -59,5 +56,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

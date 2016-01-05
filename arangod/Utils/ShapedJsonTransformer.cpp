@@ -34,10 +34,10 @@
 using Json = triagens::basics::Json;
 using CollectionNameResolver = triagens::arango::CollectionNameResolver;
 
-Json TRI_ExpandShapedJson (VocShaper* shaper,
-                           CollectionNameResolver const* resolver,
-                           TRI_voc_cid_t const& cid,
-                           TRI_df_marker_t const* marker) {
+Json TRI_ExpandShapedJson(VocShaper* shaper,
+                          CollectionNameResolver const* resolver,
+                          TRI_voc_cid_t const& cid,
+                          TRI_df_marker_t const* marker) {
   TRI_shaped_json_t shaped;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, marker);
   Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
@@ -50,18 +50,21 @@ Json TRI_ExpandShapedJson (VocShaper* shaper,
   id.push_back('/');
   id.append(key);
   json(TRI_VOC_ATTRIBUTE_ID, Json(id));
-  json(TRI_VOC_ATTRIBUTE_REV, Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
+  json(TRI_VOC_ATTRIBUTE_REV,
+       Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
   json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
 
   if (TRI_IS_EDGE_MARKER(marker)) {
     // _from
-    std::string from(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(marker)));
+    std::string from(resolver->getCollectionNameCluster(
+        TRI_EXTRACT_MARKER_FROM_CID(marker)));
     from.push_back('/');
     from.append(TRI_EXTRACT_MARKER_FROM_KEY(marker));
     json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
-    
+
     // _to
-    std::string to(resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
+    std::string to(
+        resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(marker)));
 
     to.push_back('/');
     to.append(TRI_EXTRACT_MARKER_TO_KEY(marker));
@@ -71,11 +74,11 @@ Json TRI_ExpandShapedJson (VocShaper* shaper,
   return json;
 }
 
-Json TRI_ExpandShapedJson (VocShaper* shaper,
-                           CollectionNameResolver const* resolver,
-                           TRI_voc_cid_t const& cid,
-                           TRI_doc_mptr_t const* mptr) {
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
+Json TRI_ExpandShapedJson(VocShaper* shaper,
+                          CollectionNameResolver const* resolver,
+                          TRI_voc_cid_t const& cid,
+                          TRI_doc_mptr_t const* mptr) {
+  TRI_df_marker_t const* marker =
+      static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
   return TRI_ExpandShapedJson(shaper, resolver, cid, marker);
 }
-

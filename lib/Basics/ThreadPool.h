@@ -39,91 +39,85 @@
 #include <deque>
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
-    class WorkerThread;
+class WorkerThread;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        ThreadPool
 // -----------------------------------------------------------------------------
 
-    class ThreadPool {
+class ThreadPool {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  ThreadPool(ThreadPool const&) = delete;
+  ThreadPool& operator=(ThreadPool const&) = delete;
 
-      public:
+  ThreadPool(size_t, std::string const&);
 
-        ThreadPool (ThreadPool const&) = delete;
-        ThreadPool& operator= (ThreadPool const&) = delete;
+  ~ThreadPool();
 
-        ThreadPool (size_t,
-                    std::string const&);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-        ~ThreadPool ();
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the number of threads in the pool
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  size_t numThreads() const { return _threads.size(); }
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the name of the pool
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the number of threads in the pool
-////////////////////////////////////////////////////////////////////////////////
+  char const* name() const { return _name.c_str(); }
 
-        size_t numThreads () const {
-          return _threads.size();
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief dequeue a task
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the name of the pool
-////////////////////////////////////////////////////////////////////////////////
+  bool dequeue(std::function<void()>&);
 
-        char const* name () const {
-          return _name.c_str();
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enqueue a task
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dequeue a task
-////////////////////////////////////////////////////////////////////////////////
+  template <typename T>
+  void enqueue(T task) {
+    {
+      CONDITION_LOCKER(guard, _condition);
+      _tasks.emplace_back(std::function<void()>(task));
+    }
 
-        bool dequeue (std::function<void()>&);
+    _condition.signal();
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enqueue a task
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-        template<typename T>
-        void enqueue (T task) {
-          { 
-            CONDITION_LOCKER(guard, _condition);
-            _tasks.emplace_back(std::function<void()>(task));
-          }
+ private:
+  triagens::basics::ConditionVariable _condition;
 
-          _condition.signal();
-        }
+  std::vector<triagens::basics::WorkerThread*> _threads;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  std::deque<std::function<void()>> _tasks;
 
-      private:
+  std::string _name;
 
-        triagens::basics::ConditionVariable _condition;
+  std::atomic<bool> _stopping;
+};
 
-        std::vector<triagens::basics::WorkerThread*> _threads;
-
-        std::deque<std::function<void()>> _tasks;
-
-        std::string _name;
-
-        std::atomic<bool> _stopping;
-    };  
-
-  }   // namespace triagens::basics
-}   // namespace triagens
+}  // namespace triagens::basics
+}  // namespace triagens
 
 #endif
 
@@ -133,5 +127,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -42,7 +42,7 @@
 /// @brief exit function type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef void (*TRI_ExitFunction_t) (int, void*);
+typedef void (*TRI_ExitFunction_t)(int, void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exit function
@@ -54,7 +54,7 @@ extern TRI_ExitFunction_t TRI_EXIT_FUNCTION;
 /// @brief defines a exit function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Application_Exit_SetExit (TRI_ExitFunction_t);
+void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
 
 #endif
 
@@ -64,5 +64,6 @@ void TRI_Application_Exit_SetExit (TRI_ExitFunction_t);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

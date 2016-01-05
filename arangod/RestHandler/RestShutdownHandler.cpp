@@ -43,12 +43,11 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestShutdownHandler::RestShutdownHandler (triagens::rest::HttpRequest* request,
-                                          void* applicationServer)
-  : RestBaseHandler(request),
-    _applicationServer(
-      static_cast<triagens::rest::ApplicationServer*>(applicationServer)) {
-}
+RestShutdownHandler::RestShutdownHandler(triagens::rest::HttpRequest* request,
+                                         void* applicationServer)
+    : RestBaseHandler(request),
+      _applicationServer(
+          static_cast<triagens::rest::ApplicationServer*>(applicationServer)) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -58,9 +57,7 @@ RestShutdownHandler::RestShutdownHandler (triagens::rest::HttpRequest* request,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestShutdownHandler::isDirect () const {
-  return true;
-}
+bool RestShutdownHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_initiate
@@ -78,7 +75,7 @@ bool RestShutdownHandler::isDirect () const {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestShutdownHandler::execute () {
+HttpHandler::status_t RestShutdownHandler::execute() {
   _applicationServer->beginShutdown();
 
   try {
@@ -86,8 +83,7 @@ HttpHandler::status_t RestShutdownHandler::execute () {
     json.add(VPackValue("OK"));
     VPackSlice slice(json.start());
     generateResult(slice);
-  }
-  catch (...) {
+  } catch (...) {
     // Ignore the error
   }
 
@@ -100,5 +96,6 @@ HttpHandler::status_t RestShutdownHandler::execute () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

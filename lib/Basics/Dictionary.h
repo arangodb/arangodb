@@ -40,7 +40,7 @@
 #include "Basics/hashes.h"
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class Dictionary
@@ -50,185 +50,174 @@ namespace triagens {
 /// @brief associative array for character pointer to POD
 ////////////////////////////////////////////////////////////////////////////////
 
-    template <typename ELEMENT>
-    class Dictionary {
-      private:
-        Dictionary (Dictionary const&);
-        Dictionary& operator= (Dictionary const&);
+template <typename ELEMENT>
+class Dictionary {
+ private:
+  Dictionary(Dictionary const&);
+  Dictionary& operator=(Dictionary const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                      public
+  // types
+  // -----------------------------------------------------------------------------
 
-      public:
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief key-value stored in the dictonary
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief key-value stored in the dictonary
-////////////////////////////////////////////////////////////////////////////////
+  struct KeyValue {
+   public:
+    KeyValue() : _key(0), _keyLength(0), _value() {}
 
-        struct KeyValue {
-          public:
-            KeyValue ()
-              : _key(0), _keyLength(0), _value() {
-            }
+    KeyValue(char const* key, size_t keyLength, ELEMENT const& value)
+        : _key(key), _keyLength(keyLength), _value(value) {}
 
-            KeyValue (char const* key, size_t keyLength, ELEMENT const& value)
-              : _key(key), _keyLength(keyLength), _value(value) {
-            }
+    KeyValue(char const* key, size_t keyLength)
+        : _key(key), _keyLength(keyLength), _value() {}
 
-            KeyValue (char const* key, size_t keyLength)
-              : _key(key), _keyLength(keyLength), _value() {
-            }
+   public:
+    char const* _key;
+    size_t _keyLength;
+    ELEMENT _value;
+  };
 
-          public:
-            char const* _key;
-            size_t _keyLength;
-            ELEMENT _value;
-        };
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                     private
+  // types
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief description for the associative array
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  struct DictionaryDescription {
+   public:
+    static void clearElement(KeyValue& element) { element._key = 0; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief description for the associative array
-////////////////////////////////////////////////////////////////////////////////
+    static bool isEmptyElement(KeyValue const& element) {
+      return element._key == 0;
+    }
 
-        struct DictionaryDescription {
-          public:
-            static void clearElement (KeyValue& element) {
-              element._key = 0;
-            }
+    static bool isEqualElementElement(KeyValue const& left,
+                                      KeyValue const& right) {
+      return left._keyLength == right._keyLength &&
+             memcmp(left._key, right._key, left._keyLength) == 0;
+    }
 
-            static bool isEmptyElement (KeyValue const& element) {
-              return element._key == 0;
-            }
+    static uint32_t hashElement(KeyValue const& element) {
+      return TRI_FnvHashPointer(element._key, element._keyLength) & 0xFFFFFFFF;
+    }
+  };
 
-            static bool isEqualElementElement (KeyValue const& left, KeyValue const& right) {
-              return left._keyLength == right._keyLength && memcmp(left._key, right._key, left._keyLength) == 0;
-            }
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-            static uint32_t hashElement (KeyValue const& element) {
-              return TRI_FnvHashPointer(element._key, element._keyLength) & 0xFFFFFFFF;
-            }
-        };
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructs a new associative array for POD data
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  explicit Dictionary(uint64_t size) : _array(size) {}
 
-      public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new associative array for POD data
-////////////////////////////////////////////////////////////////////////////////
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief swaps two dictonaries
+  ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        Dictionary (uint64_t size) :
-          _array(size) {
-        }
+  void swap(Dictionary* other) { other->_array.swap(&_array); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief adds a key value pair
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  bool insert(char const* key, ELEMENT const& value) {
+    KeyValue p(key, strlen(key), value);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief swaps two dictonaries
-////////////////////////////////////////////////////////////////////////////////
-
-        void swap (Dictionary * other) {
-          other->_array.swap(&_array);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a key value pair
-////////////////////////////////////////////////////////////////////////////////
-
-        bool insert (char const* key, ELEMENT const& value) {
-          KeyValue p(key, strlen(key), value);
-
-          return _array.addElement(p);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a key value pair
-////////////////////////////////////////////////////////////////////////////////
-
-        bool insert (char const* key, size_t keyLength, ELEMENT const& value) {
-          KeyValue p(key, keyLength, value);
-
-          return _array.addElement(p);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a key
-////////////////////////////////////////////////////////////////////////////////
-
-        void erase (char const* key) {
-          KeyValue l(key, strlen(key));
-          _array.removeElement(l);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current range
-////////////////////////////////////////////////////////////////////////////////
-
-        void range (KeyValue const*& begin, KeyValue const*& end) const {
-          size_t size;
-
-          begin = _array.tableAndSize(size);
-          end = begin + size;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a key
-////////////////////////////////////////////////////////////////////////////////
-
-        KeyValue const* lookup (char const* key) const {
-          KeyValue l(key, strlen(key));
-          KeyValue const& f = _array.findElement(l);
-
-          if (f._key != 0 && strcmp(f._key, key) == 0) {
-            return &f;
-          }
-          else {
-            return 0;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a key
-////////////////////////////////////////////////////////////////////////////////
-
-        KeyValue const* lookup (char const* key, const size_t keyLength) const {
-          KeyValue l(key, keyLength);
-          KeyValue const& f = _array.findElement(l);
-
-          if (f._key != 0 && strcmp(f._key, key) == 0) {
-            return &f;
-          }
-          else {
-            return 0;
-          }
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief underlying associative array
-////////////////////////////////////////////////////////////////////////////////
-
-        AssociativeArray<char const*, KeyValue, DictionaryDescription> _array;
-    };
+    return _array.addElement(p);
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief adds a key value pair
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool insert(char const* key, size_t keyLength, ELEMENT const& value) {
+    KeyValue p(key, keyLength, value);
+
+    return _array.addElement(p);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief removes a key
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void erase(char const* key) {
+    KeyValue l(key, strlen(key));
+    _array.removeElement(l);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the current range
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void range(KeyValue const*& begin, KeyValue const*& end) const {
+    size_t size;
+
+    begin = _array.tableAndSize(size);
+    end = begin + size;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up a key
+  ////////////////////////////////////////////////////////////////////////////////
+
+  KeyValue const* lookup(char const* key) const {
+    KeyValue l(key, strlen(key));
+    KeyValue const& f = _array.findElement(l);
+
+    if (f._key != 0 && strcmp(f._key, key) == 0) {
+      return &f;
+    } else {
+      return 0;
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief looks up a key
+  ////////////////////////////////////////////////////////////////////////////////
+
+  KeyValue const* lookup(char const* key, const size_t keyLength) const {
+    KeyValue l(key, keyLength);
+    KeyValue const& f = _array.findElement(l);
+
+    if (f._key != 0 && strcmp(f._key, key) == 0) {
+      return &f;
+    } else {
+      return 0;
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief underlying associative array
+  ////////////////////////////////////////////////////////////////////////////////
+
+  AssociativeArray<char const*, KeyValue, DictionaryDescription> _array;
+};
+}
 }
 
 #endif
@@ -239,5 +228,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

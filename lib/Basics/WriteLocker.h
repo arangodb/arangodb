@@ -49,24 +49,28 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define WRITE_LOCKER_VAR_A(a) _write_lock_variable ## a
+#define WRITE_LOCKER_VAR_A(a) _write_lock_variable##a
 #define WRITE_LOCKER_VAR_B(a) WRITE_LOCKER_VAR_A(a)
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-#define WRITE_LOCKER(b) \
-  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> WRITE_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
+#define WRITE_LOCKER(b)                                                   \
+  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
+      WRITE_LOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
-#define WRITE_LOCKER_EVENTUAL(b, t) \
-  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> WRITE_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
+#define WRITE_LOCKER_EVENTUAL(b, t)                                       \
+  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
+      WRITE_LOCKER_VAR_B(__LINE__)(&b, t, __FILE__, __LINE__)
 
 #else
 
-#define WRITE_LOCKER(b) \
-  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> WRITE_LOCKER_VAR_B(__LINE__)(&b)
+#define WRITE_LOCKER(b)                                                   \
+  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
+      WRITE_LOCKER_VAR_B(__LINE__)(&b)
 
-#define WRITE_LOCKER_EVENTUAL(b, t) \
-  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> WRITE_LOCKER_VAR_B(__LINE__)(&b, t)
+#define WRITE_LOCKER_EVENTUAL(b, t)                                       \
+  triagens::basics::WriteLocker<std::remove_reference<decltype(b)>::type> \
+      WRITE_LOCKER_VAR_B(__LINE__)(&b, t)
 
 #endif
 
@@ -75,7 +79,7 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write locker
@@ -84,17 +88,17 @@ namespace triagens {
 /// the lock when it is destroyed.
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename T>
-    class WriteLocker {
-        WriteLocker (WriteLocker const&);
-        WriteLocker& operator= (WriteLocker const&);
+template <typename T>
+class WriteLocker {
+  WriteLocker(WriteLocker const&);
+  WriteLocker& operator=(WriteLocker const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-      public:
-
+ public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a write-lock
 ///
@@ -103,21 +107,18 @@ namespace triagens {
 
 #ifdef TRI_SHOW_LOCK_TIME
 
-        WriteLocker (T* readWriteLock, char const* file, int line)
-          : _readWriteLock(readWriteLock), _file(file), _line(line) {
-
-          double t = TRI_microtime();
-          _readWriteLock->writeLock();
-          _time = TRI_microtime() - t;
-        }
+  WriteLocker(T* readWriteLock, char const* file, int line)
+      : _readWriteLock(readWriteLock), _file(file), _line(line) {
+    double t = TRI_microtime();
+    _readWriteLock->writeLock();
+    _time = TRI_microtime() - t;
+  }
 
 #else
 
-        explicit WriteLocker (T* readWriteLock)
-          : _readWriteLock(readWriteLock) {
-          
-          _readWriteLock->writeLock();
-        }
+  explicit WriteLocker(T* readWriteLock) : _readWriteLock(readWriteLock) {
+    _readWriteLock->writeLock();
+  }
 
 #endif
 
@@ -127,91 +128,84 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_SHOW_LOCK_TIME
-        
-        WriteLocker (T* readWriteLock, 
-                     uint64_t sleepTime,
-                     char const* file,
-                     int line) 
-          : _readWriteLock(readWriteLock), _file(file), _line(line) {
-          
-          double t = TRI_microtime();
-          while (! _readWriteLock->tryWriteLock()) {
+
+  WriteLocker(T* readWriteLock, uint64_t sleepTime, char const* file, int line)
+      : _readWriteLock(readWriteLock), _file(file), _line(line) {
+    double t = TRI_microtime();
+    while (!_readWriteLock->tryWriteLock()) {
 #ifdef _WIN32
-            usleep((unsigned long) sleepTime);
+      usleep((unsigned long)sleepTime);
 #else
-            usleep((useconds_t) sleepTime);
+      usleep((useconds_t)sleepTime);
 #endif
-          }
-          _time = TRI_microtime() - t;
-        }
-
-#else
-
-        WriteLocker (T* readWriteLock, 
-                     uint64_t sleepTime) 
-          : _readWriteLock(readWriteLock) {
-          
-          while (! _readWriteLock->tryWriteLock()) {
-#ifdef _WIN32
-            usleep((unsigned long) sleepTime);
-#else
-            usleep((useconds_t) sleepTime);
-#endif
-          }
-        }
-
-#endif        
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief releases the write-lock
-////////////////////////////////////////////////////////////////////////////////
-
-        ~WriteLocker () {
-          _readWriteLock->unlock();
-
-#ifdef TRI_SHOW_LOCK_TIME
-          if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-            LOG_WARNING("WriteLocker %s:%d took %f s", _file, _line, _time);
-          }
-#endif  
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the read-write lock
-////////////////////////////////////////////////////////////////////////////////
-
-        T* _readWriteLock;
-
-#ifdef TRI_SHOW_LOCK_TIME
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief file
-////////////////////////////////////////////////////////////////////////////////
-
-        char const* _file;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief line number
-////////////////////////////////////////////////////////////////////////////////
-
-        int _line;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lock time
-////////////////////////////////////////////////////////////////////////////////
-
-        double _time;
-
-#endif        
-
-    };
+    }
+    _time = TRI_microtime() - t;
   }
+
+#else
+
+  WriteLocker(T* readWriteLock, uint64_t sleepTime)
+      : _readWriteLock(readWriteLock) {
+    while (!_readWriteLock->tryWriteLock()) {
+#ifdef _WIN32
+      usleep((unsigned long)sleepTime);
+#else
+      usleep((useconds_t)sleepTime);
+#endif
+    }
+  }
+
+#endif
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief releases the write-lock
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ~WriteLocker() {
+    _readWriteLock->unlock();
+
+#ifdef TRI_SHOW_LOCK_TIME
+    if (_time > TRI_SHOW_LOCK_THRESHOLD) {
+      LOG_WARNING("WriteLocker %s:%d took %f s", _file, _line, _time);
+    }
+#endif
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the read-write lock
+  ////////////////////////////////////////////////////////////////////////////////
+
+  T* _readWriteLock;
+
+#ifdef TRI_SHOW_LOCK_TIME
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief file
+  ////////////////////////////////////////////////////////////////////////////////
+
+  char const* _file;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief line number
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int _line;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lock time
+  ////////////////////////////////////////////////////////////////////////////////
+
+  double _time;
+
+#endif
+};
+}
 }
 
 #endif
@@ -222,5 +216,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

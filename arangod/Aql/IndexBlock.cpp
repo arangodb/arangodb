@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL IndexBlock
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -47,8 +47,16 @@ using Json = triagens::basics::Json;
 
 // uncomment the following to get some debugging information
 #if 0
-#define ENTER_BLOCK try { (void) 0;
-#define LEAVE_BLOCK } catch (...) { std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ << ":" << __LINE__ << "!\n"; throw; }
+#define ENTER_BLOCK \
+  try {             \
+    (void)0;
+#define LEAVE_BLOCK                                                            \
+  }                                                                            \
+  catch (...) {                                                                \
+    std::cout << "caught an exception in " << __FUNCTION__ << ", " << __FILE__ \
+              << ":" << __LINE__ << "!\n";                                     \
+    throw;                                                                     \
+  }
 #else
 #define ENTER_BLOCK
 #define LEAVE_BLOCK
@@ -58,18 +66,16 @@ using Json = triagens::basics::Json;
 // --SECTION--                                                  class IndexBlock
 // -----------------------------------------------------------------------------
 
-IndexBlock::IndexBlock (ExecutionEngine* engine,
-                        IndexNode const* en)
-  : ExecutionBlock(engine, en),
-    _collection(en->collection()),
-    _posInDocs(0),
-    _currentIndex(0),
-    _indexes(en->getIndexes()),
-    _context(nullptr),
-    _iterator(nullptr),
-    _condition(en->_condition->root()),
-    _hasV8Expression(false) {
-
+IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
+    : ExecutionBlock(engine, en),
+      _collection(en->collection()),
+      _posInDocs(0),
+      _currentIndex(0),
+      _indexes(en->getIndexes()),
+      _context(nullptr),
+      _iterator(nullptr),
+      _condition(en->_condition->root()),
+      _hasV8Expression(false) {
   _context = new IndexIteratorContext(en->_vocbase);
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
@@ -79,7 +85,7 @@ IndexBlock::IndexBlock (ExecutionEngine* engine,
   }
 }
 
-IndexBlock::~IndexBlock () {
+IndexBlock::~IndexBlock() {
   delete _iterator;
   delete _context;
 
@@ -90,9 +96,11 @@ IndexBlock::~IndexBlock () {
 /// @brief adds a UNIQUE() to a dynamic IN condition
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::aql::AstNode* IndexBlock::makeUnique (triagens::aql::AstNode* node) const {
+triagens::aql::AstNode* IndexBlock::makeUnique(
+    triagens::aql::AstNode* node) const {
   if (node->type != triagens::aql::NODE_TYPE_ARRAY ||
-      (node->type == triagens::aql::NODE_TYPE_ARRAY && node->numMembers() >= 2)) {
+      (node->type == triagens::aql::NODE_TYPE_ARRAY &&
+       node->numMembers() >= 2)) {
     // an non-array or an array with more than 1 member
     auto en = static_cast<IndexNode const*>(getPlanNode());
     auto ast = en->_plan->getAst();
@@ -101,17 +109,17 @@ triagens::aql::AstNode* IndexBlock::makeUnique (triagens::aql::AstNode* node) co
     if (_indexes[_currentIndex]->isSorted()) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall("SORTED_UNIQUE", array); 
+      return ast->createNodeFunctionCall("SORTED_UNIQUE", array);
     }
     // a regular UNIQUE will do
-    return ast->createNodeFunctionCall("UNIQUE", array); 
+    return ast->createNodeFunctionCall("UNIQUE", array);
   }
 
   // presumably an array with no or a single member
   return node;
 }
 
-void IndexBlock::executeExpressions () {
+void IndexBlock::executeExpressions() {
   TRI_ASSERT(_condition != nullptr);
 
   // The following are needed to evaluate expressions with local data from
@@ -120,21 +128,23 @@ void IndexBlock::executeExpressions () {
   AqlItemBlock* cur = _buffer.front();
   auto en = static_cast<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
-  for (size_t posInExpressions = 0; posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
+  for (size_t posInExpressions = 0;
+       posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
     auto& toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
-    TRI_document_collection_t const* myCollection = nullptr; 
-    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
+                              _inRegs[posInExpressions], &myCollection);
     auto jsonified = a.toJson(_trx, myCollection, true);
     a.destroy();
     AstNode* evaluatedNode = ast->nodeFromJson(jsonified.json(), true);
     _condition->getMember(toReplace->orMember)
-              ->getMember(toReplace->andMember)
-              ->changeMember(toReplace->operatorMember, evaluatedNode);
+        ->getMember(toReplace->andMember)
+        ->changeMember(toReplace->operatorMember, evaluatedNode);
   }
 }
 
-int IndexBlock::initialize () {
+int IndexBlock::initialize() {
   ENTER_BLOCK
   int res = ExecutionBlock::initialize();
 
@@ -145,44 +155,45 @@ int IndexBlock::initialize () {
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&] (size_t i, size_t j, size_t k, AstNode* a) -> void {
-    // all new AstNodes are registered with the Ast in the Query
-    auto e = std::make_unique<Expression>(ast, a);
+  auto instantiateExpression =
+      [&](size_t i, size_t j, size_t k, AstNode* a) -> void {
+        // all new AstNodes are registered with the Ast in the Query
+        auto e = std::make_unique<Expression>(ast, a);
 
-    TRI_IF_FAILURE("IndexBlock::initialize") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
+        TRI_IF_FAILURE("IndexBlock::initialize") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
-    _hasV8Expression |= e->isV8();
-    
-    std::unordered_set<Variable const*> inVars;
-    e->variables(inVars);
-    
-    auto nce = std::make_unique<NonConstExpression>(i, j, k, e.get());
-    e.release();
-    _nonConstExpressions.push_back(nce.get());
-    nce.release();
+        _hasV8Expression |= e->isV8();
 
-    // Prepare _inVars and _inRegs:
-    _inVars.emplace_back();
-    std::vector<Variable const*>& inVarsCur = _inVars.back();
-    _inRegs.emplace_back();
-    std::vector<RegisterId>& inRegsCur = _inRegs.back();
+        std::unordered_set<Variable const*> inVars;
+        e->variables(inVars);
 
-    for (auto const& v : inVars) {
-      inVarsCur.emplace_back(v);
-      auto it = en->getRegisterPlan()->varInfo.find(v->id);
-      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      inRegsCur.emplace_back(it->second.registerId);
-    }
-  };
+        auto nce = std::make_unique<NonConstExpression>(i, j, k, e.get());
+        e.release();
+        _nonConstExpressions.push_back(nce.get());
+        nce.release();
+
+        // Prepare _inVars and _inRegs:
+        _inVars.emplace_back();
+        std::vector<Variable const*>& inVarsCur = _inVars.back();
+        _inRegs.emplace_back();
+        std::vector<RegisterId>& inRegsCur = _inRegs.back();
+
+        for (auto const& v : inVars) {
+          inVarsCur.emplace_back(v);
+          auto it = en->getRegisterPlan()->varInfo.find(v->id);
+          TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+          TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+          inRegsCur.emplace_back(it->second.registerId);
+        }
+      };
 
   if (_condition == nullptr) {
-    // This Node has no condition. Iterate over the complete index. 
+    // This Node has no condition. Iterate over the complete index.
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   auto outVariable = en->outVariable();
 
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
@@ -196,8 +207,9 @@ int IndexBlock::initialize () {
       auto rhs = leaf->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(outVariable)) {
-        // Index is responsible for the left side, check if right side has to be evaluated
-        if (! rhs->isConstant()) {
+        // Index is responsible for the left side, check if right side has to be
+        // evaluated
+        if (!rhs->isConstant()) {
           if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
             rhs = makeUnique(rhs);
           }
@@ -206,10 +218,10 @@ int IndexBlock::initialize () {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
         }
-      } 
-      else {
-        // Index is responsible for the right side, check if left side has to be evaluated
-        if (! lhs->isConstant()) {
+      } else {
+        // Index is responsible for the right side, check if left side has to be
+        // evaluated
+        if (!lhs->isConstant()) {
           instantiateExpression(i, j, 0, lhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -226,12 +238,12 @@ int IndexBlock::initialize () {
 // init the ranges for reading, this should be called once per new incoming
 // block!
 //
-// This is either called every time we get a new incoming block. 
+// This is either called every time we get a new incoming block.
 // If all the bounds are constant, then in the case of hash, primary or edges
 // indexes it does nothing. In the case of a skiplist index, it creates a
 // skiplistIterator which is used by readIndex. If at least one bound is
 // variable, then this this also evaluates the IndexOrCondition required to
-// determine the values of the bounds. 
+// determine the values of the bounds.
 //
 // It is guaranteed that
 //   _buffer   is not empty, in particular _buffer.front() is defined
@@ -239,58 +251,55 @@ int IndexBlock::initialize () {
 // Therefore, we can use the register values in _buffer.front() in row
 // _pos to evaluate the variable bounds.
 
-bool IndexBlock::initIndexes () {
+bool IndexBlock::initIndexes() {
   ENTER_BLOCK
 
-  // We start with a different context. Return documents found in the previous context again.
+  // We start with a different context. Return documents found in the previous
+  // context again.
   _alreadyReturned.clear();
   // Find out about the actual values for the bounds in the variable bound case:
 
-  if (! _nonConstExpressions.empty()) {
+  if (!_nonConstExpressions.empty()) {
     TRI_ASSERT(_condition != nullptr);
 
     if (_hasV8Expression) {
-      bool const isRunningInCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
+      bool const isRunningInCluster =
+          triagens::arango::ServerState::instance()->isRunningInCluster();
 
       // must have a V8 context here to protect Expression::execute()
       auto engine = _engine;
       triagens::basics::ScopeGuard guard{
-        [&engine]() -> void { 
-          engine->getQuery()->enterContext(); 
-        },
-        [&]() -> void {
-          if (isRunningInCluster) {
-            // must invalidate the expression now as we might be called from
-            // different threads
-            for (auto const& e : _nonConstExpressions) {
-              e->expression->invalidate();
+          [&engine]() -> void { engine->getQuery()->enterContext(); },
+          [&]() -> void {
+            if (isRunningInCluster) {
+              // must invalidate the expression now as we might be called from
+              // different threads
+              for (auto const& e : _nonConstExpressions) {
+                e->expression->invalidate();
+              }
+
+              engine->getQuery()->exitContext();
             }
-          
-            engine->getQuery()->exitContext(); 
-          }
-        }
-      };
+          }};
 
       ISOLATE;
-      v8::HandleScope scope(isolate); // do not delete this!
-    
+      v8::HandleScope scope(isolate);  // do not delete this!
+
       executeExpressions();
-      TRI_IF_FAILURE("IndexBlock::executeV8")  {
+      TRI_IF_FAILURE("IndexBlock::executeV8") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-    }
-    else {
+    } else {
       // no V8 context required!
 
       Functions::InitializeThreadContext();
       try {
         executeExpressions();
-        TRI_IF_FAILURE("IndexBlock::executeExpression")  {
+        TRI_IF_FAILURE("IndexBlock::executeExpression") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         Functions::DestroyThreadContext();
-      }
-      catch (...) {
+      } catch (...) {
         Functions::DestroyThreadContext();
         throw;
       }
@@ -299,29 +308,26 @@ bool IndexBlock::initIndexes () {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   if (node->_reverse) {
     _currentIndex = _indexes.size() - 1;
-  }
-  else {
+  } else {
     _currentIndex = 0;
   }
 
   delete _iterator;
   _iterator = nullptr;
-  
+
   _iterator = createIterator();
 
   while (_iterator == nullptr) {
     if (node->_reverse) {
       --_currentIndex;
-    }
-    else {
+    } else {
       ++_currentIndex;
     }
     if (_currentIndex < _indexes.size()) {
       // This check will work as long as _indexes.size() < MAX_SIZE_T
       TRI_ASSERT(_iterator == nullptr);
       _iterator = createIterator();
-    }
-    else {
+    } else {
       // We were not able to initialize any index with this condition
       return false;
     }
@@ -334,32 +340,34 @@ bool IndexBlock::initIndexes () {
 /// @brief create an iterator object
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::IndexIterator* IndexBlock::createIterator () {
+triagens::arango::IndexIterator* IndexBlock::createIterator() {
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   auto outVariable = node->outVariable();
   auto ast = node->_plan->getAst();
 
   if (_condition == nullptr) {
-    return _indexes[_currentIndex]->getIterator(_trx, _context, ast, nullptr, outVariable, node->_reverse);
+    return _indexes[_currentIndex]->getIterator(_trx, _context, ast, nullptr,
+                                                outVariable, node->_reverse);
   }
 
   TRI_ASSERT(_indexes.size() == _condition->numMembers());
-  return _indexes[_currentIndex]->getIterator(_trx, _context, ast, _condition->getMember(_currentIndex), outVariable, node->_reverse);
+  return _indexes[_currentIndex]->getIterator(
+      _trx, _context, ast, _condition->getMember(_currentIndex), outVariable,
+      node->_reverse);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Forwards _iterator to the next available index
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexBlock::startNextIterator () {
+void IndexBlock::startNextIterator() {
   delete _iterator;
   _iterator = nullptr;
 
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
   if (node->_reverse) {
     --_currentIndex;
-  }
-  else {
+  } else {
     ++_currentIndex;
   }
   if (_currentIndex < _indexes.size()) {
@@ -371,23 +379,22 @@ void IndexBlock::startNextIterator () {
 
 // this is called every time everything in _documents has been passed on
 
-bool IndexBlock::readIndex (size_t atMost) {
+bool IndexBlock::readIndex(size_t atMost) {
   ENTER_BLOCK;
-  // this is called every time we want more in _documents. 
-  // For the primary key index, this only reads the index once, and never 
-  // again (although there might be multiple calls to this function). 
+  // this is called every time we want more in _documents.
+  // For the primary key index, this only reads the index once, and never
+  // again (although there might be multiple calls to this function).
   // For the edge, hash or skiplists indexes, initIndexes creates an iterator
-  // and read*Index just reads from the iterator until it is done. 
+  // and read*Index just reads from the iterator until it is done.
   // Then initIndexes is read again and so on. This is to avoid reading the
-  // entire index when we only want a small number of documents. 
-  
+  // entire index when we only want a small number of documents.
+
   if (_documents.empty()) {
     TRI_IF_FAILURE("IndexBlock::readIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     _documents.reserve(atMost);
-  }
-  else { 
+  } else {
     _documents.clear();
   }
 
@@ -398,20 +405,20 @@ bool IndexBlock::readIndex (size_t atMost) {
 
   size_t lastIndexNr = _indexes.size() - 1;
   bool isReverse = (static_cast<IndexNode const*>(getPlanNode()))->_reverse;
-  bool isLastIndex = (_currentIndex == lastIndexNr && ! isReverse) || (_currentIndex == 0 && isReverse);
+  bool isLastIndex = (_currentIndex == lastIndexNr && !isReverse) ||
+                     (_currentIndex == 0 && isReverse);
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _iterator != nullptr) {
       TRI_doc_mptr_t* indexElement = _iterator->next();
       if (indexElement == nullptr) {
         startNextIterator();
-      }
-      else {
+      } else {
         TRI_IF_FAILURE("IndexBlock::readIndex") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         if (_alreadyReturned.find(indexElement) == _alreadyReturned.end()) {
-          if (! isLastIndex) {
+          if (!isLastIndex) {
             _alreadyReturned.emplace(indexElement);
           }
 
@@ -421,19 +428,18 @@ bool IndexBlock::readIndex (size_t atMost) {
         ++_engine->_stats.scannedIndex;
       }
     }
-  }
-  catch (...) {
+  } catch (...) {
     if (_iterator != nullptr) {
       delete _iterator;
       _iterator = nullptr;
     }
   }
   _posInDocs = 0;
-  return (! _documents.empty());
+  return (!_documents.empty());
   LEAVE_BLOCK;
 }
 
-int IndexBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK;
   int res = ExecutionBlock::initializeCursor(items, pos);
 
@@ -442,8 +448,8 @@ int IndexBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   _pos = 0;
   _posInDocs = 0;
-  
-  return TRI_ERROR_NO_ERROR; 
+
+  return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK;
 }
 
@@ -451,8 +457,7 @@ int IndexBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* IndexBlock::getSome (size_t atLeast,
-                                   size_t atMost) {
+AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   ENTER_BLOCK;
   if (_done) {
     return nullptr;
@@ -468,22 +473,20 @@ AqlItemBlock* IndexBlock::getSome (size_t atLeast,
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
-      if (! ExecutionBlock::getBlock(toFetch, toFetch) 
-          || (! initIndexes())) {
+      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
         return nullptr;
       }
-      _pos = 0;           // this is in the first block
+      _pos = 0;  // this is in the first block
 
       // This is a new item, so let's read the index (it is already
       // initialized).
       readIndex(atMost);
-    } 
-    else if (_posInDocs >= _documents.size()) {
+    } else if (_posInDocs >= _documents.size()) {
       // we have exhausted our local documents buffer,
 
-
-      if (! readIndex(atMost)) { //no more output from this version of the index
+      if (!readIndex(atMost)) {  // no more output from this version of the
+                                 // index
         AqlItemBlock* cur = _buffer.front();
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
@@ -491,14 +494,14 @@ AqlItemBlock* IndexBlock::getSome (size_t atLeast,
           _pos = 0;
         }
         if (_buffer.empty()) {
-          if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize) ) {
+          if (!ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
             _done = true;
             return nullptr;
           }
-          _pos = 0;           // this is in the first block
+          _pos = 0;  // this is in the first block
         }
-        
-        if (! initIndexes()) {
+
+        if (!initIndexes()) {
           _done = true;
           return nullptr;
         }
@@ -514,9 +517,9 @@ AqlItemBlock* IndexBlock::getSome (size_t atLeast,
     size_t toSend = (std::min)(atMost, available);
 
     if (toSend > 0) {
-
-      res.reset(new AqlItemBlock(toSend,
-            getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      res.reset(new AqlItemBlock(
+          toSend,
+          getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
       // automatically freed should we throw
       TRI_ASSERT(curRegs <= res->getNrRegs());
@@ -525,7 +528,8 @@ AqlItemBlock* IndexBlock::getSome (size_t atLeast,
       inheritRegisters(cur, res.get(), _pos);
 
       // set our collection for our output register
-      res->setDocumentCollection(static_cast<triagens::aql::RegisterId>(curRegs),
+      res->setDocumentCollection(
+          static_cast<triagens::aql::RegisterId>(curRegs),
           _trx->documentCollection(_collection->cid()));
 
       for (size_t j = 0; j < toSend; j++) {
@@ -539,17 +543,17 @@ AqlItemBlock* IndexBlock::getSome (size_t atLeast,
         }
 
         // The result is in the first variable of this depth,
-        // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
+        // we do not need to do a lookup in
+        // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
-                      AqlValue(reinterpret_cast<TRI_df_marker_t
-                               const*>(_documents[_posInDocs++].getDataPtr())));
+                      AqlValue(reinterpret_cast<TRI_df_marker_t const*>(
+                          _documents[_posInDocs++].getDataPtr())));
         // No harm done, if the setValue throws!
       }
     }
 
-  }
-  while (res.get() == nullptr);
+  } while (res.get() == nullptr);
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
@@ -561,9 +565,7 @@ AqlItemBlock* IndexBlock::getSome (size_t atLeast,
 /// @brief skipSome
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t IndexBlock::skipSome (size_t atLeast,
-                             size_t atMost) {
-  
+size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
   if (_done) {
     return 0;
   }
@@ -573,15 +575,14 @@ size_t IndexBlock::skipSome (size_t atLeast,
   while (skipped < atLeast) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize, atMost);
-      if (! ExecutionBlock::getBlock(toFetch, toFetch) 
-          || (! initIndexes())) {
+      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
         _done = true;
         return skipped;
       }
-      _pos = 0;           // this is in the first block
-      
+      _pos = 0;  // this is in the first block
+
       // This is a new item, so let's read the index if bounds are variable:
-      readIndex(atMost); 
+      readIndex(atMost);
     }
 
     size_t available = _documents.size() - _posInDocs;
@@ -589,7 +590,7 @@ size_t IndexBlock::skipSome (size_t atLeast,
 
     _posInDocs += toSkip;
     skipped += toSkip;
-    
+
     // Advance read position:
     if (_posInDocs >= _documents.size()) {
       // we have exhausted our local documents buffer,
@@ -604,28 +605,28 @@ size_t IndexBlock::skipSome (size_t atLeast,
         }
 
         // let's read the index if bounds are variable:
-        if (! _buffer.empty()) {
-          if (! initIndexes()) {
+        if (!_buffer.empty()) {
+          if (!initIndexes()) {
             _done = true;
             return skipped;
           }
           readIndex(atMost);
         }
       }
-      
+
       // If _buffer is empty, then we will fetch a new block in the next round
       // and then read the index.
     }
   }
 
-  return skipped; 
+  return skipped;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory for all non-constant expressions
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexBlock::cleanupNonConstExpressions () {
+void IndexBlock::cleanupNonConstExpressions() {
   for (auto& it : _nonConstExpressions) {
     delete it;
   }
@@ -634,5 +635,6 @@ void IndexBlock::cleanupNonConstExpressions () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

@@ -50,195 +50,189 @@ struct TRI_vocbase_t;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestAqlHandler : public arango::RestVocbaseBaseHandler {
+class RestAqlHandler : public arango::RestVocbaseBaseHandler {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                      constructors and
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  RestAqlHandler(rest::HttpRequest* request,
+                 std::pair<arango::ApplicationV8*, QueryRegistry*>* pair);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   Handler
+  // methods
+  // -----------------------------------------------------------------------------
 
-        RestAqlHandler (rest::HttpRequest* request,
-                        std::pair<arango::ApplicationV8*, QueryRegistry*>* pair);
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
+  bool isDirect() const override;
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// {@inheritDoc}
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+  size_t queue() const override;
 
-        bool isDirect () const override;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes the handler
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
+  status_t execute() override;
 
-        size_t queue () const override;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief POST method for /_api/aql/instantiate
+  /// The body is a JSON with attributes "plan" for the execution plan and
+  /// "options" for the options, all exactly as in AQL_EXECUTEJSON.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the handler
-////////////////////////////////////////////////////////////////////////////////
+  void createQueryFromJson();
 
-        status_t execute () override;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief POST method for /_api/aql/parse
+  /// The body is a Json with attributes "query" for the query string,
+  /// "parameters" for the query parameters and "options" for the options.
+  /// This does the same as AQL_PARSE with exactly these parameters and
+  /// does not keep the query hanging around.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/instantiate
-/// The body is a JSON with attributes "plan" for the execution plan and
-/// "options" for the options, all exactly as in AQL_EXECUTEJSON.
-////////////////////////////////////////////////////////////////////////////////
+  void parseQuery();
 
-        void createQueryFromJson ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief POST method for /_api/aql/explain
+  /// The body is a Json with attributes "query" for the query string,
+  /// "parameters" for the query parameters and "options" for the options.
+  /// This does the same as AQL_EXPLAIN with exactly these parameters and
+  /// does not keep the query hanging around.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/parse
-/// The body is a Json with attributes "query" for the query string,
-/// "parameters" for the query parameters and "options" for the options.
-/// This does the same as AQL_PARSE with exactly these parameters and
-/// does not keep the query hanging around.
-////////////////////////////////////////////////////////////////////////////////
+  void explainQuery();
 
-        void parseQuery ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief POST method for /_api/aql/query
+  /// The body is a Json with attributes "query" for the query string,
+  /// "parameters" for the query parameters and "options" for the options.
+  /// This sets up the query as as AQL_EXECUTE would, but does not use
+  /// the cursor API yet. Rather, the query is stored in the query registry
+  /// for later use by PUT requests.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/explain
-/// The body is a Json with attributes "query" for the query string,
-/// "parameters" for the query parameters and "options" for the options.
-/// This does the same as AQL_EXPLAIN with exactly these parameters and
-/// does not keep the query hanging around.
-////////////////////////////////////////////////////////////////////////////////
+  void createQueryFromString();
 
-        void explainQuery ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using
+  /// the part of the cursor API with side effects.
+  /// <operation>: can be "getSome" or "skip".
+  /// The body must be a Json with the following attributes:
+  /// For the "getSome" operation one has to give:
+  ///   "atLeast":
+  ///   "atMost": both must be positive integers, the cursor returns never
+  ///             more than "atMost" items and tries to return at least
+  ///             "atLeast". Note that it is possible to return fewer than
+  ///             "atLeast", for example if there are only fewer items
+  ///             left. However, the implementation may return fewer items
+  ///             than "atLeast" for internal reasons, for example to avoid
+  ///             excessive copying. The result is the JSON representation of an
+  ///             AqlItemBlock.
+  /// For the "skip" operation one has to give:
+  ///   "number": must be a positive integer, the cursor skips as many items,
+  ///             possibly exhausting the cursor.
+  ///             The result is a JSON with the attributes "error" (boolean),
+  ///             "errorMessage" (if applicable) and "exhausted" (boolean)
+  ///             to indicate whether or not the cursor is exhausted.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief POST method for /_api/aql/query
-/// The body is a Json with attributes "query" for the query string,
-/// "parameters" for the query parameters and "options" for the options.
-/// This sets up the query as as AQL_EXECUTE would, but does not use
-/// the cursor API yet. Rather, the query is stored in the query registry
-/// for later use by PUT requests.
-////////////////////////////////////////////////////////////////////////////////
+  void useQuery(std::string const& operation, std::string const& idString);
 
-        void createQueryFromString ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief GET method for /_api/aql/<queryId>
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief PUT method for /_api/aql/<operation>/<queryId>, this is using 
-/// the part of the cursor API with side effects.
-/// <operation>: can be "getSome" or "skip".
-/// The body must be a Json with the following attributes:
-/// For the "getSome" operation one has to give:
-///   "atLeast": 
-///   "atMost": both must be positive integers, the cursor returns never 
-///             more than "atMost" items and tries to return at least
-///             "atLeast". Note that it is possible to return fewer than
-///             "atLeast", for example if there are only fewer items
-///             left. However, the implementation may return fewer items
-///             than "atLeast" for internal reasons, for example to avoid
-///             excessive copying. The result is the JSON representation of an 
-///             AqlItemBlock.
-/// For the "skip" operation one has to give:
-///   "number": must be a positive integer, the cursor skips as many items,
-///             possibly exhausting the cursor.
-///             The result is a JSON with the attributes "error" (boolean),
-///             "errorMessage" (if applicable) and "exhausted" (boolean)
-///             to indicate whether or not the cursor is exhausted.
-////////////////////////////////////////////////////////////////////////////////
+  void getInfoQuery(std::string const& operation, std::string const& idString);
 
-        void useQuery (std::string const& operation,
-                       std::string const& idString);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET method for /_api/aql/<queryId>
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief handle for useQuery
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void getInfoQuery (std::string const& operation,
-                           std::string const& idString);
+  void handleUseQuery(std::string const&, Query*,
+                      triagens::basics::Json const&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief parseJsonBody, returns a nullptr and produces an error response if
+  /// parse was not successful.
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  TRI_json_t* parseJsonBody();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handle for useQuery
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-        void handleUseQuery (std::string const&,
-                             Query*,
-                             triagens::basics::Json const&);
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief dig out vocbase from context and query from ID, handle errors
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parseJsonBody, returns a nullptr and produces an error response if
-/// parse was not successful.
-////////////////////////////////////////////////////////////////////////////////
+  bool findQuery(std::string const& idString, Query*& query);
 
-        TRI_json_t* parseJsonBody ();
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief name of the queue
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  static const std::string QUEUE_NAME;
 
-      private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _applicationV8
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dig out vocbase from context and query from ID, handle errors
-////////////////////////////////////////////////////////////////////////////////
+  arango::ApplicationV8* _applicationV8;
 
-        bool findQuery (std::string const& idString,
-                        Query*& query);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief request context
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
+  arango::VocbaseContext* _context;
 
-        static const std::string QUEUE_NAME;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the vocbase
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _applicationV8
-////////////////////////////////////////////////////////////////////////////////
+  TRI_vocbase_t* _vocbase;
 
-        arango::ApplicationV8* _applicationV8;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief our query registry
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request context
-////////////////////////////////////////////////////////////////////////////////
+  QueryRegistry* _queryRegistry;
 
-        arango::VocbaseContext* _context;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief id of current query
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_vocbase_t* _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief our query registry
-////////////////////////////////////////////////////////////////////////////////
-
-        QueryRegistry* _queryRegistry;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief id of current query
-////////////////////////////////////////////////////////////////////////////////
-                        
-        QueryId _qId;
-
-    };
-  }
+  QueryId _qId;
+};
+}
 }
 
 #endif
@@ -249,5 +243,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

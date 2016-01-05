@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Condition finder, used to build up the Condition object
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -33,52 +33,46 @@
 #include "Aql/WalkerWorker.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition finder
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ConditionFinder : public WalkerWorker<ExecutionNode> {
+class ConditionFinder : public WalkerWorker<ExecutionNode> {
+ public:
+  ConditionFinder(ExecutionPlan* plan,
+                  std::unordered_map<size_t, ExecutionNode*>* changes,
+                  bool* hasEmptyResult)
+      : _plan(plan),
+        _variableDefinitions(),
+        _filters(),
+        _sorts(),
+        _changes(changes),
+        _hasEmptyResult(hasEmptyResult){};
 
-      public:
+  ~ConditionFinder() {}
 
-        ConditionFinder (ExecutionPlan* plan,
-                         std::unordered_map<size_t, ExecutionNode*>* changes,
-                         bool* hasEmptyResult)
-          : _plan(plan),
-            _variableDefinitions(),
-            _filters(),
-            _sorts(),
-            _changes(changes),
-            _hasEmptyResult(hasEmptyResult) {
-        };
+  bool before(ExecutionNode*) override final;
 
-        ~ConditionFinder () {
-        }
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final;
 
-        bool before (ExecutionNode*) override final;
-
-        bool enterSubquery (ExecutionNode*, ExecutionNode*) override final;
-
-      private:
-
-        ExecutionPlan*                                 _plan;
-        std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
-        std::unordered_set<VariableId>                 _filters;
-        std::vector<std::pair<VariableId, bool>>       _sorts;
-        // note: this class will never free the contents of this map
-        std::unordered_map<size_t, ExecutionNode*>*    _changes;
-        bool*                                          _hasEmptyResult;
-    
-    };
-  }
+ private:
+  ExecutionPlan* _plan;
+  std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
+  std::unordered_set<VariableId> _filters;
+  std::vector<std::pair<VariableId, bool>> _sorts;
+  // note: this class will never free the contents of this map
+  std::unordered_map<size_t, ExecutionNode*>* _changes;
+  bool* _hasEmptyResult;
+};
+}
 }
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-

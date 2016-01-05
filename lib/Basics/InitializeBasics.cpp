@@ -37,30 +37,26 @@
 #include "Basics/RandomGenerator.h"
 
 namespace triagens {
-  namespace basics {
-    void InitializeBasics (int argv, char* argc[]) {
-      TRIAGENS_C_INITIALIZE(argv, argc);
+namespace basics {
+void InitializeBasics(int argv, char* argc[]) {
+  TRIAGENS_C_INITIALIZE(argv, argc);
 
-      // use the rng so the linker does not remove it from the executable
-      // we might need it later because .so files might refer to the symbols
-      Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
-      Random::UniformInteger random(0, INT32_MAX);
-      random.random();
-      Random::selectVersion(v);
+  // use the rng so the linker does not remove it from the executable
+  // we might need it later because .so files might refer to the symbols
+  Random::random_e v = Random::selectVersion(Random::RAND_MERSENNE);
+  Random::UniformInteger random(0, INT32_MAX);
+  random.random();
+  Random::selectVersion(v);
 
 #ifdef TRI_BROKEN_CXA_GUARD
-      pthread_cond_t cond;
-      pthread_cond_init(&cond, 0);
-      pthread_cond_broadcast(&cond);
+  pthread_cond_t cond;
+  pthread_cond_init(&cond, 0);
+  pthread_cond_broadcast(&cond);
 #endif
-    }
+}
 
-
-
-    void ShutdownBasics () {
-      TRIAGENS_C_SHUTDOWN;
-    }
-  }
+void ShutdownBasics() { TRIAGENS_C_SHUTDOWN; }
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -69,5 +65,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

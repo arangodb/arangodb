@@ -42,15 +42,15 @@
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace aql {
-    class QueryRegistry;
-  }
-  namespace basics {
-    class ThreadPool;
-  }
-  namespace rest {
-    class ApplicationEndpointServer;
-  }
+namespace aql {
+class QueryRegistry;
+}
+namespace basics {
+class ThreadPool;
+}
+namespace rest {
+class ApplicationEndpointServer;
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -68,32 +68,32 @@ struct DatabasesLists {
 };
 
 struct TRI_server_t {
-  TRI_server_t ();
-  ~TRI_server_t ();
+  TRI_server_t();
+  ~TRI_server_t();
 
-  std::atomic<DatabasesLists*>               _databasesLists;
+  std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // triagens::basics::DataProtector<64>  
-  triagens::basics::DataProtector            _databasesProtector;
-  triagens::basics::Mutex                    _databasesMutex;
+  // triagens::basics::DataProtector<64>
+  triagens::basics::DataProtector _databasesProtector;
+  triagens::basics::Mutex _databasesMutex;
 
-  TRI_thread_t                               _databaseManager;
+  TRI_thread_t _databaseManager;
 
-  TRI_vocbase_defaults_t                     _defaults;
-  triagens::rest::ApplicationEndpointServer* _applicationEndpointServer; 
-  triagens::basics::ThreadPool*              _indexPool;                 
+  TRI_vocbase_defaults_t _defaults;
+  triagens::rest::ApplicationEndpointServer* _applicationEndpointServer;
+  triagens::basics::ThreadPool* _indexPool;
   std::atomic<triagens::aql::QueryRegistry*> _queryRegistry;
 
-  char*                                      _basePath;
-  char*                                      _databasePath;
-  char*                                      _lockFilename;
-  char*                                      _serverIdFilename;
-  char*                                      _appPath;
+  char* _basePath;
+  char* _databasePath;
+  char* _lockFilename;
+  char* _serverIdFilename;
+  char* _appPath;
 
-  bool                                       _disableReplicationAppliers;
-  bool                                       _iterateMarkersOnOpen;
-  bool                                       _hasCreatedSystemDatabase;
-  bool                                       _initialized;
+  bool _disableReplicationAppliers;
+  bool _iterateMarkersOnOpen;
+  bool _hasCreatedSystemDatabase;
+  bool _initialized;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,20 +110,15 @@ extern size_t PageSize;
 /// @brief initialize a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitServer (TRI_server_t*,
-                    triagens::rest::ApplicationEndpointServer*,
-                    triagens::basics::ThreadPool*,
-                    char const*,
-                    char const*,
-                    TRI_vocbase_defaults_t const*,
-                    bool,
-                    bool);
+int TRI_InitServer(TRI_server_t*, triagens::rest::ApplicationEndpointServer*,
+                   triagens::basics::ThreadPool*, char const*, char const*,
+                   TRI_vocbase_defaults_t const*, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize globals
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitServerGlobals (void);
+void TRI_InitServerGlobals(void);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -133,156 +128,134 @@ void TRI_InitServerGlobals (void);
 /// @brief get the global server id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_server_id_t TRI_GetIdServer (void);
+TRI_server_id_t TRI_GetIdServer(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the server
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StartServer (TRI_server_t*,
-                     bool checkVersion,
-                     bool performUpgrade);
+int TRI_StartServer(TRI_server_t*, bool checkVersion, bool performUpgrade);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes all databases
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitDatabasesServer (TRI_server_t*);
+int TRI_InitDatabasesServer(TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the server
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_StopServer (TRI_server_t*);
+int TRI_StopServer(TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication appliers
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_StopReplicationAppliersServer (TRI_server_t*);
+void TRI_StopReplicationAppliersServer(TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateCoordinatorDatabaseServer (TRI_server_t*,
-                                         TRI_voc_tick_t,
-                                         char const*,
-                                         TRI_vocbase_defaults_t const*,
-                                         TRI_vocbase_t**);
+int TRI_CreateCoordinatorDatabaseServer(TRI_server_t*, TRI_voc_tick_t,
+                                        char const*,
+                                        TRI_vocbase_defaults_t const*,
+                                        TRI_vocbase_t**);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDatabaseServer (TRI_server_t*,
-                              TRI_voc_tick_t,
-                              char const*,
-                              TRI_vocbase_defaults_t const*,
-                              TRI_vocbase_t**,
-                              bool);
+int TRI_CreateDatabaseServer(TRI_server_t*, TRI_voc_tick_t, char const*,
+                             TRI_vocbase_defaults_t const*, TRI_vocbase_t**,
+                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the ids of all local coordinator databases
 /// the caller is responsible for freeing the result
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer (TRI_server_t*);
+std::vector<TRI_voc_tick_t> TRI_GetIdsCoordinatorDatabaseServer(TRI_server_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing coordinator database
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DropByIdCoordinatorDatabaseServer (TRI_server_t*,
-                                           TRI_voc_tick_t,
-                                           bool);
+int TRI_DropByIdCoordinatorDatabaseServer(TRI_server_t*, TRI_voc_tick_t, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DropDatabaseServer (TRI_server_t*,
-                            char const*,
-                            bool,
-                            bool);
+int TRI_DropDatabaseServer(TRI_server_t*, char const*, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DropByIdDatabaseServer (TRI_server_t*,
-                                TRI_voc_tick_t,
-                                bool,
-                                bool);
+int TRI_DropByIdDatabaseServer(TRI_server_t*, TRI_voc_tick_t, bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a coordinator database by its id
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer (TRI_server_t*,
-                                                     TRI_voc_tick_t);
+TRI_vocbase_t* TRI_UseByIdCoordinatorDatabaseServer(TRI_server_t*,
+                                                    TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a coordinator database by its name
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer (TRI_server_t*,
-                                                 char const*);
+TRI_vocbase_t* TRI_UseCoordinatorDatabaseServer(TRI_server_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a database by its name
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t*,
-                                      char const*);
+TRI_vocbase_t* TRI_UseDatabaseServer(TRI_server_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a database by its name
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_LookupDatabaseByNameServer (TRI_server_t*,
-                                               char const*);
+TRI_vocbase_t* TRI_LookupDatabaseByNameServer(TRI_server_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a database by its id
 /// this will increase the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_UseDatabaseByIdServer (TRI_server_t*,
-                                          TRI_voc_tick_t);
+TRI_vocbase_t* TRI_UseDatabaseByIdServer(TRI_server_t*, TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief release a previously used database
 /// this will decrease the reference-counter for the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReleaseDatabaseServer (TRI_server_t*,
-                                TRI_vocbase_t*);
+void TRI_ReleaseDatabaseServer(TRI_server_t*, TRI_vocbase_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all databases a user can see
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetUserDatabasesServer (TRI_server_t*,
-                                char const*,
-                                std::vector<std::string>&);
+int TRI_GetUserDatabasesServer(TRI_server_t*, char const*,
+                               std::vector<std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all database names
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetDatabaseNamesServer (TRI_server_t*,
-                                std::vector<std::string>&);
+int TRI_GetDatabaseNamesServer(TRI_server_t*, std::vector<std::string>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the defaults into the target
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_GetDatabaseDefaultsServer (TRI_server_t*,
-                                    TRI_vocbase_defaults_t*);
+void TRI_GetDatabaseDefaultsServer(TRI_server_t*, TRI_vocbase_defaults_t*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    tick functions
@@ -292,19 +265,19 @@ void TRI_GetDatabaseDefaultsServer (TRI_server_t*,
 /// @brief create a new tick
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t TRI_NewTickServer (void);
+TRI_voc_tick_t TRI_NewTickServer(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the tick counter, with lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_UpdateTickServer (TRI_voc_tick_t);
+void TRI_UpdateTickServer(TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current tick counter
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_voc_tick_t TRI_CurrentTickServer (void);
+TRI_voc_tick_t TRI_CurrentTickServer(void);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   other functions
@@ -314,21 +287,19 @@ TRI_voc_tick_t TRI_CurrentTickServer (void);
 /// @brief msyncs a memory block between begin (incl) and end (excl)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_MSync (int,
-                char const*,
-                char const*);
+bool TRI_MSync(int, char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the current operation mode of the server
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ChangeOperationModeServer (TRI_vocbase_operationmode_e);
+int TRI_ChangeOperationModeServer(TRI_vocbase_operationmode_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current operation mode of the server
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_operationmode_e TRI_GetOperationModeServer ();
+TRI_vocbase_operationmode_e TRI_GetOperationModeServer();
 
 #endif
 
@@ -338,5 +309,6 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer ();
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -152,10 +152,8 @@ bool HttpCommTask::processRead() {
 
   // still trying to read the header fields
   if (!_readRequestBody) {
-
     // starting a new request
     if (_newRequest) {
-
       // acquire a new statistics entry for the request
       RequestStatisticsAgent::acquire();
 
@@ -214,8 +212,7 @@ bool HttpCommTask::processRead() {
 
       LOG_TRACE("HTTP READ FOR %p: %s", (void*)this,
                 std::string(_readBuffer->c_str() + _startPosition,
-                            _readPosition - _startPosition)
-                    .c_str());
+                            _readPosition - _startPosition).c_str());
 
       // check that we know, how to serve this request and update the connection
       // information, i. e. client and server addresses and ports and create a
@@ -368,7 +365,8 @@ bool HttpCommTask::processRead() {
       // check if server is active
       // .............................................................................
 
-      Scheduler const* scheduler = _server->scheduler(); // TODO(fc) this is singleton now
+      Scheduler const* scheduler =
+          _server->scheduler();  // TODO(fc) this is singleton now
 
       if (scheduler != nullptr && !scheduler->isActive()) {
         // server is inactive and will intentionally respond with HTTP 503
@@ -426,9 +424,8 @@ bool HttpCommTask::processRead() {
     // read "bodyLength" from read buffer and add this body to "httpRequest"
     _request->setBody(_readBuffer->c_str() + _bodyPosition, _bodyLength);
 
-    LOG_TRACE(
-        "%s",
-        std::string(_readBuffer->c_str() + _bodyPosition, _bodyLength).c_str());
+    LOG_TRACE("%s", std::string(_readBuffer->c_str() + _bodyPosition,
+                                _bodyLength).c_str());
 
     // remove body from read buffer and reset read position
     _readRequestBody = false;
@@ -1016,7 +1013,6 @@ bool HttpCommTask::handleEvent(EventToken token, EventType events) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpCommTask::signalTask(TaskData* data) {
-
   // data response
   if (data->_type == TaskData::TASK_DATA_RESPONSE) {
     data->transfer(this);

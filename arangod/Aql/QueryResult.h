@@ -37,81 +37,74 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                struct QueryResult
 // -----------------------------------------------------------------------------
 
-    struct QueryResult {
-      QueryResult& operator= (QueryResult const& other) = delete;
-      
-      QueryResult (QueryResult&& other) {
-        code              = other.code;
-        cached            = other.cached;
-        details           = other.details;
-        warnings          = other.warnings;
-        json              = other.json;
-        stats             = other.stats;
-        profile           = other.profile;
-        zone              = other.zone;
-        clusterplan       = other.clusterplan;
-        bindParameters    = other.bindParameters;
-        collectionNames   = other.collectionNames;
+struct QueryResult {
+  QueryResult& operator=(QueryResult const& other) = delete;
 
-        other.warnings    = nullptr;
-        other.json        = nullptr;
-        other.stats       = other.stats;
-        other.profile     = nullptr;
-        other.clusterplan = nullptr;
-      }
+  QueryResult(QueryResult&& other) {
+    code = other.code;
+    cached = other.cached;
+    details = other.details;
+    warnings = other.warnings;
+    json = other.json;
+    stats = other.stats;
+    profile = other.profile;
+    zone = other.zone;
+    clusterplan = other.clusterplan;
+    bindParameters = other.bindParameters;
+    collectionNames = other.collectionNames;
 
-      QueryResult (int code,
-                   std::string const& details) 
-        : code(code),
-          cached(false),
-          details(details),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          warnings(nullptr),
-          json(nullptr),
-          profile(nullptr),
-          clusterplan(nullptr) {
-      }
-      
-      explicit QueryResult (int code)
-        : QueryResult(code, "") {
-      }
-
-      QueryResult ()
-        : QueryResult(TRI_ERROR_NO_ERROR) {
-      }
-
-      virtual ~QueryResult () {
-        if (warnings != nullptr) {
-          TRI_FreeJson(zone, warnings);
-        }
-        if (json != nullptr) {
-          TRI_FreeJson(zone, json);
-        }
-        if (profile != nullptr) {
-          TRI_FreeJson(zone, profile);
-        }
-      }
-
-      int                             code;
-      bool                            cached;
-      std::string                     details;
-      std::unordered_set<std::string> bindParameters;
-      std::vector<std::string>        collectionNames;
-      TRI_memory_zone_t*              zone;
-      TRI_json_t*                     warnings;
-      TRI_json_t*                     json;
-      VPackBuilder                    stats;
-      TRI_json_t*                     profile;
-      TRI_json_t*                     clusterplan;
-    };
-
+    other.warnings = nullptr;
+    other.json = nullptr;
+    other.stats = other.stats;
+    other.profile = nullptr;
+    other.clusterplan = nullptr;
   }
+
+  QueryResult(int code, std::string const& details)
+      : code(code),
+        cached(false),
+        details(details),
+        zone(TRI_UNKNOWN_MEM_ZONE),
+        warnings(nullptr),
+        json(nullptr),
+        profile(nullptr),
+        clusterplan(nullptr) {}
+
+  explicit QueryResult(int code) : QueryResult(code, "") {}
+
+  QueryResult() : QueryResult(TRI_ERROR_NO_ERROR) {}
+
+  virtual ~QueryResult() {
+    if (warnings != nullptr) {
+      TRI_FreeJson(zone, warnings);
+    }
+    if (json != nullptr) {
+      TRI_FreeJson(zone, json);
+    }
+    if (profile != nullptr) {
+      TRI_FreeJson(zone, profile);
+    }
+  }
+
+  int code;
+  bool cached;
+  std::string details;
+  std::unordered_set<std::string> bindParameters;
+  std::vector<std::string> collectionNames;
+  TRI_memory_zone_t* zone;
+  TRI_json_t* warnings;
+  TRI_json_t* json;
+  VPackBuilder stats;
+  TRI_json_t* profile;
+  TRI_json_t* clusterplan;
+};
+}
 }
 
 #endif
@@ -122,5 +115,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

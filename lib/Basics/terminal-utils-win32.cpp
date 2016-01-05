@@ -38,7 +38,7 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ColumnsWidth () {
+int TRI_ColumnsWidth() {
   HANDLE hOut;
   CONSOLE_SCREEN_BUFFER_INFO SBInfo;
 
@@ -61,5 +61,6 @@ int TRI_ColumnsWidth () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

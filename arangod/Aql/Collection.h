@@ -36,221 +36,216 @@
 #include "VocBase/vocbase.h"
 
 namespace triagens {
-  namespace aql {
-    struct Index;
+namespace aql {
+struct Index;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 struct Collection
 // -----------------------------------------------------------------------------
 
-    struct Collection {
+struct Collection {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  Collection& operator=(Collection const&) = delete;
+  Collection(Collection const&) = delete;
+  Collection() = delete;
 
-      Collection& operator= (Collection const&) = delete;
-      Collection (Collection const&) = delete;
-      Collection () = delete;
-      
-      Collection (std::string const&,
-                  TRI_vocbase_t*,
-                  TRI_transaction_type_e);
-      
-      ~Collection ();
+  Collection(std::string const&, TRI_vocbase_t*, TRI_transaction_type_e);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  ~Collection();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the current shard 
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-      inline void setCurrentShard (std::string const& shard) {
-        currentShard = shard;
-      }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set the current shard
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove the current shard
-////////////////////////////////////////////////////////////////////////////////
-      
-      inline void resetCurrentShard () {
-        currentShard = "";
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the collection id
-////////////////////////////////////////////////////////////////////////////////
-
-      inline TRI_voc_cid_t cid () const {
-        TRI_ASSERT(collection != nullptr);
-        return collection->_cid;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the name of the collection, translated for the sharding
-/// case. this will return currentShard if it is set, and name otherwise
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string getName () const {
-        if (! currentShard.empty()) {
-          // sharding case: return the current shard name instead of the collection name
-          return currentShard;
-        }
-
-        // non-sharding case: simply return the name
-        return name;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the pointer to the document collection
-////////////////////////////////////////////////////////////////////////////////
-        
-      inline TRI_document_collection_t* documentCollection () const {
-        TRI_ASSERT(collection != nullptr);
-        TRI_ASSERT(collection->_collection != nullptr);
-
-        return collection->_collection;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the collection is an edge collection
-////////////////////////////////////////////////////////////////////////////////
-
-      inline bool isEdgeCollection () const {
-        auto document = documentCollection();
-        return (document->_info.type() == TRI_COL_TYPE_EDGE);
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the collection is a document collection
-////////////////////////////////////////////////////////////////////////////////
-      
-      inline bool isDocumentCollection () const {
-        auto document = documentCollection();
-        return (document->_info.type() == TRI_COL_TYPE_DOCUMENT);
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief count the LOCAL number of documents in the collection
-////////////////////////////////////////////////////////////////////////////////
-
-      size_t count () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the collection's plan id
-////////////////////////////////////////////////////////////////////////////////
-
-      TRI_voc_cid_t getPlanId() const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the shard ids of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-      std::shared_ptr<std::vector<std::string>> shardIds () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the shard keys of a collection
-////////////////////////////////////////////////////////////////////////////////
-
-      std::vector<std::string> shardKeys () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the indexes of the collection
-////////////////////////////////////////////////////////////////////////////////
-
-      std::vector<Index const*> getIndexes () const; 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return an index by its id
-////////////////////////////////////////////////////////////////////////////////
-  
-      Index const* getIndex (TRI_idx_iid_t) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return an index by its id
-////////////////////////////////////////////////////////////////////////////////
-  
-      Index const* getIndex (std::string const&) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the collection uses the default sharding
-////////////////////////////////////////////////////////////////////////////////
-
-      bool usesDefaultSharding () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the underlying collection
-////////////////////////////////////////////////////////////////////////////////
-
-      void setCollection (TRI_vocbase_col_t* coll) {
-        collection = coll;
-      }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-    private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list for the collection
-////////////////////////////////////////////////////////////////////////////////
-
-      void fillIndexes () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list, cluster coordinator case
-////////////////////////////////////////////////////////////////////////////////
-
-      void fillIndexesCoordinator () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list, cluster DB server case
-////////////////////////////////////////////////////////////////////////////////
-
-      void fillIndexesDBServer () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fills the index list, local server case
-/// note: this will also be called for local collection on the DB server
-////////////////////////////////////////////////////////////////////////////////
-
-      void fillIndexesLocal () const;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-    
-    private:
-      
-      TRI_vocbase_col_t*           collection;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief currently handled shard. this is a temporary variable that will
-/// only be filled during plan creation
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string                  currentShard;
-      
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-    public:
-
-      std::string const            name;
-      TRI_vocbase_t*               vocbase;
-      TRI_transaction_type_e       accessType;
-      bool                         isReadWrite;
-      std::vector<Index const*> mutable  indexes;
-      int64_t mutable              numDocuments = UNINITIALIZED;
-
-      static int64_t const         UNINITIALIZED = -1;
-    };
-
+  inline void setCurrentShard(std::string const& shard) {
+    currentShard = shard;
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove the current shard
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline void resetCurrentShard() { currentShard = ""; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the collection id
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline TRI_voc_cid_t cid() const {
+    TRI_ASSERT(collection != nullptr);
+    return collection->_cid;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the name of the collection, translated for the sharding
+  /// case. this will return currentShard if it is set, and name otherwise
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string getName() const {
+    if (!currentShard.empty()) {
+      // sharding case: return the current shard name instead of the collection
+      // name
+      return currentShard;
+    }
+
+    // non-sharding case: simply return the name
+    return name;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the pointer to the document collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline TRI_document_collection_t* documentCollection() const {
+    TRI_ASSERT(collection != nullptr);
+    TRI_ASSERT(collection->_collection != nullptr);
+
+    return collection->_collection;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the collection is an edge collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline bool isEdgeCollection() const {
+    auto document = documentCollection();
+    return (document->_info.type() == TRI_COL_TYPE_EDGE);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the collection is a document collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline bool isDocumentCollection() const {
+    auto document = documentCollection();
+    return (document->_info.type() == TRI_COL_TYPE_DOCUMENT);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief count the LOCAL number of documents in the collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t count() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the collection's plan id
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_voc_cid_t getPlanId() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the shard ids of a collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<std::string>> shardIds() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the shard keys of a collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::string> shardKeys() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the indexes of the collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::vector<Index const*> getIndexes() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return an index by its id
+  ////////////////////////////////////////////////////////////////////////////////
+
+  Index const* getIndex(TRI_idx_iid_t) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return an index by its id
+  ////////////////////////////////////////////////////////////////////////////////
+
+  Index const* getIndex(std::string const&) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the collection uses the default sharding
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool usesDefaultSharding() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set the underlying collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setCollection(TRI_vocbase_col_t* coll) { collection = coll; }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // functions
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fills the index list for the collection
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void fillIndexes() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fills the index list, cluster coordinator case
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void fillIndexesCoordinator() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fills the index list, cluster DB server case
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void fillIndexesDBServer() const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fills the index list, local server case
+  /// note: this will also be called for local collection on the DB server
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void fillIndexesLocal() const;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  TRI_vocbase_col_t* collection;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief currently handled shard. this is a temporary variable that will
+  /// only be filled during plan creation
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::string currentShard;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // variables
+  // -----------------------------------------------------------------------------
+
+ public:
+  std::string const name;
+  TRI_vocbase_t* vocbase;
+  TRI_transaction_type_e accessType;
+  bool isReadWrite;
+  std::vector<Index const*> mutable indexes;
+  int64_t mutable numDocuments = UNINITIALIZED;
+
+  static int64_t const UNINITIALIZED = -1;
+};
+}
 }
 
 #endif
@@ -261,5 +256,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

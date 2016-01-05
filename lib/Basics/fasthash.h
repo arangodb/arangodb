@@ -34,7 +34,7 @@
  * @len:  data size
  * @seed: the seed
  */
-uint32_t fasthash32(const void *buf, size_t len, uint32_t seed);
+uint32_t fasthash32(const void* buf, size_t len, uint32_t seed);
 
 /**
  * fasthash64 - 64-bit implementation of fasthash
@@ -42,7 +42,7 @@ uint32_t fasthash32(const void *buf, size_t len, uint32_t seed);
  * @len:  data size
  * @seed: the seed
  */
-uint64_t fasthash64(const void *buf, size_t len, uint64_t seed);
+uint64_t fasthash64(const void* buf, size_t len, uint64_t seed);
 
 #endif
 // -----------------------------------------------------------------------------
@@ -51,5 +51,6 @@ uint64_t fasthash64(const void *buf, size_t len, uint64_t seed);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

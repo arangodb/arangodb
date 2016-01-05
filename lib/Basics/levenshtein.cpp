@@ -34,28 +34,30 @@
 /// @author Benjamin Pritchard (ben@bennyp.org)
 /// copyright 2013 Benjamin Pritchard. Released under the MIT License
 /// copyright The MIT License
-/// From https://raw.githubusercontent.com/bennybp/stringmatch/master/stringmatch.cpp
+/// From
+/// https://raw.githubusercontent.com/bennybp/stringmatch/master/stringmatch.cpp
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Levenshtein (std::string const& str1,
-                     std::string const& str2) {
+int TRI_Levenshtein(std::string const& str1, std::string const& str2) {
   // for all i and j, d[i,j] will hold the Levenshtein distance between
   // the first i characters of s and the first j characters of t;
   // note that d has (m+1)x(n+1) values
   size_t m = str1.size();
   size_t n = str2.size();
 
-  int** d = new int*[m + 1];
+  int** d = new int* [m + 1];
   for (size_t i = 0; i <= m; i++) {
     d[i] = new int[n + 1];
   }
 
   for (size_t i = 0; i <= m; i++) {
-    d[i][0] = static_cast<int>(i); // the distance of any first string to an empty second string
+    d[i][0] = static_cast<int>(
+        i);  // the distance of any first string to an empty second string
   }
 
   for (size_t j = 0; j <= n; j++) {
-    d[0][j] = static_cast<int>(j); // the distance of any second string to an empty first string
+    d[0][j] = static_cast<int>(
+        j);  // the distance of any second string to an empty first string
   }
 
   int min;
@@ -63,16 +65,15 @@ int TRI_Levenshtein (std::string const& str1,
   for (size_t j = 1; j <= n; j++) {
     for (size_t i = 1; i <= m; i++) {
       if (str1[i - 1] == str2[j - 1]) {
-        d[i][j] = d[i - 1][j - 1];   // no operation required
-      }
-      else {
-        //find a minimum
-        min = d[i - 1][j] + /*1*/3;     // a deletion
-        if( (d[i][j - 1] + 1) < min) {   // an insertion
+        d[i][j] = d[i - 1][j - 1];  // no operation required
+      } else {
+        // find a minimum
+        min = d[i - 1][j] + /*1*/ 3;    // a deletion
+        if ((d[i][j - 1] + 1) < min) {  // an insertion
           min = (d[i][j - 1] + 1);
         }
-        if( (d[i - 1][j - 1] + 1) < min) { // a substitution
-          min = (d[i - 1][j - 1] + /*1*/2);
+        if ((d[i - 1][j - 1] + 1) < min) {  // a substitution
+          min = (d[i - 1][j - 1] + /*1*/ 2);
         }
 
         d[i][j] = min;
@@ -82,11 +83,10 @@ int TRI_Levenshtein (std::string const& str1,
 
   int result = d[m][n];
 
-  for(size_t i = 0; i <= m; i++) {
+  for (size_t i = 0; i <= m; i++) {
     delete[] d[i];
   }
   delete[] d;
 
   return result;
 }
-

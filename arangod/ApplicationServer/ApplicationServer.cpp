@@ -64,7 +64,7 @@ static string DeprecatedParameter;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-  const string OPTIONS_HIDDEN = "Hidden Options";
+const string OPTIONS_HIDDEN = "Hidden Options";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +72,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-  const string OPTIONS_CMDLINE = "General Options";
+const string OPTIONS_CMDLINE = "General Options";
 }
 
 // -----------------------------------------------------------------------------
@@ -83,50 +83,52 @@ namespace {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
-  : _options(),
-    _description(),
-    _descriptionFile(),
-    _arguments(),
-    _features(),
-    _exitOnParentDeath(false),
-    _watchParent(0),
-    _stopping(0),
-    _name(name),
-    _title(title),
-    _version(version),
-    _configFile(),
-    _userConfigFile(),
-    _systemConfigFile(),
-    _uid(),
-    _numericUid(0),
-    _gid(),
-    _numericGid(0),
-    _logApplicationName("arangod"),
-    _logFacility(""),
-    _logLevel("info"),
-    _logFile("+"),
-    _logTty("+"),
-    _logRequestsFile(""),
-    _logPrefix(),
-    _logThreadId(false),
-    _logLineNumber(false),
-    _logLocalTime(false),
-    _logSourceFilter(),
-    _logContentFilter(),
+ApplicationServer::ApplicationServer(std::string const& name,
+                                     std::string const& title,
+                                     std::string const& version)
+    : _options(),
+      _description(),
+      _descriptionFile(),
+      _arguments(),
+      _features(),
+      _exitOnParentDeath(false),
+      _watchParent(0),
+      _stopping(0),
+      _name(name),
+      _title(title),
+      _version(version),
+      _configFile(),
+      _userConfigFile(),
+      _systemConfigFile(),
+      _uid(),
+      _numericUid(0),
+      _gid(),
+      _numericGid(0),
+      _logApplicationName("arangod"),
+      _logFacility(""),
+      _logLevel("info"),
+      _logFile("+"),
+      _logTty("+"),
+      _logRequestsFile(""),
+      _logPrefix(),
+      _logThreadId(false),
+      _logLineNumber(false),
+      _logLocalTime(false),
+      _logSourceFilter(),
+      _logContentFilter(),
 #ifdef _WIN32
-    _randomGenerator(5),
+      _randomGenerator(5),
 #else
-    _randomGenerator(3),
+      _randomGenerator(3),
 #endif
-    _finishedCondition() {
+      _finishedCondition() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationServer::~ApplicationServer () {
+ApplicationServer::~ApplicationServer() {
   Random::shutdown();
   for (auto& it : _features) {
     delete it;
@@ -141,7 +143,7 @@ ApplicationServer::~ApplicationServer () {
 /// @brief adds a new feature
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::addFeature (ApplicationFeature* feature) {
+void ApplicationServer::addFeature(ApplicationFeature* feature) {
   _features.push_back(feature);
 }
 
@@ -149,7 +151,7 @@ void ApplicationServer::addFeature (ApplicationFeature* feature) {
 /// @brief sets the name of the system config file
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setSystemConfigFile (std::string const& name) {
+void ApplicationServer::setSystemConfigFile(std::string const& name) {
   _systemConfigFile = name;
 }
 
@@ -157,7 +159,7 @@ void ApplicationServer::setSystemConfigFile (std::string const& name) {
 /// @brief sets the name of the user config file
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setUserConfigFile (std::string const& name) {
+void ApplicationServer::setUserConfigFile(std::string const& name) {
   _userConfigFile = name;
 }
 
@@ -165,15 +167,14 @@ void ApplicationServer::setUserConfigFile (std::string const& name) {
 /// @brief returns the name of the application
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ApplicationServer::getName () const {
-  return _name;
-}
+string const& ApplicationServer::getName() const { return _name; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the logging
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgrounded) {
+void ApplicationServer::setupLogging(bool threaded, bool daemon,
+                                     bool backgrounded) {
   TRI_ShutdownLogging(false);
   TRI_InitializeLogging(threaded);
 
@@ -186,7 +187,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
   if (_options.has("log.line-number")) {
     _logLineNumber = true;
   }
-  
+
   if (_options.has("log.use-local-time")) {
     _logLocalTime = true;
   }
@@ -195,7 +196,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     severity += ",performance";
   }
 
-  if (! _logRequestsFile.empty()) {
+  if (!_logRequestsFile.empty()) {
     // add this so the user does not need to think about it
     severity += ",usage";
   }
@@ -208,7 +209,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
   TRI_SetPrefixLogging(_logPrefix.c_str());
   TRI_SetThreadIdentifierLogging(_logThreadId);
 
-  for (auto it = _logSourceFilter.begin();  it != _logSourceFilter.end();  ++it) {
+  for (auto it = _logSourceFilter.begin(); it != _logSourceFilter.end(); ++it) {
     TRI_SetFileToLog(it->c_str());
   }
 
@@ -219,49 +220,48 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
   }
 
 #ifdef TRI_ENABLE_SYSLOG
-  if (! _logFacility.empty()) {
+  if (!_logFacility.empty()) {
     TRI_CreateLogAppenderSyslog(_logApplicationName.c_str(),
-                                _logFacility.c_str(),
-                                contentFilter,
-                                TRI_LOG_SEVERITY_UNKNOWN,
-                                false);
+                                _logFacility.c_str(), contentFilter,
+                                TRI_LOG_SEVERITY_UNKNOWN, false);
   }
 #endif
 
-  // requests log (must come before the regular logs because it will consume the messages)
-  if (! _logRequestsFile.empty()) {
+  // requests log (must come before the regular logs because it will consume the
+  // messages)
+  if (!_logRequestsFile.empty()) {
     string filename = _logRequestsFile;
 
     if (daemon && filename != "+" && filename != "-") {
       filename = filename + ".daemon";
     }
 
-    // this appender consumes all usage log messages, so they are not propagated to any others
-    int res = TRI_CreateLogAppenderFile(filename.c_str(),
-                                        nullptr,
-                                        TRI_LOG_SEVERITY_USAGE,
-                                        true,
-                                        false);
+    // this appender consumes all usage log messages, so they are not propagated
+    // to any others
+    int res = TRI_CreateLogAppenderFile(filename.c_str(), nullptr,
+                                        TRI_LOG_SEVERITY_USAGE, true, false);
 
-    // the user specified a requests log file to use but it could not be created. bail out
+    // the user specified a requests log file to use but it could not be
+    // created. bail out
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("failed to create requests logfile '%s'. Please check the path and permissions.", filename.c_str());
+      LOG_FATAL_AND_EXIT(
+          "failed to create requests logfile '%s'. Please check the path and "
+          "permissions.",
+          filename.c_str());
     }
   }
 
   // additional log file in case of tty
   bool ttyLogger = false;
 
-  if (! backgrounded && isatty(STDIN_FILENO) != 0 && ! _logTty.empty()) {
+  if (!backgrounded && isatty(STDIN_FILENO) != 0 && !_logTty.empty()) {
     bool regularOut = (_logFile == "+" || _logFile == "-");
     bool ttyOut = (_logTty == "+" || _logTty == "-");
 
-    if (! regularOut || ! ttyOut) {
-      int res = TRI_CreateLogAppenderFile(_logTty.c_str(),
-                                          contentFilter,
-                                          TRI_LOG_SEVERITY_UNKNOWN,
-                                          false,
-                                          true);
+    if (!regularOut || !ttyOut) {
+      int res =
+          TRI_CreateLogAppenderFile(_logTty.c_str(), contentFilter,
+                                    TRI_LOG_SEVERITY_UNKNOWN, false, true);
 
       if (res == TRI_ERROR_NO_ERROR) {
         ttyLogger = true;
@@ -270,26 +270,29 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
   }
 
   // regular log file
-  if (! _logFile.empty()) {
+  if (!_logFile.empty()) {
     string filename = _logFile;
 
     if (daemon && filename != "+" && filename != "-") {
       filename = filename + ".daemon";
     }
 
-    int res = TRI_CreateLogAppenderFile(filename.c_str(),
-                                        contentFilter,
-                                        TRI_LOG_SEVERITY_UNKNOWN,
-                                        false,
-                                        ! ttyLogger);
+    int res =
+        TRI_CreateLogAppenderFile(filename.c_str(), contentFilter,
+                                  TRI_LOG_SEVERITY_UNKNOWN, false, !ttyLogger);
 
-    // the user specified a log file to use but it could not be created. bail out
+    // the user specified a log file to use but it could not be created. bail
+    // out
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
+      LOG_FATAL_AND_EXIT(
+          "failed to create logfile '%s'. Please check the path and "
+          "permissions.",
+          filename.c_str());
     }
 
     if (daemon && _logFile != "+" && _logFile != "-") {
-      LOG_INFO("using logfiles: supervisor process: '%s', child process: '%s'", filename.c_str(), _logFile.c_str());
+      LOG_INFO("using logfiles: supervisor process: '%s', child process: '%s'",
+               filename.c_str(), _logFile.c_str());
     }
   }
 }
@@ -298,23 +301,19 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
 /// @brief returns the command line options
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptions& ApplicationServer::programOptions () {
-  return _options;
-}
+ProgramOptions& ApplicationServer::programOptions() { return _options; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the command line arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> ApplicationServer::programArguments () {
-  return _arguments;
-}
+vector<string> ApplicationServer::programArguments() { return _arguments; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the arguments with empty options description
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationServer::parse (int argc, char* argv[]) {
+bool ApplicationServer::parse(int argc, char* argv[]) {
   map<string, ProgramOptionsDescription> none;
 
   return parse(argc, argv, none);
@@ -324,22 +323,23 @@ bool ApplicationServer::parse (int argc, char* argv[]) {
 /// @brief parses the arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationServer::parse (int argc,
-                               char* argv[],
-                               std::map<std::string, ProgramOptionsDescription> opts) {
-
+bool ApplicationServer::parse(
+    int argc, char* argv[],
+    std::map<std::string, ProgramOptionsDescription> opts) {
   // .............................................................................
   // setup the options
   // .............................................................................
 
   setupOptions(opts);
 
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+       i != _features.end(); ++i) {
     (*i)->setupOptions(opts);
   }
 
   // construct options description
-  for (map<string, ProgramOptionsDescription>::iterator i = opts.begin();  i != opts.end();  ++i) {
+  for (map<string, ProgramOptionsDescription>::iterator i = opts.begin();
+       i != opts.end(); ++i) {
     string name = i->first;
 
     ProgramOptionsDescription sectionDescription = i->second;
@@ -361,7 +361,7 @@ bool ApplicationServer::parse (int argc,
 
   bool ok = _options.parse(_description, argc, argv);
 
-  if (! ok) {
+  if (!ok) {
     LOG_ERROR("cannot parse command line: %s", _options.lastError().c_str());
     return false;
   }
@@ -375,33 +375,36 @@ bool ApplicationServer::parse (int argc,
   // check for help
   set<string> help = _options.needHelp("help");
 
-  if (! help.empty()) {
-    // output help, but do not yet exit (we'll exit a little later so we can also
+  if (!help.empty()) {
+    // output help, but do not yet exit (we'll exit a little later so we can
+    // also
     // check the specified configuration for errors)
-    std::cout << argv[0] << " " << _title << std::endl << std::endl << _description.usage(help) << std::endl;
+    std::cout << argv[0] << " " << _title << std::endl
+              << std::endl
+              << _description.usage(help) << std::endl;
   }
-  
-  
+
   TRI_SetLogLevelLogging(_logLevel.c_str());
-  
+
   // .............................................................................
   // check configuration file
   // .............................................................................
 
   ok = readConfigurationFile();
 
-  if (! ok) {
+  if (!ok) {
     return false;
   }
-  
+
   // .............................................................................
   // parse phase 1
   // .............................................................................
 
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+       i != _features.end(); ++i) {
     ok = (*i)->afterOptionParsing(_options);
 
-    if (! ok) {
+    if (!ok) {
       return false;
     }
   }
@@ -410,7 +413,7 @@ bool ApplicationServer::parse (int argc,
   // this allows us to use --help to run a configuration file check, too, and
   // report errors to the user
 
-  if (! help.empty()) {
+  if (!help.empty()) {
     TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
   }
 
@@ -453,12 +456,9 @@ bool ApplicationServer::parse (int argc,
         Random::selectVersion(Random::RAND_WIN32);
         break;
       }
-      default: {
-        break;
-      }
+      default: { break; }
     }
-  }
-  catch (...) {
+  } catch (...) {
     LOG_FATAL_AND_EXIT("cannot select random generator, giving up");
   }
 
@@ -469,21 +469,24 @@ bool ApplicationServer::parse (int argc,
 /// @brief prepares the server, step one
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::prepare () {
-
+void ApplicationServer::prepare() {
   // prepare all features - why reverse?
 
-  // reason: features might depend on each other. by creating them in reverse order and shutting them
-  // down in forward order, we ensure that the features created last are destroyed first, i.e.: LIFO
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+  // reason: features might depend on each other. by creating them in reverse
+  // order and shutting them
+  // down in forward order, we ensure that the features created last are
+  // destroyed first, i.e.: LIFO
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+       i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
     LOG_DEBUG("preparing server feature '%s'", feature->getName().c_str());
 
     bool ok = feature->prepare();
 
-    if (! ok) {
-      LOG_FATAL_AND_EXIT("failed to prepare server feature '%s'", feature->getName().c_str());
+    if (!ok) {
+      LOG_FATAL_AND_EXIT("failed to prepare server feature '%s'",
+                         feature->getName().c_str());
     }
 
     LOG_TRACE("prepared server feature '%s'", feature->getName().c_str());
@@ -494,18 +497,19 @@ void ApplicationServer::prepare () {
 /// @brief prepares the server, step two
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::prepare2 () {
-
+void ApplicationServer::prepare2() {
   // prepare all features
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+       i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
     LOG_DEBUG("preparing(2) server feature '%s'", feature->getName().c_str());
 
     bool ok = feature->prepare2();
 
-    if (! ok) {
-      LOG_FATAL_AND_EXIT("failed to prepare(2) server feature '%s'", feature->getName().c_str());
+    if (!ok) {
+      LOG_FATAL_AND_EXIT("failed to prepare(2) server feature '%s'",
+                         feature->getName().c_str());
     }
 
     LOG_TRACE("prepared(2) server feature '%s'", feature->getName().c_str());
@@ -516,7 +520,7 @@ void ApplicationServer::prepare2 () {
 /// @brief starts the server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::start () {
+void ApplicationServer::start() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
@@ -524,28 +528,32 @@ void ApplicationServer::start () {
 #endif
 
   // start all startable features
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+       i != _features.end(); ++i) {
     ApplicationFeature* feature = *i;
 
     bool ok = feature->start();
 
-    if (! ok) {
-      LOG_FATAL_AND_EXIT("failed to start server feature '%s'", feature->getName().c_str());
+    if (!ok) {
+      LOG_FATAL_AND_EXIT("failed to start server feature '%s'",
+                         feature->getName().c_str());
     }
 
     LOG_DEBUG("started server feature '%s'", feature->getName().c_str());
   }
 
   // now open all features
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+       i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
     LOG_DEBUG("opening server feature '%s'", feature->getName().c_str());
 
     bool ok = feature->open();
 
-    if (! ok) {
-      LOG_FATAL_AND_EXIT("failed to open server feature '%s'", feature->getName().c_str());
+    if (!ok) {
+      LOG_FATAL_AND_EXIT("failed to open server feature '%s'",
+                         feature->getName().c_str());
     }
 
     LOG_TRACE("opened server feature '%s'", feature->getName().c_str());
@@ -556,16 +564,16 @@ void ApplicationServer::start () {
 /// @brief waits for shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::wait () {
+void ApplicationServer::wait() {
   // wait until we receive a stop signal
   while (_stopping == 0) {
     // check the parent and wait for a second
-    if (! checkParent()) {
+    if (!checkParent()) {
       break;
     }
 
     CONDITION_LOCKER(locker, _finishedCondition);
-    locker.wait((uint64_t) (1000 * 1000));
+    locker.wait((uint64_t)(1000 * 1000));
   }
 }
 
@@ -573,7 +581,7 @@ void ApplicationServer::wait () {
 /// @brief begins shutdown sequence
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::beginShutdown () {
+void ApplicationServer::beginShutdown() {
   if (_stopping != 0) {
     return;
   }
@@ -584,14 +592,15 @@ void ApplicationServer::beginShutdown () {
 /// @brief stops everything
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::stop () {
+void ApplicationServer::stop() {
   beginShutdown();
 
   CONDITION_LOCKER(locker, _finishedCondition);
   locker.signal();
 
   // close all features
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
+  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+       i != _features.end(); ++i) {
     ApplicationFeature* feature = *i;
 
     feature->close();
@@ -599,9 +608,9 @@ void ApplicationServer::stop () {
     LOG_TRACE("closed server feature '%s'", feature->getName().c_str());
   }
 
-
   // stop all features
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();  i != _features.rend();  ++i) {
+  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+       i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
     LOG_DEBUG("shutting down server feature '%s'", feature->getName().c_str());
@@ -615,17 +624,14 @@ void ApplicationServer::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationServer::extractPrivileges() {
-
 #ifdef TRI_HAVE_SETGID
 
   if (_gid.empty()) {
     _numericGid = getgid();
-  }
-  else {
+  } else {
     int gidNumber = TRI_Int32String(_gid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
-
 #ifdef TRI_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
@@ -633,20 +639,20 @@ void ApplicationServer::extractPrivileges() {
         LOG_FATAL_AND_EXIT("unknown numeric gid '%s'", _gid.c_str());
       }
 #endif
-    }
-    else {
+    } else {
 #ifdef TRI_HAVE_GETGRNAM
       string name = _gid;
       group* g = getgrnam(name.c_str());
 
       if (g != 0) {
         gidNumber = g->gr_gid;
-      }
-      else {
-        LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid", _gid.c_str());
+      } else {
+        LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid",
+                           _gid.c_str());
       }
 #else
-      LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid", _gid.c_str());
+      LOG_FATAL_AND_EXIT("cannot convert groupname '%s' to numeric gid",
+                         _gid.c_str());
 #endif
     }
 
@@ -659,12 +665,10 @@ void ApplicationServer::extractPrivileges() {
 
   if (_uid.empty()) {
     _numericUid = getuid();
-  }
-  else {
+  } else {
     int uidNumber = TRI_Int32String(_uid.c_str());
 
     if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-
 #ifdef TRI_HAVE_GETPWUID
       passwd* p = getpwuid(uidNumber);
 
@@ -672,20 +676,20 @@ void ApplicationServer::extractPrivileges() {
         LOG_FATAL_AND_EXIT("unknown numeric uid '%s'", _uid.c_str());
       }
 #endif
-    }
-    else {
+    } else {
 #ifdef TRI_HAVE_GETPWNAM
       string name = _uid;
       passwd* p = getpwnam(name.c_str());
 
       if (p != 0) {
         uidNumber = p->pw_uid;
-      }
-      else {
-        LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid", _uid.c_str());
+      } else {
+        LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid",
+                           _uid.c_str());
       }
 #else
-      LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid", _uid.c_str());
+      LOG_FATAL_AND_EXIT("cannot convert username '%s' to numeric uid",
+                         _uid.c_str());
 #endif
     }
 
@@ -699,12 +703,12 @@ void ApplicationServer::extractPrivileges() {
 /// @brief drops the privileges permanently
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::dropPrivilegesPermanently () {
-  
-  // clear all supplementary groups
-#if defined(TRI_HAVE_INITGROUPS) && defined(TRI_HAVE_SETGID) && defined(TRI_HAVE_SETUID)
+void ApplicationServer::dropPrivilegesPermanently() {
+// clear all supplementary groups
+#if defined(TRI_HAVE_INITGROUPS) && defined(TRI_HAVE_SETGID) && \
+    defined(TRI_HAVE_SETUID)
 
-  if (! _gid.empty() && ! _uid.empty()) {
+  if (!_gid.empty() && !_uid.empty()) {
     struct passwd* pwent = getpwuid(_numericUid);
 
     if (pwent != nullptr) {
@@ -712,34 +716,35 @@ void ApplicationServer::dropPrivilegesPermanently () {
     }
   }
 
-#endif  
+#endif
 
-
-  // first GID
+// first GID
 #ifdef TRI_HAVE_SETGID
 
-  if (! _gid.empty()) {
-    LOG_DEBUG("permanently changing the gid to %d", (int) _numericGid);
+  if (!_gid.empty()) {
+    LOG_DEBUG("permanently changing the gid to %d", (int)_numericGid);
 
     int res = setgid(_numericGid);
 
     if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int) _numericGid, strerror(errno));
+      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int)_numericGid,
+                         strerror(errno));
     }
   }
 
 #endif
 
-  // then UID (because we are dropping)
+// then UID (because we are dropping)
 #ifdef TRI_HAVE_SETUID
 
-  if (! _uid.empty()) {
-    LOG_DEBUG("permanently changing the uid to %d", (int) _numericUid);
+  if (!_uid.empty()) {
+    LOG_DEBUG("permanently changing the uid to %d", (int)_numericUid);
 
     int res = setuid(_numericUid);
 
     if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set uid '%s': %s", _uid.c_str(), strerror(errno));
+      LOG_FATAL_AND_EXIT("cannot set uid '%s': %s", _uid.c_str(),
+                         strerror(errno));
     }
   }
 
@@ -750,26 +755,25 @@ void ApplicationServer::dropPrivilegesPermanently () {
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
-
+void ApplicationServer::setupOptions(
+    map<string, ProgramOptionsDescription>& options) {
   // .............................................................................
   // command line options
   // .............................................................................
 
-  options["General Options:help-default"]
-    ("version,v", "print version string and exit")
-    ("help,h", "produce a usage message and exit")
-    ("configuration,c", &_configFile, "read configuration file")
-  ;
+  options["General Options:help-default"]("version,v",
+                                          "print version string and exit")(
+      "help,h", "produce a usage message and exit")(
+      "configuration,c", &_configFile, "read configuration file");
 
 #if defined(TRI_HAVE_SETUID) || defined(TRI_HAVE_SETGID)
 
   options["General Options:help-admin"]
 #ifdef TRI_HAVE_GETPPID
-    ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
+      ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
 #endif
-    ("watch-process", &_watchParent, "exit if process with given PID dies")
-  ;
+          ("watch-process", &_watchParent,
+           "exit if process with given PID dies");
 
 #endif
 
@@ -777,51 +781,51 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // logger options
   // .............................................................................
 
-  options["Logging Options:help-default:help-log"]
-    ("log.file", &_logFile, "log to file")
-    ("log.requests-file", &_logRequestsFile, "log requests to file")
-    ("log.level,l", &_logLevel, "log level")
-  ;
+  options["Logging Options:help-default:help-log"]("log.file", &_logFile,
+                                                   "log to file")(
+      "log.requests-file", &_logRequestsFile, "log requests to file")(
+      "log.level,l", &_logLevel, "log level");
 
-  options["Logging Options:help-log"]
-    ("log.application", &_logApplicationName, "application name for syslog")
-    ("log.facility", &_logFacility, "facility name for syslog (OS dependent)")
-    ("log.source-filter", &_logSourceFilter, "only debug and trace messages emitted by specific C source file")
-    ("log.content-filter", &_logContentFilter, "only log message containing the specified string (case-sensitive)")
-    ("log.line-number", "always log file and line number")
-    ("log.performance", "log performance indicators")
-    ("log.prefix", &_logPrefix, "prefix log")
-    ("log.thread", "log the thread identifier")
-    ("log.use-local-time", "use local dates and times in log messages")
-    ("log.tty", &_logTty, "additional log file if started on tty")
-  ;
+  options["Logging Options:help-log"]("log.application", &_logApplicationName,
+                                      "application name for syslog")(
+      "log.facility", &_logFacility, "facility name for syslog (OS dependent)")(
+      "log.source-filter", &_logSourceFilter,
+      "only debug and trace messages emitted by specific C source file")(
+      "log.content-filter", &_logContentFilter,
+      "only log message containing the specified string (case-sensitive)")(
+      "log.line-number", "always log file and line number")(
+      "log.performance", "log performance indicators")(
+      "log.prefix", &_logPrefix, "prefix log")("log.thread",
+                                               "log the thread identifier")(
+      "log.use-local-time", "use local dates and times in log messages")(
+      "log.tty", &_logTty, "additional log file if started on tty");
 
-  options["Hidden Options"]
-    ("log", &_logLevel, "log level")
-    ("log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")
-    ("log.hostname", &DeprecatedParameter, "host name for syslog")
-    ("log.severity", &DeprecatedParameter, "log severities")
+  options["Hidden Options"]("log", &_logLevel, "log level")(
+      "log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")(
+      "log.hostname", &DeprecatedParameter, "host name for syslog")(
+      "log.severity", &DeprecatedParameter, "log severities")
 #ifdef TRI_HAVE_SETUID
-    ("uid", &_uid, "switch to user-id after reading config files")
+      ("uid", &_uid, "switch to user-id after reading config files")
 #endif
 #ifdef TRI_HAVE_SETGID
-    ("gid", &_gid, "switch to group-id after reading config files")
+          ("gid", &_gid, "switch to group-id after reading config files")
 #endif
-  ;
+              ;
 
   // .............................................................................
   // application server options
   // .............................................................................
 
-  options["Server Options:help-admin"]
-    ("random.generator", &_randomGenerator, "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
+  options["Server Options:help-admin"](
+      "random.generator", &_randomGenerator,
+      "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
 #ifdef TRI_HAVE_SETUID
-    ("server.uid", &_uid, "switch to user-id after reading config files")
+      ("server.uid", &_uid, "switch to user-id after reading config files")
 #endif
 #ifdef TRI_HAVE_SETGID
-    ("server.gid", &_gid, "switch to group-id after reading config files")
+          ("server.gid", &_gid, "switch to group-id after reading config files")
 #endif
-  ;
+              ;
 }
 
 // -----------------------------------------------------------------------------
@@ -832,9 +836,8 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
 /// @brief checks if the parent is still alive
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationServer::checkParent () {
-
-  // check our parent, if it died given up
+bool ApplicationServer::checkParent() {
+// check our parent, if it died given up
 #ifdef TRI_HAVE_GETPPID
   if (_exitOnParentDeath && getppid() == 1) {
     LOG_INFO("parent has died");
@@ -853,7 +856,7 @@ bool ApplicationServer::checkParent () {
     int res = -1;
 #endif
     if (res != 0) {
-      LOG_INFO("parent %d has died", (int) _watchParent);
+      LOG_INFO("parent %d has died", (int)_watchParent);
       return false;
     }
   }
@@ -866,11 +869,10 @@ bool ApplicationServer::checkParent () {
 /// @brief reads the configuration files
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationServer::readConfigurationFile () {
-
-  // something has been specified on the command line regarding configuration file
-  if (! _configFile.empty()) {
-
+bool ApplicationServer::readConfigurationFile() {
+  // something has been specified on the command line regarding configuration
+  // file
+  if (!_configFile.empty()) {
     // do not use init files
     if (StringUtils::tolower(_configFile) == string("none")) {
       LOG_INFO("using no init file at all");
@@ -884,22 +886,22 @@ bool ApplicationServer::readConfigurationFile () {
     // Observe that this is treated as an error - the configuration file exists
     // but for some reason can not be parsed. Best to report an error.
 
-    if (! ok) {
-      LOG_ERROR("cannot parse config file '%s': %s", _configFile.c_str(), _options.lastError().c_str());
+    if (!ok) {
+      LOG_ERROR("cannot parse config file '%s': %s", _configFile.c_str(),
+                _options.lastError().c_str());
     }
 
     return ok;
-  }
-  else {
+  } else {
     LOG_DEBUG("no init file has been specified");
   }
 
-
-  // nothing has been specified on the command line regarding the user's configuration file
-  if (! _userConfigFile.empty()) {
-
+  // nothing has been specified on the command line regarding the user's
+  // configuration file
+  if (!_userConfigFile.empty()) {
     // .........................................................................
-    // first attempt to obtain a default configuration file from the users home directory
+    // first attempt to obtain a default configuration file from the users home
+    // directory
     // .........................................................................
 
     // .........................................................................
@@ -910,11 +912,10 @@ bool ApplicationServer::readConfigurationFile () {
 
     string homeDir = FileUtils::homeDirectory();
 
-    if (! homeDir.empty()) {
+    if (!homeDir.empty()) {
       if (homeDir[homeDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
         homeDir += TRI_DIR_SEPARATOR_CHAR + _userConfigFile;
-      }
-      else {
+      } else {
         homeDir += _userConfigFile;
       }
 
@@ -924,28 +925,26 @@ bool ApplicationServer::readConfigurationFile () {
 
         bool ok = _options.parse(_descriptionFile, homeDir);
 
-        // Observe that this is treated as an error - the configuration file exists
+        // Observe that this is treated as an error - the configuration file
+        // exists
         // but for some reason can not be parsed. Best to report an error.
 
-        if (! ok) {
-          LOG_ERROR("cannot parse config file '%s': %s", homeDir.c_str(), _options.lastError().c_str());
+        if (!ok) {
+          LOG_ERROR("cannot parse config file '%s': %s", homeDir.c_str(),
+                    _options.lastError().c_str());
         }
 
         return ok;
-      }
-      else {
+      } else {
         LOG_DEBUG("no user init file '%s' found", homeDir.c_str());
       }
-    }
-    else {
+    } else {
       LOG_DEBUG("no home directory found");
     }
   }
 
-
   // try the configuration file in the system directory - if there is one
-  if (! _systemConfigFile.empty()) {
-
+  if (!_systemConfigFile.empty()) {
     // Please note that the system directory changes depending on
     // where the user installed the application server.
 
@@ -953,8 +952,8 @@ bool ApplicationServer::readConfigurationFile () {
 
     if (d != 0) {
       string sysDir = string(d);
-      
-      if ((sysDir.length() > 0) && 
+
+      if ((sysDir.length() > 0) &&
           (sysDir[sysDir.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
         sysDir += TRI_DIR_SEPARATOR_CHAR;
       }
@@ -970,15 +969,17 @@ bool ApplicationServer::readConfigurationFile () {
 
         bool ok = _options.parse(_descriptionFile, localSysDir);
 
-        // Observe that this is treated as an error - the configuration file exists
+        // Observe that this is treated as an error - the configuration file
+        // exists
         // but for some reason can not be parsed. Best to report an error.
-        if (! ok) {
-          LOG_ERROR("cannot parse config file '%s': %s", localSysDir.c_str(), _options.lastError().c_str());
+        if (!ok) {
+          LOG_ERROR("cannot parse config file '%s': %s", localSysDir.c_str(),
+                    _options.lastError().c_str());
           return ok;
         }
-      }
-      else {
-        LOG_DEBUG("no system init override file '%s' found", localSysDir.c_str());
+      } else {
+        LOG_DEBUG("no system init override file '%s' found",
+                  localSysDir.c_str());
       }
 
       // check and see if file exists
@@ -987,19 +988,19 @@ bool ApplicationServer::readConfigurationFile () {
 
         bool ok = _options.parse(_descriptionFile, sysDir);
 
-        // Observe that this is treated as an error - the configuration file exists
+        // Observe that this is treated as an error - the configuration file
+        // exists
         // but for some reason can not be parsed. Best to report an error.
-        if (! ok) {
-          LOG_ERROR("cannot parse config file '%s': %s", sysDir.c_str(), _options.lastError().c_str());
+        if (!ok) {
+          LOG_ERROR("cannot parse config file '%s': %s", sysDir.c_str(),
+                    _options.lastError().c_str());
         }
 
         return ok;
-      }
-      else {
+      } else {
         LOG_INFO("no system init file '%s' found", sysDir.c_str());
       }
-    }
-    else {
+    } else {
       LOG_DEBUG("no system init file specified");
     }
   }
@@ -1013,5 +1014,6 @@ bool ApplicationServer::readConfigurationFile () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

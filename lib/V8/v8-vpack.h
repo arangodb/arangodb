@@ -49,17 +49,14 @@
 /// @brief converts a VPack value into a V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_VPackToV8 (v8::Isolate* isolate,
-                                     VPackSlice const&);
+v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate, VPackSlice const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a V8 value to VPack value
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_V8ToVPack (v8::Isolate* isolate,
-                   VPackBuilder& builder,
-                   v8::Handle<v8::Value> const value,
-                   bool keepTopLevelOpen);
+int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
+                  v8::Handle<v8::Value> const value, bool keepTopLevelOpen);
 
 #endif
 
@@ -69,5 +66,6 @@ int TRI_V8ToVPack (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

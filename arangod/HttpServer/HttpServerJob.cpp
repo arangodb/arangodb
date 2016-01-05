@@ -56,10 +56,11 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpServerJob::HttpServerJob(HttpServer* server,
-                             WorkItem::uptr<HttpHandler>& handler,
-                             bool isAsync)
-  : Job("HttpServerJob"), _server(server),
-    _workDesc(nullptr), _isAsync(isAsync) {
+                             WorkItem::uptr<HttpHandler>& handler, bool isAsync)
+    : Job("HttpServerJob"),
+      _server(server),
+      _workDesc(nullptr),
+      _isAsync(isAsync) {
   _handler.swap(handler);
 }
 
@@ -104,8 +105,7 @@ void HttpServerJob::work() {
 
     if (_isAsync) {
       _server->jobManager()->finishAsyncJob(_jobId, _handler->stealResponse());
-    }
-    else {
+    } else {
       auto data = std::make_unique<TaskData>();
 
       data->_taskId = _handler->taskId();
@@ -119,8 +119,7 @@ void HttpServerJob::work() {
     }
 
     LOG_TRACE("finished job %p", (void*)this);
-  }
-  catch (...) {
+  } catch (...) {
     _workDesc = WorkMonitor::popHandler(_handler.release(), false);
     throw;
   }

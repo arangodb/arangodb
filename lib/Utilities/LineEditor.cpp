@@ -47,16 +47,13 @@ using namespace arangodb;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::LineEditor ()
-  : _shell(nullptr),
-    _signalFunc(nullptr) {
-}
+LineEditor::LineEditor() : _shell(nullptr), _signalFunc(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-LineEditor::~LineEditor () {
+LineEditor::~LineEditor() {
   if (_shell != nullptr) {
     close();
     delete _shell;
@@ -71,33 +68,26 @@ LineEditor::~LineEditor () {
 /// @brief whether or not the shell implementation supports colors
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::supportsColors () const {
-  return _shell->supportsColors();
-}
+bool LineEditor::supportsColors() const { return _shell->supportsColors(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::open (bool autoComplete) {
-  return _shell->open(autoComplete);
-}
+bool LineEditor::open(bool autoComplete) { return _shell->open(autoComplete); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LineEditor::close () {
-  return _shell->close();
-}
+bool LineEditor::close() { return _shell->close(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::prompt (const string& prompt,
-                           const string& begin,
-                           bool& eof) {
+string LineEditor::prompt(const string& prompt, const string& begin,
+                          bool& eof) {
   return _shell->prompt(prompt, begin, eof);
 }
 
@@ -105,7 +95,7 @@ string LineEditor::prompt (const string& prompt,
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory (const std::string& line) {
+void LineEditor::addHistory(const std::string& line) {
   return _shell->addHistory(line);
 }
 
@@ -113,7 +103,7 @@ void LineEditor::addHistory (const std::string& line) {
 /// @brief send a signal to the shell implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::signal () {
+void LineEditor::signal() {
   if (_signalFunc != nullptr) {
     _signalFunc();
   }
@@ -124,7 +114,7 @@ void LineEditor::signal () {
 /// @brief register a callback function to be executed on signal receipt
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::setSignalFunction (std::function<void()> const& func) {
+void LineEditor::setSignalFunction(std::function<void()> const& func) {
   _signalFunc = func;
 }
 

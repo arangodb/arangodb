@@ -34,78 +34,71 @@
 #include "Basics/Thread.h"
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      WorkerThread
 // -----------------------------------------------------------------------------
 
-    class WorkerThread : public triagens::basics::Thread {
+class WorkerThread : public triagens::basics::Thread {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  WorkerThread(WorkerThread const&) = delete;
+  WorkerThread operator=(WorkerThread const&) = delete;
 
-      public:
+  WorkerThread(ThreadPool* pool)
+      : Thread(pool->name()), _pool(pool), _status(0) {}
 
-        WorkerThread (WorkerThread const&) = delete;
-        WorkerThread operator= (WorkerThread const&) = delete;
+  ~WorkerThread() {}
 
-        WorkerThread (ThreadPool* pool)
-          : Thread(pool->name()),
-            _pool(pool),
-            _status(0) {
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief stops the worker thread
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ~WorkerThread () {
-        }
+  void waitForDone() {
+    int expected = 0;
+    _status.compare_exchange_strong(expected, 1, std::memory_order_relaxed);
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops the worker thread
-////////////////////////////////////////////////////////////////////////////////
-
-        void waitForDone () {
-          int expected = 0;
-          _status.compare_exchange_strong(expected, 1, std::memory_order_relaxed);
-
-          while (_status != 2) {
-            usleep(5000);
-          }
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
-
-      protected:
-
-        void run () {
-          while (_status == 0) {
-            std::function<void()> task;
-
-            if (! _pool->dequeue(task)) {
-              break;
-            }
-            
-            task();
-          }
-
-          _status = 2;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        ThreadPool* _pool;
-
-        std::atomic<int> _status;
-    };
-
+    while (_status != 2) {
+      usleep(5000);
+    }
   }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                               protected
+  // functions
+  // -----------------------------------------------------------------------------
+
+ protected:
+  void run() {
+    while (_status == 0) {
+      std::function<void()> task;
+
+      if (!_pool->dequeue(task)) {
+        break;
+      }
+
+      task();
+    }
+
+    _status = 2;
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ThreadPool* _pool;
+
+  std::atomic<int> _status;
+};
+}
 }
 
 #endif
@@ -116,5 +109,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

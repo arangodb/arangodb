@@ -42,18 +42,14 @@ using namespace triagens::arango;
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-Ditch::Ditch (Ditches* ditches,
-              char const* filename,
-              int line)
-  : _ditches(ditches),
-    _prev(nullptr),
-    _next(nullptr),
-    _filename(filename),
-    _line(line) {
-}
+Ditch::Ditch(Ditches* ditches, char const* filename, int line)
+    : _ditches(ditches),
+      _prev(nullptr),
+      _next(nullptr),
+      _filename(filename),
+      _line(line) {}
 
-Ditch::~Ditch () {
-}
+Ditch::~Ditch() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -63,7 +59,7 @@ Ditch::~Ditch () {
 /// @brief return the associated collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* Ditch::collection () const {
+TRI_document_collection_t* Ditch::collection() const {
   return _ditches->collection();
 }
 
@@ -75,26 +71,20 @@ TRI_document_collection_t* Ditch::collection () const {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-DocumentDitch::DocumentDitch (Ditches* ditches,
-                              bool usedByTransaction,
-                              char const* filename,
-                              int line)
-  : Ditch(ditches, filename, line),
-    _usedByExternal(0),
-    _usedByTransaction(usedByTransaction) {
-}
+DocumentDitch::DocumentDitch(Ditches* ditches, bool usedByTransaction,
+                             char const* filename, int line)
+    : Ditch(ditches, filename, line),
+      _usedByExternal(0),
+      _usedByTransaction(usedByTransaction) {}
 
-DocumentDitch::~DocumentDitch () {
-}
+DocumentDitch::~DocumentDitch() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the _usedByTransaction flag, using the required lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void DocumentDitch::setUsedByTransaction () {
-  auto callback = [this] () -> void {
-    _usedByTransaction = true;
-  };
+void DocumentDitch::setUsedByTransaction() {
+  auto callback = [this]() -> void { _usedByTransaction = true; };
   _ditches->executeProtected(callback);
 }
 
@@ -102,10 +92,8 @@ void DocumentDitch::setUsedByTransaction () {
 /// @brief increases the _usedByExternal value, using the required lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void DocumentDitch::setUsedByExternal () {
-  auto callback = [this] () -> void {
-    ++_usedByExternal;
-  };
+void DocumentDitch::setUsedByExternal() {
+  auto callback = [this]() -> void { ++_usedByExternal; };
   _ditches->executeProtected(callback);
 }
 
@@ -117,14 +105,11 @@ void DocumentDitch::setUsedByExternal () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-ReplicationDitch::ReplicationDitch (Ditches* ditches,
-                                    char const* filename,
-                                    int line)
-  : Ditch(ditches, filename, line) {
-}
+ReplicationDitch::ReplicationDitch(Ditches* ditches, char const* filename,
+                                   int line)
+    : Ditch(ditches, filename, line) {}
 
-ReplicationDitch::~ReplicationDitch () {
-}
+ReplicationDitch::~ReplicationDitch() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class CompactionDitch
@@ -134,14 +119,11 @@ ReplicationDitch::~ReplicationDitch () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-CompactionDitch::CompactionDitch (Ditches* ditches,
-                                  char const* filename,
-                                  int line)
-  : Ditch(ditches, filename, line) {
-}
+CompactionDitch::CompactionDitch(Ditches* ditches, char const* filename,
+                                 int line)
+    : Ditch(ditches, filename, line) {}
 
-CompactionDitch::~CompactionDitch () {
-}
+CompactionDitch::~CompactionDitch() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class DropDatafileDitch
@@ -151,20 +133,16 @@ CompactionDitch::~CompactionDitch () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-DropDatafileDitch::DropDatafileDitch (Ditches* ditches, 
-                                      TRI_datafile_t* datafile,
-                                      void* data,
-                                      std::function<void(TRI_datafile_t*, void*)> callback,
-                                      char const* filename,
-                                      int line)
-  : Ditch(ditches, filename, line),
-    _datafile(datafile),
-    _data(data),
-    _callback(callback) {
-}
+DropDatafileDitch::DropDatafileDitch(
+    Ditches* ditches, TRI_datafile_t* datafile, void* data,
+    std::function<void(TRI_datafile_t*, void*)> callback, char const* filename,
+    int line)
+    : Ditch(ditches, filename, line),
+      _datafile(datafile),
+      _data(data),
+      _callback(callback) {}
 
-DropDatafileDitch::~DropDatafileDitch () {
-}
+DropDatafileDitch::~DropDatafileDitch() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         class RenameDatafileDitch
@@ -174,20 +152,16 @@ DropDatafileDitch::~DropDatafileDitch () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-RenameDatafileDitch::RenameDatafileDitch (Ditches* ditches,
-                                          TRI_datafile_t* datafile,
-                                          void* data,
-                                          std::function<void(TRI_datafile_t*, void*)> callback,
-                                          char const* filename,
-                                          int line)
-  : Ditch(ditches, filename, line),
-    _datafile(datafile),
-    _data(data),
-    _callback(callback) {
-}
+RenameDatafileDitch::RenameDatafileDitch(
+    Ditches* ditches, TRI_datafile_t* datafile, void* data,
+    std::function<void(TRI_datafile_t*, void*)> callback, char const* filename,
+    int line)
+    : Ditch(ditches, filename, line),
+      _datafile(datafile),
+      _data(data),
+      _callback(callback) {}
 
-RenameDatafileDitch::~RenameDatafileDitch () {
-}
+RenameDatafileDitch::~RenameDatafileDitch() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       class UnloadCollectionDitch
@@ -197,20 +171,16 @@ RenameDatafileDitch::~RenameDatafileDitch () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-UnloadCollectionDitch::UnloadCollectionDitch (Ditches* ditches,
-                                              TRI_collection_t* collection,
-                                              void* data,
-                                              std::function<bool(TRI_collection_t*, void*)> callback,
-                                              char const* filename,
-                                              int line)
-  : Ditch(ditches, filename, line),
-    _collection(collection),
-    _data(data),
-    _callback(callback) {
-}
+UnloadCollectionDitch::UnloadCollectionDitch(
+    Ditches* ditches, TRI_collection_t* collection, void* data,
+    std::function<bool(TRI_collection_t*, void*)> callback,
+    char const* filename, int line)
+    : Ditch(ditches, filename, line),
+      _collection(collection),
+      _data(data),
+      _callback(callback) {}
 
-UnloadCollectionDitch::~UnloadCollectionDitch () {
-}
+UnloadCollectionDitch::~UnloadCollectionDitch() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         class DropCollectionDitch
@@ -220,48 +190,41 @@ UnloadCollectionDitch::~UnloadCollectionDitch () {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-DropCollectionDitch::DropCollectionDitch (Ditches* ditches,
-                                          TRI_collection_t* collection,
-                                          void* data,
-                                          std::function<bool(TRI_collection_t*, void*)> callback,
-                                          char const* filename,
-                                          int line)
-  : Ditch(ditches, filename, line),
-    _collection(collection),
-    _data(data),
-    _callback(callback) {
-}
+DropCollectionDitch::DropCollectionDitch(
+    Ditches* ditches, TRI_collection_t* collection, void* data,
+    std::function<bool(TRI_collection_t*, void*)> callback,
+    char const* filename, int line)
+    : Ditch(ditches, filename, line),
+      _collection(collection),
+      _data(data),
+      _callback(callback) {}
 
-DropCollectionDitch::~DropCollectionDitch () {
-}
+DropCollectionDitch::~DropCollectionDitch() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     class Ditches
 // -----------------------------------------------------------------------------
-  
-Ditches::Ditches (TRI_document_collection_t* collection)
-  : _collection(collection),
-    _lock(),
-    _begin(nullptr),
-    _end(nullptr),
-    _numDocumentDitches(0) {
 
+Ditches::Ditches(TRI_document_collection_t* collection)
+    : _collection(collection),
+      _lock(),
+      _begin(nullptr),
+      _end(nullptr),
+      _numDocumentDitches(0) {
   TRI_ASSERT(_collection != nullptr);
-
 }
 
-Ditches::~Ditches () {
-}
+Ditches::~Ditches() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the ditches - to be called on shutdown only
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ditches::destroy () {
+void Ditches::destroy() {
   auto* ptr = _begin;
 
   while (ptr != nullptr) {
@@ -274,13 +237,10 @@ void Ditches::destroy () {
         type == Ditch::TRI_DITCH_DATAFILE_RENAME ||
         type == Ditch::TRI_DITCH_REPLICATION ||
         type == Ditch::TRI_DITCH_COMPACTION) {
-
       delete ptr;
-    }
-    else if (type == Ditch::TRI_DITCH_DOCUMENT) {
+    } else if (type == Ditch::TRI_DITCH_DOCUMENT) {
       LOG_ERROR("logic error. shouldn't have document ditches on unload");
-    }
-    else {
+    } else {
       LOG_ERROR("unknown ditch type");
     }
 
@@ -292,15 +252,13 @@ void Ditches::destroy () {
 /// @brief return the associated collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t* Ditches::collection () const {
-  return _collection;
-}
+TRI_document_collection_t* Ditches::collection() const { return _collection; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a user-defined function under the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ditches::executeProtected (std::function<void()> callback) {
+void Ditches::executeProtected(std::function<void()> callback) {
   MUTEX_LOCKER(_lock);
   callback();
 }
@@ -308,23 +266,23 @@ void Ditches::executeProtected (std::function<void()> callback) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the first element from the list
 /// the list will remain unchanged if the first element is either a
-/// DocumentDitch, a ReplicationDitch or a CompactionDitch, or if the list 
+/// DocumentDitch, a ReplicationDitch or a CompactionDitch, or if the list
 /// contains any DocumentDitches.
 ////////////////////////////////////////////////////////////////////////////////
 
-Ditch* Ditches::process (bool& popped,
-                         std::function<bool(Ditch const*)> callback) {
+Ditch* Ditches::process(bool& popped,
+                        std::function<bool(Ditch const*)> callback) {
   popped = false;
 
   MUTEX_LOCKER(_lock);
-  
+
   auto ditch = _begin;
 
   if (ditch == nullptr) {
     // nothing to do
     return nullptr;
   }
-  
+
   TRI_ASSERT(ditch != nullptr);
 
   auto const type = ditch->type();
@@ -333,28 +291,36 @@ Ditch* Ditches::process (bool& popped,
   // to document data in a datafile. We must then not unload or remove a file
   if (type == Ditch::TRI_DITCH_DOCUMENT ||
       type == Ditch::TRI_DITCH_REPLICATION ||
-      type == Ditch::TRI_DITCH_COMPACTION ||
-      _numDocumentDitches > 0) {
-    // did not find anything at the head of the barrier list or found an element marker
-    // this means we must exit and cannot throw away datafiles and can unload collections
+      type == Ditch::TRI_DITCH_COMPACTION || _numDocumentDitches > 0) {
+    // did not find anything at the head of the barrier list or found an element
+    // marker
+    // this means we must exit and cannot throw away datafiles and can unload
+    // collections
     return nullptr;
   }
 
   // no DocumentDitch at the head of the ditches list. This means that there is
-  // some other action we can perform (i.e. unloading a datafile or a collection)
+  // some other action we can perform (i.e. unloading a datafile or a
+  // collection)
 
   // note that there is no need to check the entire list for a DocumentDitch as
-  // the list is filled up in chronological order. New ditches are always added to the
+  // the list is filled up in chronological order. New ditches are always added
+  // to the
   // tail of the list, and if we have the following list
   // HEAD -> TRI_DITCH_DATAFILE_CALLBACK -> TRI_DITCH_DOCUMENT
-  // then it is still safe to execute the datafile callback operation, even if there
+  // then it is still safe to execute the datafile callback operation, even if
+  // there
   // is a TRI_DITCH_DOCUMENT after it.
-  // This is the case because the TRI_DITCH_DATAFILE_CALLBACK is only put into the
-  // ditches list after changing the pointers in all headers. After the pointers are
-  // changed, it is safe to unload/remove an old datafile (that noone points to). And
-  // any newer TRI_DITCH_DOCUMENTs will always reference data inside other datafiles.
+  // This is the case because the TRI_DITCH_DATAFILE_CALLBACK is only put into
+  // the
+  // ditches list after changing the pointers in all headers. After the pointers
+  // are
+  // changed, it is safe to unload/remove an old datafile (that noone points
+  // to). And
+  // any newer TRI_DITCH_DOCUMENTs will always reference data inside other
+  // datafiles.
 
-  if (! callback(ditch)) {
+  if (!callback(ditch)) {
     return ditch;
   }
 
@@ -369,9 +335,9 @@ Ditch* Ditches::process (bool& popped,
 /// @brief return the type name of the ditch at the head of the active ditches
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* Ditches::head () {
+char const* Ditches::head() {
   MUTEX_LOCKER(_lock);
-  
+
   auto ditch = _begin;
 
   if (ditch == nullptr) {
@@ -379,12 +345,12 @@ char const* Ditches::head () {
   }
   return ditch->typeName();
 }
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of document ditches active
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t Ditches::numDocumentDitches () {
+uint64_t Ditches::numDocumentDitches() {
   MUTEX_LOCKER(_lock);
 
   return _numDocumentDitches;
@@ -394,7 +360,7 @@ uint64_t Ditches::numDocumentDitches () {
 /// @brief check whether the ditches contain a ditch of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Ditches::contains (Ditch::DitchType type) {
+bool Ditches::contains(Ditch::DitchType type) {
   MUTEX_LOCKER(_lock);
 
   if (type == Ditch::TRI_DITCH_DOCUMENT) {
@@ -419,7 +385,7 @@ bool Ditches::contains (Ditch::DitchType type) {
 /// @brief removes and frees a ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ditches::freeDitch (Ditch* ditch) {
+void Ditches::freeDitch(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
 
   {
@@ -442,31 +408,28 @@ void Ditches::freeDitch (Ditch* ditch) {
 /// the flags by the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ditches::freeDocumentDitch (DocumentDitch* ditch, 
-                                 bool fromTransaction) {
+void Ditches::freeDocumentDitch(DocumentDitch* ditch, bool fromTransaction) {
   TRI_ASSERT(ditch != nullptr);
 
   bool shouldFree = false;
   {
-    MUTEX_LOCKER(_lock); // FIX_MUTEX
+    MUTEX_LOCKER(_lock);  // FIX_MUTEX
 
     // First see who might still be using the ditch:
     if (fromTransaction) {
       TRI_ASSERT(ditch->_usedByTransaction == true);
       ditch->_usedByTransaction = false;
-    }
-    else {
+    } else {
       // note: _usedByExternal may or may not be set when we get here
       // the reason is that there are ditches not linked at all
       // (when a ditch is created ahead of operations but the operations are
-      // not executed etc.) 
+      // not executed etc.)
       if (ditch->_usedByExternal > 0) {
         --ditch->_usedByExternal;
       }
     }
 
-    if (ditch->_usedByTransaction == false &&
-        ditch->_usedByExternal == 0) {
+    if (ditch->_usedByTransaction == false && ditch->_usedByExternal == 0) {
       // Really free it:
 
       unlink(ditch);
@@ -482,22 +445,20 @@ void Ditches::freeDocumentDitch (DocumentDitch* ditch,
   if (shouldFree) {
     delete ditch;
   }
-} 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document ditch and links it
 ////////////////////////////////////////////////////////////////////////////////
 
-DocumentDitch* Ditches::createDocumentDitch (bool usedByTransaction,
-                                             char const* filename,
-                                             int line) {
+DocumentDitch* Ditches::createDocumentDitch(bool usedByTransaction,
+                                            char const* filename, int line) {
   try {
     auto ditch = new DocumentDitch(this, usedByTransaction, filename, line);
     link(ditch);
- 
+
     return ditch;
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -506,15 +467,14 @@ DocumentDitch* Ditches::createDocumentDitch (bool usedByTransaction,
 /// @brief creates a new replication ditch and links it
 ////////////////////////////////////////////////////////////////////////////////
 
-ReplicationDitch* Ditches::createReplicationDitch (char const* filename,
-                                                   int line) {
+ReplicationDitch* Ditches::createReplicationDitch(char const* filename,
+                                                  int line) {
   try {
     auto ditch = new ReplicationDitch(this, filename, line);
     link(ditch);
 
     return ditch;
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -523,15 +483,14 @@ ReplicationDitch* Ditches::createReplicationDitch (char const* filename,
 /// @brief creates a new compaction ditch and links it
 ////////////////////////////////////////////////////////////////////////////////
 
-CompactionDitch* Ditches::createCompactionDitch (char const* filename,
-                                                 int line) {
+CompactionDitch* Ditches::createCompactionDitch(char const* filename,
+                                                int line) {
   try {
     auto ditch = new CompactionDitch(this, filename, line);
     link(ditch);
 
     return ditch;
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -540,18 +499,17 @@ CompactionDitch* Ditches::createCompactionDitch (char const* filename,
 /// @brief creates a new datafile deletion ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-DropDatafileDitch* Ditches::createDropDatafileDitch (TRI_datafile_t* datafile,
-                                                     void* data,
-                                                     std::function<void(struct TRI_datafile_s*, void*)> callback,
-                                                     char const* filename,
-                                                     int line) {
+DropDatafileDitch* Ditches::createDropDatafileDitch(
+    TRI_datafile_t* datafile, void* data,
+    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    char const* filename, int line) {
   try {
-    auto ditch = new DropDatafileDitch(this, datafile, data, callback, filename, line);
+    auto ditch =
+        new DropDatafileDitch(this, datafile, data, callback, filename, line);
     link(ditch);
 
     return ditch;
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -560,18 +518,17 @@ DropDatafileDitch* Ditches::createDropDatafileDitch (TRI_datafile_t* datafile,
 /// @brief creates a new datafile rename ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-RenameDatafileDitch* Ditches::createRenameDatafileDitch (TRI_datafile_t* datafile,
-                                                         void* data,
-                                                         std::function<void(struct TRI_datafile_s*, void*)> callback,
-                                                         char const* filename,
-                                                         int line) {
+RenameDatafileDitch* Ditches::createRenameDatafileDitch(
+    TRI_datafile_t* datafile, void* data,
+    std::function<void(struct TRI_datafile_s*, void*)> callback,
+    char const* filename, int line) {
   try {
-    auto ditch = new RenameDatafileDitch(this, datafile, data, callback, filename, line);
+    auto ditch =
+        new RenameDatafileDitch(this, datafile, data, callback, filename, line);
     link(ditch);
 
     return ditch;
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -580,18 +537,17 @@ RenameDatafileDitch* Ditches::createRenameDatafileDitch (TRI_datafile_t* datafil
 /// @brief creates a new collection unload ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-UnloadCollectionDitch* Ditches::createUnloadCollectionDitch (TRI_collection_t* collection,
-                                                             void* data,
-                                                             std::function<bool(TRI_collection_t*, void*)> callback,
-                                                             char const* filename,
-                                                             int line) {
+UnloadCollectionDitch* Ditches::createUnloadCollectionDitch(
+    TRI_collection_t* collection, void* data,
+    std::function<bool(TRI_collection_t*, void*)> callback,
+    char const* filename, int line) {
   try {
-    auto ditch = new UnloadCollectionDitch(this, collection, data, callback, filename, line);
+    auto ditch = new UnloadCollectionDitch(this, collection, data, callback,
+                                           filename, line);
     link(ditch);
 
     return ditch;
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -600,18 +556,17 @@ UnloadCollectionDitch* Ditches::createUnloadCollectionDitch (TRI_collection_t* c
 /// @brief creates a new datafile drop ditch
 ////////////////////////////////////////////////////////////////////////////////
 
-DropCollectionDitch* Ditches::createDropCollectionDitch (TRI_collection_t* collection,
-                                                         void* data,
-                                                         std::function<bool(TRI_collection_t*, void*)> callback,
-                                                         char const* filename,
-                                                         int line) {
+DropCollectionDitch* Ditches::createDropCollectionDitch(
+    TRI_collection_t* collection, void* data,
+    std::function<bool(TRI_collection_t*, void*)> callback,
+    char const* filename, int line) {
   try {
-    auto ditch = new DropCollectionDitch(this, collection, data, callback, filename, line);
+    auto ditch = new DropCollectionDitch(this, collection, data, callback,
+                                         filename, line);
     link(ditch);
 
     return ditch;
-  }
-  catch (...) {
+  } catch (...) {
     return nullptr;
   }
 }
@@ -624,10 +579,10 @@ DropCollectionDitch* Ditches::createDropCollectionDitch (TRI_collection_t* colle
 /// @brief inserts the ditch into the linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ditches::link (Ditch* ditch) {
+void Ditches::link(Ditch* ditch) {
   TRI_ASSERT(ditch != nullptr);
-  
-  MUTEX_LOCKER(_lock); // FIX_MUTEX
+
+  MUTEX_LOCKER(_lock);  // FIX_MUTEX
 
   // empty list
   if (_end == nullptr) {
@@ -652,25 +607,23 @@ void Ditches::link (Ditch* ditch) {
     ++_numDocumentDitches;
   }
 }
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks the ditch from the linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ditches::unlink (Ditch* ditch) {
+void Ditches::unlink(Ditch* ditch) {
   // ditch is at the beginning of the chain
   if (ditch->_prev == nullptr) {
     _begin = ditch->_next;
-  }
-  else {
+  } else {
     ditch->_prev->_next = ditch->_next;
   }
 
   // ditch is at the end of the chain
   if (ditch->_next == nullptr) {
     _end = ditch->_prev;
-  }
-  else {
+  } else {
     ditch->_next->_prev = ditch->_prev;
   }
 }
@@ -681,5 +634,6 @@ void Ditches::unlink (Ditch* ditch) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -41,8 +41,7 @@
 /// @brief initializes the statistics functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Statistics (v8::Isolate* isolate,
-                           v8::Handle<v8::Context>);
+void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
 
@@ -52,5 +51,6 @@ void TRI_InitV8Statistics (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

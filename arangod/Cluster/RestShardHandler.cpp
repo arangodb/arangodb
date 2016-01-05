@@ -49,10 +49,9 @@ using namespace triagens::rest;
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
-                                    Dispatcher* data)
-  : RestBaseHandler(request),
-    _dispatcher(data) {
+RestShardHandler::RestShardHandler(triagens::rest::HttpRequest* request,
+                                   Dispatcher* data)
+    : RestBaseHandler(request), _dispatcher(data) {
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
@@ -64,17 +63,15 @@ RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestShardHandler::isDirect () const {
-  return true;
-}
+bool RestShardHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
-  // Deactivated to allow for asynchronous cluster internal communication 
-  // between two DBservers. 30.7.2014 Max.
+triagens::rest::HttpHandler::status_t RestShardHandler::execute() {
+// Deactivated to allow for asynchronous cluster internal communication
+// between two DBservers. 30.7.2014 Max.
 #if 0
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (role != ServerState::ROLE_COORDINATOR) {
@@ -88,24 +85,22 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
   bool found;
   char const* _coordinator = _request->header("x-arango-coordinator", found);
 
-  if (! found) {
+  if (!found) {
     generateError(triagens::rest::HttpResponse::BAD,
-                  (int) triagens::rest::HttpResponse::BAD,
+                  (int)triagens::rest::HttpResponse::BAD,
                   "header 'X-Arango-Coordinator' is missing");
     return status_t(HANDLER_DONE);
   }
 
   string coordinatorHeader = _coordinator;
-  string result = ClusterComm::instance()->processAnswer(coordinatorHeader,
-                                                         stealRequest());
+  string result =
+      ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {
     createResponse(triagens::rest::HttpResponse::ACCEPTED);
-  }
-  else {
+  } else {
     generateError(triagens::rest::HttpResponse::BAD,
-                  (int) triagens::rest::HttpResponse::BAD,
-                  result.c_str());
+                  (int)triagens::rest::HttpResponse::BAD, result.c_str());
   }
 
   return status_t(HANDLER_DONE);
@@ -117,5 +112,6 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

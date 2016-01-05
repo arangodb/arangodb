@@ -40,18 +40,13 @@ using namespace triagens::basics;
 /// @brief constructs a spinlock
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLock::SpinLock ()
-  : _lock() {
-  TRI_InitSpin(&_lock);
-}
+SpinLock::SpinLock() : _lock() { TRI_InitSpin(&_lock); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-SpinLock::~SpinLock () {
-  TRI_DestroySpin(&_lock);
-}
+SpinLock::~SpinLock() { TRI_DestroySpin(&_lock); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -61,17 +56,13 @@ SpinLock::~SpinLock () {
 /// @brief acquires the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void SpinLock::lock () {
-  TRI_LockSpin(&_lock);
-}
+void SpinLock::lock() { TRI_LockSpin(&_lock); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases the lock
 ////////////////////////////////////////////////////////////////////////////////
 
-void SpinLock::unlock () {
-  TRI_UnlockSpin(&_lock);
-}
+void SpinLock::unlock() { TRI_UnlockSpin(&_lock); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -79,5 +70,6 @@ void SpinLock::unlock () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

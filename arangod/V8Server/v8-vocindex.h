@@ -37,25 +37,25 @@
 #include "VocBase/server.h"
 
 namespace triagens {
-  namespace arango {
-    class Index;
-  }
+namespace arango {
+class Index;
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::arango::Index* TRI_LookupIndexByHandle (v8::Isolate* isolate,
-                                                  triagens::arango::CollectionNameResolver const* resolver,
-                                                  TRI_vocbase_col_t const* collection,
-                                                  v8::Handle<v8::Value> const val,
-                                                  bool ignoreNotFound);
+triagens::arango::Index* TRI_LookupIndexByHandle(
+    v8::Isolate* isolate,
+    triagens::arango::CollectionNameResolver const* resolver,
+    TRI_vocbase_col_t const* collection, v8::Handle<v8::Value> const val,
+    bool ignoreNotFound);
 
-void TRI_InitV8indexArangoDB (v8::Isolate* isolate,
-                              v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
+void TRI_InitV8indexArangoDB(v8::Isolate* isolate,
+                             v8::Handle<v8::ObjectTemplate> ArangoDBNS);
 
-void TRI_InitV8indexCollection (v8::Isolate* isolate,
-                                v8::Handle<v8::ObjectTemplate> rt);
+void TRI_InitV8indexCollection(v8::Isolate* isolate,
+                               v8::Handle<v8::ObjectTemplate> rt);
 
 #endif

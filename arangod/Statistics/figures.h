@@ -37,82 +37,72 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vector generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct StatisticsVector {
-      StatisticsVector ()
-        : _value() {
-      }
+struct StatisticsVector {
+  StatisticsVector() : _value() {}
 
-      StatisticsVector& operator<< (double v) {
-        _value.push_back(v);
-        return *this;
-      }
+  StatisticsVector& operator<<(double v) {
+    _value.push_back(v);
+    return *this;
+  }
 
-      std::vector<double> _value;
-    };
+  std::vector<double> _value;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a simple counter
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct StatisticsCounter {
-      StatisticsCounter()
-        : _count(0) {
-      }
+struct StatisticsCounter {
+  StatisticsCounter() : _count(0) {}
 
-      void incCounter () {
-        ++_count;
-      }
+  void incCounter() { ++_count; }
 
-      void decCounter () {
-        --_count;
-      }
+  void decCounter() { --_count; }
 
-      int64_t _count;
-    };
+  int64_t _count;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a distribution with count, min, max, mean, and variance
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct StatisticsDistribution {
-      StatisticsDistribution ()
-        : _count(0), _total(0.0), _cuts(), _counts() {
-      }
+struct StatisticsDistribution {
+  StatisticsDistribution() : _count(0), _total(0.0), _cuts(), _counts() {}
 
-      StatisticsDistribution (StatisticsVector const& dist)
-        : _count(0), _total(0.0), _cuts(dist._value), _counts() {
-        _counts.resize(_cuts.size() + 1);
-      }
-
-      void addFigure (double value) {
-        ++_count;
-        _total += value;
-
-        std::vector<double>::iterator i = _cuts.begin();
-        std::vector<uint64_t>::iterator j = _counts.begin();
-
-        for (;  i != _cuts.end();  ++i, ++j) {
-          if (value < *i) {
-            ++(*j);
-            return;
-          }
-        }
-
-        ++(*j);
-      }
-
-      uint64_t _count;
-      double _total;
-      std::vector<double> _cuts;
-      std::vector<uint64_t> _counts;
-    };
+  StatisticsDistribution(StatisticsVector const& dist)
+      : _count(0), _total(0.0), _cuts(dist._value), _counts() {
+    _counts.resize(_cuts.size() + 1);
   }
+
+  void addFigure(double value) {
+    ++_count;
+    _total += value;
+
+    std::vector<double>::iterator i = _cuts.begin();
+    std::vector<uint64_t>::iterator j = _counts.begin();
+
+    for (; i != _cuts.end(); ++i, ++j) {
+      if (value < *i) {
+        ++(*j);
+        return;
+      }
+    }
+
+    ++(*j);
+  }
+
+  uint64_t _count;
+  double _total;
+  std::vector<double> _cuts;
+  std::vector<uint64_t> _counts;
+};
+}
 }
 
 #endif
@@ -123,5 +113,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -38,17 +38,13 @@ using namespace triagens::rest;
 // TaskManager
 // -----------------------------------------------------------------------------
 
-void TaskManager::deleteTask (Task* task) {
-  delete task;
-}
+void TaskManager::deleteTask(Task* task) { delete task; }
 
-bool TaskManager::setupTask (Task* task, Scheduler* scheduler, EventLoop loop) {
+bool TaskManager::setupTask(Task* task, Scheduler* scheduler, EventLoop loop) {
   return task->setup(scheduler, loop);
 }
 
-void TaskManager::cleanupTask (Task* task) {
-  task->cleanup();
-}
+void TaskManager::cleanupTask(Task* task) { task->cleanup(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -56,5 +52,6 @@ void TaskManager::cleanupTask (Task* task) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

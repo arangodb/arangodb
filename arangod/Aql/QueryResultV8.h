@@ -36,40 +36,29 @@
 #include <v8.h>
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                struct QueryResult
 // -----------------------------------------------------------------------------
 
-    struct QueryResultV8 : public QueryResult {
-      QueryResultV8& operator= (QueryResultV8 const& other) = delete;
-            
-      QueryResultV8 (QueryResultV8&& other) 
-        : QueryResult ( (QueryResult&&) other),
-          result(other.result) {
-      }
-      
-      QueryResultV8 (QueryResult&& other) 
-        : QueryResult((QueryResult&&)other),
-          result() {
-      }
-      
-      QueryResultV8 (int code,
-                     std::string const& details) 
-        : QueryResult(code, details),
-          result() {
-      }
+struct QueryResultV8 : public QueryResult {
+  QueryResultV8& operator=(QueryResultV8 const& other) = delete;
 
-      explicit QueryResultV8 (int code)
-        : QueryResult(code, ""),
-          result() {
-      }
+  QueryResultV8(QueryResultV8&& other)
+      : QueryResult((QueryResult && )other), result(other.result) {}
 
-      v8::Handle<v8::Array> result;
-    };
+  QueryResultV8(QueryResult&& other)
+      : QueryResult((QueryResult && )other), result() {}
 
-  }
+  QueryResultV8(int code, std::string const& details)
+      : QueryResult(code, details), result() {}
+
+  explicit QueryResultV8(int code) : QueryResult(code, ""), result() {}
+
+  v8::Handle<v8::Array> result;
+};
+}
 }
 
 #endif
@@ -80,5 +69,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

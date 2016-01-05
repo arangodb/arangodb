@@ -72,36 +72,35 @@ extern int32_t const WRP_VOCBASE_COL_TYPE;
 /// @brief create a v8 document id value from the parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8DocumentId (v8::Isolate* isolate,
-                                    std::string const& collectionName,
-                                    std::string const& key);
+v8::Handle<v8::Value> V8DocumentId(v8::Isolate* isolate,
+                                   std::string const& collectionName,
+                                   std::string const& key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8RevisionId (v8::Isolate* isolate, TRI_voc_rid_t rid);
+v8::Handle<v8::Value> V8RevisionId(v8::Isolate* isolate, TRI_voc_rid_t rid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* GetContextVocBase (v8::Isolate* isolate);
+TRI_vocbase_t* GetContextVocBase(v8::Isolate* isolate);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 tick id value from the internal tick id
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> V8TickId (v8::Isolate* isolate, TRI_voc_tick_t tick);
+v8::Handle<v8::Value> V8TickId(v8::Isolate* isolate, TRI_voc_tick_t tick);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractDocumentHandle (v8::Isolate* isolate,
-                            v8::Handle<v8::Value> const val,
-                            std::string& collectionName,
-                            std::unique_ptr<char[]>& key,
-                            TRI_voc_rid_t& rid);
+bool ExtractDocumentHandle(v8::Isolate* isolate,
+                           v8::Handle<v8::Value> const val,
+                           std::string& collectionName,
+                           std::unique_ptr<char[]>& key, TRI_voc_rid_t& rid);
 
 #endif

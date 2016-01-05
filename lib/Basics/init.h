@@ -40,30 +40,30 @@
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeC (int argc, char* argv[]);
+void TRI_InitializeC(int argc, char* argv[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownC (void);
+void TRI_ShutdownC(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_C_INITIALIZE(a,b)              \
-  do {                                          \
-    TRI_InitializeC((a), (b));                  \
+#define TRIAGENS_C_INITIALIZE(a, b) \
+  do {                              \
+    TRI_InitializeC((a), (b));      \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_C_SHUTDOWN    \
-  do {                         \
-    TRI_ShutdownC();           \
+#define TRIAGENS_C_SHUTDOWN \
+  do {                      \
+    TRI_ShutdownC();        \
   } while (0)
 
 #endif
@@ -74,5 +74,6 @@ void TRI_ShutdownC (void);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

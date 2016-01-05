@@ -49,39 +49,38 @@ const static bool Optional = true;
 /// @brief maximum register id that can be assigned.
 /// this is used for assertions
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 RegisterId const ExecutionNode::MaxRegisterId = 1000;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type names
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{ 
-  { static_cast<int>(ILLEGAL),                      "ExecutionNode (abstract)" },
-  { static_cast<int>(SINGLETON),                    "SingletonNode" },
-  { static_cast<int>(ENUMERATE_COLLECTION),         "EnumerateCollectionNode" },
-  { static_cast<int>(ENUMERATE_LIST),               "EnumerateListNode" },
-  { static_cast<int>(INDEX),                        "IndexNode" },
-  { static_cast<int>(LIMIT),                        "LimitNode" },
-  { static_cast<int>(CALCULATION),                  "CalculationNode" },
-  { static_cast<int>(SUBQUERY),                     "SubqueryNode" },
-  { static_cast<int>(FILTER),                       "FilterNode" },
-  { static_cast<int>(SORT),                         "SortNode" },
-  { static_cast<int>(AGGREGATE),                    "AggregateNode" },
-  { static_cast<int>(RETURN),                       "ReturnNode" },
-  { static_cast<int>(REMOVE),                       "RemoveNode" },
-  { static_cast<int>(INSERT),                       "InsertNode" },
-  { static_cast<int>(UPDATE),                       "UpdateNode" },
-  { static_cast<int>(REPLACE),                      "ReplaceNode" },
-  { static_cast<int>(REMOTE),                       "RemoteNode" },
-  { static_cast<int>(SCATTER),                      "ScatterNode" },
-  { static_cast<int>(DISTRIBUTE),                   "DistributeNode" },
-  { static_cast<int>(GATHER),                       "GatherNode" },
-  { static_cast<int>(NORESULTS),                    "NoResultsNode" },
-  { static_cast<int>(UPSERT),                       "UpsertNode" },
-  { static_cast<int>(TRAVERSAL),                    "TraversalNode" }
-};
-          
+std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
+    {static_cast<int>(ILLEGAL), "ExecutionNode (abstract)"},
+    {static_cast<int>(SINGLETON), "SingletonNode"},
+    {static_cast<int>(ENUMERATE_COLLECTION), "EnumerateCollectionNode"},
+    {static_cast<int>(ENUMERATE_LIST), "EnumerateListNode"},
+    {static_cast<int>(INDEX), "IndexNode"},
+    {static_cast<int>(LIMIT), "LimitNode"},
+    {static_cast<int>(CALCULATION), "CalculationNode"},
+    {static_cast<int>(SUBQUERY), "SubqueryNode"},
+    {static_cast<int>(FILTER), "FilterNode"},
+    {static_cast<int>(SORT), "SortNode"},
+    {static_cast<int>(AGGREGATE), "AggregateNode"},
+    {static_cast<int>(RETURN), "ReturnNode"},
+    {static_cast<int>(REMOVE), "RemoveNode"},
+    {static_cast<int>(INSERT), "InsertNode"},
+    {static_cast<int>(UPDATE), "UpdateNode"},
+    {static_cast<int>(REPLACE), "ReplaceNode"},
+    {static_cast<int>(REMOTE), "RemoteNode"},
+    {static_cast<int>(SCATTER), "ScatterNode"},
+    {static_cast<int>(DISTRIBUTE), "DistributeNode"},
+    {static_cast<int>(GATHER), "GatherNode"},
+    {static_cast<int>(NORESULTS), "NoResultsNode"},
+    {static_cast<int>(UPSERT), "UpsertNode"},
+    {static_cast<int>(TRAVERSAL), "TraversalNode"}};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          methods of ExecutionNode
 // -----------------------------------------------------------------------------
@@ -90,17 +89,18 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
 /// @brief returns the type name of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const& ExecutionNode::getTypeString () const {
+std::string const& ExecutionNode::getTypeString() const {
   auto it = TypeNames.find(static_cast<int>(getType()));
 
   if (it != TypeNames.end()) {
     return (*it).second;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing type in TypeNames");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "missing type in TypeNames");
 }
 
-void ExecutionNode::validateType (int type) {
+void ExecutionNode::validateType(int type) {
   auto it = TypeNames.find(static_cast<int>(type));
 
   if (it == TypeNames.end()) {
@@ -108,16 +108,15 @@ void ExecutionNode::validateType (int type) {
   }
 }
 
-void ExecutionNode::getSortElements (SortElementVector& elements,
-                                     ExecutionPlan* plan,
-                                     triagens::basics::Json const& oneNode,
-                                     char const* which) {
-
+void ExecutionNode::getSortElements(SortElementVector& elements,
+                                    ExecutionPlan* plan,
+                                    triagens::basics::Json const& oneNode,
+                                    char const* which) {
   triagens::basics::Json jsonElements = oneNode.get("elements");
 
-  if (! jsonElements.isArray()){
+  if (!jsonElements.isArray()) {
     std::string error = std::string("unexpected value for ") +
-      std::string(which) + std::string(" elements");
+                        std::string(which) + std::string(" elements");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
   }
 
@@ -125,21 +124,24 @@ void ExecutionNode::getSortElements (SortElementVector& elements,
   elements.reserve(len);
 
   for (size_t i = 0; i < len; i++) {
-    triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
-    bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
+    triagens::basics::Json oneJsonElement =
+        jsonElements.at(static_cast<int>(i));
+    bool ascending =
+        JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
     Variable* v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
     elements.emplace_back(v, ascending);
   }
 }
 
-ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
-                                               triagens::basics::Json const& oneNode) {
+ExecutionNode* ExecutionNode::fromJsonFactory(
+    ExecutionPlan* plan, triagens::basics::Json const& oneNode) {
   auto JsonString = oneNode.toString();
 
-  int nodeTypeID = JsonHelper::checkAndGetNumericValue<int>(oneNode.json(), "typeID");
+  int nodeTypeID =
+      JsonHelper::checkAndGetNumericValue<int>(oneNode.json(), "typeID");
   validateType(nodeTypeID);
 
-  NodeType nodeType = (NodeType) nodeTypeID;
+  NodeType nodeType = (NodeType)nodeTypeID;
 
   switch (nodeType) {
     case SINGLETON:
@@ -154,21 +156,25 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new LimitNode(plan, oneNode);
     case CALCULATION:
       return new CalculationNode(plan, oneNode);
-    case SUBQUERY: 
+    case SUBQUERY:
       return new SubqueryNode(plan, oneNode);
     case SORT: {
       SortElementVector elements;
-      bool stable = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "stable");
+      bool stable =
+          JsonHelper::checkAndGetBooleanValue(oneNode.json(), "stable");
       getSortElements(elements, plan, oneNode, "SortNode");
       return new SortNode(plan, oneNode, elements, stable);
     }
     case AGGREGATE: {
-      Variable* expressionVariable = varFromJson(plan->getAst(), oneNode, "expressionVariable", Optional);
-      Variable* outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
+      Variable* expressionVariable =
+          varFromJson(plan->getAst(), oneNode, "expressionVariable", Optional);
+      Variable* outVariable =
+          varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
       triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
-      if (! jsonAggregates.isArray()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames"); 
+      if (!jsonAggregates.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                       "missing node type in valueTypeNames");
       }
 
       std::vector<Variable const*> keepVariables;
@@ -176,41 +182,42 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       if (jsonKeepVariables.isArray()) {
         size_t const n = jsonKeepVariables.size();
         for (size_t i = 0; i < n; i++) {
-          triagens::basics::Json keepVariable = jsonKeepVariables.at(static_cast<int>(i));
-          Variable const* variable = varFromJson(plan->getAst(), keepVariable, "variable");
+          triagens::basics::Json keepVariable =
+              jsonKeepVariables.at(static_cast<int>(i));
+          Variable const* variable =
+              varFromJson(plan->getAst(), keepVariable, "variable");
           keepVariables.emplace_back(variable);
         }
       }
 
       size_t const len = jsonAggregates.size();
-      std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
+      std::vector<std::pair<Variable const*, Variable const*>>
+          aggregateVariables;
 
       aggregateVariables.reserve(len);
       for (size_t i = 0; i < len; i++) {
-        triagens::basics::Json oneJsonAggregate = jsonAggregates.at(static_cast<int>(i));
-        Variable* outVar = varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
-        Variable* inVar =  varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
+        triagens::basics::Json oneJsonAggregate =
+            jsonAggregates.at(static_cast<int>(i));
+        Variable* outVar =
+            varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
+        Variable* inVar =
+            varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
         aggregateVariables.emplace_back(std::make_pair(outVar, inVar));
       }
 
       bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
-      bool isDistinctCommand = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "isDistinctCommand");
+      bool isDistinctCommand = JsonHelper::checkAndGetBooleanValue(
+          oneNode.json(), "isDistinctCommand");
 
       auto node = new AggregateNode(
-        plan,
-        oneNode,
-        expressionVariable,
-        outVariable,
-        keepVariables,
-        plan->getAst()->variables()->variables(false),
-        aggregateVariables,  
-        count,
-        isDistinctCommand
-      );
-      
+          plan, oneNode, expressionVariable, outVariable, keepVariables,
+          plan->getAst()->variables()->variables(false), aggregateVariables,
+          count, isDistinctCommand);
+
       // specialize the node if required
-      bool specialized = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "specialized");
+      bool specialized =
+          JsonHelper::checkAndGetBooleanValue(oneNode.json(), "specialized");
       if (specialized) {
         node->specialized();
       }
@@ -240,9 +247,9 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       getSortElements(elements, plan, oneNode, "GatherNode");
       return new GatherNode(plan, oneNode, elements);
     }
-    case SCATTER: 
+    case SCATTER:
       return new ScatterNode(plan, oneNode);
-    case DISTRIBUTE: 
+    case DISTRIBUTE:
       return new DistributeNode(plan, oneNode);
     case TRAVERSAL:
       return new TraversalNode(plan, oneNode);
@@ -257,82 +264,96 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
 /// @brief create an ExecutionNode from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode::ExecutionNode (ExecutionPlan* plan,
-                              triagens::basics::Json const& json) 
-  : _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
-    _estimatedCost(0.0), 
-    _estimatedCostSet(false),
-    _depth(JsonHelper::checkAndGetNumericValue<int>(json.json(), "depth")),
-    _varUsageValid(true),
-    _plan(plan) {
-
-  TRI_ASSERT(_registerPlan.get() == nullptr); 
+ExecutionNode::ExecutionNode(ExecutionPlan* plan,
+                             triagens::basics::Json const& json)
+    : _id(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")),
+      _estimatedCost(0.0),
+      _estimatedCostSet(false),
+      _depth(JsonHelper::checkAndGetNumericValue<int>(json.json(), "depth")),
+      _varUsageValid(true),
+      _plan(plan) {
+  TRI_ASSERT(_registerPlan.get() == nullptr);
   _registerPlan.reset(new RegisterPlan());
   _registerPlan->clear();
   _registerPlan->depth = _depth;
-  _registerPlan->totalNrRegs = JsonHelper::checkAndGetNumericValue<unsigned int>(json.json(), "totalNrRegs"); 
+  _registerPlan->totalNrRegs =
+      JsonHelper::checkAndGetNumericValue<unsigned int>(json.json(),
+                                                        "totalNrRegs");
 
   auto jsonVarInfoList = json.get("varInfoList");
-  if (! jsonVarInfoList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "varInfoList needs to be a json array"); 
+  if (!jsonVarInfoList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "varInfoList needs to be a json array");
   }
- 
+
   size_t len = jsonVarInfoList.size();
   _registerPlan->varInfo.reserve(len);
 
   for (size_t i = 0; i < len; i++) {
     auto jsonVarInfo = jsonVarInfoList.at(i);
-    if (! jsonVarInfo.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "one varInfoList item needs to be a json object"); 
+    if (!jsonVarInfo.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "one varInfoList item needs to be a json object");
     }
-    VariableId variableId = JsonHelper::checkAndGetNumericValue<VariableId>      (jsonVarInfo.json(), "VariableId");
-    RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>      (jsonVarInfo.json(), "RegisterId");
-    unsigned int    depth = JsonHelper::checkAndGetNumericValue<unsigned int>(jsonVarInfo.json(), "depth");
-  
+    VariableId variableId = JsonHelper::checkAndGetNumericValue<VariableId>(
+        jsonVarInfo.json(), "VariableId");
+    RegisterId registerId = JsonHelper::checkAndGetNumericValue<RegisterId>(
+        jsonVarInfo.json(), "RegisterId");
+    unsigned int depth = JsonHelper::checkAndGetNumericValue<unsigned int>(
+        jsonVarInfo.json(), "depth");
+
     _registerPlan->varInfo.emplace(variableId, VarInfo(depth, registerId));
   }
 
   auto jsonNrRegsList = json.get("nrRegs");
-  if (! jsonNrRegsList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "nrRegs needs to be a json array"); 
+  if (!jsonNrRegsList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "nrRegs needs to be a json array");
   }
 
   len = jsonNrRegsList.size();
   _registerPlan->nrRegs.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsList.at(i).json(), 0);
+    RegisterId oneReg =
+        JsonHelper::getNumericValue<RegisterId>(jsonNrRegsList.at(i).json(), 0);
     _registerPlan->nrRegs.emplace_back(oneReg);
   }
-  
+
   auto jsonNrRegsHereList = json.get("nrRegsHere");
-  if (! jsonNrRegsHereList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "nrRegsHere needs to be a json array"); 
+  if (!jsonNrRegsHereList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "nrRegsHere needs to be a json array");
   }
 
   len = jsonNrRegsHereList.size();
   _registerPlan->nrRegsHere.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsHereList.at(i).json(), 0);
+    RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(
+        jsonNrRegsHereList.at(i).json(), 0);
     _registerPlan->nrRegsHere.emplace_back(oneReg);
   }
 
   auto jsonRegsToClearList = json.get("regsToClear");
-  if (! jsonRegsToClearList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "regsToClear needs to be a json array"); 
+  if (!jsonRegsToClearList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "regsToClear needs to be a json array");
   }
 
   len = jsonRegsToClearList.size();
   _regsToClear.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    RegisterId oneRegToClear = JsonHelper::getNumericValue<RegisterId>(jsonRegsToClearList.at(i).json(), 0);
+    RegisterId oneRegToClear = JsonHelper::getNumericValue<RegisterId>(
+        jsonRegsToClearList.at(i).json(), 0);
     _regsToClear.emplace(oneRegToClear);
   }
 
   auto allVars = plan->getAst()->variables();
 
   auto jsonvarsUsedLater = json.get("varsUsedLater");
-  if (! jsonvarsUsedLater.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsUsedLater needs to be a json array"); 
+  if (!jsonvarsUsedLater.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "varsUsedLater needs to be a json array");
   }
 
   len = jsonvarsUsedLater.size();
@@ -342,16 +363,18 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
 
     if (oneVariable == nullptr) {
-      std::string errmsg = "varsUsedLater: ID not found in all-array: " + StringUtils::itoa(oneVarUsedLater->id);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
+      std::string errmsg = "varsUsedLater: ID not found in all-array: " +
+                           StringUtils::itoa(oneVarUsedLater->id);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsUsedLater.emplace(oneVariable);
   }
 
   auto jsonvarsValidList = json.get("varsValid");
 
-  if (! jsonvarsValidList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsValid needs to be a json array"); 
+  if (!jsonvarsValidList.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "varsValid needs to be a json array");
   }
 
   len = jsonvarsValidList.size();
@@ -361,8 +384,9 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     Variable* oneVariable = allVars->getVariable(oneVarValid->id);
 
     if (oneVariable == nullptr) {
-      std::string errmsg = "varsValid: ID not found in all-array: " + StringUtils::itoa(oneVarValid->id);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
+      std::string errmsg = "varsValid: ID not found in all-array: " +
+                           StringUtils::itoa(oneVarValid->id);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsValid.emplace(oneVariable);
   }
@@ -372,13 +396,14 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 /// @brief toJson, export an ExecutionNode to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
-                                              bool verbose) const {
-  triagens::basics::Json nodes = triagens::basics::Json(triagens::basics::Json::Array, 10);
+triagens::basics::Json ExecutionNode::toJson(TRI_memory_zone_t* zone,
+                                             bool verbose) const {
+  triagens::basics::Json nodes =
+      triagens::basics::Json(triagens::basics::Json::Array, 10);
   toJsonHelper(nodes, zone, verbose);
 
-  triagens::basics::Json json = triagens::basics::Json(triagens::basics::Json::Object, 1)
-    ("nodes", nodes);
+  triagens::basics::Json json =
+      triagens::basics::Json(triagens::basics::Json::Object, 1)("nodes", nodes);
 
   return json;
 }
@@ -387,10 +412,9 @@ triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
 /// @brief execution Node clone utility to be called by derives
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::cloneHelper (ExecutionNode* other,
-                                 ExecutionPlan* plan,
-                                 bool withDependencies,
-                                 bool withProperties) const {
+void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
+                                bool withDependencies,
+                                bool withProperties) const {
   plan->registerNode(other);
 
   if (withProperties) {
@@ -401,7 +425,7 @@ void ExecutionNode::cloneHelper (ExecutionNode* other,
     auto allVars = plan->getAst()->variables();
     // Create new structures on the new AST...
     other->_varsUsedLater.reserve(_varsUsedLater.size());
-    for (auto const& orgVar: _varsUsedLater) {
+    for (auto const& orgVar : _varsUsedLater) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
       other->_varsUsedLater.emplace(var);
@@ -409,18 +433,18 @@ void ExecutionNode::cloneHelper (ExecutionNode* other,
 
     other->_varsValid.reserve(_varsValid.size());
 
-    for (auto const& orgVar: _varsValid) {
+    for (auto const& orgVar : _varsValid) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);
       other->_varsValid.emplace(var);
     }
 
     if (_registerPlan.get() != nullptr) {
-      auto otherRegisterPlan = std::shared_ptr<RegisterPlan>(_registerPlan->clone(plan, _plan));
+      auto otherRegisterPlan =
+          std::shared_ptr<RegisterPlan>(_registerPlan->clone(plan, _plan));
       other->_registerPlan = otherRegisterPlan;
     }
-  }
-  else {
+  } else {
     // point to current AST -> don't do deep copies.
     other->_depth = _depth;
     other->_regsToClear = _regsToClear;
@@ -439,17 +463,16 @@ void ExecutionNode::cloneHelper (ExecutionNode* other,
 /// @brief helper for cloning, use virtual clone methods for dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::cloneDependencies (ExecutionPlan* plan,
-                                       ExecutionNode* theClone,
-                                       bool withProperties) const {
+void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
+                                      ExecutionNode* theClone,
+                                      bool withProperties) const {
   auto it = _dependencies.begin();
   while (it != _dependencies.end()) {
     auto c = (*it)->clone(plan, true, withProperties);
     try {
       c->_parents.emplace_back(theClone);
       theClone->_dependencies.emplace_back(c);
-    }
-    catch (...) {
+    } catch (...) {
       delete c;
       throw;
     }
@@ -461,11 +484,11 @@ void ExecutionNode::cloneDependencies (ExecutionPlan* plan,
 /// @brief convert to a string, basically for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::appendAsString (std::string& st, int indent) {
+void ExecutionNode::appendAsString(std::string& st, int indent) {
   for (int i = 0; i < indent; i++) {
     st.push_back(' ');
   }
-  
+
   st.push_back('<');
   st.append(getTypeString());
   if (_dependencies.size() != 0) {
@@ -474,8 +497,7 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
       _dependencies[i]->appendAsString(st, indent + 2);
       if (i != _dependencies.size() - 1) {
         st.push_back(',');
-      }
-      else {
+      } else {
         st.push_back(' ');
       }
     }
@@ -486,19 +508,20 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate the cost estimation for the node and its dependencies
 ////////////////////////////////////////////////////////////////////////////////
-  
-void ExecutionNode::invalidateCost () {
+
+void ExecutionNode::invalidateCost() {
   _estimatedCostSet = false;
-  
+
   for (auto& dep : _dependencies) {
     dep->invalidateCost();
 
-    // no need to virtualize this function too, as getType(), estimateCost() etc.
+    // no need to virtualize this function too, as getType(), estimateCost()
+    // etc.
     // are already virtual
     if (dep->getType() == SUBQUERY) {
-      // invalid cost of subqueries, too 
+      // invalid cost of subqueries, too
       static_cast<SubqueryNode*>(dep)->getSubquery()->invalidateCost();
-    } 
+    }
   }
 }
 
@@ -506,7 +529,7 @@ void ExecutionNode::invalidateCost () {
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
+bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
 #ifdef TRI_ENABLE_FAILURE_TESTS
   // Only do every node exactly once
   // note: this check is not required normally because execution
@@ -519,14 +542,14 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   if (worker->before(this)) {
     return true;
   }
-  
+
   // Now the children in their natural order:
   for (auto const& it : _dependencies) {
     if (it->walk(worker)) {
       return true;
     }
   }
-  
+
   // Now handle a subquery:
   if (getType() == SUBQUERY) {
     auto p = static_cast<SubqueryNode*>(this);
@@ -551,10 +574,10 @@ bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
 /// @brief get the surrounding loop
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode const* ExecutionNode::getLoop () const {
+ExecutionNode const* ExecutionNode::getLoop() const {
   auto node = this;
   while (node != nullptr) {
-    if (! node->hasDependency()) {
+    if (!node->hasDependency()) {
       return nullptr;
     }
 
@@ -563,9 +586,7 @@ ExecutionNode const* ExecutionNode::getLoop () const {
 
     auto type = node->getType();
 
-    if (type == ENUMERATE_COLLECTION ||
-        type == INDEX ||
-        type == TRAVERSAL ||
+    if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
         type == ENUMERATE_LIST) {
       return node;
     }
@@ -582,23 +603,21 @@ ExecutionNode const* ExecutionNode::getLoop () const {
 /// @brief factory for (optional) variables from json.
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable* ExecutionNode::varFromJson (Ast* ast,
-                                      triagens::basics::Json const& base,
-                                      const char* variableName,
-                                      bool optional) {
+Variable* ExecutionNode::varFromJson(Ast* ast,
+                                     triagens::basics::Json const& base,
+                                     const char* variableName, bool optional) {
   triagens::basics::Json variableJson = base.get(variableName);
 
   if (variableJson.isEmpty()) {
     if (optional) {
       return nullptr;
-    }
-    else {
+    } else {
       std::string msg;
-      msg += "Mandatory variable \"" + std::string(variableName) + "\" not found.";
+      msg +=
+          "Mandatory variable \"" + std::string(variableName) + "\" not found.";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
     }
-  }
-  else {
+  } else {
     return ast->variables()->createVariable(variableJson);
   }
 }
@@ -607,9 +626,9 @@ Variable* ExecutionNode::varFromJson (Ast* ast,
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
-                                                           TRI_memory_zone_t* zone,
-                                                           bool verbose) const {
+triagens::basics::Json ExecutionNode::toJsonHelperGeneric(
+    triagens::basics::Json& nodes, TRI_memory_zone_t* zone,
+    bool verbose) const {
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
     _dependencies[i]->toJsonHelper(nodes, zone, verbose);
@@ -629,7 +648,8 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   json("dependencies", deps);
 
   if (verbose) {
-    triagens::basics::Json parents(triagens::basics::Json::Array, _parents.size());
+    triagens::basics::Json parents(triagens::basics::Json::Array,
+                                   _parents.size());
     for (size_t i = 0; i < _parents.size(); i++) {
       parents(triagens::basics::Json(static_cast<double>(_parents[i]->id())));
     }
@@ -639,59 +659,73 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
   json("id", triagens::basics::Json(static_cast<double>(id())));
   size_t nrItems = 0;
   json("estimatedCost", triagens::basics::Json(getCost(nrItems)));
-  json("estimatedNrItems", triagens::basics::Json(static_cast<double>(nrItems)));
+  json("estimatedNrItems",
+       triagens::basics::Json(static_cast<double>(nrItems)));
 
   if (verbose) {
     json("depth", triagens::basics::Json(static_cast<double>(_depth)));
- 
+
     if (_registerPlan) {
-      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::Array, _registerPlan->varInfo.size());
-      for (auto const& oneVarInfo: _registerPlan->varInfo) {
-        triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Object, 2);
-        jsonOneVarInfoArray
-          ("VariableId", triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
-          ("depth", triagens::basics::Json(static_cast<double>(oneVarInfo.second.depth)))
-          ("RegisterId", triagens::basics::Json(static_cast<double>(oneVarInfo.second.registerId)))
-          ;
+      triagens::basics::Json jsonVarInfoList(triagens::basics::Json::Array,
+                                             _registerPlan->varInfo.size());
+      for (auto const& oneVarInfo : _registerPlan->varInfo) {
+        triagens::basics::Json jsonOneVarInfoArray(
+            triagens::basics::Json::Object, 2);
+        jsonOneVarInfoArray(
+            "VariableId",
+            triagens::basics::Json(static_cast<double>(oneVarInfo.first)))(
+            "depth", triagens::basics::Json(
+                         static_cast<double>(oneVarInfo.second.depth)))(
+            "RegisterId", triagens::basics::Json(static_cast<double>(
+                              oneVarInfo.second.registerId)));
         jsonVarInfoList(jsonOneVarInfoArray);
       }
       json("varInfoList", jsonVarInfoList);
 
-      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::Array, _registerPlan->nrRegs.size());
-      for (auto const& oneRegisterID: _registerPlan->nrRegs) {
-        jsonNRRegsList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
+      triagens::basics::Json jsonNRRegsList(triagens::basics::Json::Array,
+                                            _registerPlan->nrRegs.size());
+      for (auto const& oneRegisterID : _registerPlan->nrRegs) {
+        jsonNRRegsList(
+            triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegs", jsonNRRegsList);
-    
-      triagens::basics::Json jsonNRRegsHereList(triagens::basics::Json::Array, _registerPlan->nrRegsHere.size());
-      for (auto const& oneRegisterID: _registerPlan->nrRegsHere) {
-        jsonNRRegsHereList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
+
+      triagens::basics::Json jsonNRRegsHereList(
+          triagens::basics::Json::Array, _registerPlan->nrRegsHere.size());
+      for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
+        jsonNRRegsHereList(
+            triagens::basics::Json(static_cast<double>(oneRegisterID)));
       }
       json("nrRegsHere", jsonNRRegsHereList);
-      json("totalNrRegs", triagens::basics::Json(static_cast<double>(_registerPlan->totalNrRegs)));
-    }
-    else {
-      json("varInfoList", triagens::basics::Json(triagens::basics::Json::Array));
+      json("totalNrRegs", triagens::basics::Json(
+                              static_cast<double>(_registerPlan->totalNrRegs)));
+    } else {
+      json("varInfoList",
+           triagens::basics::Json(triagens::basics::Json::Array));
       json("nrRegs", triagens::basics::Json(triagens::basics::Json::Array));
       json("nrRegsHere", triagens::basics::Json(triagens::basics::Json::Array));
       json("totalNrRegs", triagens::basics::Json(0.0));
     }
 
-    triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::Array, _regsToClear.size());
+    triagens::basics::Json jsonRegsToClearList(triagens::basics::Json::Array,
+                                               _regsToClear.size());
     for (auto const& oneRegisterID : _regsToClear) {
-      jsonRegsToClearList(triagens::basics::Json(static_cast<double>(oneRegisterID)));
+      jsonRegsToClearList(
+          triagens::basics::Json(static_cast<double>(oneRegisterID)));
     }
     json("regsToClear", jsonRegsToClearList);
 
-    triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::Array, _varsUsedLater.size());
-    for (auto const& oneVarUsedLater: _varsUsedLater) {
+    triagens::basics::Json jsonVarsUsedLaterList(triagens::basics::Json::Array,
+                                                 _varsUsedLater.size());
+    for (auto const& oneVarUsedLater : _varsUsedLater) {
       jsonVarsUsedLaterList.add(oneVarUsedLater->toJson());
     }
 
     json("varsUsedLater", jsonVarsUsedLaterList);
 
-    triagens::basics::Json jsonvarsValidList(triagens::basics::Json::Array, _varsValid.size());
-    for (auto const& oneVarUsedLater: _varsValid) {
+    triagens::basics::Json jsonvarsValidList(triagens::basics::Json::Array,
+                                             _varsValid.size());
+    for (auto const& oneVarUsedLater : _varsValid) {
       jsonvarsValidList.add(oneVarUsedLater->toJson());
     }
 
@@ -753,14 +787,13 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
 /// @brief planRegisters
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::planRegisters (ExecutionNode* super) {
+void ExecutionNode::planRegisters(ExecutionNode* super) {
   // The super is only for the case of subqueries.
   std::shared_ptr<RegisterPlan> v;
 
   if (super == nullptr) {
     v.reset(new RegisterPlan());
-  }
-  else {
+  } else {
     v.reset(new RegisterPlan(*(super->_registerPlan), super->_depth));
   }
   v->setSharedPtr(&v);
@@ -787,26 +820,26 @@ void ExecutionNode::planRegisters (ExecutionNode* super) {
 // -----------------------------------------------------------------------------
 
 // Copy constructor used for a subquery:
-ExecutionNode::RegisterPlan::RegisterPlan (RegisterPlan const& v,
-                                           unsigned int newdepth)
-  : varInfo(v.varInfo),
-    nrRegsHere(v.nrRegsHere),
-    nrRegs(v.nrRegs),
-    subQueryNodes(),
-    depth(newdepth + 1),
-    totalNrRegs(v.nrRegs[newdepth]),
-    me(nullptr) {
-
+ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v,
+                                          unsigned int newdepth)
+    : varInfo(v.varInfo),
+      nrRegsHere(v.nrRegsHere),
+      nrRegs(v.nrRegs),
+      subQueryNodes(),
+      depth(newdepth + 1),
+      totalNrRegs(v.nrRegs[newdepth]),
+      me(nullptr) {
   nrRegs.resize(depth);
   nrRegsHere.resize(depth);
   nrRegsHere.emplace_back(0);
   // create a copy of the last value here
-  // this is requried because back returns a reference and emplace/push_back may invalidate all references
+  // this is requried because back returns a reference and emplace/push_back may
+  // invalidate all references
   RegisterId registerId = nrRegs.back();
   nrRegs.emplace_back(registerId);
 }
 
-void ExecutionNode::RegisterPlan::clear () {
+void ExecutionNode::RegisterPlan::clear() {
   varInfo.clear();
   nrRegsHere.clear();
   nrRegs.clear();
@@ -815,12 +848,13 @@ void ExecutionNode::RegisterPlan::clear () {
   totalNrRegs = 0;
 }
 
-ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* otherPlan, ExecutionPlan* plan) {
+ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone(
+    ExecutionPlan* otherPlan, ExecutionPlan* plan) {
   auto other = std::make_unique<RegisterPlan>();
 
-  other->nrRegsHere  = nrRegsHere;
-  other->nrRegs      = nrRegs;
-  other->depth       = depth;
+  other->nrRegsHere = nrRegsHere;
+  other->nrRegs = nrRegs;
+  other->depth = depth;
   other->totalNrRegs = totalNrRegs;
 
   other->varInfo = varInfo;
@@ -831,13 +865,14 @@ ExecutionNode::RegisterPlan* ExecutionNode::RegisterPlan::clone (ExecutionPlan* 
   return other.release();
 }
 
-void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
+void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   switch (en->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = 1 + nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -847,12 +882,13 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       totalNrRegs++;
       break;
     }
-    
+
     case ExecutionNode::INDEX: {
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = 1 + nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -867,7 +903,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = 1 + nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -903,7 +940,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       depth++;
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -931,9 +969,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       // sort sorts in place and does not produce new registers
       break;
     }
-    
+
     case ExecutionNode::RETURN: {
-      // return is special. it produces a result but is the last step in the pipeline
+      // return is special. it produces a result but is the last step in the
+      // pipeline
       break;
     }
 
@@ -941,7 +980,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       depth++;
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -949,7 +989,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableOld()->id,
+                        VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -959,7 +1000,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       depth++;
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -967,7 +1009,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id,
+                        VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -977,7 +1020,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       depth++;
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -985,13 +1029,15 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableOld()->id,
+                        VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id,
+                        VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1001,8 +1047,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       depth++;
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
-      // when from the same underyling object (at least it does in Visual Studio 2013)
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
+      // when from the same underyling object (at least it does in Visual Studio
+      // 2013)
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -1010,13 +1058,15 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableOld()->id,
+                        VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id,
+                        VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1026,7 +1076,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       depth++;
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
@@ -1034,7 +1085,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
+        varInfo.emplace(ep->getOutVariableNew()->id,
+                        VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -1043,15 +1095,15 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
-    case ExecutionNode::SCATTER: 
-    case ExecutionNode::DISTRIBUTE: 
-    case ExecutionNode::GATHER: 
-    case ExecutionNode::REMOTE: 
+    case ExecutionNode::SCATTER:
+    case ExecutionNode::DISTRIBUTE:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::REMOTE:
     case ExecutionNode::NORESULTS: {
       // these node types do not produce any new registers
       break;
     }
-    
+
     case ExecutionNode::TRAVERSAL: {
       depth++;
       auto ep = static_cast<TraversalNode const*>(en);
@@ -1059,8 +1111,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
       auto vars = ep->getVariablesSetHere();
       nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
       // create a copy of the last value here
-      // this is requried because back returns a reference and emplace/push_back may invalidate all references
-      RegisterId registerId = static_cast<RegisterId>(vars.size() + nrRegs.back());
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId =
+          static_cast<RegisterId>(vars.size() + nrRegs.back());
       nrRegs.emplace_back(registerId);
 
       for (auto& it : vars) {
@@ -1071,7 +1125,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
     }
 
     case ExecutionNode::ILLEGAL: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                     "node type not implemented");
     }
   }
 
@@ -1081,9 +1136,11 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
-    std::vector<Variable const*> const& varsUsedHere = en->getVariablesUsedHere();
-   
+    std::unordered_set<Variable const*> const& varsUsedLater =
+        en->getVarsUsedLater();
+    std::vector<Variable const*> const& varsUsedHere =
+        en->getVariablesUsedHere();
+
     // We need to delete those variables that have been used here but are not
     // used any more later:
     std::unordered_set<RegisterId> regsToClear;
@@ -1110,15 +1167,14 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode* en) {
 /// @brief toJson, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
 
-SingletonNode::SingletonNode (ExecutionPlan* plan, 
-                              triagens::basics::Json const& base)
-  : ExecutionNode(plan, base) {
-}
+SingletonNode::SingletonNode(ExecutionPlan* plan,
+                             triagens::basics::Json const& base)
+    : ExecutionNode(plan, base) {}
 
-void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
-                                  TRI_memory_zone_t* zone,
-                                  bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void SingletonNode::toJsonHelper(triagens::basics::Json& nodes,
+                                 TRI_memory_zone_t* zone, bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -1131,8 +1187,8 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a singleton is 1, it produces one item only
 ////////////////////////////////////////////////////////////////////////////////
-        
-double SingletonNode::estimateCost (size_t& nrItems) const {
+
+double SingletonNode::estimateCost(size_t& nrItems) const {
   nrItems = 1;
   return 1.0;
 }
@@ -1141,33 +1197,34 @@ double SingletonNode::estimateCost (size_t& nrItems) const {
 // --SECTION--                                methods of EnumerateCollectionNode
 // -----------------------------------------------------------------------------
 
-EnumerateCollectionNode::EnumerateCollectionNode (ExecutionPlan* plan,
-                                                  triagens::basics::Json const& base)
-  : ExecutionNode(plan, base),
-    _vocbase(plan->getAst()->query()->vocbase()),
-    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
-    _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
-    _random(JsonHelper::checkAndGetBooleanValue(base.json(), "random")) {
-}
+EnumerateCollectionNode::EnumerateCollectionNode(
+    ExecutionPlan* plan, triagens::basics::Json const& base)
+    : ExecutionNode(plan, base),
+      _vocbase(plan->getAst()->query()->vocbase()),
+      _collection(plan->getAst()->query()->collections()->get(
+          JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
+      _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
+      _random(JsonHelper::checkAndGetBooleanValue(base.json(), "random")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for EnumerateCollectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
-                                            TRI_memory_zone_t* zone,
-                                            bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void EnumerateCollectionNode::toJsonHelper(triagens::basics::Json& nodes,
+                                           TRI_memory_zone_t* zone,
+                                           bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
 
   // Now put info about vocbase and cid in there
-  json("database", triagens::basics::Json(_vocbase->_name))
-      ("collection", triagens::basics::Json(_collection->getName()))
-      ("outVariable", _outVariable->toJson())
-      ("random", triagens::basics::Json(_random));
+  json("database", triagens::basics::Json(_vocbase->_name))(
+      "collection", triagens::basics::Json(_collection->getName()))(
+      "outVariable", _outVariable->toJson())("random",
+                                             triagens::basics::Json(_random));
 
   // And add it:
   nodes(json);
@@ -1177,16 +1234,17 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
-                                               bool withDependencies,
-                                               bool withProperties) const {
+ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
+                                              bool withDependencies,
+                                              bool withProperties) const {
   auto outVariable = _outVariable;
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
     TRI_ASSERT(outVariable != nullptr);
   }
-    
-  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable, _random);
+
+  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection,
+                                       outVariable, _random);
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -1197,8 +1255,8 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
-        
-double EnumerateCollectionNode::estimateCost (size_t& nrItems) const { 
+
+double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   size_t incoming;
   double depCost = _dependencies.at(0)->getCost(incoming);
   size_t count = _collection->count();
@@ -1212,26 +1270,26 @@ double EnumerateCollectionNode::estimateCost (size_t& nrItems) const {
 // --SECTION--                                      methods of EnumerateListNode
 // -----------------------------------------------------------------------------
 
-EnumerateListNode::EnumerateListNode (ExecutionPlan* plan,
-                                      triagens::basics::Json const& base)
-  : ExecutionNode(plan, base),
-    _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
-    _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
-}
+EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
+                                     triagens::basics::Json const& base)
+    : ExecutionNode(plan, base),
+      _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
+      _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateListNode::toJsonHelper (triagens::basics::Json& nodes,
-                                      TRI_memory_zone_t* zone,
-                                      bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void EnumerateListNode::toJsonHelper(triagens::basics::Json& nodes,
+                                     TRI_memory_zone_t* zone,
+                                     bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
-  json("inVariable",  _inVariable->toJson())
-      ("outVariable", _outVariable->toJson());
+  json("inVariable", _inVariable->toJson())("outVariable",
+                                            _outVariable->toJson());
 
   // And add it:
   nodes(json);
@@ -1241,9 +1299,9 @@ void EnumerateListNode::toJsonHelper (triagens::basics::Json& nodes,
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
-                                         bool withDependencies,
-                                         bool withProperties) const {
+ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
+                                        bool withDependencies,
+                                        bool withProperties) const {
   auto outVariable = _outVariable;
   auto inVariable = _inVariable;
 
@@ -1262,8 +1320,8 @@ ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of an enumerate list node
 ////////////////////////////////////////////////////////////////////////////////
-        
-double EnumerateListNode::estimateCost (size_t& nrItems) const {
+
+double EnumerateListNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
 
@@ -1272,7 +1330,7 @@ double EnumerateListNode::estimateCost (size_t& nrItems) const {
   // list is constant, then we could maybe multiply by the length
   // here... For the time being, we assume 100
   size_t length = 100;
- 
+
   auto setter = _plan->getVarSetBy(_inVariable->id);
 
   if (setter != nullptr) {
@@ -1288,13 +1346,14 @@ double EnumerateListNode::estimateCost (size_t& nrItems) const {
           length = node->numMembers();
         }
         if (node->type == NODE_TYPE_RANGE) {
-          auto low = node->getMember(0); 
-          auto high = node->getMember(1); 
+          auto low = node->getMember(0);
+          auto high = node->getMember(1);
 
-          if (low->isConstant() && 
-              high->isConstant() &&
-              (low->isValueType(VALUE_TYPE_INT) || low->isValueType(VALUE_TYPE_DOUBLE)) &&
-              (high->isValueType(VALUE_TYPE_INT) || high->isValueType(VALUE_TYPE_DOUBLE))) {
+          if (low->isConstant() && high->isConstant() &&
+              (low->isValueType(VALUE_TYPE_INT) ||
+               low->isValueType(VALUE_TYPE_DOUBLE)) &&
+              (high->isValueType(VALUE_TYPE_INT) ||
+               high->isValueType(VALUE_TYPE_DOUBLE))) {
             // create a temporary range to determine the size
             Range range(low->getIntValue(), high->getIntValue());
 
@@ -1302,45 +1361,45 @@ double EnumerateListNode::estimateCost (size_t& nrItems) const {
           }
         }
       }
-    }
-    else if (setter->getType() == ExecutionNode::SUBQUERY) {
+    } else if (setter->getType() == ExecutionNode::SUBQUERY) {
       // length will be set by the subquery's cost estimator
-      static_cast<SubqueryNode const*>(setter)->getSubquery()->estimateCost(length);
+      static_cast<SubqueryNode const*>(setter)->getSubquery()->estimateCost(
+          length);
     }
   }
 
   nrItems = length * incoming;
-  return depCost + static_cast<double>(length) * incoming; 
+  return depCost + static_cast<double>(length) * incoming;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              methods of LimitNode
 // -----------------------------------------------------------------------------
 
-LimitNode::LimitNode (ExecutionPlan* plan, 
-                      triagens::basics::Json const& base)
-  : ExecutionNode(plan, base),
-    _offset(JsonHelper::checkAndGetNumericValue<decltype(_offset)>(base.json(), "offset")),
-    _limit(JsonHelper::checkAndGetNumericValue<decltype(_limit)>(base.json(), "limit")),
-    _fullCount(JsonHelper::checkAndGetBooleanValue(base.json(), "fullCount")) {
-
-}
+LimitNode::LimitNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+    : ExecutionNode(plan, base),
+      _offset(JsonHelper::checkAndGetNumericValue<decltype(_offset)>(
+          base.json(), "offset")),
+      _limit(JsonHelper::checkAndGetNumericValue<decltype(_limit)>(base.json(),
+                                                                   "limit")),
+      _fullCount(
+          JsonHelper::checkAndGetBooleanValue(base.json(), "fullCount")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief toJson, for LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
-                              TRI_memory_zone_t* zone,
-                              bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void LimitNode::toJsonHelper(triagens::basics::Json& nodes,
+                             TRI_memory_zone_t* zone, bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
   // Now put info about offset and limit in
-  json("offset", triagens::basics::Json(static_cast<double>(_offset)))
-      ("limit", triagens::basics::Json(static_cast<double>(_limit)))
-      ("fullCount", triagens::basics::Json(_fullCount));
+  json("offset", triagens::basics::Json(static_cast<double>(_offset)))(
+      "limit", triagens::basics::Json(static_cast<double>(_limit)))(
+      "fullCount", triagens::basics::Json(_fullCount));
 
   // And add it:
   nodes(json);
@@ -1349,12 +1408,12 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
-       
-double LimitNode::estimateCost (size_t& nrItems) const {
+
+double LimitNode::estimateCost(size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  nrItems = (std::min)(_limit, (std::max)(static_cast<size_t>(0), 
-                                          incoming - _offset));
+  nrItems = (std::min)(_limit,
+                       (std::max)(static_cast<size_t>(0), incoming - _offset));
 
   return depCost + nrItems;
 }
@@ -1363,31 +1422,32 @@ double LimitNode::estimateCost (size_t& nrItems) const {
 // --SECTION--                                        methods of CalculationNode
 // -----------------------------------------------------------------------------
 
-CalculationNode::CalculationNode (ExecutionPlan* plan,
-                                  triagens::basics::Json const& base)
-  : ExecutionNode(plan, base),
-    _conditionVariable(varFromJson(plan->getAst(), base, "conditionVariable", true)),
-    _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
-    _expression(new Expression(plan->getAst(), base)),
-    _canRemoveIfThrows(false) {
-}
+CalculationNode::CalculationNode(ExecutionPlan* plan,
+                                 triagens::basics::Json const& base)
+    : ExecutionNode(plan, base),
+      _conditionVariable(
+          varFromJson(plan->getAst(), base, "conditionVariable", true)),
+      _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
+      _expression(new Expression(plan->getAst(), base)),
+      _canRemoveIfThrows(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
-                                    TRI_memory_zone_t* zone,
-                                    bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void CalculationNode::toJsonHelper(triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone,
+                                   bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
-  
-  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))
-      ("outVariable", _outVariable->toJson())
-      ("canThrow", triagens::basics::Json(_expression->canThrow()));
+
+  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
+      "outVariable", _outVariable->toJson())(
+      "canThrow", triagens::basics::Json(_expression->canThrow()));
 
   if (_conditionVariable != nullptr) {
     json("conditionVariable", _conditionVariable->toJson());
@@ -1399,20 +1459,22 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
-ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
-                                       bool withDependencies,
-                                       bool withProperties) const {
+ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
+                                      bool withDependencies,
+                                      bool withProperties) const {
   auto conditionVariable = _conditionVariable;
   auto outVariable = _outVariable;
 
   if (withProperties) {
     if (_conditionVariable != nullptr) {
-      conditionVariable = plan->getAst()->variables()->createVariable(conditionVariable);
+      conditionVariable =
+          plan->getAst()->variables()->createVariable(conditionVariable);
     }
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(), conditionVariable, outVariable);
+  auto c = new CalculationNode(plan, _id, _expression->clone(),
+                               conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
   cloneHelper(c, plan, withDependencies, withProperties);
@@ -1423,9 +1485,9 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
-        
-double CalculationNode::estimateCost (size_t& nrItems) const {
-  TRI_ASSERT(! _dependencies.empty());
+
+double CalculationNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
 }
@@ -1434,41 +1496,39 @@ double CalculationNode::estimateCost (size_t& nrItems) const {
 // --SECTION--                                           methods of SubqueryNode
 // -----------------------------------------------------------------------------
 
-SubqueryNode::SubqueryNode (ExecutionPlan* plan,
-                            triagens::basics::Json const& base)
-  : ExecutionNode(plan, base),
-    _subquery(nullptr),
-    _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
-}
+SubqueryNode::SubqueryNode(ExecutionPlan* plan,
+                           triagens::basics::Json const& base)
+    : ExecutionNode(plan, base),
+      _subquery(nullptr),
+      _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SubqueryNode::toJsonHelper (triagens::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone,
-                                 bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void SubqueryNode::toJsonHelper(triagens::basics::Json& nodes,
+                                TRI_memory_zone_t* zone, bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
-  json("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))
-      ("outVariable", _outVariable->toJson());
+  json("subquery", _subquery->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))(
+      "outVariable", _outVariable->toJson());
 
   // And add it:
   nodes(json);
 }
 
-ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
-                                    bool withDependencies,
-                                    bool withProperties) const {
+ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                   bool withProperties) const {
   auto outVariable = _outVariable;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
-  auto c = new SubqueryNode(plan, _id, _subquery->clone(plan, true, withProperties),
-                            outVariable);
+  auto c = new SubqueryNode(
+      plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
   cloneHelper(c, plan, withDependencies, withProperties);
 
@@ -1479,18 +1539,18 @@ ExecutionNode* SubqueryNode::clone (ExecutionPlan* plan,
 /// @brief whether or not the subquery is a data-modification operation
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SubqueryNode::isModificationQuery () const {
-  std::vector<ExecutionNode*> stack({ _subquery });
+bool SubqueryNode::isModificationQuery() const {
+  std::vector<ExecutionNode*> stack({_subquery});
 
-  while (! stack.empty()) {
+  while (!stack.empty()) {
     auto current = stack.back();
     stack.pop_back();
-    
+
     if (current->isModificationNode()) {
       return true;
     }
 
-    current->addDependencies(stack); 
+    current->addDependencies(stack);
   }
 
   return false;
@@ -1507,8 +1567,8 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
-        
-double SubqueryNode::estimateCost (size_t& nrItems) const {
+
+double SubqueryNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   size_t nrItemsSubquery;
   double subCost = _subquery->getCost(nrItemsSubquery);
@@ -1523,13 +1583,11 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   std::unordered_set<Variable const*> _usedLater;
   std::unordered_set<Variable const*> _valid;
 
-  SubqueryVarUsageFinder () {
-  }
+  SubqueryVarUsageFinder() {}
 
-  ~SubqueryVarUsageFinder () {
-  }
+  ~SubqueryVarUsageFinder() {}
 
-  bool before (ExecutionNode* en) override final {
+  bool before(ExecutionNode* en) override final {
     // Add variables used here to _usedLater:
     for (auto const& v : en->getVariablesUsedHere()) {
       _usedLater.emplace(v);
@@ -1537,22 +1595,25 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  void after (ExecutionNode* en) override final {
+  void after(ExecutionNode* en) override final {
     // Add variables set here to _valid:
     for (auto& v : en->getVariablesSetHere()) {
       _valid.emplace(v);
     }
   }
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode* sub) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
     SubqueryVarUsageFinder subfinder;
     sub->walk(&subfinder);
 
     // keep track of all variables used by a (dependent) subquery
-    // this is, all variables in the subqueries _usedLater that are not in _valid
-     
-    // create the set difference. note: cannot use std::set_difference as our sets are NOT sorted
-    for (auto it = subfinder._usedLater.begin(); it != subfinder._usedLater.end(); ++it) {
+    // this is, all variables in the subqueries _usedLater that are not in
+    // _valid
+
+    // create the set difference. note: cannot use std::set_difference as our
+    // sets are NOT sorted
+    for (auto it = subfinder._usedLater.begin();
+         it != subfinder._usedLater.end(); ++it) {
       if (_valid.find(*it) != _valid.end()) {
         _usedLater.emplace(*it);
       }
@@ -1565,12 +1626,13 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 /// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
+std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(&finder);
-      
+
   std::vector<Variable const*> v;
-  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
+  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
+       ++it) {
     if (finder._valid.find(*it) == finder._valid.end()) {
       v.emplace_back(*it);
     }
@@ -1583,11 +1645,13 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
 /// @brief getVariablesUsedHere, modifying the set in-place
 ////////////////////////////////////////////////////////////////////////////////
 
-void SubqueryNode::getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const {
+void SubqueryNode::getVariablesUsedHere(
+    std::unordered_set<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(&finder);
-      
-  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
+
+  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
+       ++it) {
     if (finder._valid.find(*it) == finder._valid.end()) {
       vars.emplace(*it);
     }
@@ -1595,35 +1659,31 @@ void SubqueryNode::getVariablesUsedHere (std::unordered_set<Variable const*>& va
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief can the node throw? We have to find whether any node in the 
+/// @brief can the node throw? We have to find whether any node in the
 /// subquery plan can throw.
 ////////////////////////////////////////////////////////////////////////////////
 
 struct CanThrowFinder final : public WalkerWorker<ExecutionNode> {
   bool _canThrow;
 
-  CanThrowFinder () 
-    : _canThrow(false) {
-  }
+  CanThrowFinder() : _canThrow(false) {}
 
-  ~CanThrowFinder () {
-  }
+  ~CanThrowFinder() {}
 
-  bool enterSubquery (ExecutionNode*, ExecutionNode*) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
   }
 
-  bool before (ExecutionNode* node) override final {
+  bool before(ExecutionNode* node) override final {
     if (node->canThrow()) {
       _canThrow = true;
       return true;
     }
     return false;
   }
-
 };
 
-bool SubqueryNode::canThrow () {
+bool SubqueryNode::canThrow() {
   CanThrowFinder finder;
   _subquery->walk(&finder);
   return finder._canThrow;
@@ -1633,33 +1693,30 @@ bool SubqueryNode::canThrow () {
 // --SECTION--                                             methods of FilterNode
 // -----------------------------------------------------------------------------
 
-FilterNode::FilterNode (ExecutionPlan* plan, 
-                        triagens::basics::Json const& base)
-  : ExecutionNode(plan, base),
-    _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {
-}
+FilterNode::FilterNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+    : ExecutionNode(plan, base),
+      _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
-                               TRI_memory_zone_t* zone,
-                               bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void FilterNode::toJsonHelper(triagens::basics::Json& nodes,
+                              TRI_memory_zone_t* zone, bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
-  
+
   json("inVariable", _inVariable->toJson());
 
   // And add it:
   nodes(json);
 }
 
-ExecutionNode* FilterNode::clone (ExecutionPlan* plan,
-                                  bool withDependencies,
-                                  bool withProperties) const {
+ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                 bool withProperties) const {
   auto inVariable = _inVariable;
 
   if (withProperties) {
@@ -1675,8 +1732,8 @@ ExecutionNode* FilterNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
-        
-double FilterNode::estimateCost (size_t& nrItems) const {
+
+double FilterNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
@@ -1694,25 +1751,23 @@ double FilterNode::estimateCost (size_t& nrItems) const {
 // --SECTION--                                             methods of ReturnNode
 // -----------------------------------------------------------------------------
 
-ReturnNode::ReturnNode (ExecutionPlan* plan, 
-                        triagens::basics::Json const& base)
-  : ExecutionNode(plan, base),
-    _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {
-}
+ReturnNode::ReturnNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+    : ExecutionNode(plan, base),
+      _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
-                               TRI_memory_zone_t* zone,
-                               bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void ReturnNode::toJsonHelper(triagens::basics::Json& nodes,
+                              TRI_memory_zone_t* zone, bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
   }
-      
+
   json("inVariable", _inVariable->toJson());
 
   // And add it:
@@ -1723,9 +1778,8 @@ void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
-                                  bool withDependencies,
-                                  bool withProperties) const {
+ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                 bool withProperties) const {
   auto inVariable = _inVariable;
 
   if (withProperties) {
@@ -1742,8 +1796,8 @@ ExecutionNode* ReturnNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
-        
-double ReturnNode::estimateCost (size_t& nrItems) const {
+
+double ReturnNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
 }
@@ -1756,10 +1810,10 @@ double ReturnNode::estimateCost (size_t& nrItems) const {
 /// @brief toJson, for NoResultsNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
-                                  TRI_memory_zone_t* zone,
-                                  bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+void NoResultsNode::toJsonHelper(triagens::basics::Json& nodes,
+                                 TRI_memory_zone_t* zone, bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
+      nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -1772,13 +1826,14 @@ void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost, the cost of a NoResults is nearly 0
 ////////////////////////////////////////////////////////////////////////////////
-        
-double NoResultsNode::estimateCost (size_t& nrItems) const {
+
+double NoResultsNode::estimateCost(size_t& nrItems) const {
   nrItems = 0;
   return 0.5;  // just to make it non-zero
 }
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

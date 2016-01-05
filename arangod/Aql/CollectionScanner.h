@@ -37,92 +37,90 @@
 #include "VocBase/vocbase.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          struct CollectionScanner
 // -----------------------------------------------------------------------------
 
-    struct CollectionScanner {
+struct CollectionScanner {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-  
-      CollectionScanner (triagens::arango::AqlTransaction*,
-                         TRI_transaction_collection_t*); 
-  
-      virtual ~CollectionScanner ();
+  CollectionScanner(triagens::arango::AqlTransaction*,
+                    TRI_transaction_collection_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  virtual ~CollectionScanner();
 
-      virtual int scan (std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
 
-      virtual void reset () = 0;
+  virtual int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief forwards the cursor n elements. Does not read the data.
-///        Will at most forward to the last element.
-///        In the second parameter we add how many elements are
-///        really skipped
-////////////////////////////////////////////////////////////////////////////////
+  virtual void reset() = 0;
 
-      virtual int forward (size_t, size_t&) = 0;
- 
-      triagens::arango::AqlTransaction* trx;
-      TRI_transaction_collection_t* trxCollection;
-      uint64_t totalCount;
-      triagens::basics::BucketPosition position;
-    };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief forwards the cursor n elements. Does not read the data.
+  ///        Will at most forward to the last element.
+  ///        In the second parameter we add how many elements are
+  ///        really skipped
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual int forward(size_t, size_t&) = 0;
+
+  triagens::arango::AqlTransaction* trx;
+  TRI_transaction_collection_t* trxCollection;
+  uint64_t totalCount;
+  triagens::basics::BucketPosition position;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                    struct RandomCollectionScanner
 // -----------------------------------------------------------------------------
 
-    struct RandomCollectionScanner final : public CollectionScanner {
+struct RandomCollectionScanner final : public CollectionScanner {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-  
-      RandomCollectionScanner (triagens::arango::AqlTransaction*,
-                               TRI_transaction_collection_t*);
+  RandomCollectionScanner(triagens::arango::AqlTransaction*,
+                          TRI_transaction_collection_t*);
 
-      int scan (std::vector<TRI_doc_mptr_copy_t>&,
-                size_t) override;
+  int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;
 
-      void reset () override;
+  void reset() override;
 
-      int forward (size_t, size_t&) override;
+  int forward(size_t, size_t&) override;
 
-      triagens::basics::BucketPosition initialPosition;
-      uint64_t step;
-    };
+  triagens::basics::BucketPosition initialPosition;
+  uint64_t step;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                    struct LinearCollectionScanner
 // -----------------------------------------------------------------------------
 
-    struct LinearCollectionScanner final : public CollectionScanner {
+struct LinearCollectionScanner final : public CollectionScanner {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-  
-      LinearCollectionScanner (triagens::arango::AqlTransaction*,
-                               TRI_transaction_collection_t*); 
+  LinearCollectionScanner(triagens::arango::AqlTransaction*,
+                          TRI_transaction_collection_t*);
 
-      int scan (std::vector<TRI_doc_mptr_copy_t>&,
-                size_t) override;
-      
-      void reset () override;
+  int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) override;
 
-      int forward (size_t, size_t&) override;
-    };
+  void reset() override;
 
-  }
+  int forward(size_t, size_t&) override;
+};
+}
 }
 
 #endif
@@ -133,5 +131,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

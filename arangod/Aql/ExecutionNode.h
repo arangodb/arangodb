@@ -37,824 +37,768 @@
 #include "VocBase/vocbase.h"
 
 namespace triagens {
-  namespace aql {
-    class Ast;
-    struct Collection;
-    class ExecutionBlock;
-    class TraversalBlock;
-    class ExecutionPlan;
-    struct Index;
-    class RedundantCalculationsReplacer;
+namespace aql {
+class Ast;
+struct Collection;
+class ExecutionBlock;
+class TraversalBlock;
+class ExecutionPlan;
+struct Index;
+class RedundantCalculationsReplacer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pairs, consisting of variable and sort direction
 /// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef std::vector<std::pair<Variable const*, bool>> SortElementVector;
+typedef std::vector<std::pair<Variable const*, bool>> SortElementVector;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ExecutionNode {
+class ExecutionNode {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief node type
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief node type
-////////////////////////////////////////////////////////////////////////////////
+  friend class ExecutionBlock;
+  friend class TraversalBlock;
 
-        friend class ExecutionBlock;
-        friend class TraversalBlock;
+ public:
+  enum NodeType : int {
+    ILLEGAL = 0,
+    SINGLETON = 1,
+    ENUMERATE_COLLECTION = 2,
+    // INDEX_RANGE          =  3, // not used anymore
+    ENUMERATE_LIST = 4,
+    FILTER = 5,
+    LIMIT = 6,
+    CALCULATION = 7,
+    SUBQUERY = 8,
+    SORT = 9,
+    AGGREGATE = 10,
+    SCATTER = 11,
+    GATHER = 12,
+    REMOTE = 13,
+    INSERT = 14,
+    REMOVE = 15,
+    REPLACE = 16,
+    UPDATE = 17,
+    RETURN = 18,
+    NORESULTS = 19,
+    DISTRIBUTE = 20,
+    UPSERT = 21,
+    TRAVERSAL = 22,
+    INDEX = 23
+  };
 
-      public:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-        enum NodeType : int {
-          ILLEGAL                 =  0,
-          SINGLETON               =  1, 
-          ENUMERATE_COLLECTION    =  2, 
-          // INDEX_RANGE          =  3, // not used anymore
-          ENUMERATE_LIST          =  4, 
-          FILTER                  =  5, 
-          LIMIT                   =  6, 
-          CALCULATION             =  7, 
-          SUBQUERY                =  8, 
-          SORT                    =  9, 
-          AGGREGATE               = 10, 
-          SCATTER                 = 11,
-          GATHER                  = 12,
-          REMOTE                  = 13,
-          INSERT                  = 14,
-          REMOVE                  = 15,
-          REPLACE                 = 16,
-          UPDATE                  = 17,
-          RETURN                  = 18,
-          NORESULTS               = 19,
-          DISTRIBUTE              = 20,
-          UPSERT                  = 21,
-          TRAVERSAL               = 22,
-          INDEX                   = 23
-        };
+  ExecutionNode() = delete;
+  ExecutionNode(ExecutionNode const&) = delete;
+  ExecutionNode& operator=(ExecutionNode const&) = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor using an id
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode () = delete;
-        ExecutionNode (ExecutionNode const&) = delete;
-        ExecutionNode& operator= (ExecutionNode const&) = delete;
+  ExecutionNode(ExecutionPlan* plan, size_t id)
+      : _id(id),
+        _estimatedCost(0.0),
+        _estimatedNrItems(0),
+        _estimatedCostSet(false),
+        _depth(0),
+        _varUsageValid(false),
+        _plan(plan) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor using an id
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor using a JSON struct
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode (ExecutionPlan* plan, size_t id)
-          : _id(id), 
-            _estimatedCost(0.0), 
-            _estimatedNrItems(0),
-            _estimatedCostSet(false),
-            _depth(0),
-            _varUsageValid(false),
-            _plan(plan) {
+  ExecutionNode(ExecutionPlan* plan, triagens::basics::Json const& json);
 
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor, free dependencies;
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor using a JSON struct
-////////////////////////////////////////////////////////////////////////////////
+  virtual ~ExecutionNode() {}
 
-        ExecutionNode (ExecutionPlan* plan, triagens::basics::Json const& json);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor, free dependencies;
-////////////////////////////////////////////////////////////////////////////////
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief factory from json.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~ExecutionNode () { 
-        }
+  static ExecutionNode* fromJsonFactory(ExecutionPlan* plan,
+                                        triagens::basics::Json const& json);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-      
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the node's id
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory from json.
-////////////////////////////////////////////////////////////////////////////////
+  inline size_t id() const { return _id; }
 
-        static ExecutionNode* fromJsonFactory (ExecutionPlan* plan,
-                                               triagens::basics::Json const& json);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the node's id
-////////////////////////////////////////////////////////////////////////////////
+  virtual NodeType getType() const = 0;
 
-        inline size_t id () const {
-          return _id;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type name of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  std::string const& getTypeString() const;
 
-        virtual NodeType getType () const = 0;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks whether we know a type of this kind; throws exception if
+  /// not.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name of the node
-////////////////////////////////////////////////////////////////////////////////
+  static void validateType(int type);
 
-        std::string const& getTypeString () const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a dependency
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether we know a type of this kind; throws exception if not.
-////////////////////////////////////////////////////////////////////////////////
+  void addDependency(ExecutionNode* ep) {
+    _dependencies.emplace_back(ep);
+    ep->_parents.emplace_back(this);
+  }
 
-        static void validateType (int type);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a parent
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a dependency
-////////////////////////////////////////////////////////////////////////////////
+  void addParent(ExecutionNode* ep) {
+    ep->_dependencies.emplace_back(this);
+    _parents.emplace_back(ep);
+  }
 
-        void addDependency (ExecutionNode* ep) {
-          _dependencies.emplace_back(ep);
-          ep->_parents.emplace_back(this);
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get all dependencies
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a parent
-////////////////////////////////////////////////////////////////////////////////
+  std::vector<ExecutionNode*> getDependencies() const { return _dependencies; }
 
-        void addParent (ExecutionNode* ep) {
-          ep->_dependencies.emplace_back(this);
-          _parents.emplace_back(ep);
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the first dependency, or a nullptr if none present
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all dependencies
-////////////////////////////////////////////////////////////////////////////////
+  ExecutionNode* getFirstDependency() const {
+    if (_dependencies.empty()) {
+      return nullptr;
+    }
+    return _dependencies[0];
+  }
 
-        std::vector<ExecutionNode*> getDependencies () const {
-          return _dependencies;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the node has a dependency
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the first dependency, or a nullptr if none present
-////////////////////////////////////////////////////////////////////////////////
+  bool hasDependency() const { return (_dependencies.size() == 1); }
 
-        ExecutionNode* getFirstDependency () const {
-          if (_dependencies.empty()) {
-            return nullptr;
-          }
-          return _dependencies[0];
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add the node dependencies to a vector
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the node has a dependency
-////////////////////////////////////////////////////////////////////////////////
+  void addDependencies(std::vector<ExecutionNode*>& result) const {
+    for (auto const& it : _dependencies) {
+      result.emplace_back(it);
+    }
+  }
 
-        bool hasDependency () const {
-          return (_dependencies.size() == 1);
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get all parents
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add the node dependencies to a vector
-////////////////////////////////////////////////////////////////////////////////
-        
-        void addDependencies (std::vector<ExecutionNode*>& result) const {
-          for (auto const& it : _dependencies) {
-            result.emplace_back(it);
-          }
-        }
+  std::vector<ExecutionNode*> getParents() const { return _parents; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get all parents
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the node has a parent
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionNode*> getParents () const {
-          return _parents;
-        }
+  bool hasParent() const { return (_parents.size() == 1); }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the node has a parent
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add the node parents to a vector
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool hasParent () const {
-          return (_parents.size() == 1);
-        }
+  void addParents(std::vector<ExecutionNode*>& result) const {
+    for (auto const& it : _parents) {
+      result.emplace_back(it);
+    }
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add the node parents to a vector
-////////////////////////////////////////////////////////////////////////////////
-        
-        void addParents (std::vector<ExecutionNode*>& result) const {
-          for (auto const& it : _parents) {
-            result.emplace_back(it);
-          }
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief inspect one index; only skiplist indices which match attrs in
+  /// sequence.
+  /// returns a a qualification how good they match;
+  ///      match->index==nullptr means no match at all.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect one index; only skiplist indices which match attrs in sequence.
-/// returns a a qualification how good they match;
-///      match->index==nullptr means no match at all.
-////////////////////////////////////////////////////////////////////////////////
+  enum MatchType {
+    FORWARD_MATCH,
+    REVERSE_MATCH,
+    NOT_COVERED_IDX,
+    NOT_COVERED_ATTR,
+    NO_MATCH
+  };
 
-        enum MatchType {
-          FORWARD_MATCH,
-          REVERSE_MATCH,
-          NOT_COVERED_IDX,
-          NOT_COVERED_ATTR,
-          NO_MATCH
-        };
+  struct IndexMatch {
+    IndexMatch() : index(nullptr), doesMatch(false), reverse(false) {}
 
-        struct IndexMatch {
-          IndexMatch () 
-            : index(nullptr),
-              doesMatch(false),
-              reverse(false) {
-          }
+    Index const* index;  // The index concerned; if null, this is a nonmatch.
+    std::vector<MatchType> matches;  // qualification of the attrs match quality
+    bool doesMatch;                  // do all criteria match?
+    bool reverse;                    // reverse index scan required
+  };
 
-          Index const* index;              // The index concerned; if null, this is a nonmatch.
-          std::vector<MatchType> matches;  // qualification of the attrs match quality
-          bool doesMatch;                  // do all criteria match?
-          bool reverse;                    // reverse index scan required
-        };
+  typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
 
-        typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief make a new node the (only) parent of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief make a new node the (only) parent of the node
-////////////////////////////////////////////////////////////////////////////////
+  void setParent(ExecutionNode* p) {
+    _parents.clear();
+    _parents.emplace_back(p);
+  }
 
-        void setParent (ExecutionNode* p) {
-          _parents.clear();
-          _parents.emplace_back(p);
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief replace a dependency, returns true if the pointer was found and
+  /// replaced, please note that this does not delete oldNode!
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a dependency, returns true if the pointer was found and 
-/// replaced, please note that this does not delete oldNode!
-////////////////////////////////////////////////////////////////////////////////
+  bool replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
+    auto it = _dependencies.begin();
 
-        bool replaceDependency (ExecutionNode* oldNode, ExecutionNode* newNode) {
-          auto it = _dependencies.begin(); 
-
-          while (it != _dependencies.end()) {
-            if (*it == oldNode) {
-              *it = newNode;
-              try {
-                newNode->_parents.emplace_back(this);
-              }
-              catch (...) {
-                *it = oldNode;  // roll back
-                return false;
-              }
-              try {
-                for (auto it2 = oldNode->_parents.begin();
-                     it2 != oldNode->_parents.end();
-                     ++it2) {
-                  if (*it2 == this) {
-                    oldNode->_parents.erase(it2);
-                    break;
-                  }
-                }
-              }
-              catch (...) {
-                // If this happens, we ignore that the _parents of oldNode
-                // are not set correctly
-              }
-              return true;
-            }
-
-            ++it;
-          }
+    while (it != _dependencies.end()) {
+      if (*it == oldNode) {
+        *it = newNode;
+        try {
+          newNode->_parents.emplace_back(this);
+        } catch (...) {
+          *it = oldNode;  // roll back
           return false;
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a dependency, returns true if the pointer was found and 
-/// removed, please note that this does not delete ep!
-////////////////////////////////////////////////////////////////////////////////
-
-        bool removeDependency (ExecutionNode* ep) {
-          bool ok = false;
-          for (auto it = _dependencies.begin();
-               it != _dependencies.end();
-               ++it) {
-            if (*it == ep) {
-              try {
-                it = _dependencies.erase(it);
-              }
-              catch (...) {
-                return false;
-              }
-              ok = true;
+        try {
+          for (auto it2 = oldNode->_parents.begin();
+               it2 != oldNode->_parents.end(); ++it2) {
+            if (*it2 == this) {
+              oldNode->_parents.erase(it2);
               break;
             }
           }
+        } catch (...) {
+          // If this happens, we ignore that the _parents of oldNode
+          // are not set correctly
+        }
+        return true;
+      }
 
-          if (! ok) {
-            return false;
-          }
+      ++it;
+    }
+    return false;
+  }
 
-          // Now remove us as a parent of the old dependency as well:
-          for (auto it = ep->_parents.begin(); 
-               it != ep->_parents.end(); 
-               ++it) {
-            if (*it == this) {
-              try {
-                ep->_parents.erase(it);
-              }
-              catch (...) {
-              }
-              return true;
-            }
-          }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove a dependency, returns true if the pointer was found and
+  /// removed, please note that this does not delete ep!
+  ////////////////////////////////////////////////////////////////////////////////
 
+  bool removeDependency(ExecutionNode* ep) {
+    bool ok = false;
+    for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+      if (*it == ep) {
+        try {
+          it = _dependencies.erase(it);
+        } catch (...) {
           return false;
         }
+        ok = true;
+        break;
+      }
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove all dependencies for the given node
-////////////////////////////////////////////////////////////////////////////////
+    if (!ok) {
+      return false;
+    }
 
-        void removeDependencies () {
-          for (auto& x : _dependencies) {
-            for (auto it = x->_parents.begin();
-                 it != x->_parents.end();
-                 ++it) {
-              if (*it == this) {
-                try {
-                  x->_parents.erase(it);
-                }
-                catch (...) {
-                }
-                break;
-              }
-            }
+    // Now remove us as a parent of the old dependency as well:
+    for (auto it = ep->_parents.begin(); it != ep->_parents.end(); ++it) {
+      if (*it == this) {
+        try {
+          ep->_parents.erase(it);
+        } catch (...) {
+        }
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove all dependencies for the given node
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void removeDependencies() {
+    for (auto& x : _dependencies) {
+      for (auto it = x->_parents.begin(); it != x->_parents.end(); ++it) {
+        if (*it == this) {
+          try {
+            x->_parents.erase(it);
+          } catch (...) {
           }
-          _dependencies.clear();
+          break;
         }
+      }
+    }
+    _dependencies.clear();
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution Node recursively, this makes the class abstract
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const = 0;
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execution Node clone utility to be called by derives
-////////////////////////////////////////////////////////////////////////////////
-
-        void cloneHelper (ExecutionNode *Other,
-                          ExecutionPlan* plan,
-                          bool withDependencies,
-                          bool withProperties) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper for cloning, use virtual clone methods for dependencies
-////////////////////////////////////////////////////////////////////////////////
-
-        void cloneDependencies (ExecutionPlan* plan,
-                                ExecutionNode* theClone,
-                                bool withProperties) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to a string, basically for debugging purposes
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void appendAsString (std::string& st, int indent = 0);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidate the cost estimation for the node and its dependencies
-////////////////////////////////////////////////////////////////////////////////
-        
-        void invalidateCost (); 
-       
-////////////////////////////////////////////////////////////////////////////////
-/// @brief estimate the cost of the node . . .
-////////////////////////////////////////////////////////////////////////////////
-        
-        double getCost (size_t& nrItems) const {
-          if (! _estimatedCostSet) {
-            _estimatedCost = estimateCost(_estimatedNrItems);
-            nrItems = _estimatedNrItems;
-            _estimatedCostSet = true;
-            TRI_ASSERT(_estimatedCost >= 0.0);
-          }
-          else {
-            nrItems = _estimatedNrItems;
-          }
-          return _estimatedCost;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief this actually estimates the costs as well as the number of items
-/// coming out of the node
-////////////////////////////////////////////////////////////////////////////////
-        
-        virtual double estimateCost (size_t& nrItems) const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief walk a complete execution plan recursively
-////////////////////////////////////////////////////////////////////////////////
-
-        bool walk (WalkerWorker<ExecutionNode>* worker);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON, returns an AUTOFREE Json object
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::basics::Json toJson (TRI_memory_zone_t*,
-                                       bool) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::vector<Variable const*> getVariablesUsedHere () const  {
-          return std::vector<Variable const*>();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void getVariablesUsedHere (std::unordered_set<Variable const*>&) const  {
-          // do nothing!
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          return std::vector<Variable const*>();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariableIdsUsedHere
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<VariableId> getVariableIdsUsedHere () const  {
-          auto v(std::move(getVariablesUsedHere()));
-
-          std::unordered_set<VariableId> ids;
-          ids.reserve(v.size());
-
-          for (auto& it : v) {
-            ids.emplace(it->id);
-          }
-          return ids;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setVarsUsedLater
-////////////////////////////////////////////////////////////////////////////////
-
-        void setVarsUsedLater (std::unordered_set<Variable const*>& v) {
-          _varsUsedLater = v;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVarsUsedLater, this returns the set of variables that will be
-/// used later than this node, i.e. in the repeated parents.
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<Variable const*> const& getVarsUsedLater () const {
-          TRI_ASSERT(_varUsageValid);
-          return _varsUsedLater;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setVarsValid
-////////////////////////////////////////////////////////////////////////////////
-
-        void setVarsValid (std::unordered_set<Variable const*>& v) {
-          _varsValid = v;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVarsValid, this returns the set of variables that is valid 
-/// for items leaving this node, this includes those that will be set here
-/// (see getVariablesSetHere).
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<Variable const*> const& getVarsValid () const {
-          TRI_ASSERT(_varUsageValid);
-          return _varsValid;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setVarUsageValid
-////////////////////////////////////////////////////////////////////////////////
-
-        void setVarUsageValid () {
-          _varUsageValid = true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief invalidateVarUsage
-////////////////////////////////////////////////////////////////////////////////
-
-        void invalidateVarUsage () {
-          _varsUsedLater.clear();
-          _varsValid.clear();
-          _varUsageValid = false;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief can the node throw?
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool canThrow () {
-          return false;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the node is a data modification node
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool isModificationNode () const {
-          // derived classes can change this
-          return false;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static analysis, walker class and information collector
-////////////////////////////////////////////////////////////////////////////////
-
-        struct VarInfo {
-          unsigned int depth;
-          RegisterId registerId;
-
-          VarInfo () = delete;
-          VarInfo (int depth, RegisterId registerId)
-            : depth(depth), registerId(registerId) {
-    
-            TRI_ASSERT(registerId < MaxRegisterId);
-          }
-        };
-
-        struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
-          // The following are collected for global usage in the ExecutionBlock,
-          // although they are stored here in the node:
-
-          // map VariableIds to their depth and registerId:
-          std::unordered_map<VariableId, VarInfo> varInfo;
-
-          // number of variables in the frame of the current depth:
-          std::vector<RegisterId>                 nrRegsHere;
-
-          // number of variables in this and all outer frames together,
-          // the entry with index i here is always the sum of all values
-          // in nrRegsHere from index 0 to i (inclusively) and the two
-          // have the same length:
-          std::vector<RegisterId>                 nrRegs;
-
-          // We collect the subquery nodes to deal with them at the end:
-          std::vector<ExecutionNode*>             subQueryNodes;
-
-          // Local for the walk:
-          unsigned int depth;
-          unsigned int totalNrRegs;
-
-        private:
-
-          // This is used to tell all nodes and share a pointer to ourselves
-          std::shared_ptr<RegisterPlan>* me;
-
-        public:
-
-          RegisterPlan ()
-            : depth(0), totalNrRegs(0), me(nullptr) {
-            nrRegsHere.emplace_back(0);
-            nrRegs.emplace_back(0);
-          };
-          
-          void clear ();
-
-          void setSharedPtr (std::shared_ptr<RegisterPlan>* shared) {
-            me = shared;
-          }
-
-          // Copy constructor used for a subquery:
-          RegisterPlan (RegisterPlan const& v, unsigned int newdepth);
-          ~RegisterPlan () {};
-
-          virtual bool enterSubquery (ExecutionNode*,
-                                      ExecutionNode*) override final {
-            return false;  // do not walk into subquery
-          }
-
-          virtual void after (ExecutionNode *eb) override final;
-
-          RegisterPlan* clone (ExecutionPlan* otherPlan, ExecutionPlan* plan);
-
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief static analysis
-////////////////////////////////////////////////////////////////////////////////
-
-        void planRegisters (ExecutionNode* super = nullptr);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get RegisterPlan
-////////////////////////////////////////////////////////////////////////////////
-
-        RegisterPlan const* getRegisterPlan () const {
-          TRI_ASSERT(_registerPlan.get() != nullptr);
-          return _registerPlan.get();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get depth
-////////////////////////////////////////////////////////////////////////////////
-
-        int getDepth () const {
-          return _depth;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get registers to clear
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<RegisterId> const& getRegsToClear () const {
-          return _regsToClear;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone execution Node recursively, this makes the class abstract
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a variable will be used later
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isVarUsedLater (Variable const* variable) const {
-          return (_varsUsedLater.find(variable) != _varsUsedLater.end());
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the node is in an inner loop
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isInInnerLoop () const {
-          return getLoop() != nullptr;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the surrounding loop
-////////////////////////////////////////////////////////////////////////////////
+  virtual ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                               bool withProperties) const = 0;
 
-        ExecutionNode const* getLoop () const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief execution Node clone utility to be called by derives
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
-      
-      protected:
+  void cloneHelper(ExecutionNode* Other, ExecutionPlan* plan,
+                   bool withDependencies, bool withProperties) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory for (optional) variables from json.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief helper for cloning, use virtual clone methods for dependencies
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static Variable* varFromJson (Ast* ast,
-                                      triagens::basics::Json const& base,
-                                      char const* variableName,
-                                      bool optional = false);
+  void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
+                         bool withProperties) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory for sort Elements from json.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief convert to a string, basically for debugging purposes
+  ////////////////////////////////////////////////////////////////////////////////
 
-        static void getSortElements (SortElementVector& elements,
-                                     ExecutionPlan* plan,
-                                     triagens::basics::Json const& oneNode,
-                                     char const* which);
+  virtual void appendAsString(std::string& st, int indent = 0);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJsonHelper, for a generic node
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidate the cost estimation for the node and its dependencies
+  ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJsonHelperGeneric (triagens::basics::Json&,
-                                                    TRI_memory_zone_t*,
-                                                    bool) const;
+  void invalidateCost();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief estimate the cost of the node . . .
+  ////////////////////////////////////////////////////////////////////////////////
+
+  double getCost(size_t& nrItems) const {
+    if (!_estimatedCostSet) {
+      _estimatedCost = estimateCost(_estimatedNrItems);
+      nrItems = _estimatedNrItems;
+      _estimatedCostSet = true;
+      TRI_ASSERT(_estimatedCost >= 0.0);
+    } else {
+      nrItems = _estimatedNrItems;
+    }
+    return _estimatedCost;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief this actually estimates the costs as well as the number of items
+  /// coming out of the node
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual double estimateCost(size_t& nrItems) const = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set regs to be deleted
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief walk a complete execution plan recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void setRegsToClear (std::unordered_set<RegisterId> const& toClear) {
-          _regsToClear = toClear;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-      
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief node id
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t const _id;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief our dependent nodes
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<ExecutionNode*> _dependencies;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief our parent nodes
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<ExecutionNode*> _parents;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _estimatedCost = 0 if uninitialized and otherwise stores the result
-/// of estimateCost(), the bool indicates if the cost has been set, it starts
-/// out as false, _estimatedNrItems is the estimated number of items coming
-/// out of this node.
-////////////////////////////////////////////////////////////////////////////////
-
-        double mutable _estimatedCost;
-
-        size_t mutable _estimatedNrItems;
-
-        bool mutable _estimatedCostSet;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _varsUsedLater and _varsValid, the former contains those
-/// variables that are still needed further down in the chain. The
-/// latter contains the variables that are set from the dependent nodes
-/// when an item comes into the current node. Both are only valid if
-/// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
-/// this.
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<Variable const*> _varsUsedLater;
-
-        std::unordered_set<Variable const*> _varsValid;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief depth of the current frame, will be filled in by planRegisters
-////////////////////////////////////////////////////////////////////////////////
-
-        int _depth;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not _varsUsedLater and _varsValid are actually valid
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _varUsageValid;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _plan, the ExecutionPlan object
-////////////////////////////////////////////////////////////////////////////////
-
-        ExecutionPlan* _plan;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief info about variables, filled in by planRegisters
-////////////////////////////////////////////////////////////////////////////////
-
-        std::shared_ptr<RegisterPlan> _registerPlan;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following contains the registers which should be cleared
-/// just before this node hands on results. This is computed during
-/// the static analysis for each node using the variable usage in the plan.
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_set<RegisterId> _regsToClear;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                           public static variables
-// -----------------------------------------------------------------------------
-   
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief NodeType to string mapping
-////////////////////////////////////////////////////////////////////////////////
-        
-        static std::unordered_map<int, std::string const> const TypeNames;
-       
-////////////////////////////////////////////////////////////////////////////////
-/// @brief maximum register id that can be assigned.
-/// this is used for assertions
-////////////////////////////////////////////////////////////////////////////////
-    
-        static RegisterId const MaxRegisterId;
+  bool walk(WalkerWorker<ExecutionNode>* worker);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON, returns an AUTOFREE Json object
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::basics::Json toJson(TRI_memory_zone_t*, bool) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief toJson
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                            bool) const = 0;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, returning a vector
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual std::vector<Variable const*> getVariablesUsedHere() const {
+    return std::vector<Variable const*>();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual void getVariablesUsedHere(
+      std::unordered_set<Variable const*>&) const {
+    // do nothing!
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesSetHere
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual std::vector<Variable const*> getVariablesSetHere() const {
+    return std::vector<Variable const*>();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariableIdsUsedHere
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<VariableId> getVariableIdsUsedHere() const {
+    auto v(std::move(getVariablesUsedHere()));
+
+    std::unordered_set<VariableId> ids;
+    ids.reserve(v.size());
+
+    for (auto& it : v) {
+      ids.emplace(it->id);
+    }
+    return ids;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief setVarsUsedLater
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setVarsUsedLater(std::unordered_set<Variable const*>& v) {
+    _varsUsedLater = v;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVarsUsedLater, this returns the set of variables that will be
+  /// used later than this node, i.e. in the repeated parents.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<Variable const*> const& getVarsUsedLater() const {
+    TRI_ASSERT(_varUsageValid);
+    return _varsUsedLater;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief setVarsValid
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setVarsValid(std::unordered_set<Variable const*>& v) { _varsValid = v; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVarsValid, this returns the set of variables that is valid
+  /// for items leaving this node, this includes those that will be set here
+  /// (see getVariablesSetHere).
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<Variable const*> const& getVarsValid() const {
+    TRI_ASSERT(_varUsageValid);
+    return _varsValid;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief setVarUsageValid
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setVarUsageValid() { _varUsageValid = true; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief invalidateVarUsage
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void invalidateVarUsage() {
+    _varsUsedLater.clear();
+    _varsValid.clear();
+    _varUsageValid = false;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief can the node throw?
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual bool canThrow() { return false; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the node is a data modification node
+  ////////////////////////////////////////////////////////////////////////////////
+
+  virtual bool isModificationNode() const {
+    // derived classes can change this
+    return false;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief static analysis, walker class and information collector
+  ////////////////////////////////////////////////////////////////////////////////
+
+  struct VarInfo {
+    unsigned int depth;
+    RegisterId registerId;
+
+    VarInfo() = delete;
+    VarInfo(int depth, RegisterId registerId)
+        : depth(depth), registerId(registerId) {
+      TRI_ASSERT(registerId < MaxRegisterId);
+    }
+  };
+
+  struct RegisterPlan final : public WalkerWorker<ExecutionNode> {
+    // The following are collected for global usage in the ExecutionBlock,
+    // although they are stored here in the node:
+
+    // map VariableIds to their depth and registerId:
+    std::unordered_map<VariableId, VarInfo> varInfo;
+
+    // number of variables in the frame of the current depth:
+    std::vector<RegisterId> nrRegsHere;
+
+    // number of variables in this and all outer frames together,
+    // the entry with index i here is always the sum of all values
+    // in nrRegsHere from index 0 to i (inclusively) and the two
+    // have the same length:
+    std::vector<RegisterId> nrRegs;
+
+    // We collect the subquery nodes to deal with them at the end:
+    std::vector<ExecutionNode*> subQueryNodes;
+
+    // Local for the walk:
+    unsigned int depth;
+    unsigned int totalNrRegs;
+
+   private:
+    // This is used to tell all nodes and share a pointer to ourselves
+    std::shared_ptr<RegisterPlan>* me;
+
+   public:
+    RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
+      nrRegsHere.emplace_back(0);
+      nrRegs.emplace_back(0);
     };
+
+    void clear();
+
+    void setSharedPtr(std::shared_ptr<RegisterPlan>* shared) { me = shared; }
+
+    // Copy constructor used for a subquery:
+    RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
+    ~RegisterPlan(){};
+
+    virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+      return false;  // do not walk into subquery
+    }
+
+    virtual void after(ExecutionNode* eb) override final;
+
+    RegisterPlan* clone(ExecutionPlan* otherPlan, ExecutionPlan* plan);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief static analysis
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void planRegisters(ExecutionNode* super = nullptr);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get RegisterPlan
+  ////////////////////////////////////////////////////////////////////////////////
+
+  RegisterPlan const* getRegisterPlan() const {
+    TRI_ASSERT(_registerPlan.get() != nullptr);
+    return _registerPlan.get();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get depth
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int getDepth() const { return _depth; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get registers to clear
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<RegisterId> const& getRegsToClear() const {
+    return _regsToClear;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check if a variable will be used later
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool isVarUsedLater(Variable const* variable) const {
+    return (_varsUsedLater.find(variable) != _varsUsedLater.end());
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the node is in an inner loop
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool isInInnerLoop() const { return getLoop() != nullptr; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get the surrounding loop
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ExecutionNode const* getLoop() const;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                               protected
+  // functions
+  // -----------------------------------------------------------------------------
+
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief factory for (optional) variables from json.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static Variable* varFromJson(Ast* ast, triagens::basics::Json const& base,
+                               char const* variableName, bool optional = false);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief factory for sort Elements from json.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
+                              triagens::basics::Json const& oneNode,
+                              char const* which);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief toJsonHelper, for a generic node
+  ////////////////////////////////////////////////////////////////////////////////
+
+  triagens::basics::Json toJsonHelperGeneric(triagens::basics::Json&,
+                                             TRI_memory_zone_t*, bool) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set regs to be deleted
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void setRegsToClear(std::unordered_set<RegisterId> const& toClear) {
+    _regsToClear = toClear;
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                               protected
+  // variables
+  // -----------------------------------------------------------------------------
+
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief node id
+  ////////////////////////////////////////////////////////////////////////////////
+
+  size_t const _id;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief our dependent nodes
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::vector<ExecutionNode*> _dependencies;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief our parent nodes
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::vector<ExecutionNode*> _parents;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _estimatedCost = 0 if uninitialized and otherwise stores the result
+  /// of estimateCost(), the bool indicates if the cost has been set, it starts
+  /// out as false, _estimatedNrItems is the estimated number of items coming
+  /// out of this node.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  double mutable _estimatedCost;
+
+  size_t mutable _estimatedNrItems;
+
+  bool mutable _estimatedCostSet;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _varsUsedLater and _varsValid, the former contains those
+  /// variables that are still needed further down in the chain. The
+  /// latter contains the variables that are set from the dependent nodes
+  /// when an item comes into the current node. Both are only valid if
+  /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
+  /// this.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<Variable const*> _varsUsedLater;
+
+  std::unordered_set<Variable const*> _varsValid;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief depth of the current frame, will be filled in by planRegisters
+  ////////////////////////////////////////////////////////////////////////////////
+
+  int _depth;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not _varsUsedLater and _varsValid are actually valid
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool _varUsageValid;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief _plan, the ExecutionPlan object
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ExecutionPlan* _plan;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief info about variables, filled in by planRegisters
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<RegisterPlan> _registerPlan;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the following contains the registers which should be cleared
+  /// just before this node hands on results. This is computed during
+  /// the static analysis for each node using the variable usage in the plan.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::unordered_set<RegisterId> _regsToClear;
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                           public static
+  // variables
+  // -----------------------------------------------------------------------------
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief NodeType to string mapping
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static std::unordered_map<int, std::string const> const TypeNames;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum register id that can be assigned.
+  /// this is used for assertions
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static RegisterId const MaxRegisterId;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class SingletonNode
@@ -864,60 +808,51 @@ namespace triagens {
 /// @brief class SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SingletonNode : public ExecutionNode {
-      
-      friend class ExecutionBlock;
-      friend class SingletonBlock;
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with an id
-////////////////////////////////////////////////////////////////////////////////
+class SingletonNode : public ExecutionNode {
+  friend class ExecutionBlock;
+  friend class SingletonBlock;
 
-      public:
- 
-        SingletonNode (ExecutionPlan* plan, size_t id) 
-          : ExecutionNode(plan, id) {
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor with an id
+  ////////////////////////////////////////////////////////////////////////////////
 
-        SingletonNode (ExecutionPlan*, triagens::basics::Json const& base);
+ public:
+  SingletonNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  SingletonNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-        NodeType getType () const override final {
-          return SINGLETON;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  NodeType getType() const override final { return SINGLETON; }
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final {
-          auto c = new SingletonNode(plan, _id);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-          cloneHelper(c, plan, withDependencies, withProperties);
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final {
+    auto c = new SingletonNode(plan, _id);
 
-          return static_cast<ExecutionNode*>(c);
-        }
+    cloneHelper(c, plan, withDependencies, withProperties);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a singleton is 1
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+    return static_cast<ExecutionNode*>(c);
+  }
 
-    };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the cost of a singleton is 1
+  ////////////////////////////////////////////////////////////////////////////////
+
+  double estimateCost(size_t&) const override final;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     class EnumerateCollectionNode
@@ -927,138 +862,122 @@ namespace triagens {
 /// @brief class EnumerateCollectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class EnumerateCollectionNode : public ExecutionNode {
-      friend class ExecutionNode;
-      friend class ExecutionBlock;
-      friend class EnumerateCollectionBlock;
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with a vocbase and a collection name
-////////////////////////////////////////////////////////////////////////////////
+class EnumerateCollectionNode : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+  friend class EnumerateCollectionBlock;
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor with a vocbase and a collection name
+  ////////////////////////////////////////////////////////////////////////////////
 
-        EnumerateCollectionNode (ExecutionPlan* plan,
-                                 size_t id,
-                                 TRI_vocbase_t* vocbase, 
-                                 Collection* collection,
-                                 Variable const* outVariable,
-                                 bool random)
-          : ExecutionNode(plan, id), 
-            _vocbase(vocbase), 
-            _collection(collection),
-            _outVariable(outVariable),  
-            _random(random) {
+ public:
+  EnumerateCollectionNode(ExecutionPlan* plan, size_t id,
+                          TRI_vocbase_t* vocbase, Collection* collection,
+                          Variable const* outVariable, bool random)
+      : ExecutionNode(plan, id),
+        _vocbase(vocbase),
+        _collection(collection),
+        _outVariable(outVariable),
+        _random(random) {
+    TRI_ASSERT(_vocbase != nullptr);
+    TRI_ASSERT(_collection != nullptr);
+    TRI_ASSERT(_outVariable != nullptr);
+  }
 
-          TRI_ASSERT(_vocbase != nullptr);
-          TRI_ASSERT(_collection != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
-        }
+  EnumerateCollectionNode(ExecutionPlan* plan,
+                          triagens::basics::Json const& base);
 
-        EnumerateCollectionNode (ExecutionPlan* plan,
-                                 triagens::basics::Json const& base);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  NodeType getType() const override final { return ENUMERATE_COLLECTION; }
 
-        NodeType getType () const override final {
-          return ENUMERATE_COLLECTION;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the cost of an enumerate collection node is a multiple of the cost
+  /// of
+  /// its unique dependency
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of an enumerate collection node is a multiple of the cost of
-/// its unique dependency
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+  double estimateCost(size_t&) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesSetHere
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable const*> getVariablesSetHere () const override final {
-          return std::vector<Variable const*>{ _outVariable };
-        }
+  std::vector<Variable const*> getVariablesSetHere() const override final {
+    return std::vector<Variable const*>{_outVariable};
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enable random iteration of documents in collection
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enable random iteration of documents in collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void setRandom () {
-          _random = true;
-        }
+  void setRandom() { _random = true; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the database
+  ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_vocbase_t* vocbase () const {
-          return _vocbase;
-        }
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Collection const* collection () const {
-          return _collection;
-        }
+  Collection const* collection() const { return _collection; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the out variable
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the out variable
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* outVariable () const {
-          return _outVariable;
-        }
+  Variable const* outVariable() const { return _outVariable; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-      private:
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the database
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the database
-////////////////////////////////////////////////////////////////////////////////
+  TRI_vocbase_t* _vocbase;
 
-        TRI_vocbase_t* _vocbase;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief collection
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection
-////////////////////////////////////////////////////////////////////////////////
+  Collection* _collection;
 
-        Collection* _collection;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief output variable
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
-////////////////////////////////////////////////////////////////////////////////
+  Variable const* _outVariable;
 
-        Variable const* _outVariable;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not we want random iteration
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not we want random iteration
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _random;
-    };
+  bool _random;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class EnumerateListNode
@@ -1068,114 +987,103 @@ namespace triagens {
 /// @brief class EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class EnumerateListNode : public ExecutionNode {
-      
-      friend class ExecutionNode;
-      friend class ExecutionBlock;
-      friend class EnumerateListBlock;
-      friend class RedundantCalculationsReplacer;
+class EnumerateListNode : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+  friend class EnumerateListBlock;
+  friend class RedundantCalculationsReplacer;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+ public:
+  EnumerateListNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
+                    Variable const* outVariable)
+      : ExecutionNode(plan, id),
+        _inVariable(inVariable),
+        _outVariable(outVariable) {
+    TRI_ASSERT(_inVariable != nullptr);
+    TRI_ASSERT(_outVariable != nullptr);
+  }
 
-        EnumerateListNode (ExecutionPlan* plan,
-                           size_t id,
-                           Variable const* inVariable,
-                           Variable const* outVariable) 
-          : ExecutionNode(plan, id), 
-            _inVariable(inVariable), 
-            _outVariable(outVariable) {
+  EnumerateListNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-          TRI_ASSERT(_inVariable != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
-        }
-        
-        EnumerateListNode (ExecutionPlan*, triagens::basics::Json const& base);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  NodeType getType() const override final { return ENUMERATE_LIST; }
 
-        NodeType getType () const override final {
-          return ENUMERATE_LIST;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the cost of an enumerate list node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of an enumerate list node
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+  double estimateCost(size_t&) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, returning a vector
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable const*> getVariablesUsedHere () const override final {
-          return std::vector<Variable const*>{ _inVariable };
-        }
+  std::vector<Variable const*> getVariablesUsedHere() const override final {
+    return std::vector<Variable const*>{_inVariable};
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
-          vars.emplace(_inVariable);
-        }
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final {
+    vars.emplace(_inVariable);
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesSetHere
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable const*> getVariablesSetHere () const override final {
-          return std::vector<Variable const*>{ _outVariable };
-        }
+  std::vector<Variable const*> getVariablesSetHere() const override final {
+    return std::vector<Variable const*>{_outVariable};
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return out variable
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return out variable
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* outVariable () const {
-          return _outVariable;
-        }
+  Variable const* outVariable() const { return _outVariable; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-      private:
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief input variable to read from
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief input variable to read from
-////////////////////////////////////////////////////////////////////////////////
+  Variable const* _inVariable;
 
-        Variable const* _inVariable;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief output variable to write to
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
-    };
+  Variable const* _outVariable;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class LimitNode
@@ -1185,125 +1093,99 @@ namespace triagens {
 /// @brief class LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class LimitNode : public ExecutionNode {
-      
-      friend class ExecutionBlock;
-      friend class LimitBlock;
+class LimitNode : public ExecutionNode {
+  friend class ExecutionBlock;
+  friend class LimitBlock;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructors for various arguments, always with offset and limit
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructors for various arguments, always with offset and limit
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+ public:
+  LimitNode(ExecutionPlan* plan, size_t id, size_t offset, size_t limit)
+      : ExecutionNode(plan, id),
+        _offset(offset),
+        _limit(limit),
+        _fullCount(false) {}
 
-        LimitNode (ExecutionPlan* plan,
-                   size_t id,
-                   size_t offset, 
-                   size_t limit) 
-          : ExecutionNode(plan, id), 
-            _offset(offset), 
-            _limit(limit),
-            _fullCount(false) {
+  LimitNode(ExecutionPlan* plan, size_t id, size_t limit)
+      : ExecutionNode(plan, id), _offset(0), _limit(limit), _fullCount(false) {}
 
-        }
+  LimitNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-        LimitNode (ExecutionPlan* plan,
-                   size_t id,
-                   size_t limit) 
-          : ExecutionNode(plan, id), 
-            _offset(0), 
-            _limit(limit),
-            _fullCount(false) {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-        }
-        
-        LimitNode (ExecutionPlan*, triagens::basics::Json const& base);
+  NodeType getType() const override final { return LIMIT; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override final {
-          return LIMIT;
-        }
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final {
+    auto c = new LimitNode(plan, _id, _offset, _limit);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+    if (_fullCount) {
+      c->setFullCount();
+    }
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final {
-          auto c = new LimitNode(plan, _id, _offset, _limit);
+    cloneHelper(c, plan, withDependencies, withProperties);
 
-          if (_fullCount) {
-            c->setFullCount();
-          }
+    return static_cast<ExecutionNode*>(c);
+  }
 
-          cloneHelper(c, plan, withDependencies, withProperties);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief estimateCost
+  ////////////////////////////////////////////////////////////////////////////////
 
-          return static_cast<ExecutionNode*>(c);
-        }
+  double estimateCost(size_t&) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tell the node to fully count what it will limit
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tell the node to fully count what it will limit
-////////////////////////////////////////////////////////////////////////////////
+  void setFullCount() { _fullCount = true; }
 
-        void setFullCount () {
-          _fullCount = true;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the offset value
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the offset value
-////////////////////////////////////////////////////////////////////////////////
+  size_t offset() const { return _offset; }
 
-        size_t offset () const {
-          return _offset;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the limit value
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the limit value
-////////////////////////////////////////////////////////////////////////////////
+  size_t limit() const { return _limit; }
 
-        size_t limit () const {
-          return _limit;
-        }
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the offset
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  size_t _offset;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the offset
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the limit
+  ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _offset;
+  size_t _limit;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the limit
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the node should fully count what it limits
+  ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _limit;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the node should fully count what it limits
-////////////////////////////////////////////////////////////////////////////////
-
-        bool   _fullCount;
-
-    };
+  bool _fullCount;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class CalculationNode
@@ -1313,203 +1195,181 @@ namespace triagens {
 /// @brief class CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class CalculationNode : public ExecutionNode {
-      
-      friend class ExecutionNode;
-      friend class ExecutionBlock;
-      friend class CalculationBlock;
-      friend class RedundantCalculationsReplacer;
+class CalculationNode : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+  friend class CalculationBlock;
+  friend class RedundantCalculationsReplacer;
 
-      public:
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
+                  Variable const* conditionVariable,
+                  Variable const* outVariable)
+      : ExecutionNode(plan, id),
+        _conditionVariable(conditionVariable),
+        _outVariable(outVariable),
+        _expression(expr),
+        _canRemoveIfThrows(false) {
+    TRI_ASSERT(_expression != nullptr);
+    TRI_ASSERT(_outVariable != nullptr);
+  }
 
-        CalculationNode (ExecutionPlan* plan,
-                         size_t id,
-                         Expression* expr, 
-                         Variable const* conditionVariable,
-                         Variable const* outVariable)
-          : ExecutionNode(plan, id), 
-            _conditionVariable(conditionVariable),
-            _outVariable(outVariable),
-            _expression(expr),
-            _canRemoveIfThrows(false) {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-          TRI_ASSERT(_expression != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
-        }
+  CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
+                  Variable const* outVariable)
+      : CalculationNode(plan, id, expr, nullptr, outVariable) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  CalculationNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-        CalculationNode (ExecutionPlan* plan,
-                         size_t id,
-                         Expression* expr, 
-                         Variable const* outVariable)
-          : CalculationNode(plan, id, expr, nullptr, outVariable) { 
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationNode (ExecutionPlan*, triagens::basics::Json const& base);
+  ~CalculationNode() { delete _expression; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ~CalculationNode () {
-          delete _expression;
-        }
+  NodeType getType() const override final { return CALCULATION; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override final {
-          return CALCULATION;
-        }
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return out variable
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final;
+  Variable const* outVariable() const { return _outVariable; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return out variable
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the expression
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* outVariable () const {
-          return _outVariable;
-        }
+  Expression* expression() const { return _expression; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the expression
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief allow removal of this calculation even if it can throw
+  /// this can only happen if the optimizer added a clone of this expression
+  /// elsewhere, and if the clone will stand in
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Expression* expression () const {
-          return _expression;
-        }
+  bool canRemoveIfThrows() const { return _canRemoveIfThrows; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allow removal of this calculation even if it can throw
-/// this can only happen if the optimizer added a clone of this expression
-/// elsewhere, and if the clone will stand in
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief allow removal of this calculation even if it can throw
+  /// this can only happen if the optimizer added a clone of this expression
+  /// elsewhere, and if the clone will stand in
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool canRemoveIfThrows () const {
-          return _canRemoveIfThrows;
-        }
+  void canRemoveIfThrows(bool value) { _canRemoveIfThrows = value; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allow removal of this calculation even if it can throw
-/// this can only happen if the optimizer added a clone of this expression
-/// elsewhere, and if the clone will stand in
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief estimateCost
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void canRemoveIfThrows (bool value) {
-          _canRemoveIfThrows = value;
-        }
+  double estimateCost(size_t&) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, returning a vector
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
+  std::vector<Variable const*> getVariablesUsedHere() const override final {
+    std::unordered_set<Variable const*> vars;
+    _expression->variables(vars);
 
-        std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::unordered_set<Variable const*> vars;
-          _expression->variables(vars);
+    std::vector<Variable const*> v;
+    v.reserve(vars.size());
 
-          std::vector<Variable const*> v;
-          v.reserve(vars.size());
+    for (auto const& vv : vars) {
+      v.emplace_back(vv);
+    }
 
-          for (auto const& vv : vars) {
-            v.emplace_back(vv);
-          }
+    if (_conditionVariable != nullptr) {
+      v.emplace_back(_conditionVariable);
+    }
 
-          if (_conditionVariable != nullptr) {
-            v.emplace_back(_conditionVariable);
-          }
+    return v;
+  }
 
-          return v;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final {
+    _expression->variables(vars);
 
-        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
-          _expression->variables(vars);
+    if (_conditionVariable != nullptr) {
+      vars.emplace(_conditionVariable);
+    }
+  }
 
-          if (_conditionVariable != nullptr) {
-            vars.emplace(_conditionVariable);
-          }
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesSetHere
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
+  virtual std::vector<Variable const*> getVariablesSetHere()
+      const override final {
+    return std::vector<Variable const*>{_outVariable};
+  }
 
-        virtual std::vector<Variable const*> getVariablesSetHere () const override final {
-          return std::vector<Variable const*>{ _outVariable };
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief can the node throw?
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief can the node throw?
-////////////////////////////////////////////////////////////////////////////////
+  bool canThrow() override { return _expression->canThrow(); }
 
-        bool canThrow () override {
-          return _expression->canThrow();
-        }
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief an optional condition variable for the calculation
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  Variable const* _conditionVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief an optional condition variable for the calculation
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief output variable to write to
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _conditionVariable;
+  Variable const* _outVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable to write to
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief we need to have an expression and where to write the result
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _outVariable;
+  Expression* _expression;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to have an expression and where to write the result
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief allow removal of this calculation even if it can throw
+  /// this can only happen if the optimizer added a clone of this expression
+  /// elsewhere, and if the clone will stand in
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Expression* _expression;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief allow removal of this calculation even if it can throw
-/// this can only happen if the optimizer added a clone of this expression
-/// elsewhere, and if the clone will stand in
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _canRemoveIfThrows;
-    };
+  bool _canRemoveIfThrows;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class SubqueryNode
@@ -1519,148 +1379,135 @@ namespace triagens {
 /// @brief class SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SubqueryNode : public ExecutionNode {
-      
-      friend class ExecutionNode;
-      friend class ExecutionBlock;
-      friend class SubqueryBlock;
+class SubqueryNode : public ExecutionNode {
+  friend class ExecutionNode;
+  friend class ExecutionBlock;
+  friend class SubqueryBlock;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+ public:
+  SubqueryNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-        SubqueryNode (ExecutionPlan*,
-                      triagens::basics::Json const& base);
+  SubqueryNode(ExecutionPlan* plan, size_t id, ExecutionNode* subquery,
+               Variable const* outVariable)
+      : ExecutionNode(plan, id),
+        _subquery(subquery),
+        _outVariable(outVariable) {
+    TRI_ASSERT(_subquery != nullptr);
+    TRI_ASSERT(_outVariable != nullptr);
+  }
 
-        SubqueryNode (ExecutionPlan* plan,
-                      size_t id,
-                      ExecutionNode* subquery, 
-                      Variable const* outVariable)
-          : ExecutionNode(plan, id), 
-            _subquery(subquery), 
-            _outVariable(outVariable) {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-          TRI_ASSERT(_subquery != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
-        }
+  NodeType getType() const override final { return SUBQUERY; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the out variable
+  ////////////////////////////////////////////////////////////////////////////////
 
-        NodeType getType () const override final {
-          return SUBQUERY;
-        }
+  Variable const* outVariable() const { return _outVariable; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the out variable
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* outVariable () const {
-          return _outVariable;
-        }
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the subquery is a data-modification operation
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final;
+  bool isModificationQuery() const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the subquery is a data-modification operation
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getter for subquery
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool isModificationQuery () const;
+  ExecutionNode* getSubquery() const { return _subquery; }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getter for subquery
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief setter for subquery
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* getSubquery () const {
-          return _subquery;
-        }
+  void setSubquery(ExecutionNode* subquery, bool forceOverwrite) {
+    TRI_ASSERT(subquery != nullptr);
+    TRI_ASSERT((forceOverwrite && _subquery != nullptr) ||
+               (!forceOverwrite && _subquery == nullptr));
+    _subquery = subquery;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setter for subquery
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief estimateCost
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void setSubquery (ExecutionNode* subquery, bool forceOverwrite) {
-          TRI_ASSERT(subquery != nullptr);
-          TRI_ASSERT((forceOverwrite && _subquery != nullptr) || (! forceOverwrite && _subquery == nullptr)); 
-          _subquery = subquery;
-        }
+  double estimateCost(size_t&) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, returning a vector
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
+  std::vector<Variable const*> getVariablesUsedHere() const override final;
 
-        std::vector<Variable const*> getVariablesUsedHere () const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final;
 
-        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesSetHere
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
+  std::vector<Variable const*> getVariablesSetHere() const override final {
+    return std::vector<Variable const*>{_outVariable};
+  }
 
-        std::vector<Variable const*> getVariablesSetHere () const override final {
-          return std::vector<Variable const*>{ _outVariable };
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief replace the out variable, so we can adjust the name.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace the out variable, so we can adjust the name.
-////////////////////////////////////////////////////////////////////////////////
+  void replaceOutVariable(Variable const* var);
 
-        void replaceOutVariable(Variable const* var);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief can the node throw? Note that this means that an exception can
+  /// *originate* from this node. That is, this method does not need to
+  /// return true just because a dependent node can throw an exception.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief can the node throw? Note that this means that an exception can
-/// *originate* from this node. That is, this method does not need to
-/// return true just because a dependent node can throw an exception.
-////////////////////////////////////////////////////////////////////////////////
+  bool canThrow() override;
 
-        bool canThrow () override;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief we need to have an expression and where to write the result
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  ExecutionNode* _subquery;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to have an expression and where to write the result
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief variable to write to
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* _subquery;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
-    };
+  Variable const* _outVariable;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class FilterNode
@@ -1670,84 +1517,73 @@ namespace triagens {
 /// @brief class FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class FilterNode : public ExecutionNode {
-      
-      friend class ExecutionBlock;
-      friend class FilterBlock;
-      friend class RedundantCalculationsReplacer;
+class FilterNode : public ExecutionNode {
+  friend class ExecutionBlock;
+  friend class FilterBlock;
+  friend class RedundantCalculationsReplacer;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructors for various arguments, always with offset and limit
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructors for various arguments, always with offset and limit
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+ public:
+  FilterNode(ExecutionPlan* plan, size_t id, Variable const* inVariable)
+      : ExecutionNode(plan, id), _inVariable(inVariable) {
+    TRI_ASSERT(_inVariable != nullptr);
+  }
 
-        FilterNode (ExecutionPlan* plan,
-                    size_t id,
-                    Variable const* inVariable)
-          : ExecutionNode(plan, id), 
-            _inVariable(inVariable) {
+  FilterNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-          TRI_ASSERT(_inVariable != nullptr);
-        }
-        
-        FilterNode (ExecutionPlan*, triagens::basics::Json const& base);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  NodeType getType() const override final { return FILTER; }
 
-        NodeType getType () const override final {
-          return FILTER;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief estimateCost
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+  double estimateCost(size_t&) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, returning a vector
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable const*> getVariablesUsedHere () const override final {
-          return std::vector<Variable const*>{ _inVariable };
-        }
+  std::vector<Variable const*> getVariablesUsedHere() const override final {
+    return std::vector<Variable const*>{_inVariable};
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final { 
-          vars.emplace(_inVariable);
-        }
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final {
+    vars.emplace(_inVariable);
+  }
 
-      private:
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief input variable to read from
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief input variable to read from
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _inVariable;
-
-    };
+  Variable const* _inVariable;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct SortInformation
@@ -1756,58 +1592,59 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is an auxilliary struct for processed sort criteria information
 ////////////////////////////////////////////////////////////////////////////////
-    
-    struct SortInformation {
 
-      enum Match {
-        unequal,                // criteria are unequal
-        otherLessAccurate,      // leftmost sort criteria are equal, but other sort criteria are less accurate than ourselves
-        ourselvesLessAccurate,  // leftmost sort criteria are equal, but our own sort criteria is less accurate than the other
-        allEqual                // all criteria are equal
-      };
+struct SortInformation {
+  enum Match {
+    unequal,                // criteria are unequal
+    otherLessAccurate,      // leftmost sort criteria are equal, but other sort
+                            // criteria are less accurate than ourselves
+    ourselvesLessAccurate,  // leftmost sort criteria are equal, but our own
+                            // sort criteria is less accurate than the other
+    allEqual                // all criteria are equal
+  };
 
-      std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
-      bool isValid         = true;
-      bool isDeterministic = true;
-      bool isComplex       = false;
-      bool canThrow        = false;
-          
-      Match isCoveredBy (SortInformation const& other) {
-        if (! isValid || ! other.isValid) {
-          return unequal;
-        }
+  std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
+  bool isValid = true;
+  bool isDeterministic = true;
+  bool isComplex = false;
+  bool canThrow = false;
 
-        if (isComplex || other.isComplex) {
-          return unequal;
-        }
+  Match isCoveredBy(SortInformation const& other) {
+    if (!isValid || !other.isValid) {
+      return unequal;
+    }
 
-        size_t const n = criteria.size();
-        for (size_t i = 0; i < n; ++i) {
-          if (other.criteria.size() <= i) {
-            return otherLessAccurate;
-          }
+    if (isComplex || other.isComplex) {
+      return unequal;
+    }
 
-          auto ours   = criteria[i];
-          auto theirs = other.criteria[i];
-
-          if (std::get<2>(ours) != std::get<2>(theirs)) {
-            // sort order is different
-            return unequal;
-          }
-
-          if (std::get<1>(ours) != std::get<1>(theirs)) {
-            // sort criterion is different
-            return unequal;
-          }
-        }
-
-        if (other.criteria.size() > n) {
-          return ourselvesLessAccurate;
-        }
-          
-        return allEqual;
+    size_t const n = criteria.size();
+    for (size_t i = 0; i < n; ++i) {
+      if (other.criteria.size() <= i) {
+        return otherLessAccurate;
       }
-    };
+
+      auto ours = criteria[i];
+      auto theirs = other.criteria[i];
+
+      if (std::get<2>(ours) != std::get<2>(theirs)) {
+        // sort order is different
+        return unequal;
+      }
+
+      if (std::get<1>(ours) != std::get<1>(theirs)) {
+        // sort criterion is different
+        return unequal;
+      }
+    }
+
+    if (other.criteria.size() > n) {
+      return ourselvesLessAccurate;
+    }
+
+    return allEqual;
+  }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class ReturnNode
@@ -1817,88 +1654,78 @@ namespace triagens {
 /// @brief class ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ReturnNode : public ExecutionNode {
-      
-      friend class ExecutionBlock;
-      friend class ReturnBlock;
-      friend class RedundantCalculationsReplacer;
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructors for various arguments, always with offset and limit
-////////////////////////////////////////////////////////////////////////////////
+class ReturnNode : public ExecutionNode {
+  friend class ExecutionBlock;
+  friend class ReturnBlock;
+  friend class RedundantCalculationsReplacer;
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructors for various arguments, always with offset and limit
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ReturnNode (ExecutionPlan* plan,
-                    size_t id,
-                    Variable const* inVariable)
-          : ExecutionNode(plan, id), 
-            _inVariable(inVariable) {
+ public:
+  ReturnNode(ExecutionPlan* plan, size_t id, Variable const* inVariable)
+      : ExecutionNode(plan, id), _inVariable(inVariable) {
+    TRI_ASSERT(_inVariable != nullptr);
+  }
 
-          TRI_ASSERT(_inVariable != nullptr);
-        }
+  ReturnNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-        ReturnNode (ExecutionPlan*, triagens::basics::Json const& base);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  NodeType getType() const override final { return RETURN; }
 
-        NodeType getType () const override final {
-          return RETURN;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final;
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief estimateCost
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief estimateCost
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+  double estimateCost(size_t&) const override final;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, returning a vector
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, returning a vector
+  ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable const*> getVariablesUsedHere () const override final {
-          return std::vector<Variable const*>{ _inVariable };
-        }
+  std::vector<Variable const*> getVariablesUsedHere() const override final {
+    return std::vector<Variable const*>{_inVariable};
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesUsedHere, modifying the set in-place
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void getVariablesUsedHere (std::unordered_set<Variable const*>& vars) const override final {
-          vars.emplace(_inVariable);
-        } 
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final {
+    vars.emplace(_inVariable);
+  }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-      private:
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief we need to know the offset and limit
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to know the offset and limit
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _inVariable;
-
-    };
+  Variable const* _inVariable;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class NoResultsNode
@@ -1908,71 +1735,60 @@ namespace triagens {
 /// @brief class NoResultsNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class NoResultsNode : public ExecutionNode {
-      
-      friend class ExecutionBlock;
-      friend class NoResultsBlock;
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with an id
-////////////////////////////////////////////////////////////////////////////////
+class NoResultsNode : public ExecutionNode {
+  friend class ExecutionBlock;
+  friend class NoResultsBlock;
 
-      public:
-  
-        NoResultsNode (ExecutionPlan* plan, size_t id) 
-          : ExecutionNode(plan, id) {
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief constructor with an id
+  ////////////////////////////////////////////////////////////////////////////////
 
-        NoResultsNode (ExecutionPlan* plan, triagens::basics::Json const& base)
-          : ExecutionNode(plan, base) {
-        }
+ public:
+  NoResultsNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
+  NoResultsNode(ExecutionPlan* plan, triagens::basics::Json const& base)
+      : ExecutionNode(plan, base) {}
 
-        NodeType getType () const override final {
-          return NORESULTS;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the type of the node
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
+  NodeType getType() const override final { return NORESULTS; }
 
-        void toJsonHelper (triagens::basics::Json&,
-                           TRI_memory_zone_t*,
-                           bool) const override final;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief export to JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
+  void toJsonHelper(triagens::basics::Json&, TRI_memory_zone_t*,
+                    bool) const override final;
 
-        ExecutionNode* clone (ExecutionPlan* plan,
-                              bool withDependencies,
-                              bool withProperties) const override final {
-          auto c = new NoResultsNode(plan, _id);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone ExecutionNode recursively
+  ////////////////////////////////////////////////////////////////////////////////
 
-          cloneHelper(c, plan, withDependencies, withProperties);
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final {
+    auto c = new NoResultsNode(plan, _id);
 
-          return static_cast<ExecutionNode*>(c);
-        }
+    cloneHelper(c, plan, withDependencies, withProperties);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a NoResults is 0
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost (size_t&) const override final;
+    return static_cast<ExecutionNode*>(c);
+  }
 
-    };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the cost of a NoResults is 0
+  ////////////////////////////////////////////////////////////////////////////////
 
-  }   // namespace triagens::aql
+  double estimateCost(size_t&) const override final;
+};
+
+}  // namespace triagens::aql
 }  // namespace triagens
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:
-
-

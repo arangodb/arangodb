@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL SortBlock
 ///
-/// @file 
+/// @file
 ///
 /// DISCLAIMER
 ///
@@ -33,89 +33,83 @@
 #include "Aql/SortNode.h"
 
 namespace triagens {
-  namespace arango {
-    class AqlTransaction;
-  }
+namespace arango {
+class AqlTransaction;
+}
 
-  namespace aql {
+namespace aql {
 
-    class AqlItemBlock;
+class AqlItemBlock;
 
-    class ExecutionEngine;
+class ExecutionEngine;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         SortBlock
 // -----------------------------------------------------------------------------
 
-    class SortBlock : public ExecutionBlock  {
+class SortBlock : public ExecutionBlock {
+ public:
+  SortBlock(ExecutionEngine*, SortNode const*);
 
-      public:
+  ~SortBlock();
 
-        SortBlock (ExecutionEngine*,
-                   SortNode const*);
+  int initialize() override;
 
-        ~SortBlock ();
+  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-        int initialize () override;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief dosorting
+  ////////////////////////////////////////////////////////////////////////////////
 
-        int initializeCursor (AqlItemBlock* items, size_t pos) override final;
+ private:
+  void doSorting();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief dosorting
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief OurLessThan
+  ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+  class OurLessThan {
+   public:
+    OurLessThan(triagens::arango::AqlTransaction* trx,
+                std::deque<AqlItemBlock*>& buffer,
+                std::vector<std::pair<RegisterId, bool>>& sortRegisters,
+                std::vector<TRI_document_collection_t const*>& colls)
+        : _trx(trx),
+          _buffer(buffer),
+          _sortRegisters(sortRegisters),
+          _colls(colls) {}
 
-        void doSorting ();
+    bool operator()(std::pair<size_t, size_t> const& a,
+                    std::pair<size_t, size_t> const& b);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief OurLessThan
-////////////////////////////////////////////////////////////////////////////////
+   private:
+    triagens::arango::AqlTransaction* _trx;
+    std::deque<AqlItemBlock*>& _buffer;
+    std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
+    std::vector<TRI_document_collection_t const*>& _colls;
+  };
 
-        class OurLessThan {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief pairs, consisting of variable and sort direction
+  /// (true = ascending | false = descending)
+  ////////////////////////////////////////////////////////////////////////////////
 
-          public:
-            OurLessThan (triagens::arango::AqlTransaction* trx,
-                         std::deque<AqlItemBlock*>& buffer,
-                         std::vector<std::pair<RegisterId, bool>>& sortRegisters,
-                         std::vector<TRI_document_collection_t const*>& colls)
-              : _trx(trx),
-                _buffer(buffer),
-                _sortRegisters(sortRegisters),
-                _colls(colls) {
-            }
+  std::vector<std::pair<RegisterId, bool>> _sortRegisters;
 
-            bool operator() (std::pair<size_t, size_t> const& a,
-                             std::pair<size_t, size_t> const& b);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the sort should be stable
+  ////////////////////////////////////////////////////////////////////////////////
 
-          private:
-            triagens::arango::AqlTransaction* _trx;
-            std::deque<AqlItemBlock*>& _buffer;
-            std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
-            std::vector<TRI_document_collection_t const*>& _colls;
-        };
+  bool _stable;
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pairs, consisting of variable and sort direction
-/// (true = ascending | false = descending)
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<std::pair<RegisterId, bool>> _sortRegisters;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the sort should be stable
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _stable;
-
-    };
-
-  }  // namespace triagens::aql
+}  // namespace triagens::aql
 }  // namespace triagens
 
 #endif
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
+// --SECTION--\\|/// @\\}\\)"
 // End:

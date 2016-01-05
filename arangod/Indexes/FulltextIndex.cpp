@@ -48,19 +48,16 @@ using namespace triagens::arango;
 
 struct TextExtractorContext {
   std::vector<std::pair<char const*, size_t>>* _positions;
-  VocShaper*                                   _shaper;
+  VocShaper* _shaper;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief walk over an array shape and extract the string values
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ArrayTextExtractor (VocShaper* shaper, 
-                                TRI_shape_t const* shape, 
-                                char const*, 
-                                char const* shapedJson, 
-                                uint64_t length, 
-                                void* data) {
+static bool ArrayTextExtractor(VocShaper* shaper, TRI_shape_t const* shape,
+                               char const*, char const* shapedJson,
+                               uint64_t length, void* data) {
   char* text;
   size_t textLength;
   bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
@@ -68,9 +65,9 @@ static bool ArrayTextExtractor (VocShaper* shaper,
   if (ok) {
     // add string value found
     try {
-      static_cast<TextExtractorContext*>(data)->_positions->emplace_back(text, textLength);
-    }
-    catch (...) {
+      static_cast<TextExtractorContext*>(data)
+          ->_positions->emplace_back(text, textLength);
+    } catch (...) {
     }
   }
   return true;
@@ -80,18 +77,15 @@ static bool ArrayTextExtractor (VocShaper* shaper,
 /// @brief walk over a list shape and extract the string values
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ListTextExtractor (VocShaper* shaper, 
-                               TRI_shape_t const* shape, 
-                               char const* shapedJson, 
-                               uint64_t length, 
-                               void* data) {
+static bool ListTextExtractor(VocShaper* shaper, TRI_shape_t const* shape,
+                              char const* shapedJson, uint64_t length,
+                              void* data) {
   if (shape->_type == TRI_SHAPE_ARRAY) {
     // a sub-object
-    TRI_IterateShapeDataArray(static_cast<TextExtractorContext*>(data)->_shaper, shape, shapedJson, ArrayTextExtractor, data);
-  }
-  else if (shape->_type == TRI_SHAPE_SHORT_STRING ||
-           shape->_type == TRI_SHAPE_LONG_STRING) {
-
+    TRI_IterateShapeDataArray(static_cast<TextExtractorContext*>(data)->_shaper,
+                              shape, shapedJson, ArrayTextExtractor, data);
+  } else if (shape->_type == TRI_SHAPE_SHORT_STRING ||
+             shape->_type == TRI_SHAPE_LONG_STRING) {
     char* text;
     size_t textLength;
     bool ok = TRI_StringValueShapedJson(shape, shapedJson, &text, &textLength);
@@ -99,9 +93,9 @@ static bool ListTextExtractor (VocShaper* shaper,
     if (ok) {
       // add string value found
       try {
-        static_cast<TextExtractorContext*>(data)->_positions->emplace_back(text, textLength);
-      }
-      catch (...) {
+        static_cast<TextExtractorContext*>(data)
+            ->_positions->emplace_back(text, textLength);
+      } catch (...) {
       }
     }
   }
@@ -117,19 +111,21 @@ static bool ListTextExtractor (VocShaper* shaper,
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
-                              TRI_document_collection_t* collection,
-                              std::string const& attribute,
-                              int minWordLength) 
-  : Index(iid, collection, std::vector<std::vector<triagens::basics::AttributeName>>{ { { attribute, false } } }, false, true),
-    _pid(0),
-    _fulltextIndex(nullptr),
-    _minWordLength(minWordLength > 0 ? minWordLength : 1) {
-  
+FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
+                             TRI_document_collection_t* collection,
+                             std::string const& attribute, int minWordLength)
+    : Index(iid, collection,
+            std::vector<std::vector<triagens::basics::AttributeName>>{
+                {{attribute, false}}},
+            false, true),
+      _pid(0),
+      _fulltextIndex(nullptr),
+      _minWordLength(minWordLength > 0 ? minWordLength : 1) {
   TRI_ASSERT(iid != 0);
 
   // look up the attribute
-  auto shaper = _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  auto shaper =
+      _collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
   _pid = shaper->findOrCreateAttributePathByName(attribute.c_str());
 
   if (_pid == 0) {
@@ -143,7 +139,7 @@ FulltextIndex::FulltextIndex (TRI_idx_iid_t iid,
   }
 }
 
-FulltextIndex::~FulltextIndex () {
+FulltextIndex::~FulltextIndex() {
   if (_fulltextIndex != nullptr) {
     LOG_TRACE("destroying fulltext index");
     TRI_FreeFtsIndex(_fulltextIndex);
@@ -153,8 +149,8 @@ FulltextIndex::~FulltextIndex () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-        
-size_t FulltextIndex::memory () const {
+
+size_t FulltextIndex::memory() const {
   return TRI_MemoryFulltextIndex(_fulltextIndex);
 }
 
@@ -162,15 +158,16 @@ size_t FulltextIndex::memory () const {
 /// @brief return a JSON representation of the index
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone,
-                                              bool withFigures) const {
+triagens::basics::Json FulltextIndex::toJson(TRI_memory_zone_t* zone,
+                                             bool withFigures) const {
   auto json = Index::toJson(zone, withFigures);
 
   // hard-coded
-  json("unique", triagens::basics::Json(false))
-      ("sparse", triagens::basics::Json(true));
+  json("unique", triagens::basics::Json(false))("sparse",
+                                                triagens::basics::Json(true));
 
-  json("minLength", triagens::basics::Json(zone, static_cast<double>(_minWordLength)));
+  json("minLength",
+       triagens::basics::Json(zone, static_cast<double>(_minWordLength)));
 
   return json;
 }
@@ -178,18 +175,17 @@ triagens::basics::Json FulltextIndex::toJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the index figures
 ////////////////////////////////////////////////////////////////////////////////
-        
-triagens::basics::Json FulltextIndex::toJsonFigures (TRI_memory_zone_t* zone) const {
+
+triagens::basics::Json FulltextIndex::toJsonFigures(
+    TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(triagens::basics::Json::Object);
   json("memory", triagens::basics::Json(static_cast<double>(memory())));
 
   return json;
 }
 
-int FulltextIndex::insert (triagens::arango::Transaction*,
-                           TRI_doc_mptr_t const* doc, 
-                           bool isRollback) {
-
+int FulltextIndex::insert(triagens::arango::Transaction*,
+                          TRI_doc_mptr_t const* doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
 
   TRI_fulltext_wordlist_t* words = wordlist(doc);
@@ -202,7 +198,8 @@ int FulltextIndex::insert (triagens::arango::Transaction*,
 
   if (words->_numWords > 0) {
     // TODO: use status codes
-    if (! TRI_InsertWordsFulltextIndex(_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc), words)) {
+    if (!TRI_InsertWordsFulltextIndex(
+            _fulltextIndex, (TRI_fulltext_doc_t)((uintptr_t)doc), words)) {
       LOG_ERROR("adding document to fulltext index failed");
       res = TRI_ERROR_INTERNAL;
     }
@@ -212,22 +209,22 @@ int FulltextIndex::insert (triagens::arango::Transaction*,
 
   return res;
 }
-         
-int FulltextIndex::remove (triagens::arango::Transaction*,
-                           TRI_doc_mptr_t const* doc, 
-                           bool) {
-  TRI_DeleteDocumentFulltextIndex(_fulltextIndex, (TRI_fulltext_doc_t) ((uintptr_t) doc));
+
+int FulltextIndex::remove(triagens::arango::Transaction*,
+                          TRI_doc_mptr_t const* doc, bool) {
+  TRI_DeleteDocumentFulltextIndex(_fulltextIndex,
+                                  (TRI_fulltext_doc_t)((uintptr_t)doc));
 
   return TRI_ERROR_NO_ERROR;
 }
 
-int FulltextIndex::cleanup () {
+int FulltextIndex::cleanup() {
   LOG_TRACE("fulltext cleanup called");
 
   int res = TRI_ERROR_NO_ERROR;
 
   // check whether we should do a cleanup at all
-  if (! TRI_CompactFulltextIndex(_fulltextIndex)) {
+  if (!TRI_CompactFulltextIndex(_fulltextIndex)) {
     res = TRI_ERROR_INTERNAL;
   }
 
@@ -243,7 +240,8 @@ int FulltextIndex::cleanup () {
 /// words to index for a specific document
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_fulltext_wordlist_t* FulltextIndex::wordlist (TRI_doc_mptr_t const* document) {
+TRI_fulltext_wordlist_t* FulltextIndex::wordlist(
+    TRI_doc_mptr_t const* document) {
   TRI_shaped_json_t shaped;
   TRI_shaped_json_t shapedJson;
   TRI_shape_t const* shape;
@@ -251,61 +249,68 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist (TRI_doc_mptr_t const* document
   // extract the shape
   auto shaper = _collection->getShaper();
 
-  TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
-  bool ok = shaper->extractShapedJson(&shaped, 0, _pid, &shapedJson, &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_EXTRACT_SHAPED_JSON_MARKER(
+      shaped, document->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
+  bool ok =
+      shaper->extractShapedJson(&shaped, 0, _pid, &shapedJson,
+                                &shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  if (! ok || shape == nullptr) {
+  if (!ok || shape == nullptr) {
     return nullptr;
   }
-  
+
   TRI_vector_string_t* words;
 
   // extract the string value for the indexed attribute
-  if (shape->_type == TRI_SHAPE_SHORT_STRING || shape->_type == TRI_SHAPE_LONG_STRING) {
+  if (shape->_type == TRI_SHAPE_SHORT_STRING ||
+      shape->_type == TRI_SHAPE_LONG_STRING) {
     char* text;
     size_t textLength;
-    ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text, &textLength);
+    ok = TRI_StringValueShapedJson(shape, shapedJson._data.data, &text,
+                                   &textLength);
 
-    if (! ok) {
+    if (!ok) {
       return nullptr;
     }
 
     // parse the document text
-    words = TRI_get_words(text, textLength, (size_t) _minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true);
-  }
-  else if (shape->_type == TRI_SHAPE_ARRAY) {
+    words = TRI_get_words(text, textLength, (size_t)_minWordLength,
+                          (size_t)TRI_FULLTEXT_MAX_WORD_LENGTH, true);
+  } else if (shape->_type == TRI_SHAPE_ARRAY) {
     std::vector<std::pair<char const*, size_t>> values;
-    TextExtractorContext context{ &values, shaper };
-    TRI_IterateShapeDataArray(shaper, shape, shapedJson._data.data, ArrayTextExtractor, &context);
-  
-    words = nullptr; 
+    TextExtractorContext context{&values, shaper};
+    TRI_IterateShapeDataArray(shaper, shape, shapedJson._data.data,
+                              ArrayTextExtractor, &context);
+
+    words = nullptr;
     for (auto const& it : values) {
-      if (! TRI_get_words(words, it.first, it.second, (size_t) _minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
+      if (!TRI_get_words(words, it.first, it.second, (size_t)_minWordLength,
+                         (size_t)TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
         if (words != nullptr) {
           TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
         }
         return nullptr;
       }
     }
-  }
-  else if (shape->_type == TRI_SHAPE_LIST ||
-           shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST ||
-           shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
+  } else if (shape->_type == TRI_SHAPE_LIST ||
+             shape->_type == TRI_SHAPE_HOMOGENEOUS_LIST ||
+             shape->_type == TRI_SHAPE_HOMOGENEOUS_SIZED_LIST) {
     std::vector<std::pair<char const*, size_t>> values;
-    TextExtractorContext context{ &values, shaper };
-    TRI_IterateShapeDataList(shaper, shape, shapedJson._data.data, ListTextExtractor, &context);
-  
-    words = nullptr; 
+    TextExtractorContext context{&values, shaper};
+    TRI_IterateShapeDataList(shaper, shape, shapedJson._data.data,
+                             ListTextExtractor, &context);
+
+    words = nullptr;
     for (auto const& it : values) {
-      if (! TRI_get_words(words, it.first, it.second, (size_t) _minWordLength, (size_t) TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
+      if (!TRI_get_words(words, it.first, it.second, (size_t)_minWordLength,
+                         (size_t)TRI_FULLTEXT_MAX_WORD_LENGTH, true)) {
         if (words != nullptr) {
           TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
         }
         return nullptr;
       }
     }
-  }
-  else {
+  } else {
     words = nullptr;
   }
 
@@ -313,7 +318,8 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist (TRI_doc_mptr_t const* document
     return nullptr;
   }
 
-  TRI_fulltext_wordlist_t* wordlist = TRI_CreateWordlistFulltextIndex(words->_buffer, words->_length);
+  TRI_fulltext_wordlist_t* wordlist =
+      TRI_CreateWordlistFulltextIndex(words->_buffer, words->_length);
 
   if (wordlist == nullptr) {
     TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
@@ -336,5 +342,6 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist (TRI_doc_mptr_t const* document
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

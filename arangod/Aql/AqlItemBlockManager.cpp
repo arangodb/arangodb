@@ -40,18 +40,13 @@ using namespace triagens::aql;
 /// @brief create the manager
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlockManager::AqlItemBlockManager ()
-  : _last(nullptr) {
-
-}
+AqlItemBlockManager::AqlItemBlockManager() : _last(nullptr) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the manager
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlockManager::~AqlItemBlockManager () {
-  delete _last;
-}
+AqlItemBlockManager::~AqlItemBlockManager() { delete _last; }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -61,10 +56,9 @@ AqlItemBlockManager::~AqlItemBlockManager () {
 /// @brief request a block with the specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* AqlItemBlockManager::requestBlock (size_t nrItems, 
-                                                 RegisterId nrRegs) {
-  if (_last != nullptr &&
-      _last->size() == nrItems &&
+AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems,
+                                                RegisterId nrRegs) {
+  if (_last != nullptr && _last->size() == nrItems &&
       _last->getNrRegs() == nrRegs) {
     auto block = _last;
     // don't hand out the same block next time
@@ -81,7 +75,7 @@ AqlItemBlock* AqlItemBlockManager::requestBlock (size_t nrItems,
 /// @brief return a block to the manager
 ////////////////////////////////////////////////////////////////////////////////
 
-void AqlItemBlockManager::returnBlock (AqlItemBlock*& block) {
+void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) {
   TRI_ASSERT(block != nullptr);
   block->destroy();
 
@@ -96,5 +90,6 @@ void AqlItemBlockManager::returnBlock (AqlItemBlock*& block) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

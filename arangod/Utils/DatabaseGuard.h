@@ -37,99 +37,89 @@
 struct TRI_vocbase_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class DatabaseGuard
 // -----------------------------------------------------------------------------
 
-    class DatabaseGuard {
+class DatabaseGuard {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ public:
+  DatabaseGuard(DatabaseGuard const&) = delete;
+  DatabaseGuard& operator=(DatabaseGuard const&) = delete;
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the guard, using a database id
+  ////////////////////////////////////////////////////////////////////////////////
 
-        DatabaseGuard (DatabaseGuard const&) = delete;
-        DatabaseGuard& operator= (DatabaseGuard const&) = delete;
+  DatabaseGuard(TRI_server_t* server, TRI_voc_tick_t id)
+      : _server(server), _database(nullptr) {
+    _database = TRI_UseDatabaseByIdServer(server, id);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the guard, using a database id
-////////////////////////////////////////////////////////////////////////////////
-
-        DatabaseGuard (TRI_server_t* server,
-                       TRI_voc_tick_t id)
-          : _server(server),
-            _database(nullptr) {
-
-          _database = TRI_UseDatabaseByIdServer(server, id);
-
-          if (_database == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the guard, using a database name
-////////////////////////////////////////////////////////////////////////////////
-
-        DatabaseGuard (TRI_server_t* server,
-                       char const* name)
-          : _server(server),
-            _database(nullptr) {
-
-          _database = TRI_UseDatabaseServer(server, name);
-
-          if (_database == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the guard
-////////////////////////////////////////////////////////////////////////////////
-
-        ~DatabaseGuard () {
-          if (_database != nullptr) {
-            TRI_ReleaseDatabaseServer(_server, _database);
-          }
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database pointer
-////////////////////////////////////////////////////////////////////////////////
-
-        inline TRI_vocbase_t* database () const {
-          return _database;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_server_t* _server;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pointer to database
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_vocbase_t* _database;
-
-    };
+    if (_database == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the guard, using a database name
+  ////////////////////////////////////////////////////////////////////////////////
+
+  DatabaseGuard(TRI_server_t* server, char const* name)
+      : _server(server), _database(nullptr) {
+    _database = TRI_UseDatabaseServer(server, name);
+
+    if (_database == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the guard
+  ////////////////////////////////////////////////////////////////////////////////
+
+  ~DatabaseGuard() {
+    if (_database != nullptr) {
+      TRI_ReleaseDatabaseServer(_server, _database);
+    }
+  }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public
+  // functions
+  // -----------------------------------------------------------------------------
+
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the database pointer
+  ////////////////////////////////////////////////////////////////////////////////
+
+  inline TRI_vocbase_t* database() const { return _database; }
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
+
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief server
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_server_t* _server;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief pointer to database
+  ////////////////////////////////////////////////////////////////////////////////
+
+  TRI_vocbase_t* _database;
+};
+}
 }
 
 #endif
@@ -140,5 +130,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -73,8 +73,7 @@
 typedef struct TRI_condition_s {
   pthread_cond_t _cond;
   pthread_mutex_t* _mutex;
-}
-TRI_condition_t;
+} TRI_condition_t;
 
 #endif
 
@@ -86,5 +85,6 @@ TRI_condition_t;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -51,16 +51,15 @@ using namespace triagens::wal;
 /// @brief create the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchronizerThread::SynchronizerThread (LogfileManager* logfileManager,
-                                        uint64_t syncInterval)
-  : Thread("WalSynchronizer"),
-    _logfileManager(logfileManager),
-    _condition(),
-    _waiting(0),
-    _stop(0),
-    _syncInterval(syncInterval),
-    _logfileCache({ 0, -1 }) {
-
+SynchronizerThread::SynchronizerThread(LogfileManager* logfileManager,
+                                       uint64_t syncInterval)
+    : Thread("WalSynchronizer"),
+      _logfileManager(logfileManager),
+      _condition(),
+      _waiting(0),
+      _stop(0),
+      _syncInterval(syncInterval),
+      _logfileCache({0, -1}) {
   allowAsynchronousCancelation();
 }
 
@@ -68,8 +67,7 @@ SynchronizerThread::SynchronizerThread (LogfileManager* logfileManager,
 /// @brief destroy the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-SynchronizerThread::~SynchronizerThread () {
-}
+SynchronizerThread::~SynchronizerThread() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -79,7 +77,7 @@ SynchronizerThread::~SynchronizerThread () {
 /// @brief stops the synchronizer thread
 ////////////////////////////////////////////////////////////////////////////////
 
-void SynchronizerThread::stop () {
+void SynchronizerThread::stop() {
   if (_stop > 0) {
     return;
   }
@@ -96,7 +94,7 @@ void SynchronizerThread::stop () {
 /// @brief signal that we need a sync
 ////////////////////////////////////////////////////////////////////////////////
 
-void SynchronizerThread::signalSync () {
+void SynchronizerThread::signalSync() {
   CONDITION_LOCKER(guard, _condition);
   ++_waiting;
   _condition.signal();
@@ -110,10 +108,10 @@ void SynchronizerThread::signalSync () {
 /// @brief main loop
 ////////////////////////////////////////////////////////////////////////////////
 
-void SynchronizerThread::run () {
+void SynchronizerThread::run() {
   uint64_t iterations = 0;
   uint32_t waiting;
-    
+
   {
     // fetch initial value for waiting
     CONDITION_LOCKER(guard, _condition);
@@ -123,7 +121,7 @@ void SynchronizerThread::run () {
   // go on without the lock
 
   while (true) {
-    int stop = (int) _stop;
+    int stop = (int)_stop;
 
     if (waiting > 0 || ++iterations == 10) {
       iterations = 0;
@@ -134,16 +132,15 @@ void SynchronizerThread::run () {
         while (true) {
           int res = doSync(checkMore);
 
-          if (res != TRI_ERROR_NO_ERROR || ! checkMore) {
+          if (res != TRI_ERROR_NO_ERROR || !checkMore) {
             break;
           }
         }
-      }
-      catch (triagens::basics::Exception const& ex) {
+      } catch (triagens::basics::Exception const& ex) {
         int res = ex.code();
-        LOG_ERROR("got unexpected error in synchronizerThread: %s", TRI_errno_string(res));
-      }
-      catch (...) {
+        LOG_ERROR("got unexpected error in synchronizerThread: %s",
+                  TRI_errno_string(res));
+      } catch (...) {
         LOG_ERROR("got unspecific error in synchronizerThread");
       }
     }
@@ -183,7 +180,7 @@ void SynchronizerThread::run () {
 /// @brief synchronize an unsynchronized region
 ////////////////////////////////////////////////////////////////////////////////
 
-int SynchronizerThread::doSync (bool& checkMore) {
+int SynchronizerThread::doSync(bool& checkMore) {
   checkMore = false;
 
   // get region to sync
@@ -197,7 +194,8 @@ int SynchronizerThread::doSync (bool& checkMore) {
 
   // now perform the actual syncing
   auto status = region.logfileStatus;
-  TRI_ASSERT(status == Logfile::StatusType::OPEN || status == Logfile::StatusType::SEAL_REQUESTED);
+  TRI_ASSERT(status == Logfile::StatusType::OPEN ||
+             status == Logfile::StatusType::SEAL_REQUESTED);
 
   // get the logfile's file descriptor
   int fd = getLogfileDescriptor(region.logfileId);
@@ -206,13 +204,10 @@ int SynchronizerThread::doSync (bool& checkMore) {
   bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
 
   LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",
-            (unsigned long long) id,
-            region.mem,
-            region.mem + region.size,
-            (unsigned long) region.size,
-            region.waitForSync ? "true" : "false");
+            (unsigned long long)id, region.mem, region.mem + region.size,
+            (unsigned long)region.size, region.waitForSync ? "true" : "false");
 
-  if (! result) {
+  if (!result) {
     LOG_ERROR("unable to sync wal logfile region");
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
@@ -237,7 +232,7 @@ int SynchronizerThread::doSync (bool& checkMore) {
     //   // some thread now requests flushing logs. this will produce a
     //   // sync region from slot 1..slot 1.
     //   logfileManager->flush(false, false, false);
-    // 
+    //
     //   // if we now return slot2, it would produce a sync region from
     //   // slot2..slot3. this is fine but won't work if the logfile is
     //   // already sealed.
@@ -248,7 +243,7 @@ int SynchronizerThread::doSync (bool& checkMore) {
       _logfileManager->setLogfileSealed(id);
     }
   }
-  
+
   checkMore = region.checkMore;
 
   _logfileManager->slots()->returnSyncRegion(region);
@@ -259,10 +254,8 @@ int SynchronizerThread::doSync (bool& checkMore) {
 /// @brief get a logfile descriptor (it caches the descriptor for performance)
 ////////////////////////////////////////////////////////////////////////////////
 
-int SynchronizerThread::getLogfileDescriptor (Logfile::IdType id) {
-  if (id != _logfileCache.id ||
-      _logfileCache.id == 0) {
-
+int SynchronizerThread::getLogfileDescriptor(Logfile::IdType id) {
+  if (id != _logfileCache.id || _logfileCache.id == 0) {
     _logfileCache.id = id;
     _logfileCache.fd = _logfileManager->getLogfileDescriptor(id);
   }
@@ -276,5 +269,6 @@ int SynchronizerThread::getLogfileDescriptor (Logfile::IdType id) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

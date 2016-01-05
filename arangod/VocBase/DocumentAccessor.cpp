@@ -41,50 +41,44 @@
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-DocumentAccessor::DocumentAccessor (triagens::arango::CollectionNameResolver const* resolver,
-                                    TRI_document_collection_t* document,
-                                    TRI_doc_mptr_t const* mptr)
-  : _resolver(resolver),
-    _document(document),
-    _mptr(mptr),
-    _json(),
-    _current(nullptr) {
-
+DocumentAccessor::DocumentAccessor(
+    triagens::arango::CollectionNameResolver const* resolver,
+    TRI_document_collection_t* document, TRI_doc_mptr_t const* mptr)
+    : _resolver(resolver),
+      _document(document),
+      _mptr(mptr),
+      _json(),
+      _current(nullptr) {
   TRI_ASSERT(mptr != nullptr);
 }
 
-DocumentAccessor::DocumentAccessor (TRI_json_t const* json)
-  : _resolver(nullptr),
-    _document(nullptr),
-    _mptr(nullptr),
-    _json(),
-    _current(json) {
-
+DocumentAccessor::DocumentAccessor(TRI_json_t const* json)
+    : _resolver(nullptr),
+      _document(nullptr),
+      _mptr(nullptr),
+      _json(),
+      _current(json) {
   TRI_ASSERT(_current != nullptr);
 }
 
-DocumentAccessor::DocumentAccessor (VPackSlice const& slice)
-  : _resolver(nullptr),
-    _document(nullptr),
-    _mptr(nullptr),
-    _json(),
-    _current(nullptr) {
-
+DocumentAccessor::DocumentAccessor(VPackSlice const& slice)
+    : _resolver(nullptr),
+      _document(nullptr),
+      _mptr(nullptr),
+      _json(),
+      _current(nullptr) {
   _current = triagens::basics::VelocyPackHelper::velocyPackToJson(slice);
   TRI_ASSERT(_current != nullptr);
 }
 
-
-
-DocumentAccessor::~DocumentAccessor () {
-}
+DocumentAccessor::~DocumentAccessor() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-bool DocumentAccessor::hasKey (std::string const& attribute) const {
-  if (! isObject()) {
+bool DocumentAccessor::hasKey(std::string const& attribute) const {
+  if (!isObject()) {
     return false;
   }
 
@@ -95,10 +89,9 @@ bool DocumentAccessor::hasKey (std::string const& attribute) const {
           attribute == TRI_VOC_ATTRIBUTE_REV) {
         return true;
       }
-      
-      if (TRI_IS_EDGE_MARKER(_mptr) &&
-          (attribute == TRI_VOC_ATTRIBUTE_FROM ||
-          attribute == TRI_VOC_ATTRIBUTE_TO)) {
+
+      if (TRI_IS_EDGE_MARKER(_mptr) && (attribute == TRI_VOC_ATTRIBUTE_FROM ||
+                                        attribute == TRI_VOC_ATTRIBUTE_TO)) {
         return true;
       }
     }
@@ -117,7 +110,7 @@ bool DocumentAccessor::hasKey (std::string const& attribute) const {
   return (TRI_LookupObjectJson(_current, attribute.c_str()) != nullptr);
 }
 
-bool DocumentAccessor::isObject () const {
+bool DocumentAccessor::isObject() const {
   if (_current != nullptr) {
     return TRI_IsObjectJson(_current);
   }
@@ -126,7 +119,7 @@ bool DocumentAccessor::isObject () const {
   return true;
 }
 
-bool DocumentAccessor::isArray () const {
+bool DocumentAccessor::isArray() const {
   if (_current != nullptr) {
     return TRI_IsArrayJson(_current);
   }
@@ -135,8 +128,8 @@ bool DocumentAccessor::isArray () const {
   return false;
 }
 
-size_t DocumentAccessor::length () const {
-  if (! isArray()) {
+size_t DocumentAccessor::length() const {
+  if (!isArray()) {
     return 0;
   }
   // ok, we have confirmed this is an array
@@ -147,16 +140,15 @@ size_t DocumentAccessor::length () const {
   return 0;
 }
 
-DocumentAccessor& DocumentAccessor::get (std::string const& name) {
+DocumentAccessor& DocumentAccessor::get(std::string const& name) {
   return get(name.c_str(), name.size());
 }
 
-DocumentAccessor& DocumentAccessor::get (char const* name, size_t nameLength) {
+DocumentAccessor& DocumentAccessor::get(char const* name, size_t nameLength) {
   if (_current == nullptr) {
     // a document, we need the access its attributes using special methods
     lookupDocumentAttribute(name, nameLength);
-  }
-  else {
+  } else {
     // already a JSON
     lookupJsonAttribute(name, nameLength);
   }
@@ -164,18 +156,19 @@ DocumentAccessor& DocumentAccessor::get (char const* name, size_t nameLength) {
   return *this;
 }
 
-DocumentAccessor& DocumentAccessor::at (int64_t index) {
+DocumentAccessor& DocumentAccessor::at(int64_t index) {
   if (isArray()) {
     size_t length = TRI_LengthArrayJson(_current);
 
     if (index < 0) {
       // a negative position is allowed
-      index = static_cast<int64_t>(length) + index; 
+      index = static_cast<int64_t>(length) + index;
     }
 
     if (index >= 0 && index < static_cast<int64_t>(length)) {
       // only look up the value if it is within array bounds
-      TRI_json_t const* found = TRI_LookupArrayJson(_current, static_cast<size_t>(index));
+      TRI_json_t const* found =
+          TRI_LookupArrayJson(_current, static_cast<size_t>(index));
 
       if (found != nullptr) {
         _current = found;
@@ -188,8 +181,8 @@ DocumentAccessor& DocumentAccessor::at (int64_t index) {
   setToNull();
   return *this;
 }
-    
-triagens::basics::Json DocumentAccessor::toJson () {
+
+triagens::basics::Json DocumentAccessor::toJson() {
   if (_current == nullptr) {
     // we're still pointing to the original document
     auto shaper = _document->getShaper();
@@ -197,7 +190,8 @@ triagens::basics::Json DocumentAccessor::toJson () {
     // fetch document from mptr
     TRI_shaped_json_t shaped;
     TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _mptr->getDataPtr());
-    triagens::basics::Json json(shaper->memoryZone(), TRI_JsonShapedJson(shaper, &shaped));
+    triagens::basics::Json json(shaper->memoryZone(),
+                                TRI_JsonShapedJson(shaper, &shaped));
 
     // add internal attributes
 
@@ -207,18 +201,21 @@ triagens::basics::Json DocumentAccessor::toJson () {
     id.push_back('/');
     id.append(key);
     json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
-    json(TRI_VOC_ATTRIBUTE_REV, triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
+    json(TRI_VOC_ATTRIBUTE_REV,
+         triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_mptr))));
     json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
-      
+
     if (TRI_IS_EDGE_MARKER(_mptr)) {
       // _from
-      std::string from(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_mptr)));
+      std::string from(_resolver->getCollectionNameCluster(
+          TRI_EXTRACT_MARKER_FROM_CID(_mptr)));
       from.push_back('/');
       from.append(TRI_EXTRACT_MARKER_FROM_KEY(_mptr));
       json(TRI_VOC_ATTRIBUTE_FROM, triagens::basics::Json(from));
-        
+
       // _to
-      std::string to(_resolver->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_mptr)));
+      std::string to(_resolver->getCollectionNameCluster(
+          TRI_EXTRACT_MARKER_TO_CID(_mptr)));
       to.push_back('/');
       to.append(TRI_EXTRACT_MARKER_TO_KEY(_mptr));
       json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
@@ -251,7 +248,7 @@ triagens::basics::Json DocumentAccessor::toJson () {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-void DocumentAccessor::setToNull () {
+void DocumentAccessor::setToNull() {
   // check if already null
   if (_current != nullptr && _current->_type == TRI_JSON_NULL) {
     // already null. done!
@@ -267,10 +264,11 @@ void DocumentAccessor::setToNull () {
   TRI_ASSERT(_current != nullptr);
 }
 
-void DocumentAccessor::lookupJsonAttribute (char const* name, size_t nameLength) {
+void DocumentAccessor::lookupJsonAttribute(char const* name,
+                                           size_t nameLength) {
   TRI_ASSERT(_current != nullptr);
 
-  if (! isObject()) {
+  if (!isObject()) {
     setToNull();
     return;
   }
@@ -280,23 +278,25 @@ void DocumentAccessor::lookupJsonAttribute (char const* name, size_t nameLength)
   if (value == nullptr) {
     // attribute not found
     setToNull();
-  }
-  else {
+  } else {
     // found
     _current = value;
   }
 }
 
-void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLength) {
+void DocumentAccessor::lookupDocumentAttribute(char const* name,
+                                               size_t nameLength) {
   if (*name == '_' && name[1] != '\0') {
-    if (name[1] == 'k' && nameLength == 4 && memcmp(name, TRI_VOC_ATTRIBUTE_KEY, nameLength) == 0) {
+    if (name[1] == 'k' && nameLength == 4 &&
+        memcmp(name, TRI_VOC_ATTRIBUTE_KEY, nameLength) == 0) {
       // _key value is copied into JSON
       char const* key = TRI_EXTRACT_MARKER_KEY(_mptr);
       if (key == nullptr) {
         setToNull();
         return;
       }
-      _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key)));
+      _json.reset(
+          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, key, strlen(key)));
 
       if (_json.get() == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -306,10 +306,13 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
       return;
     }
 
-    if (name[1] == 'i' && nameLength == 3 && memcmp(name, TRI_VOC_ATTRIBUTE_ID, nameLength) == 0) {
+    if (name[1] == 'i' && nameLength == 3 &&
+        memcmp(name, TRI_VOC_ATTRIBUTE_ID, nameLength) == 0) {
       // _id
-      char buffer[512]; // big enough for max key length + max collection name length
-      size_t pos = _resolver->getCollectionName(&buffer[0], _document->_info.id());
+      char buffer[512];  // big enough for max key length + max collection name
+                         // length
+      size_t pos =
+          _resolver->getCollectionName(&buffer[0], _document->_info.id());
       buffer[pos++] = '/';
       char const* key = TRI_EXTRACT_MARKER_KEY(_mptr);
       if (key == nullptr) {
@@ -319,7 +322,8 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
       size_t len = strlen(key);
       memcpy(&buffer[pos], key, len);
       buffer[pos + len] = '\0';
-      _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+      _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0],
+                                           pos + len));
       if (_json.get() == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
@@ -327,12 +331,14 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
       return;
     }
 
-    if (name[1] == 'r' && nameLength == 4 && memcmp(name, TRI_VOC_ATTRIBUTE_REV, nameLength) == 0) {
+    if (name[1] == 'r' && nameLength == 4 &&
+        memcmp(name, TRI_VOC_ATTRIBUTE_REV, nameLength) == 0) {
       // _rev
       char buffer[21];
       TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(_mptr);
       size_t len = TRI_StringUInt64InPlace(rid, &buffer[0]);
-      _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], len));
+      _json.reset(
+          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], len));
       if (_json.get() == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
@@ -341,10 +347,13 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
     }
 
     if (TRI_IS_EDGE_MARKER(_mptr)) {
-      if (name[1] == 'f' && nameLength == 5 && memcmp(name, TRI_VOC_ATTRIBUTE_FROM, nameLength) == 0) {
+      if (name[1] == 'f' && nameLength == 5 &&
+          memcmp(name, TRI_VOC_ATTRIBUTE_FROM, nameLength) == 0) {
         // _from
-        char buffer[512]; // big enough for max key length + max collection name length
-        size_t pos = _resolver->getCollectionNameCluster(&buffer[0], TRI_EXTRACT_MARKER_FROM_CID(_mptr));
+        char buffer[512];  // big enough for max key length + max collection
+                           // name length
+        size_t pos = _resolver->getCollectionNameCluster(
+            &buffer[0], TRI_EXTRACT_MARKER_FROM_CID(_mptr));
         buffer[pos++] = '/';
         char const* key = TRI_EXTRACT_MARKER_FROM_KEY(_mptr);
         if (key == nullptr) {
@@ -354,7 +363,8 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
         size_t len = strlen(key);
         memcpy(&buffer[pos], key, len);
         buffer[pos + len] = '\0';
-        _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+        _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0],
+                                             pos + len));
         if (_json.get() == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
@@ -362,10 +372,13 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
         return;
       }
 
-      if (name[1] == 't' && nameLength == 3 && memcmp(name, TRI_VOC_ATTRIBUTE_TO, nameLength) == 0) {
+      if (name[1] == 't' && nameLength == 3 &&
+          memcmp(name, TRI_VOC_ATTRIBUTE_TO, nameLength) == 0) {
         // to
-        char buffer[512]; // big enough for max key length + max collection name length
-        size_t pos = _resolver->getCollectionNameCluster(&buffer[0], TRI_EXTRACT_MARKER_TO_CID(_mptr));
+        char buffer[512];  // big enough for max key length + max collection
+                           // name length
+        size_t pos = _resolver->getCollectionNameCluster(
+            &buffer[0], TRI_EXTRACT_MARKER_TO_CID(_mptr));
         buffer[pos++] = '/';
         char const* key = TRI_EXTRACT_MARKER_TO_KEY(_mptr);
         if (key == nullptr) {
@@ -375,7 +388,8 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
         size_t len = strlen(key);
         memcpy(&buffer[pos], key, len);
         buffer[pos + len] = '\0';
-        _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0], pos + len));
+        _json.reset(TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, &buffer[0],
+                                             pos + len));
         if (_json.get() == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
@@ -418,4 +432,3 @@ void DocumentAccessor::lookupDocumentAttribute (char const* name, size_t nameLen
   // not found
   setToNull();
 }
-

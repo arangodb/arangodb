@@ -37,64 +37,58 @@
 struct TRI_json_t;
 
 namespace triagens {
-  namespace arango {
+namespace arango {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class DocumentHelper
 // -----------------------------------------------------------------------------
 
-    class DocumentHelper {
+class DocumentHelper {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+ private:
+  DocumentHelper() = delete;
 
-      private:
+  ~DocumentHelper() = delete;
 
-        DocumentHelper () = delete;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                             public static
+  // methods
+  // -----------------------------------------------------------------------------
 
-        ~DocumentHelper () = delete;
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assemble a document id from a string and a string
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
+  static std::string assembleDocumentId(std::string const&,
+                                        std::string const& key,
+                                        bool urlEncode = false);
 
-      public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assemble a document id from a string and a char* key
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a string
-////////////////////////////////////////////////////////////////////////////////
+  static std::string assembleDocumentId(std::string const&, const TRI_voc_key_t,
+                                        bool urlEncode = false);
 
-        static std::string assembleDocumentId (std::string const&,
-                                               std::string const& key,
-                                               bool urlEncode = false);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the collection id and document key from an id
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assemble a document id from a string and a char* key
-////////////////////////////////////////////////////////////////////////////////
+  static bool parseDocumentId(triagens::arango::CollectionNameResolver const&,
+                              char const*, TRI_voc_cid_t&, char**);
 
-        static std::string assembleDocumentId (std::string const&,
-                                               const TRI_voc_key_t,
-                                               bool urlEncode = false);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extract the "_key" attribute from a JSON object
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the collection id and document key from an id
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool parseDocumentId (triagens::arango::CollectionNameResolver const&,
-                                     char const*,
-                                     TRI_voc_cid_t&,
-                                     char**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract the "_key" attribute from a JSON object
-////////////////////////////////////////////////////////////////////////////////
-
-        static int getKey (struct TRI_json_t const*,
-                           TRI_voc_key_t*);
-
-    };
-  }
+  static int getKey(struct TRI_json_t const*, TRI_voc_key_t*);
+};
+}
 }
 
 #endif
@@ -105,5 +99,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

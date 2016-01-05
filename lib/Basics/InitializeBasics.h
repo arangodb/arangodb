@@ -38,38 +38,38 @@ namespace triagens {
 /// @brief the namespace containing the basic classes and functions
 ////////////////////////////////////////////////////////////////////////////////
 
-  namespace basics {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void InitializeBasics (int argv, char* argc[]);
+extern void InitializeBasics(int argv, char* argc[]);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function
 ////////////////////////////////////////////////////////////////////////////////
 
-    extern void ShutdownBasics ();
-  }
+extern void ShutdownBasics();
+}
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_BASICS_INITIALIZE(a,b)                 \
-  do {                                                  \
-    triagens::basics::InitializeBasics((a), (b));       \
+#define TRIAGENS_BASICS_INITIALIZE(a, b)          \
+  do {                                            \
+    triagens::basics::InitializeBasics((a), (b)); \
   } while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRIAGENS_BASICS_SHUTDOWN                \
-  do {                                          \
-    triagens::basics::ShutdownBasics();         \
+#define TRIAGENS_BASICS_SHUTDOWN        \
+  do {                                  \
+    triagens::basics::ShutdownBasics(); \
   } while (0)
 
 #endif
@@ -79,5 +79,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

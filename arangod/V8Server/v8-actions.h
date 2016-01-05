@@ -41,9 +41,9 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace arango {
-    class ApplicationV8;
-  }
+namespace arango {
+class ApplicationV8;
+}
 }
 
 // -----------------------------------------------------------------------------
@@ -54,10 +54,9 @@ namespace triagens {
 /// @brief stores the V8 actions function inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Isolate* isolate,
-                        v8::Handle<v8::Context> context,
-                        TRI_vocbase_t* vocbase,
-                        triagens::arango::ApplicationV8*);
+void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
+                       TRI_vocbase_t* vocbase,
+                       triagens::arango::ApplicationV8*);
 
 #endif
 
@@ -67,5 +66,6 @@ void TRI_InitV8Actions (v8::Isolate* isolate,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

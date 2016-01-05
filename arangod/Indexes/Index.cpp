@@ -52,18 +52,16 @@ using namespace triagens::arango;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-Index::Index (TRI_idx_iid_t iid,
-              TRI_document_collection_t* collection,
-              std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
-              bool unique,
-              bool sparse) 
-  : _iid(iid),
-    _collection(collection),
-    _fields(fields),
-    _unique(unique),
-    _sparse(sparse),
-    _selectivityEstimate(0.0) {
-
+Index::Index(
+    TRI_idx_iid_t iid, TRI_document_collection_t* collection,
+    std::vector<std::vector<triagens::basics::AttributeName>> const& fields,
+    bool unique, bool sparse)
+    : _iid(iid),
+      _collection(collection),
+      _fields(fields),
+      _unique(unique),
+      _sparse(sparse),
+      _selectivityEstimate(0.0) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
   // note: _selectivityEstimate is only used in cluster coordinator case
 }
@@ -73,32 +71,39 @@ Index::Index (TRI_idx_iid_t iid,
 /// this is used in the cluster coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-Index::Index (TRI_json_t const* json)
-  : _iid(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
-    _collection(nullptr),
-    _fields(),
-    _unique(triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
-    _sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
-    _selectivityEstimate(0.0) {
-        
+Index::Index(TRI_json_t const* json)
+    : _iid(triagens::basics::StringUtils::uint64(
+          triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
+      _collection(nullptr),
+      _fields(),
+      _unique(
+          triagens::basics::JsonHelper::getBooleanValue(json, "unique", false)),
+      _sparse(
+          triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
+      _selectivityEstimate(0.0) {
   TRI_json_t const* fields = TRI_LookupObjectJson(json, "fields");
 
-  if (! TRI_IsArrayJson(fields)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index description");
+  if (!TRI_IsArrayJson(fields)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid index description");
   }
 
   size_t const n = TRI_LengthArrayJson(fields);
   _fields.reserve(n);
 
   for (size_t i = 0; i < n; ++i) {
-    auto name = static_cast<TRI_json_t const*>(TRI_AtVector(&fields->_value._objects, i));
+    auto name = static_cast<TRI_json_t const*>(
+        TRI_AtVector(&fields->_value._objects, i));
 
-    if (! TRI_IsStringJson(name)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid index description");
+    if (!TRI_IsStringJson(name)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid index description");
     }
 
     std::vector<triagens::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(std::string(name->_value._string.data, name->_value._string.length - 1), parsedAttributes);
+    TRI_ParseAttributeString(
+        std::string(name->_value._string.data, name->_value._string.length - 1),
+        parsedAttributes);
     _fields.emplace_back(parsedAttributes);
   }
 
@@ -109,8 +114,7 @@ Index::Index (TRI_json_t const* json)
   }
 }
 
-Index::~Index () {
-}
+Index::~Index() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -120,7 +124,7 @@ Index::~Index () {
 /// @brief return the index type based on a type name
 ////////////////////////////////////////////////////////////////////////////////
 
-Index::IndexType Index::type (char const* type) {
+Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "primary") == 0) {
     return TRI_IDX_TYPE_PRIMARY_INDEX;
   }
@@ -153,7 +157,7 @@ Index::IndexType Index::type (char const* type) {
 /// @brief return the name of an index type
 ////////////////////////////////////////////////////////////////////////////////
 
-char const* Index::typeName (Index::IndexType type) {
+char const* Index::typeName(Index::IndexType type) {
   switch (type) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
       return "primary";
@@ -184,7 +188,7 @@ char const* Index::typeName (Index::IndexType type) {
 /// @brief validate an index id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::validateId (char const* key) {
+bool Index::validateId(char const* key) {
   char const* p = key;
 
   while (1) {
@@ -206,14 +210,13 @@ bool Index::validateId (char const* key) {
 /// @brief validate an index handle (collection name + / + index id)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::validateHandle (char const* key,
-                            size_t* split) {
+bool Index::validateHandle(char const* key, size_t* split) {
   char const* p = key;
   char c = *p;
 
   // extract collection name
 
-  if (! (c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
+  if (!(c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
     return false;
   }
 
@@ -222,7 +225,8 @@ bool Index::validateHandle (char const* key,
   while (1) {
     c = *p;
 
-    if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+    if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') ||
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
       ++p;
       continue;
     }
@@ -250,22 +254,19 @@ bool Index::validateHandle (char const* key,
 /// @brief generate a new index id
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_idx_iid_t Index::generateId () {
-  return TRI_NewTickServer();
-}
+TRI_idx_iid_t Index::generateId() { return TRI_NewTickServer(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::Compare (TRI_json_t const* lhs,
-                     TRI_json_t const* rhs) {
+bool Index::Compare(TRI_json_t const* lhs, TRI_json_t const* rhs) {
   TRI_json_t* typeJson = TRI_LookupObjectJson(lhs, "type");
   TRI_ASSERT(TRI_IsStringJson(typeJson));
 
   // type must be identical
-  if (! TRI_CheckSameValueJson(typeJson, TRI_LookupObjectJson(rhs, "type"))) {
+  if (!TRI_CheckSameValueJson(typeJson, TRI_LookupObjectJson(rhs, "type"))) {
     return false;
   }
 
@@ -274,7 +275,7 @@ bool Index::Compare (TRI_json_t const* lhs,
   // unique must be identical if present
   TRI_json_t* value = TRI_LookupObjectJson(lhs, "unique");
   if (TRI_IsBooleanJson(value)) {
-    if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "unique"))) {
+    if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "unique"))) {
       return false;
     }
   }
@@ -282,42 +283,42 @@ bool Index::Compare (TRI_json_t const* lhs,
   // sparse must be identical if present
   value = TRI_LookupObjectJson(lhs, "sparse");
   if (TRI_IsBooleanJson(value)) {
-    if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "sparse"))) {
+    if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "sparse"))) {
       return false;
     }
   }
-
 
   if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX) {
     // geoJson must be identical if present
     value = TRI_LookupObjectJson(lhs, "geoJson");
     if (TRI_IsBooleanJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "geoJson"))) {
+      if (!TRI_CheckSameValueJson(value,
+                                  TRI_LookupObjectJson(rhs, "geoJson"))) {
         return false;
       }
     }
-  }
-  else if (type == IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+  } else if (type == IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
     // minLength
     value = TRI_LookupObjectJson(lhs, "minLength");
     if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "minLength"))) {
+      if (!TRI_CheckSameValueJson(value,
+                                  TRI_LookupObjectJson(rhs, "minLength"))) {
         return false;
       }
     }
-  }
-  else if (type == IndexType::TRI_IDX_TYPE_CAP_CONSTRAINT) {
+  } else if (type == IndexType::TRI_IDX_TYPE_CAP_CONSTRAINT) {
     // size, byteSize
     value = TRI_LookupObjectJson(lhs, "size");
     if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "size"))) {
+      if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "size"))) {
         return false;
       }
     }
 
     value = TRI_LookupObjectJson(lhs, "byteSize");
     if (TRI_IsNumberJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "byteSize"))) {
+      if (!TRI_CheckSameValueJson(value,
+                                  TRI_LookupObjectJson(rhs, "byteSize"))) {
         return false;
       }
     }
@@ -329,12 +330,11 @@ bool Index::Compare (TRI_json_t const* lhs,
   if (TRI_IsArrayJson(value)) {
     if (type == IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       size_t const nv = TRI_LengthArrayJson(value);
- 
+
       // compare fields in arbitrary order
       TRI_json_t const* r = TRI_LookupObjectJson(rhs, "fields");
 
-      if (! TRI_IsArrayJson(r) ||
-          nv != TRI_LengthArrayJson(r)) {
+      if (!TRI_IsArrayJson(r) || nv != TRI_LengthArrayJson(r)) {
         return false;
       }
 
@@ -352,17 +352,15 @@ bool Index::Compare (TRI_json_t const* lhs,
           }
         }
 
-        if (! found) {
+        if (!found) {
           return false;
         }
       }
-    }
-    else {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "fields"))) {
+    } else {
+      if (!TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "fields"))) {
         return false;
       }
     }
-
   }
 
   return true;
@@ -372,15 +370,13 @@ bool Index::Compare (TRI_json_t const* lhs,
 /// @brief return a contextual string for logging
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Index::context () const {
+std::string Index::context() const {
   std::ostringstream result;
 
-  result << "index { id: " << id() 
-         << ", type: " << typeName() 
-         << ", collection: " << _collection->_vocbase->_name 
-         << "/" <<  _collection->_info.name()
-         << ", unique: " <<  (_unique ? "true" : "false")
-         << ", fields: ";
+  result << "index { id: " << id() << ", type: " << typeName()
+         << ", collection: " << _collection->_vocbase->_name << "/"
+         << _collection->_info.name()
+         << ", unique: " << (_unique ? "true" : "false") << ", fields: ";
   result << "[";
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (i > 0) {
@@ -398,7 +394,8 @@ std::string Index::context () const {
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeToplevel) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures,
+                                                  bool closeToplevel) const {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->add("id", VPackValue(std::to_string(_iid)));
@@ -435,7 +432,8 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack (bool withFigures, bool closeT
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures (bool closeToplevel) const {
+std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures(
+    bool closeToplevel) const {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
   builder->add("memory", VPackValue(memory()));
@@ -450,15 +448,16 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures (bool closeToplevel) co
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone,
-                                      bool withFigures) const {
+triagens::basics::Json Index::toJson(TRI_memory_zone_t* zone,
+                                     bool withFigures) const {
   triagens::basics::Json json(zone, triagens::basics::Json::Object, 4);
 
-  json("id", triagens::basics::Json(zone, std::to_string(_iid)))
-      ("type", triagens::basics::Json(zone, typeName()));
+  json("id", triagens::basics::Json(zone, std::to_string(_iid)))(
+      "type", triagens::basics::Json(zone, typeName()));
 
   if (dumpFields()) {
-    triagens::basics::Json f(zone, triagens::basics::Json::Array, fields().size());
+    triagens::basics::Json f(zone, triagens::basics::Json::Array,
+                             fields().size());
 
     for (auto const& field : fields()) {
       std::string fieldString;
@@ -485,7 +484,7 @@ triagens::basics::Json Index::toJson (TRI_memory_zone_t* zone,
 /// base functionality (called from derived classes)
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json Index::toJsonFigures (TRI_memory_zone_t* zone) const {
+triagens::basics::Json Index::toJsonFigures(TRI_memory_zone_t* zone) const {
   triagens::basics::Json json(zone, triagens::basics::Json::Object);
   json("memory", triagens::basics::Json(static_cast<double>(memory())));
   return json;
@@ -495,7 +494,7 @@ triagens::basics::Json Index::toJsonFigures (TRI_memory_zone_t* zone) const {
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 
-double Index::selectivityEstimate () const {
+double Index::selectivityEstimate() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -503,9 +502,8 @@ double Index::selectivityEstimate () const {
 /// @brief default implementation for selectivityEstimate
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::batchInsert (triagens::arango::Transaction*,
-                        std::vector<TRI_doc_mptr_t const*> const*, 
-                        size_t) {
+int Index::batchInsert(triagens::arango::Transaction*,
+                       std::vector<TRI_doc_mptr_t const*> const*, size_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -513,9 +511,9 @@ int Index::batchInsert (triagens::arango::Transaction*,
 /// @brief default implementation for postInsert
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::postInsert (triagens::arango::Transaction*,
-                       struct TRI_transaction_collection_s*,
-                       struct TRI_doc_mptr_t const*) {
+int Index::postInsert(triagens::arango::Transaction*,
+                      struct TRI_transaction_collection_s*,
+                      struct TRI_doc_mptr_t const*) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }
@@ -524,7 +522,7 @@ int Index::postInsert (triagens::arango::Transaction*,
 /// @brief default implementation for cleanup
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::cleanup () {
+int Index::cleanup() {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }
@@ -533,7 +531,7 @@ int Index::cleanup () {
 /// @brief default implementation for sizeHint
 ////////////////////////////////////////////////////////////////////////////////
 
-int Index::sizeHint (triagens::arango::Transaction*, size_t) {
+int Index::sizeHint(triagens::arango::Transaction*, size_t) {
   // do nothing
   return TRI_ERROR_NO_ERROR;
 }
@@ -542,22 +540,19 @@ int Index::sizeHint (triagens::arango::Transaction*, size_t) {
 /// @brief default implementation for hasBatchInsert
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::hasBatchInsert () const {
-  return false;
-}
+bool Index::hasBatchInsert() const { return false; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default implementation for supportsFilterCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
-                                     triagens::aql::Variable const* reference,
-                                     size_t itemsInIndex,
-                                     size_t& estimatedItems,
-                                     double& estimatedCost) const {
+bool Index::supportsFilterCondition(triagens::aql::AstNode const* node,
+                                    triagens::aql::Variable const* reference,
+                                    size_t itemsInIndex, size_t& estimatedItems,
+                                    double& estimatedCost) const {
   // by default, no filter conditions are supported
   estimatedItems = itemsInIndex;
-  estimatedCost  = static_cast<double>(estimatedItems);
+  estimatedCost = static_cast<double>(estimatedItems);
   return false;
 }
 
@@ -565,15 +560,14 @@ bool Index::supportsFilterCondition (triagens::aql::AstNode const* node,
 /// @brief default implementation for supportsSortCondition
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
-                                   triagens::aql::Variable const*,
-                                   size_t itemsInIndex,
-                                   double& estimatedCost) const { 
+bool Index::supportsSortCondition(triagens::aql::SortCondition const*,
+                                  triagens::aql::Variable const*,
+                                  size_t itemsInIndex,
+                                  double& estimatedCost) const {
   // by default, no sort conditions are supported
   if (itemsInIndex > 0) {
     estimatedCost = itemsInIndex * std::log2(itemsInIndex);
-  }
-  else {
+  } else {
     estimatedCost = 0.0;
   }
   return false;
@@ -583,12 +577,9 @@ bool Index::supportsSortCondition (triagens::aql::SortCondition const*,
 /// @brief default iterator factory method. does not create an iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexIterator* Index::iteratorForCondition (triagens::arango::Transaction*,
-                                            IndexIteratorContext*,
-                                            triagens::aql::Ast*,
-                                            triagens::aql::AstNode const*,
-                                            triagens::aql::Variable const*,
-                                            bool) const {
+IndexIterator* Index::iteratorForCondition(
+    triagens::arango::Transaction*, IndexIteratorContext*, triagens::aql::Ast*,
+    triagens::aql::AstNode const*, triagens::aql::Variable const*, bool) const {
   // the super class index cannot create an iterator
   // the derived index classes have to manage this.
   return nullptr;
@@ -597,22 +588,21 @@ IndexIterator* Index::iteratorForCondition (triagens::arango::Transaction*,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief specializes the condition for use with the index
 ////////////////////////////////////////////////////////////////////////////////
-        
-triagens::aql::AstNode* Index::specializeCondition (triagens::aql::AstNode* node,
-                                                    triagens::aql::Variable const*) const {
+
+triagens::aql::AstNode* Index::specializeCondition(
+    triagens::aql::AstNode* node, triagens::aql::Variable const*) const {
   return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform some base checks for an index condition part
 ////////////////////////////////////////////////////////////////////////////////
-        
-bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
-                                 triagens::aql::AstNode const* other,
-                                 triagens::aql::AstNode const* op,
-                                 triagens::aql::Variable const* reference,
-                                 bool isExecution) const {
 
+bool Index::canUseConditionPart(triagens::aql::AstNode const* access,
+                                triagens::aql::AstNode const* other,
+                                triagens::aql::AstNode const* op,
+                                triagens::aql::Variable const* reference,
+                                bool isExecution) const {
   if (_sparse) {
     if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_NIN) {
       return false;
@@ -622,7 +612,7 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         (other->type == triagens::aql::NODE_TYPE_EXPANSION ||
          other->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
       // value IN a.b  OR  value IN a.b[*]
-      if (! access->isConstant()) {
+      if (!access->isConstant()) {
         return false;
       }
 
@@ -631,11 +621,10 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
       */
-    }
-    else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
-             access->type == triagens::aql::NODE_TYPE_EXPANSION) {
+    } else if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+               access->type == triagens::aql::NODE_TYPE_EXPANSION) {
       // value[*] IN a.b
-      if (! other->isConstant()) {
+      if (!other->isConstant()) {
         return false;
       }
 
@@ -644,23 +633,24 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
         return false;
       }
       */
-    }
-    else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    } else if (access->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
-      if (! other->isConstant()) {
+      if (!other->isConstant()) {
         return false;
       }
 
       if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LT ||
           op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_LE) {
-        // <  and  <= are not supported with sparse indexes as this may include null values
+        // <  and  <= are not supported with sparse indexes as this may include
+        // null values
         return false;
       }
 
       if (other->isNullValue() &&
           (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
            op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_GE)) {
-        // ==  and  >= null are not supported with sparse indexes for the same reason
+        // ==  and  >= null are not supported with sparse indexes for the same
+        // reason
         return false;
       }
 
@@ -687,11 +677,9 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
   if (op->type == triagens::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == triagens::aql::NODE_TYPE_EXPANSION ||
        other->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
-
     // value IN a.b  OR  value IN a.b[*]
     triagens::aql::Ast::getReferencedVariables(access, variables);
-  }
-  else {
+  } else {
     // a.b == value  OR  a.b IN values
     triagens::aql::Ast::getReferencedVariables(other, variables);
   }
@@ -706,9 +694,9 @@ bool Index::canUseConditionPart (triagens::aql::AstNode const* access,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
-     
-std::ostream& operator<< (std::ostream& stream,
-                          triagens::arango::Index const* index) {
+
+std::ostream& operator<<(std::ostream& stream,
+                         triagens::arango::Index const* index) {
   stream << index->context();
   return stream;
 }
@@ -717,8 +705,8 @@ std::ostream& operator<< (std::ostream& stream,
 /// @brief append the index description to an output stream
 ////////////////////////////////////////////////////////////////////////////////
 
-std::ostream& operator<< (std::ostream& stream,
-                          triagens::arango::Index const& index) {
+std::ostream& operator<<(std::ostream& stream,
+                         triagens::arango::Index const& index) {
   stream << index.context();
   return stream;
 }
@@ -729,5 +717,6 @@ std::ostream& operator<< (std::ostream& stream,
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -6,7 +6,6 @@
 /// @brief initialize mimetypes
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeEntriesMimetypes ();
+void TRI_InitializeEntriesMimetypes();
 
 #endif
-

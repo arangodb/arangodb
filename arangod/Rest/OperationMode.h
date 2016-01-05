@@ -35,7 +35,7 @@
 #include "Basics/ProgramOptions.h"
 
 namespace triagens {
-  namespace rest {
+namespace rest {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class OperationMode
@@ -49,45 +49,39 @@ namespace triagens {
 /// @brief ArangoDB server operation modes
 ////////////////////////////////////////////////////////////////////////////////
 
-    class OperationMode {
-      public:
+class OperationMode {
+ public:
+  typedef enum {
+    MODE_CONSOLE,
+    MODE_UNITTESTS,
+    MODE_SCRIPT,
+    MODE_SERVER
+  } server_operation_mode_e;
 
-        typedef enum {
-          MODE_CONSOLE,
-          MODE_UNITTESTS,
-          MODE_SCRIPT,
-          MODE_SERVER
-        }
-        server_operation_mode_e;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                      public
+  // types
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the server operation mode
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the server operation mode
-////////////////////////////////////////////////////////////////////////////////
-
-        static server_operation_mode_e determineMode (const triagens::basics::ProgramOptions& options) {
-          if (options.has("console")) {
-            return MODE_CONSOLE;
-          }
-          else if (options.has("javascript.unit-tests")) {
-            return MODE_UNITTESTS;
-          }
-          else if (options.has("javascript.script")) {
-            return MODE_SCRIPT;
-          }
-          else {
-            return MODE_SERVER;
-          }
-        }
-
-    };
-
+  static server_operation_mode_e determineMode(
+      const triagens::basics::ProgramOptions& options) {
+    if (options.has("console")) {
+      return MODE_CONSOLE;
+    } else if (options.has("javascript.unit-tests")) {
+      return MODE_UNITTESTS;
+    } else if (options.has("javascript.script")) {
+      return MODE_SCRIPT;
+    } else {
+      return MODE_SERVER;
+    }
   }
+};
+}
 }
 
 #endif
@@ -98,5 +92,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

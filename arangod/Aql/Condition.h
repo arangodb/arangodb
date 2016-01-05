@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, condition 
+/// @brief Aql, condition
 ///
 /// @file
 ///
@@ -36,442 +36,419 @@
 #include "Basics/JsonHelper.h"
 
 namespace triagens {
-  namespace aql {
+namespace aql {
 
-    class Ast;
-    class EnumerateCollectionNode;
-    class ExecutionPlan;
-    struct Index;
-    class SortCondition;
-    struct Variable;
+class Ast;
+class EnumerateCollectionNode;
+class ExecutionPlan;
+struct Index;
+class SortCondition;
+struct Variable;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
-    enum ConditionPartCompareResult {
-      IMPOSSIBLE              = 0,
-      SELF_CONTAINED_IN_OTHER = 1,
-      OTHER_CONTAINED_IN_SELF = 2,
-      DISJOINT                = 3,
-      CONVERT_EQUAL           = 4,
-      UNKNOWN                 = 5
-    };
+enum ConditionPartCompareResult {
+  IMPOSSIBLE = 0,
+  SELF_CONTAINED_IN_OTHER = 1,
+  OTHER_CONTAINED_IN_SELF = 2,
+  DISJOINT = 3,
+  CONVERT_EQUAL = 4,
+  UNKNOWN = 5
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief side on which an attribute occurs in a condition
 ////////////////////////////////////////////////////////////////////////////////
 
-    enum AttributeSideType {
-      ATTRIBUTE_LEFT,
-      ATTRIBUTE_RIGHT
-    };
-      
+enum AttributeSideType { ATTRIBUTE_LEFT, ATTRIBUTE_RIGHT };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              struct ConditionPart
 // -----------------------------------------------------------------------------
 
-    struct ConditionPart {
-      static ConditionPartCompareResult const ResultsTable[3][7][7];
+struct ConditionPart {
+  static ConditionPartCompareResult const ResultsTable[3][7][7];
 
-      ConditionPart () = delete;
+  ConditionPart() = delete;
 
-      ConditionPart (Variable const*,
-                     std::string const&,
-                     AstNode const*,
-                     AttributeSideType,
-                     void*);
-      
-      ConditionPart (Variable const*,
-                     std::vector<triagens::basics::AttributeName> const&,
-                     AstNode const*,
-                     AttributeSideType,
-                     void*);
+  ConditionPart(Variable const*, std::string const&, AstNode const*,
+                AttributeSideType, void*);
 
-      ~ConditionPart ();
+  ConditionPart(Variable const*,
+                std::vector<triagens::basics::AttributeName> const&,
+                AstNode const*, AttributeSideType, void*);
 
-      inline int whichCompareOperation() const {
-        switch (operatorType) {
-          case NODE_TYPE_OPERATOR_BINARY_EQ:
-            return 0;
-          case NODE_TYPE_OPERATOR_BINARY_NE:
-            return 1;
-          case NODE_TYPE_OPERATOR_BINARY_LT:
-            return 2;
-          case NODE_TYPE_OPERATOR_BINARY_LE:
-            return 3;
-          case NODE_TYPE_OPERATOR_BINARY_GE:
-            return 4;
-          case NODE_TYPE_OPERATOR_BINARY_GT:
-            return 5;
-          default:
-            return 6; // not a compare operator.
-        }
-      }
+  ~ConditionPart();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the lower bound
-////////////////////////////////////////////////////////////////////////////////
+  inline int whichCompareOperation() const {
+    switch (operatorType) {
+      case NODE_TYPE_OPERATOR_BINARY_EQ:
+        return 0;
+      case NODE_TYPE_OPERATOR_BINARY_NE:
+        return 1;
+      case NODE_TYPE_OPERATOR_BINARY_LT:
+        return 2;
+      case NODE_TYPE_OPERATOR_BINARY_LE:
+        return 3;
+      case NODE_TYPE_OPERATOR_BINARY_GE:
+        return 4;
+      case NODE_TYPE_OPERATOR_BINARY_GT:
+        return 5;
+      default:
+        return 6;  // not a compare operator.
+    }
+  }
 
-      inline AstNode const* lowerBound () const {
-        if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-          return valueNode;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the lower bound
+  ////////////////////////////////////////////////////////////////////////////////
 
-        if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && 
-            valueNode->isConstant() &&
-            valueNode->isArray() && 
-            valueNode->numMembers() > 0) {
-          // return first item from IN array.
-          // this requires IN arrays to be sorted, which they should be when
-          // we get here
-          return valueNode->getMember(0);
-        }
+  inline AstNode const* lowerBound() const {
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GT ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      return valueNode;
+    }
 
-        return nullptr;
-      }
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+        valueNode->isConstant() && valueNode->isArray() &&
+        valueNode->numMembers() > 0) {
+      // return first item from IN array.
+      // this requires IN arrays to be sorted, which they should be when
+      // we get here
+      return valueNode->getMember(0);
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns if the lower bound is inclusive
-////////////////////////////////////////////////////////////////////////////////
+    return nullptr;
+  }
 
-      inline bool isLowerInclusive () const {
-        if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-          return true;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns if the lower bound is inclusive
+  ////////////////////////////////////////////////////////////////////////////////
 
-        return false;
-      }
+  inline bool isLowerInclusive() const {
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_GE ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
+      return true;
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the upper bound
-////////////////////////////////////////////////////////////////////////////////
+    return false;
+  }
 
-      inline AstNode const* upperBound () const {
-        if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
-          return valueNode;
-        }
-        
-        if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN && 
-            valueNode->isConstant() &&
-            valueNode->isArray() && 
-            valueNode->numMembers() > 0) {
-          // return last item from IN array.
-          // this requires IN arrays to be sorted, which they should be when
-          // we get here
-          return valueNode->getMember(valueNode->numMembers() - 1);
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the upper bound
+  ////////////////////////////////////////////////////////////////////////////////
 
-        return nullptr;
-      }
+  inline AstNode const* upperBound() const {
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LT ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      return valueNode;
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns if the upper bound is inclusive
-////////////////////////////////////////////////////////////////////////////////
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
+        valueNode->isConstant() && valueNode->isArray() &&
+        valueNode->numMembers() > 0) {
+      // return last item from IN array.
+      // this requires IN arrays to be sorted, which they should be when
+      // we get here
+      return valueNode->getMember(valueNode->numMembers() - 1);
+    }
 
-      inline bool isUpperInclusive () const {
-        if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
-            operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
-          return true;
-        }
-        return false;
-      }
+    return nullptr;
+  }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief true if the condition is completely covered by the other condition
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns if the upper bound is inclusive
+  ////////////////////////////////////////////////////////////////////////////////
 
-      bool isCoveredBy (ConditionPart const&) const;
+  inline bool isUpperInclusive() const {
+    if (operatorType == NODE_TYPE_OPERATOR_BINARY_LE ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_EQ ||
+        operatorType == NODE_TYPE_OPERATOR_BINARY_IN) {
+      return true;
+    }
+    return false;
+  }
 
-      Variable const*             variable;
-      std::string                 attributeName;
-      AstNodeType                 operatorType;
-      AstNode const*              operatorNode;
-      AstNode const*              valueNode;
-      void*                       data;
-      bool                        isExpanded;
-    };
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief true if the condition is completely covered by the other condition
+  ////////////////////////////////////////////////////////////////////////////////
+
+  bool isCoveredBy(ConditionPart const&) const;
+
+  Variable const* variable;
+  std::string attributeName;
+  AstNodeType operatorType;
+  AstNode const* operatorNode;
+  AstNode const* valueNode;
+  void* data;
+  bool isExpanded;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class Condition
 // -----------------------------------------------------------------------------
 
-    class Condition {
+class Condition {
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  private
+  // typedefs
+  // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  private typedefs
-// -----------------------------------------------------------------------------
+ private:
+  typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
+  typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
+  typedef std::unordered_map<Variable const*, AttributeUsageType>
+      VariableUsageType;
 
-      private:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                        constructors /
+  // destructors
+  // -----------------------------------------------------------------------------
 
-        typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
-        typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
-        typedef std::unordered_map<Variable const*, AttributeUsageType> VariableUsageType;
+ public:
+  Condition(Condition const&) = delete;
+  Condition& operator=(Condition const&) = delete;
+  Condition() = delete;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create the condition
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  explicit Condition(Ast*);
 
-        Condition (Condition const&) = delete;
-        Condition& operator= (Condition const&) = delete;
-        Condition () = delete;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destroy the condition
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the condition
-////////////////////////////////////////////////////////////////////////////////
+  ~Condition();
 
-        explicit Condition (Ast*);
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                    public
+  // methods
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the condition
-////////////////////////////////////////////////////////////////////////////////
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the condition root
+  ////////////////////////////////////////////////////////////////////////////////
 
-        ~Condition ();
+  inline AstNode* root() const { return _root; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the condition is empty
+  ////////////////////////////////////////////////////////////////////////////////
 
-      public:
+  inline bool isEmpty() const {
+    if (_root == nullptr) {
+      return true;
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the condition root
-////////////////////////////////////////////////////////////////////////////////
+    return (_root->numMembers() == 0);
+  }
 
-        inline AstNode* root () const {
-          return _root;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the condition results will be sorted (this is only
+  /// relevant if the condition consists of multiple ORs)
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the condition is empty
-////////////////////////////////////////////////////////////////////////////////
+  inline bool isSorted() const { return _isSorted; }
 
-        inline bool isEmpty () const {
-          if (_root == nullptr) {
-            return true;
-          }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief return the condition as a Json object
+  ////////////////////////////////////////////////////////////////////////////////
 
-          return (_root->numMembers() == 0);
-        }
+  triagens::basics::Json toJson(TRI_memory_zone_t* zone, bool verbose) const {
+    if (_root == nullptr) {
+      return triagens::basics::Json(triagens::basics::Json::Object);
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the condition results will be sorted (this is only
-/// relevant if the condition consists of multiple ORs)
-////////////////////////////////////////////////////////////////////////////////
+    return triagens::basics::Json(zone, _root->toJson(zone, verbose));
+  }
 
-        inline bool isSorted () const {
-          return _isSorted;
-        }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a condition from JSON
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the condition as a Json object
-////////////////////////////////////////////////////////////////////////////////
+  static Condition* fromJson(ExecutionPlan*, triagens::basics::Json const&);
 
-        triagens::basics::Json toJson (TRI_memory_zone_t* zone, bool verbose) const {
-          if (_root == nullptr) {
-            return triagens::basics::Json(triagens::basics::Json::Object);
-          }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief clone the condition
+  ////////////////////////////////////////////////////////////////////////////////
 
-          return triagens::basics::Json(zone, _root->toJson(zone, verbose));
-        }
+  Condition* clone() const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a condition from JSON
-////////////////////////////////////////////////////////////////////////////////
-        
-        static Condition* fromJson (ExecutionPlan*, triagens::basics::Json const&);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief add a sub-condition to the condition
+  /// the sub-condition will be AND-combined with the existing condition(s)
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone the condition
-////////////////////////////////////////////////////////////////////////////////
- 
-        Condition* clone () const;
+  void andCombine(AstNode const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a sub-condition to the condition
-/// the sub-condition will be AND-combined with the existing condition(s)
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief normalize the condition
+  /// this will convert the condition into its disjunctive normal form
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void andCombine (AstNode const*);
+  void normalize(ExecutionPlan*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize the condition
-/// this will convert the condition into its disjunctive normal form
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief normalize the condition
+  /// this will convert the condition into its disjunctive normal form
+  /// in this case we don't re-run the optimizer. Its expected that you
+  /// don't want to remove eventually unneccessary filters.
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void normalize (ExecutionPlan*);
+  void normalize();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief normalize the condition
-/// this will convert the condition into its disjunctive normal form
-/// in this case we don't re-run the optimizer. Its expected that you 
-/// don't want to remove eventually unneccessary filters.
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief removes condition parts from another
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void normalize ();
+  AstNode* removeIndexCondition(Variable const*, AstNode*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes condition parts from another
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove (now) invalid variables from the condition
+  ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* removeIndexCondition (Variable const*,
-                                       AstNode*);
+  bool removeInvalidVariables(std::unordered_set<Variable const*> const&);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove (now) invalid variables from the condition
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief locate indexes which can be used for conditions
+  /// return value is a pair indicating whether the index can be used for
+  /// filtering(first) and sorting(second)
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool removeInvalidVariables (std::unordered_set<Variable const*> const&);
+  std::pair<bool, bool> findIndexes(EnumerateCollectionNode const*,
+                                    std::vector<Index const*>&,
+                                    SortCondition const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locate indexes which can be used for conditions
-/// return value is a pair indicating whether the index can be used for
-/// filtering(first) and sorting(second)
-////////////////////////////////////////////////////////////////////////////////
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                   private
+  // methods
+  // -----------------------------------------------------------------------------
 
-        std::pair<bool, bool> findIndexes (EnumerateCollectionNode const*, 
-                                           std::vector<Index const*>&, 
-                                           SortCondition const*);
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief sort ORs for the same attribute so they are in ascending value
+  /// order. this will only work if the condition is for a single attribute
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
+  bool sortOrs(Variable const*, std::vector<Index const*>&);
 
-      private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief optimize the condition expression tree
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort ORs for the same attribute so they are in ascending value
-/// order. this will only work if the condition is for a single attribute
-////////////////////////////////////////////////////////////////////////////////
-        
-        bool sortOrs (Variable const*,
-                      std::vector<Index const*>&);
+  void optimize(ExecutionPlan*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimize the condition expression tree
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief registers an attribute access for a particular (collection)
+  /// variable
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void optimize (ExecutionPlan*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers an attribute access for a particular (collection) variable
-////////////////////////////////////////////////////////////////////////////////
-
-        void storeAttributeAccess (VariableUsageType&,
-                                   AstNode const*, 
-                                   size_t, 
-                                   AttributeSideType);
+  void storeAttributeAccess(VariableUsageType&, AstNode const*, size_t,
+                            AttributeSideType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate the condition's AST
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-        void validateAst (AstNode const*, 
-                          int);
+  void validateAst(AstNode const*, int);
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the current condition covers the other
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks if the current condition covers the other
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool canRemove (ConditionPart const&,
-                        AstNode const*) const; 
+  bool canRemove(ConditionPart const&, AstNode const*) const;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deduplicate IN condition values
-/// this may modify the node in place
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief deduplicate IN condition values
+  /// this may modify the node in place
+  ////////////////////////////////////////////////////////////////////////////////
 
-        void deduplicateInOperation (AstNode*);
+  void deduplicateInOperation(AstNode*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merge the values from two IN operations
-////////////////////////////////////////////////////////////////////////////////
-        
-        AstNode* mergeInOperations (AstNode const*, AstNode const*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief merge the values from two IN operations
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief merges the current node with the sub nodes of same type
-////////////////////////////////////////////////////////////////////////////////
+  AstNode* mergeInOperations(AstNode const*, AstNode const*);
 
-        AstNode* collapse (AstNode const*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief merges the current node with the sub nodes of same type
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts binary logical operators into n-ary operators
-////////////////////////////////////////////////////////////////////////////////
+  AstNode* collapse(AstNode const*);
 
-        AstNode* transformNode (AstNode*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief converts binary logical operators into n-ary operators
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates a top-level OR node if it does not already exist, and make 
-/// sure that all second level nodes are AND nodes. Additionally, this step will
-/// remove all NOP nodes.
-////////////////////////////////////////////////////////////////////////////////
+  AstNode* transformNode(AstNode*);
 
-        AstNode* fixRoot (AstNode*, int);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Creates a top-level OR node if it does not already exist, and make
+  /// sure that all second level nodes are AND nodes. Additionally, this step
+  /// will
+  /// remove all NOP nodes.
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests if the given index supports the sort condition
-////////////////////////////////////////////////////////////////////////////////
+  AstNode* fixRoot(AstNode*, int);
 
-        bool indexSupportsSort (Index const*,
-                                Variable const*,
-                                SortCondition const*,
-                                size_t,
-                                double&) const;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tests if the given index supports the sort condition
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds the best index that can match this single node
-////////////////////////////////////////////////////////////////////////////////
+  bool indexSupportsSort(Index const*, Variable const*, SortCondition const*,
+                         size_t, double&) const;
 
-        std::pair<bool, bool> findIndexForAndNode (size_t,
-                                                   Variable const*, 
-                                                   EnumerateCollectionNode const*, 
-                                                   std::vector<Index const*>&,
-                                                   SortCondition const*);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief finds the best index that can match this single node
+  ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  std::pair<bool, bool> findIndexForAndNode(size_t, Variable const*,
+                                            EnumerateCollectionNode const*,
+                                            std::vector<Index const*>&,
+                                            SortCondition const*);
 
-      private:
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private
+  // variables
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the AST, used for memory management
-////////////////////////////////////////////////////////////////////////////////
+ private:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the AST, used for memory management
+  ////////////////////////////////////////////////////////////////////////////////
 
-        Ast*      _ast;
+  Ast* _ast;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief root node of the condition
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief root node of the condition
+  ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode*  _root;
+  AstNode* _root;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the condition was already normalized
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the condition was already normalized
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool _isNormalized;
+  bool _isNormalized;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the condition will return a sorted result
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the condition will return a sorted result
+  ////////////////////////////////////////////////////////////////////////////////
 
-        bool _isSorted;
-
-    };
-  }
+  bool _isSorted;
+};
+}
 }
 
 #endif
@@ -482,5 +459,6 @@ namespace triagens {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

@@ -34,7 +34,6 @@
 #define _CRT_RAND_S
 #endif
 
-
 #include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
@@ -45,13 +44,13 @@
 /// @brief generates a 16 bit random unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint16_t TRI_UInt16Random (void);
+uint16_t TRI_UInt16Random(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a 32 bit random unsigned integer
 ////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TRI_UInt32Random (void);
+uint32_t TRI_UInt32Random(void);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
@@ -65,13 +64,13 @@ uint32_t TRI_UInt32Random (void);
 /// @brief initializes the random components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitializeRandom (void);
+void TRI_InitializeRandom(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the random components
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownRandom (void);
+void TRI_ShutdownRandom(void);
 
 #endif
 
@@ -81,5 +80,6 @@ void TRI_ShutdownRandom (void);
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

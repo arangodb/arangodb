@@ -33,7 +33,6 @@
 #include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 
-
 using namespace std;
 using namespace triagens;
 using namespace triagens::basics;
@@ -48,22 +47,22 @@ using namespace triagens::admin;
 /// @brief sort ascending
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LidCompareAsc (void const* l, void const* r) {
-  TRI_log_buffer_t const* left = (TRI_log_buffer_t const*) l;
-  TRI_log_buffer_t const* right = (TRI_log_buffer_t const*) r;
+static int LidCompareAsc(void const* l, void const* r) {
+  TRI_log_buffer_t const* left = (TRI_log_buffer_t const*)l;
+  TRI_log_buffer_t const* right = (TRI_log_buffer_t const*)r;
 
-  return (int) (((int64_t) left->_lid) - ((int64_t) right->_lid));
+  return (int)(((int64_t)left->_lid) - ((int64_t)right->_lid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort descending
 ////////////////////////////////////////////////////////////////////////////////
 
-static int LidCompareDesc (void const* l, void const* r) {
-  TRI_log_buffer_t const* left = (TRI_log_buffer_t const*) l;
-  TRI_log_buffer_t const* right = (TRI_log_buffer_t const*) r;
+static int LidCompareDesc(void const* l, void const* r) {
+  TRI_log_buffer_t const* left = (TRI_log_buffer_t const*)l;
+  TRI_log_buffer_t const* right = (TRI_log_buffer_t const*)r;
 
-  return (int) (((int64_t) right->_lid) - ((int64_t) left->_lid));
+  return (int)(((int64_t)right->_lid) - ((int64_t)left->_lid));
 }
 
 // -----------------------------------------------------------------------------
@@ -74,9 +73,8 @@ static int LidCompareDesc (void const* l, void const* r) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAdminLogHandler::RestAdminLogHandler (rest::HttpRequest* request)
-  : RestBaseHandler(request) {
-}
+RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
+    : RestBaseHandler(request) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -86,9 +84,7 @@ RestAdminLogHandler::RestAdminLogHandler (rest::HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestAdminLogHandler::isDirect () const {
-  return true;
-}
+bool RestAdminLogHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_admin_modules_flush
@@ -119,7 +115,8 @@ bool RestAdminLogHandler::isDirect () const {
 /// Restricts the result to at most *size* log entries.
 ///
 /// @RESTQUERYPARAM{offset,number,optional}
-/// Starts to return log entries skipping the first *offset* log entries. *offset*
+/// Starts to return log entries skipping the first *offset* log entries.
+/// *offset*
 /// and *size* can be used for pagination.
 ///
 /// @RESTQUERYPARAM{search,string,optional}
@@ -131,7 +128,8 @@ bool RestAdminLogHandler::isDirect () const {
 /// imposes a chronological order. The default value is *asc*.
 ///
 /// @RESTDESCRIPTION
-/// Returns fatal, error, warning or info log messages from the server's global log.
+/// Returns fatal, error, warning or info log messages from the server's global
+/// log.
 /// The result is a JSON object with the following attributes:
 ///
 /// - *lid*: a list of log entry identifiers. Each log message is uniquely
@@ -140,7 +138,8 @@ bool RestAdminLogHandler::isDirect () const {
 ///
 /// - *level*: a list of the log-levels for all log entries.
 ///
-/// - *timestamp*: a list of the timestamps as seconds since 1970-01-01 for all log
+/// - *timestamp*: a list of the timestamps as seconds since 1970-01-01 for all
+/// log
 ///   entries.
 ///
 /// - *text* a list of the texts of all log entries
@@ -161,11 +160,11 @@ bool RestAdminLogHandler::isDirect () const {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpHandler::status_t RestAdminLogHandler::execute () {
-
+HttpHandler::status_t RestAdminLogHandler::execute() {
   // "/log" can only be called for the _system database
   if (_request->databaseName() != "_system") {
-    generateError(HttpResponse::FORBIDDEN, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    generateError(HttpResponse::FORBIDDEN,
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
     return status_t(HANDLER_DONE);
   }
 
@@ -187,8 +186,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   if (found2) {
     logLevel = lvl;
     useUpto = false;
-  }
-  else if (found1) {
+  } else if (found1) {
     logLevel = upto;
     useUpto = true;
   }
@@ -196,26 +194,20 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   if (found1 || found2) {
     if (logLevel == "fatal" || logLevel == "0") {
       ul = TRI_LOG_LEVEL_FATAL;
-    }
-    else if (logLevel == "error" || logLevel == "1") {
+    } else if (logLevel == "error" || logLevel == "1") {
       ul = TRI_LOG_LEVEL_ERROR;
-    }
-    else if (logLevel == "warning" || logLevel == "2") {
+    } else if (logLevel == "warning" || logLevel == "2") {
       ul = TRI_LOG_LEVEL_WARNING;
-    }
-    else if (logLevel == "info" || logLevel == "3") {
+    } else if (logLevel == "info" || logLevel == "3") {
       ul = TRI_LOG_LEVEL_INFO;
-    }
-    else if (logLevel == "debug" || logLevel == "4") {
+    } else if (logLevel == "debug" || logLevel == "4") {
       ul = TRI_LOG_LEVEL_DEBUG;
-    }
-    else if (logLevel == "trace" || logLevel == "5") {
+    } else if (logLevel == "trace" || logLevel == "5") {
       ul = TRI_LOG_LEVEL_TRACE;
-    }
-    else {
-      generateError(HttpResponse::BAD,
-                    TRI_ERROR_HTTP_BAD_PARAMETER,
-                    string("unknown '") + (found2 ? "level" : "upto") + "' log level: '" + logLevel + "'");
+    } else {
+      generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    string("unknown '") + (found2 ? "level" : "upto") +
+                        "' log level: '" + logLevel + "'");
       return status_t(HANDLER_DONE);
     }
   }
@@ -249,7 +241,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   // check the size
   // .............................................................................
 
-  uint64_t size = (uint64_t) -1;
+  uint64_t size = (uint64_t)-1;
 
   s = _request->value("size", found);
 
@@ -282,7 +274,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   // generate result
   // .............................................................................
 
-  TRI_vector_t * logs = TRI_BufferLogging(ul, start, useUpto);
+  TRI_vector_t* logs = TRI_BufferLogging(ul, start, useUpto);
 
   if (logs == nullptr) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
@@ -290,8 +282,8 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   }
 
   std::vector<TRI_log_buffer_t*> clean;
-  for (size_t i = 0;  i < TRI_LengthVector(logs);  ++i) {
-    TRI_log_buffer_t* buf = (TRI_log_buffer_t*) TRI_AtVector(logs, i);
+  for (size_t i = 0; i < TRI_LengthVector(logs); ++i) {
+    TRI_log_buffer_t* buf = (TRI_log_buffer_t*)TRI_AtVector(logs, i);
 
     if (search) {
       string text = StringUtils::tolower(buf->_text);
@@ -311,8 +303,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
     if (offset >= length) {
       length = 0;
       offset = 0;
-    }
-    else if (offset > 0) {
+    } else if (offset > 0) {
       length -= static_cast<size_t>(offset);
     }
 
@@ -321,7 +312,8 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
       length = static_cast<size_t>(size);
     }
 
-    std::sort(clean.begin() + offset, clean.begin() + offset + length, (sortAscending ? LidCompareAsc : LidCompareDesc));
+    std::sort(clean.begin() + offset, clean.begin() + offset + length,
+              (sortAscending ? LidCompareAsc : LidCompareDesc));
 
     // For now we build the arrays one ofter the other
     // first lid
@@ -339,12 +331,24 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
       uint32_t l = 0;
 
       switch (buf->_level) {
-        case TRI_LOG_LEVEL_FATAL:    l = 0; break;
-        case TRI_LOG_LEVEL_ERROR:    l = 1; break;
-        case TRI_LOG_LEVEL_WARNING:  l = 2; break;
-        case TRI_LOG_LEVEL_INFO:     l = 3; break;
-        case TRI_LOG_LEVEL_DEBUG:    l = 4; break;
-        case TRI_LOG_LEVEL_TRACE:    l = 5; break;
+        case TRI_LOG_LEVEL_FATAL:
+          l = 0;
+          break;
+        case TRI_LOG_LEVEL_ERROR:
+          l = 1;
+          break;
+        case TRI_LOG_LEVEL_WARNING:
+          l = 2;
+          break;
+        case TRI_LOG_LEVEL_INFO:
+          l = 3;
+          break;
+        case TRI_LOG_LEVEL_DEBUG:
+          l = 4;
+          break;
+        case TRI_LOG_LEVEL_TRACE:
+          l = 5;
+          break;
       }
       result.add(VPackValue(l));
     }
@@ -366,14 +370,13 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
     }
     result.close();
 
-    result.close(); // Close the result object
+    result.close();  // Close the result object
 
     TRI_FreeBufferLogging(logs);
 
     VPackSlice slice = result.slice();
     generateResult(slice);
-  }
-  catch (...) {
+  } catch (...) {
     // Not Enough memory to build everything up
     // Has been ignored thus far
     // So ignore again
@@ -388,5 +391,6 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
+// --SECTION--\\|/// @\\}"
 // End:

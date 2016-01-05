@@ -59,8 +59,8 @@ class ListenTask;
 ////////////////////////////////////////////////////////////////////////////////
 
 class HttpServer : protected TaskManager {
-  HttpServer(HttpServer const &) = delete;
-  HttpServer const &operator=(HttpServer const &) = delete;
+  HttpServer(HttpServer const&) = delete;
+  HttpServer const& operator=(HttpServer const&) = delete;
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                           static public methods
@@ -71,7 +71,7 @@ class HttpServer : protected TaskManager {
   /// @brief destroys an endpoint server
   //////////////////////////////////////////////////////////////////////////////
 
-  static int sendChunk(uint64_t, const std::string &);
+  static int sendChunk(uint64_t, const std::string&);
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                    constructors and destructors
@@ -82,7 +82,7 @@ class HttpServer : protected TaskManager {
   /// @brief constructs a new general server with dispatcher and job manager
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpServer(Scheduler *, Dispatcher *, HttpHandlerFactory *, AsyncJobManager *,
+  HttpServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
              double keepAliveTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ class HttpServer : protected TaskManager {
   /// @brief returns the protocol
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual char const *protocol() const { return "http"; }
+  virtual char const* protocol() const { return "http"; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the encryption to be used
@@ -114,7 +114,7 @@ class HttpServer : protected TaskManager {
   /// @brief generates a suitable communication task
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual HttpCommTask *createCommTask(TRI_socket_t, const ConnectionInfo &);
+  virtual HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                                  public methods
@@ -125,31 +125,31 @@ class HttpServer : protected TaskManager {
   /// @brief returns the scheduler
   //////////////////////////////////////////////////////////////////////////////
 
-  Scheduler *scheduler() const { return _scheduler; }
+  Scheduler* scheduler() const { return _scheduler; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the dispatcher
   //////////////////////////////////////////////////////////////////////////////
 
-  Dispatcher *dispatcher() const { return _dispatcher; }
+  Dispatcher* dispatcher() const { return _dispatcher; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the dispatcher
   //////////////////////////////////////////////////////////////////////////////
 
-  AsyncJobManager *jobManager() const { return _jobManager; }
+  AsyncJobManager* jobManager() const { return _jobManager; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory *handlerFactory() const { return _handlerFactory; }
+  HttpHandlerFactory* handlerFactory() const { return _handlerFactory; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds the endpoint list
   //////////////////////////////////////////////////////////////////////////////
 
-  void setEndpointList(const EndpointList *list);
+  void setEndpointList(const EndpointList* list);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief starts listening
@@ -167,13 +167,13 @@ class HttpServer : protected TaskManager {
   /// @brief registers a chunked task
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerChunkedTask(HttpCommTask *, ssize_t);
+  void registerChunkedTask(HttpCommTask*, ssize_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregisters a chunked task
   //////////////////////////////////////////////////////////////////////////////
 
-  void unregisterChunkedTask(HttpCommTask *);
+  void unregisterChunkedTask(HttpCommTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief removes all listen and comm tasks
@@ -185,32 +185,32 @@ class HttpServer : protected TaskManager {
   /// @brief handles connection request
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleConnected(TRI_socket_t s, const ConnectionInfo &info);
+  void handleConnected(TRI_socket_t s, const ConnectionInfo& info);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection close
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommunicationClosed(HttpCommTask *);
+  void handleCommunicationClosed(HttpCommTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a connection failure
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommunicationFailure(HttpCommTask *);
+  void handleCommunicationFailure(HttpCommTask*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a job for asynchronous execution
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequestAsync(arangodb::WorkItem::uptr<HttpHandler> &,
-                          uint64_t *jobId);
+  bool handleRequestAsync(arangodb::WorkItem::uptr<HttpHandler>&,
+                          uint64_t* jobId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief executes the handler directly or add it to the queue
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRequest(HttpCommTask *, arangodb::WorkItem::uptr<HttpHandler> &);
+  bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<HttpHandler>&);
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                                 protected types
@@ -222,9 +222,9 @@ class HttpServer : protected TaskManager {
   //////////////////////////////////////////////////////////////////////////////
 
   struct handler_task_job_t {
-    HttpHandler *_handler;
-    HttpCommTask *_task;
-    HttpServerJob *_job;
+    HttpHandler* _handler;
+    HttpCommTask* _task;
+    HttpServerJob* _job;
   };
 
   // ---------------------------------------------------------------------------
@@ -236,19 +236,19 @@ class HttpServer : protected TaskManager {
   /// @brief opens a listen port
   //////////////////////////////////////////////////////////////////////////////
 
-  bool openEndpoint(Endpoint *endpoint);
+  bool openEndpoint(Endpoint* endpoint);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle request directly
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleRequestDirectly(HttpCommTask *task, HttpHandler *handler);
+  void handleRequestDirectly(HttpCommTask* task, HttpHandler* handler);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief registers a task
   //////////////////////////////////////////////////////////////////////////////
 
-  void registerHandler(HttpHandler *handler, HttpCommTask *task);
+  void registerHandler(HttpHandler* handler, HttpCommTask* task);
 
   // ---------------------------------------------------------------------------
   // --SECTION--                                             protected variables
@@ -259,37 +259,37 @@ class HttpServer : protected TaskManager {
   /// @brief the scheduler
   //////////////////////////////////////////////////////////////////////////////
 
-  Scheduler *_scheduler; // TODO (fc) XXX make this a singleton
+  Scheduler* _scheduler;  // TODO (fc) XXX make this a singleton
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the dispatcher
   //////////////////////////////////////////////////////////////////////////////
 
-  Dispatcher *_dispatcher; // TODO (fc) XXX make this a singleton
+  Dispatcher* _dispatcher;  // TODO (fc) XXX make this a singleton
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the handler factory
   //////////////////////////////////////////////////////////////////////////////
 
-  HttpHandlerFactory *_handlerFactory;
+  HttpHandlerFactory* _handlerFactory;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the job manager
   //////////////////////////////////////////////////////////////////////////////
 
-  AsyncJobManager *_jobManager; // TODO (fc) XXX make this a singleton
+  AsyncJobManager* _jobManager;  // TODO (fc) XXX make this a singleton
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief active listen tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<ListenTask *> _listenTasks;
+  std::vector<ListenTask*> _listenTasks;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief defined ports and addresses
   //////////////////////////////////////////////////////////////////////////////
 
-  const EndpointList *_endpointList;
+  const EndpointList* _endpointList;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mutex for comm tasks
@@ -301,7 +301,7 @@ class HttpServer : protected TaskManager {
   /// @brief active comm tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_set<HttpCommTask *> _commTasks;
+  std::unordered_set<HttpCommTask*> _commTasks;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keep-alive timeout
