@@ -187,7 +187,7 @@ namespace arangodb {
       }
 
       uint32_t length () const {
-        return _length;
+        return static_cast<uint32_t>(_length);
       }
       
       uint32_t headerLength () const {
@@ -224,7 +224,7 @@ namespace arangodb {
 
       template<typename T>
       T readNumber (uint8_t const* start, uint64_t length) const {
-        return MarkerHelper::readNumber<T>(start, length);
+        return MarkerHelper::readNumber<T>(start, static_cast<uint32_t>(length));
       }
       
       template<typename T>
@@ -275,7 +275,7 @@ namespace arangodb {
       
       template<typename T>
       void storeNumber (uint8_t* start, T value, uint64_t length) const {
-        MarkerHelper::storeNumber<T>(start, value, length);
+        MarkerHelper::storeNumber<T>(start, value, static_cast<uint32_t>(length));
       }
       
       template<typename T>
