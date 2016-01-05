@@ -928,7 +928,7 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection (triagens::ar
                                                                     TRI_idx_iid_t,
                                                                     size_t,
                                                                     int64_t,
-                                                                    bool*);
+                                                                    bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         GEO INDEX
@@ -967,7 +967,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex1DocumentCollection (triagens::arango
                                                                 TRI_idx_iid_t,
                                                                 std::string const&,
                                                                 bool,
-                                                                bool*);
+                                                                bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, attribute style
@@ -978,7 +978,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection (triagens::arango
                                                                 TRI_idx_iid_t,
                                                                 std::string const&,
                                                                 std::string const&,
-                                                                bool*);
+                                                                bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        HASH INDEX
@@ -1011,7 +1011,7 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection (triagens::arango
                                                                 std::vector<std::string> const&,
                                                                 bool,
                                                                 bool,
-                                                                bool*);
+                                                                bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SKIPLIST INDEX
@@ -1042,7 +1042,7 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection (triagens::ar
                                                                     std::vector<std::string> const&,
                                                                     bool,
                                                                     bool,
-                                                                    bool*);
+                                                                    bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    FULLTEXT INDEX
@@ -1071,7 +1071,7 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection (triagens::ar
                                                                     TRI_idx_iid_t,
                                                                     std::string const&,
                                                                     int,
-                                                                    bool*);
+                                                                    bool&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

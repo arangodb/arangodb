@@ -175,12 +175,12 @@ static VocbaseAuthInfo* AuthFromVelocyPack (VPackSlice const& slice) {
 
   // extract "changePassword" attribute
   bool mustChange = triagens::basics::VelocyPackHelper::getBooleanValue(slice, "changePassword", false);
-  std::unique_ptr<VocbaseAuthInfo> result (new VocbaseAuthInfo(userSlice.copyString(),
-                                                               methodSlice.copyString(),
-                                                               saltSlice.copyString(),
-                                                               hashSlice.copyString(),
-                                                               active,
-                                                               mustChange)); 
+  auto result = std::make_unique<VocbaseAuthInfo>(userSlice.copyString(),
+                                                  methodSlice.copyString(),
+                                                  saltSlice.copyString(),
+                                                  hashSlice.copyString(),
+                                                  active,
+                                                  mustChange); 
 
   if (result == nullptr) {
     LOG_ERROR("couldn't load auth information - out of memory");

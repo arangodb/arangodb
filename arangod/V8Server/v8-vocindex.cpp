@@ -670,7 +670,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                               iid,
                                                                                               attributes[0],
                                                                                               geoJson,
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::GeoIndex2*>(TRI_LookupGeoIndex1DocumentCollection(document,
@@ -691,7 +691,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                               iid,
                                                                                               attributes[0],
                                                                                               attributes[1],
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::GeoIndex2*>(TRI_LookupGeoIndex2DocumentCollection(document,
@@ -713,7 +713,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                               attributes,
                                                                                               sparse,
                                                                                               unique,
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::HashIndex*>(TRI_LookupHashIndexDocumentCollection(document,
@@ -737,7 +737,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                                       attributes,
                                                                                                       sparse,
                                                                                                       unique,
-                                                                                                      &created));
+                                                                                                      created));
       }
       else {
         idx = static_cast<triagens::arango::SkiplistIndex*>(TRI_LookupSkiplistIndexDocumentCollection(document,
@@ -769,7 +769,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                                       iid,
                                                                                                       attributes[0],
                                                                                                       minWordLength,
-                                                                                                      &created));
+                                                                                                      created));
       }
       else {
         idx = static_cast<triagens::arango::FulltextIndex*>(TRI_LookupFulltextIndexDocumentCollection(document,
@@ -798,7 +798,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                                                               iid,
                                                                                               size,
                                                                                               byteSize,
-                                                                                              &created));
+                                                                                              created));
       }
       else {
         idx = static_cast<triagens::arango::Index*>(TRI_LookupCapConstraintDocumentCollection(document));
