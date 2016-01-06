@@ -486,7 +486,7 @@ function executeAppScript(scriptName, app, argv) {
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
     return app.run(scripts[scriptName], {
-      appContext: {
+      foxxContext: {
         argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
       }
     });

@@ -790,7 +790,7 @@ function analyseRoutes (storage, routes) {
   var urlPrefix = routes.urlPrefix || "";
 
   // use normal root module or app context
-  var appContext = routes.appContext || {
+  var foxxContext = routes.foxxContext || {
     module: new Module(routes.name || 'anonymous')
   };
 
@@ -807,7 +807,7 @@ function analyseRoutes (storage, routes) {
         installRoute(storage[key],
                      r[i],
                      urlPrefix,
-                     appContext);
+                     foxxContext);
       }
     }
   }
@@ -841,11 +841,11 @@ function buildRoutingTree (routes) {
       else {
 
         // use normal root module or app context
-        var appContext = routes.appContext || {
+        var foxxContext = routes.foxxContext || {
           module: new Module(route.name || 'anonymous')
         };
 
-        installRoute(storage.routes, route, "", appContext);
+        installRoute(storage.routes, route, "", foxxContext);
       }
     }
     catch (err) {
@@ -1027,7 +1027,7 @@ function foxxRouting (req, res, options, next) {
     options.error = {
       code: exports.HTTP_SERVER_ERROR,
       num: arangodb.ERROR_HTTP_SERVER_ERROR,
-      msg: "failed to load foxx mounted at '" + mount + "'",
+      msg: "failed to load Foxx service mounted at '" + mount + "'",
       info: { exception: String(err1) }
     };
 
@@ -1055,7 +1055,7 @@ function foxxRouting (req, res, options, next) {
         res,
         err2,
         {},
-        "failed to execute foxx mounted at '" + mount + "'");
+        "failed to execute Foxx service mounted at '" + mount + "'");
     }
   }
 }
@@ -1093,7 +1093,7 @@ function buildRouting (dbname) {
     var foxx = foxxes[i];
 
     routes.push({
-      name: "foxx app mounted at '" + foxx + "'",
+      name: "Foxx service mounted at '" + foxx + "'",
       url: { match: foxx + "/*" },
       action: { callback: foxxRouting, options: { mount: foxx } }
     });
