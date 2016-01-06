@@ -74,19 +74,19 @@ describe('Router', function () {
     CHILD1 = router._routes[router._routes.length - 1];
     router.use(childRouter2);
     CHILD2 = router._routes[router._routes.length - 1];
-    GET_SLASH = router.get('/', function() {/*GET /*/});
-    USE_SLASH = router.use(function() {/*middleware /*/});
-    POST_HELLO = router.post('/hello', function() {/*POST /hello*/});
-    GET_HELLO_WORLD = router.get('/hello/world', function() {/*GET /hello/world*/});
-    USE_HELLO_WORLD = router.use('/hello/world', function () {/*middleware /hello/world*/});
-    GET_HELLO_PARAM = router.get('/hello/:symbol', function() {/*GET /hello/:symbol*/});
-    USE_HELLO_PARAM = router.use('/hello/:thang', function () {/*middleware /hello/:thang*/});
-    GET_WORLD = childRouter1.get('/world', function() {/*1>GET /world*/});
-    GET_SLASH2 = childRouter2.get(function() {/*2>GET /*/});
-    GET_ALL = childRouter2.get('/*', function() {/*2>GET /...*/});
-    GET_HELLO_WORLD2 = childRouter2.get('/hello/world', function() {/*2>GET /hello/world*/});
-    GET_POTATO_SALAD1 = childRouter2.get('/potato/salad', function() {/*2>GET /potato/salad 1*/});
-    GET_POTATO_SALAD2 = childRouter2.get('/potato/salad', function() {/*2>GET /potato/salad 2*/});
+    GET_SLASH = router.get('/', function () {});
+    USE_SLASH = router.use(function () {});
+    POST_HELLO = router.post('/hello', function () {});
+    GET_HELLO_WORLD = router.get('/hello/world', function () {});
+    USE_HELLO_WORLD = router.use('/hello/world', function () {});
+    GET_HELLO_PARAM = router.get('/hello/:symbol', function () {});
+    USE_HELLO_PARAM = router.use('/hello/:thang', function () {});
+    GET_WORLD = childRouter1.get('/world', function () {});
+    GET_SLASH2 = childRouter2.get(function () {});
+    GET_ALL = childRouter2.get('/*', function () {});
+    GET_HELLO_WORLD2 = childRouter2.get('/hello/world', function () {});
+    GET_POTATO_SALAD1 = childRouter2.get('/potato/salad', function () {});
+    GET_POTATO_SALAD2 = childRouter2.get('/potato/salad', function () {});
   }
   beforeEach(function () {
     router = createRouter();
@@ -100,43 +100,68 @@ describe('Router', function () {
       const tree = router._tree;
       expect(tree.size).toBe(3);
       expect(tree.get($_TERMINAL).size).toBe(1);
-      expect(tree.get($_TERMINAL).get($_ROUTES)).toEqual([GET_SLASH]);
+      expect(tree.get($_TERMINAL).get($_ROUTES))
+      .toEqual([GET_SLASH]);
+
       expect(tree.get('hello').size).toBe(4);
       expect(tree.get('hello').get($_TERMINAL).size).toBe(1);
-      expect(tree.get('hello').get($_TERMINAL).get($_ROUTES)).toEqual([POST_HELLO]);
+      expect(tree.get('hello').get($_TERMINAL).get($_ROUTES))
+      .toEqual([POST_HELLO]);
+
       expect(tree.get('hello').get('world').size).toBe(2);
       expect(tree.get('hello').get('world').get($_TERMINAL).size).toBe(1);
-      expect(tree.get('hello').get('world').get($_TERMINAL).get($_ROUTES)).toEqual([GET_HELLO_WORLD]);
+      expect(tree.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
+      .toEqual([GET_HELLO_WORLD]);
+
       expect(tree.get('hello').get('world').get($_WILDCARD).size).toBe(1);
-      expect(tree.get('hello').get('world').get($_WILDCARD).get($_MIDDLEWARE)).toEqual([USE_HELLO_WORLD]);
+      expect(tree.get('hello').get('world').get($_WILDCARD).get($_MIDDLEWARE))
+      .toEqual([USE_HELLO_WORLD]);
+
       expect(tree.get('hello').get($_PARAM).size).toBe(2);
       expect(tree.get('hello').get($_PARAM).get($_TERMINAL).size).toBe(1);
-      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).get($_ROUTES)).toEqual([GET_HELLO_PARAM]);
+      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).get($_ROUTES))
+      .toEqual([GET_HELLO_PARAM]);
+
       expect(tree.get('hello').get($_PARAM).get($_WILDCARD).size).toBe(1);
-      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).get($_MIDDLEWARE)).toEqual([USE_HELLO_PARAM]);
+      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).get($_MIDDLEWARE))
+      .toEqual([USE_HELLO_PARAM]);
+
       expect(tree.get('hello').get($_WILDCARD).size).toBe(1);
       expect(tree.get('hello').get($_WILDCARD).get($_ROUTES).length).toBe(1);
+
       const child1 = tree.get('hello').get($_WILDCARD).get($_ROUTES)[0].router._tree;
       expect(child1.size).toBe(1);
       expect(child1.get('world').size).toBe(1);
       expect(child1.get('world').get($_TERMINAL).size).toBe(1);
-      expect(child1.get('world').get($_TERMINAL).get($_ROUTES)).toEqual([GET_WORLD]);
+      expect(child1.get('world').get($_TERMINAL).get($_ROUTES))
+      .toEqual([GET_WORLD]);
+
       expect(tree.get($_WILDCARD).size).toBe(2);
-      expect(tree.get($_WILDCARD).get($_MIDDLEWARE)).toEqual([USE_SLASH]);
+      expect(tree.get($_WILDCARD).get($_MIDDLEWARE))
+      .toEqual([USE_SLASH]);
+
       const child2 = tree.get($_WILDCARD).get($_ROUTES)[0].router._tree;
       expect(child2.size).toBe(4);
       expect(child2.get($_TERMINAL).size).toBe(1);
-      expect(child2.get($_TERMINAL).get($_ROUTES)).toEqual([GET_SLASH2]);
+      expect(child2.get($_TERMINAL).get($_ROUTES))
+      .toEqual([GET_SLASH2]);
+
       expect(child2.get('hello').size).toBe(1);
       expect(child2.get('hello').get('world').size).toBe(1);
       expect(child2.get('hello').get('world').get($_TERMINAL).size).toBe(1);
-      expect(child2.get('hello').get('world').get($_TERMINAL).get($_ROUTES)).toEqual([GET_HELLO_WORLD2]);
+      expect(child2.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
+      .toEqual([GET_HELLO_WORLD2]);
+
       expect(child2.get('potato').size).toBe(1);
       expect(child2.get('potato').get('salad').size).toBe(1);
       expect(child2.get('potato').get('salad').get($_TERMINAL).size).toBe(1);
-      expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES)).toEqual([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
+      expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES))
+      .toEqual([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
+
       expect(child2.get($_WILDCARD).size).toBe(1);
-      expect(child2.get($_WILDCARD).get($_ROUTES)).toEqual([GET_ALL]);
+      expect(child2.get($_WILDCARD).get($_ROUTES))
+      .toEqual([GET_ALL]);
+
     });
   });
   describe('_resolve', function () {
