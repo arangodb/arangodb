@@ -798,13 +798,13 @@ function analyseRoutes (storage, routes) {
   var urlPrefix = routes.urlPrefix || "";
 
   // use normal root module or app context
-  var appContext;
+  var foxxContext;
 
-  if (routes.hasOwnProperty('appContext')) {
-    appContext = routes.appContext;
+  if (routes.hasOwnProperty('foxxContext')) {
+    foxxContext = routes.foxxContext;
   }
   else {
-    appContext = {
+    foxxContext = {
       module: module.root
     };
   }
@@ -822,7 +822,7 @@ function analyseRoutes (storage, routes) {
         installRoute(storage[key],
                      r[i],
                      urlPrefix,
-                     appContext);
+                     foxxContext);
       }
     }
   }
@@ -856,18 +856,18 @@ function buildRoutingTree (routes) {
       else {
 
         // use normal root module or app context
-        var appContext;
+        var foxxContext;
 
-        if (route.hasOwnProperty('appContext')) {
-          appContext = routes.appContext;
+        if (route.hasOwnProperty('foxxContext')) {
+          foxxContext = routes.foxxContext;
         }
         else {
-          appContext = {
+          foxxContext = {
             module: module.root
           };
         }
 
-        installRoute(storage.routes, route, "", appContext);
+        installRoute(storage.routes, route, "", foxxContext);
       }
     }
     catch (err) {

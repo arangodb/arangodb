@@ -492,7 +492,7 @@ function executeAppScript(scriptName, app, argv) {
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
     try {
       return app.run(scripts[scriptName], {
-        appContext: {
+        foxxContext: {
           argv: argv ? (Array.isArray(argv) ? argv : [argv]) : []
         }
       });

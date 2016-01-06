@@ -116,23 +116,26 @@ function Module(id, parent, cache) {
 
   this.cache = cache || (parent ? parent.cache : Module._cache);
 
-  this.context = {
-    print: internal.print,
-    process: NATIVE_MODULES.process,
-    console: NATIVE_MODULES.console,
-    module: this,
-    exports: this.exports,
-    require: createRequire(this),
-    __filename: null,
-    __dirname: null
-  };
+  Object.defineProperty(this, '_context', {
+    value: {
+      print: internal.print,
+      process: NATIVE_MODULES.process,
+      console: NATIVE_MODULES.console,
+      module: this,
+      exports: this.exports,
+      require: createRequire(this),
+      __filename: null,
+      __dirname: null
+    }
+  });
 
   if (parent) {
+    this.context = parent.context;
     this.root = parent.root;
     this.preprocess = parent.preprocess;
-    Object.keys(parent.context).forEach(function (key) {
-      if (!hasOwnProperty(this.context, key)) {
-        this.context[key] = parent.context[key];
+    Object.keys(parent._context).forEach(function (key) {
+      if (!hasOwnProperty(this._context, key)) {
+        this._context[key] = parent._context[key];
       }
     }.bind(this));
   }
@@ -141,11 +144,11 @@ function Module(id, parent, cache) {
     configurable: true,
     enumerable: true,
     get() {
-      return this.context.__filename;
+      return this._context.__filename;
     },
     set(filename) {
-      this.context.__filename = filename;
-      this.context.__dirname = filename === null ? null : path.dirname(filename);
+      this._context.__filename = filename;
+      this._context.__dirname = filename === null ? null : path.dirname(filename);
     }
   });
 
@@ -470,7 +473,7 @@ Module._load = function(request, parent, isMain) {
     if (hadException) {
       delete cache[filename];
     }
-    
+
     var i = LOADING.indexOf(loading);
     if (i !== -1) {
       LOADING.splice(i, 1);
@@ -560,7 +563,7 @@ Module.prototype._compile = function(content, filename) {
 
   this.filename = filename;
 
-  var args = this.context;
+  var args = this._context;
   var keys = Object.keys(args);
   // Do not use Function constructor or line numbers will be wrong
   var wrapper = `(function (${keys.join(', ')}) {${content}\n})`;

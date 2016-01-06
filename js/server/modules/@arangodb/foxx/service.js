@@ -42,7 +42,7 @@ const APP_PATH = internal.appPath ? path.resolve(internal.appPath) : undefined;
 const STARTUP_PATH = internal.startupPath ? path.resolve(internal.startupPath) : undefined;
 const DEV_APP_PATH = internal.devAppPath ? path.resolve(internal.devAppPath) : undefined;
 
-class AppContext {
+class FoxxContext {
   constructor(service) {
     this.basePath = path.resolve(service.root, service.path);
     this.comments = [];
@@ -133,7 +133,7 @@ class AppContext {
   }
 }
 
-Object.defineProperties(AppContext.prototype, {
+Object.defineProperties(FoxxContext.prototype, {
   comment: {
     value: function (str) {
       this.comments.push(str);
@@ -232,8 +232,8 @@ class FoxxService {
     this.main = new Module(`foxx:${data.mount}`, undefined, this.moduleCache);
     this.main.root = moduleRoot;
     this.main.filename = path.resolve(moduleRoot, '.foxx');
-    this.main.context.applicationContext = new AppContext(this);
-    this.main.context.console = require('@arangodb/foxx/console')(this.mount);
+    this.main.context = new FoxxContext(this);
+    this.main._context.console = require('@arangodb/foxx/console')(this.mount);
   }
 
   applyConfiguration(config) {
@@ -382,14 +382,14 @@ class FoxxService {
 
   run(filename, options) {
     options = options || {};
-    filename = path.resolve(this.main.context.__dirname, filename);
+    filename = path.resolve(this.main._context.__dirname, filename);
 
     var module = new Module(filename, this.main);
-    module.context.console = this.main.context.console;
-    module.context.applicationContext = _.extend(
-      new AppContext(this.main.context.applicationContext._service),
-      this.main.context.applicationContext,
-      options.appContext
+    module._context.console = this.main._context.console;
+    module.context = _.extend(
+      new FoxxContext(this),
+      this.main.context,
+      options.context
     );
 
     if (options.preprocess) {
@@ -398,7 +398,7 @@ class FoxxService {
 
     if (options.context) {
       Object.keys(options.context).forEach(function (key) {
-        module.context[key] = options.context[key];
+        module._context[key] = options.context[key];
       });
     }
 

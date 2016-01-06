@@ -113,7 +113,7 @@ function swaggerJson(req, res, opts) {
     }
     throw e;
   }
-  var app = foxx.appContext && foxx.appContext.app;
+  var app = foxx.foxxContext && foxx.foxxContext.app;
   var swagger = parseRoutes(opts.appPath, foxx.routes, foxx.models);
   res.json({
     swagger: '2.0',

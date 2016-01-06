@@ -555,7 +555,7 @@ var routeApp = function (app, isInstallProcess) {
 
     foxx: true,
 
-    appContext: {
+    foxxContext: {
       app: app,
       module: app.main
     }
@@ -612,18 +612,18 @@ var mountController = function (service, routes, mount, filename) {
   validateRoute(mount);
 
   // set up a context for the application start function
-  var appContext = {
+  var foxxContext = {
     prefix: arangodb.normalizeURL(`/${mount}`), // app mount
     foxxes: []
   };
 
-  service.run(filename, {appContext, preprocess});
+  service.run(filename, {foxxContext, preprocess});
 
   // .............................................................................
   // routingInfo
   // .............................................................................
 
-  var foxxes = appContext.foxxes;
+  var foxxes = foxxContext.foxxes;
   for (var i = 0; i < foxxes.length; i++) {
     var foxx = foxxes[i];
     var ri = foxx.routingInfo;
