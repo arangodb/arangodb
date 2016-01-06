@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gcd
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author http://en.wikipedia.org/wiki/Binary_GCD_algorithm
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LIB_BASICS_GCD_H

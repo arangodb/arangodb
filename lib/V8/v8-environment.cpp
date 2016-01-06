@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief map the environment to javascript
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// heavily inspired by
-/// https://github.com/joyent/node/blob/master/src/node.cc
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"

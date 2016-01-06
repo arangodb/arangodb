@@ -1,13 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract base class for tasks
-///
-/// @file
-/// Tasks are handled by the scheduler. The scheduler calls the task callback
-/// as soon as a specific event occurs.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_SCHEDULER_TASK_H

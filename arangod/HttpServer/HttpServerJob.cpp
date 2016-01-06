@@ -1,8 +1,4 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general server job
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -24,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpServerJob.h"

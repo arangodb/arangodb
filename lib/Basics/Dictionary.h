@@ -1,14 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array for character pointer to POD
-///
-/// @file
-/// The file implements an associative array, where the keys are character
-/// pointers. It is the responsibility of the caller to clear the key
-/// and values.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LIB_BASICS_DICTIONARY_H

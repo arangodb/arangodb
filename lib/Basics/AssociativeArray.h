@@ -1,22 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief associative array for POD data
-///
-/// @file
-/// Implementation of associative arrays for POD data. The description
-/// about hashing and equality test must be passed as description
-/// structure. This structure must define the following methods:
-///
-///   clearElement(ELEMENT&)
-///   deleteElement (only required if clearAndDelete is used)
-///   hashElement(ELEMENT const&)
-///   hashKey(KEY const&)
-///   isEmptyElement(ELEMENT const&)
-///   isEqualElementElement(ELEMENT const&, ELEMENT const&)
-///   isEqualKeyElement(KEY const&, ELEMENT const&)
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Martin Schoenert
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LIB_BASICS_ASSOCIATIVE_ARRAY_H

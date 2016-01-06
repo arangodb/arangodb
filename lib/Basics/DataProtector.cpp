@@ -1,12 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Helper class to isolate data protection
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2015 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/DataProtector.h"

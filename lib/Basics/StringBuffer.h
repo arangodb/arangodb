@@ -1,18 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief string buffer with formatting routines
-///
-/// @file
-///
-/// @warning You must initialize the classes by calling initialize or by
-/// setting everything to 0. This can be done by using "new
-/// StringBuffer()". You must call free to free the allocated
-/// memory.
-///
-/// WARNING: this must be a POD object!
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LIB_BASICS_STRING_BUFFER_H

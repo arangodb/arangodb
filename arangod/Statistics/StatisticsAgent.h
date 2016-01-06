@@ -1,8 +1,4 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief statistics agents
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -23,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014-2016, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_STATISTICS_STATISTICS_AGENT_H

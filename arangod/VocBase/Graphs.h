@@ -1,12 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Class for arangodb's graph features. Wrapper around the graph
-/// informations
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOC_BASE_GRAPHS_H

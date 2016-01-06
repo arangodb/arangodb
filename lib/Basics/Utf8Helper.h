@@ -1,11 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Utf8/Utf16 Helper class
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +20,6 @@
 ///
 /// @author Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef LIB_BASICS_UTF8_HELPER_H

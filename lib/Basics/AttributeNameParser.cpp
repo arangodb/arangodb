@@ -1,12 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Parser for attibute names.
-/// Tokenizes the attribute by dots and handles [*] expansion.
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +19,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeNameParser.h"
