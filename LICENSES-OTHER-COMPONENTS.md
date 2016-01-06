@@ -175,6 +175,11 @@
 * GITHUB: https://github.com/atesgoral/jsunity
 * License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
 
+#### media-typer
+
+* GITHUB: https://github.com/jshttp/media-typer
+* License: [MIT License](https://github.com/jshttp/media-typer/blob/master/LICENSE)
+
 #### minimatch
 
 * GITHUB: https://github.com/isaacs/minimatch
