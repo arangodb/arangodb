@@ -153,6 +153,8 @@ class WorkMonitor : public triagens::basics::Thread {
   ////////////////////////////////////////////////////////////////////////////////
 
   static void pushCustom(const char* type, const char* text, size_t length);
+  
+  static void pushCustom(const char* type, uint64_t id);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief pops a custom task
@@ -306,8 +308,10 @@ class CustomWorkStack {
 
   CustomWorkStack(const char* type, const char* text, size_t length);
 
+  CustomWorkStack(const char* type, uint64_t id);
+
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructory
+  /// @brief destructor
   ////////////////////////////////////////////////////////////////////////////////
 
   ~CustomWorkStack();

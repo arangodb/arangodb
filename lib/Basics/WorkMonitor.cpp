@@ -58,6 +58,14 @@ CustomWorkStack::CustomWorkStack(const char* type, const char* text,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+CustomWorkStack::CustomWorkStack(const char* type, uint64_t id) {
+  WorkMonitor::pushCustom(type, id);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -349,6 +357,24 @@ void WorkMonitor::pushCustom(const char* type, const char* text,
     length = sizeof(desc->_data.text) - 1;
   }
   TRI_CopyString(desc->_data.text, text, length);
+
+  activateWorkDescription(desc);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pushes a custom task
+////////////////////////////////////////////////////////////////////////////////
+
+void WorkMonitor::pushCustom(const char* type, uint64_t id) {
+  TRI_ASSERT(type != nullptr);
+
+  WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);
+  TRI_ASSERT(desc != nullptr);
+
+  TRI_CopyString(desc->_customType, type, sizeof(desc->_customType) - 1);
+
+  std::string idString(std::to_string(id));
+  TRI_CopyString(desc->_data.text, idString.c_str(), idString.size());
 
   activateWorkDescription(desc);
 }

@@ -31,8 +31,8 @@
 #define ARANGODB_AQL_EXECUTION_PLAN_H 1
 
 #include "Basics/Common.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/AggregationOptions.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
@@ -53,8 +53,7 @@ class ExecutionNode;
 
 class ExecutionPlan {
   // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
+  // --SECTION--                                        constructors / destructors
   // -----------------------------------------------------------------------------
 
  public:
@@ -71,8 +70,7 @@ class ExecutionPlan {
   ~ExecutionPlan();
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
+  // --SECTION--                                                    public methods
   // -----------------------------------------------------------------------------
 
  public:
@@ -244,7 +242,7 @@ class ExecutionPlan {
 ////////////////////////////////////////////////////////////////////////////////
 
 #if 0
-        void checkLinkage ();
+  void checkLinkage();
 #endif
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -483,8 +481,7 @@ class ExecutionPlan {
   ExecutionNode* fromJson(triagens::basics::Json const& Json);
 
   // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
+  // --SECTION--                                                 private variables
   // -----------------------------------------------------------------------------
 
  private:

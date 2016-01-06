@@ -634,7 +634,16 @@ QueryResult Query::prepare(QueryRegistry* registry) {
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute(QueryRegistry* registry) {
-  CustomWorkStack work("AQL", _queryString, _queryLength);
+  std::unique_ptr<CustomWorkStack> work;
+
+  if (_queryString == nullptr) {
+    // we don't have query string... now pass query id to WorkMonitor
+    work.reset(new CustomWorkStack("AQL query id", _id));
+  }
+  else {
+    // we do have a query string... pass query to WorkMonitor
+    work.reset(new CustomWorkStack("AQL query", _queryString, _queryLength));
+  }
 
   try {
     bool useQueryCache = canUseQueryCache();
