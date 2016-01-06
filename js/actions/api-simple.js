@@ -45,7 +45,7 @@ var checkShards = function(req, collection) {
   }
 
   var cluster = require("@arangodb/cluster");
-  if (! cluster.isCluster()) {
+  if (! cluster.isCoordinator()) {
     // no cluster
     return true;
   }
