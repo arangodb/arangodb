@@ -1,11 +1,7 @@
-v2.8.1 (XXXX-XX-XX)
+v2.8.0 (2016-01-06)
 -------------------
 
 * Foxx: mocha test paths with wildcard characters (asterisks) now work on Windows
-
-
-v2.8.0 (2016-01-05)
--------------------
 
 * reserved AQL keyword `NONE` for future use
 
