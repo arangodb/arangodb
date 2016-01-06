@@ -29,22 +29,23 @@
 const _ = require('lodash');
 const httpError = require('http-errors');
 const union = require('@arangodb/util').union;
+const ALL_METHODS = require('@arangodb/actions').ALL_METHODS;
 const SyntheticRequest = require('@arangodb/foxx/router/request');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
 const Route = require('@arangodb/foxx/router/route');
 const Middleware = require('@arangodb/foxx/router/middleware');
 const tokenize = require('@arangodb/foxx/router/tokenize');
-const ALL_METHODS = require('@arangodb/actions').ALL_METHODS;
+const validation = require('@arangodb/foxx/router/validation');
 
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
-const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware (not including router.all)
+const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
 
 function methodIgnoresRequestBody(method) {
   return ['GET', 'HEAD', 'DELETE', 'CONNECT', 'TRACE'].indexOf(method) !== -1;
 }
 
-function parsePathParams(typeDefs, names, route, path) {
+function parsePathParams(names, route, path) {
   const params = {};
   let j = 0;
   for (let i = 0; i < route.length; i++) {
@@ -53,26 +54,7 @@ function parsePathParams(typeDefs, names, route, path) {
       j++;
     }
   }
-  for (const entry of typeDefs) {
-    const name = entry[0];
-    const def = entry[1];
-    if (def.type.isJoi) {
-      const result = def.type.validate(params[name]);
-      if (result.error) {
-        throw result.error;
-      }
-      params[name] = result.value;
-    }
-  }
   return params;
-}
-
-function validateRequestBody(def, rawBody) {
-  // TODO
-}
-
-function validateQueryParams(def, queryParams) {
-  // TODO
 }
 
 module.exports = class Router extends SwaggerContext {
@@ -81,6 +63,7 @@ module.exports = class Router extends SwaggerContext {
     this._routes = [];
     this._middleware = [];
   }
+
   use(path, fn) {
     if (typeof path !== 'string') {
       fn = path;
@@ -107,41 +90,49 @@ module.exports = class Router extends SwaggerContext {
     this._middleware.push(middleware);
     return middleware;
   }
+
   all(path, handler, name) {
     const route = new Route(ALL_METHODS, path, handler, name);
     this._routes.push(route);
     return route;
   }
+
   get(path, handler, name) {
     const route = new Route(['GET'], path, handler, name);
     this._routes.push(route);
     return route;
   }
+
   post(path, handler, name) {
     const route = new Route(['POST'], path, handler, name);
     this._routes.push(route);
     return route;
   }
+
   put(path, handler, name) {
     const route = new Route(['PUT'], path, handler, name);
     this._routes.push(route);
     return route;
   }
+
   patch(path, handler, name) {
     const route = new Route(['PATCH'], path, handler, name);
     this._routes.push(route);
     return route;
   }
+
   delete(path, handler, name) {
     const route = new Route(['DELETE'], path, handler, name);
     this._routes.push(route);
     return route;
   }
+
   head(path, handler, name) {
     const route = new Route(['HEAD'], path, handler, name);
     this._routes.push(route);
     return route;
   }
+
   _buildRouteTree() {
     const root = new Map();
     this._tree = root;
@@ -201,67 +192,82 @@ module.exports = class Router extends SwaggerContext {
 
   _dispatch(rawReq, rawRes) {
     let stack = findMatchingStack(rawReq, this);
+
+    if (!stack) {
+      return false;
+    }
+
     let pathParams = {};
     let queryParams = _.clone(rawReq.queryParams);
+
     const req = new SyntheticRequest(rawReq);
     const res = new SyntheticResponse(rawRes);
+
     function next(err) {
       if (err) {
         throw err;
       }
+
       const item = stack.shift();
+
       if (item.router) {
         pathParams = _.extend(pathParams, item.pathParams);
         queryParams = _.extend(queryParams, item.queryParams);
         req.body = item.requestBody || req.body;
         next();
-      } else {
-        let tempPathParams = req.pathParams;
-        let tempQueryParams = req.queryParams;
-        let tempRequestBody = req.body;
-        let tempSuffix = req.suffix;
-        let tempPath = req.path;
-        req.suffix = item.suffix.join('/');
-        req.path = '/' + item.path.join('/');
-        req.body = item.requestBody || req.body;
-        if (item.endpoint) {
-          req.pathParams = _.extend(pathParams, item.pathParams);
-          req.queryParams = _.extend(queryParams, item.queryParams);
-          item.endpoint._handler(req, res);
-        } else if (item.middleware) {
-          req.pathParams = _.extend(_.clone(pathParams), item.pathParams);
-          req.queryParams = _.extend(_.clone(queryParams), item.queryParams);
-          item.middleware._handler(req, res, next);
-        }
-        req.suffix = tempSuffix;
-        req.path = tempPath;
-        req.pathParams = tempPathParams;
-        req.queryParams = tempQueryParams;
-        req.body = tempRequestBody;
+        return;
       }
+
+      let tempPathParams = req.pathParams;
+      let tempQueryParams = req.queryParams;
+      let tempRequestBody = req.body;
+      let tempSuffix = req.suffix;
+      let tempPath = req.path;
+
+      req.suffix = item.suffix.join('/');
+      req.path = '/' + item.path.join('/');
+      req.body = item.requestBody || req.body;
+
+      if (item.endpoint) {
+        req.pathParams = _.extend(pathParams, item.pathParams);
+        req.queryParams = _.extend(queryParams, item.queryParams);
+        item.endpoint._handler(req, res);
+      } else if (item.middleware) {
+        req.pathParams = _.extend(_.clone(pathParams), item.pathParams);
+        req.queryParams = _.extend(_.clone(queryParams), item.queryParams);
+        item.middleware._handler(req, res, next);
+      }
+
+      req.suffix = tempSuffix;
+      req.path = tempPath;
+      req.pathParams = tempPathParams;
+      req.queryParams = tempQueryParams;
+      req.body = tempRequestBody;
     }
+
     next();
+    return true;
   }
 };
 
 function applyPathParams(stack) {
   for (const item of stack) {
     try {
+      let context = item.middleware || item.endpoint || item.router;
+      let params = parsePathParams(
+        context._pathParamNames,
+        context._pathTokens,
+        item.path
+      );
       if (item.router) {
-        const router = item.router;
-        item.pathParams = parsePathParams(
-          union(router._pathParams, router.router._pathParams),
-          router._pathParamNames,
-          router._pathTokens,
-          item.path
+        item.pathParams = validation.validateParams(
+          union(context._pathParams, context.router._pathParams),
+          params
         );
       } else {
-        let context = item.middleware || item.endpoint;
-        item.pathParams = parsePathParams(
+        item.pathParams = validation.validateParams(
           context._pathParams,
-          context._pathParamNames,
-          context._pathTokens,
-          item.path
+          params
         );
       }
     } catch (e) {
@@ -285,15 +291,14 @@ function applyPathParams(stack) {
 */
 function findMatchingStack(req, router) {
   const ignoreRequestBody = methodIgnoresRequestBody(req.method);
-  let error = httpError(404);
-  error._isDefault = true;
+  let error;
 
   for (const stack of router._resolve(req.suffix)) {
     const endpoint = stack[stack.length - 1];
 
     const doesPathMatch = applyPathParams(stack);
     if (!doesPathMatch) {
-      delete error._isDefault;
+      error = error || httpError(404);
       continue;
     }
 
@@ -312,7 +317,7 @@ function findMatchingStack(req, router) {
 
       if (!ignoreRequestBody && context._bodyParam) {
         try {
-          item.requestBody = validateRequestBody(
+          item.requestBody = validation.validateRequestBody(
             context._bodyParam,
             req.body
           );
@@ -323,7 +328,7 @@ function findMatchingStack(req, router) {
 
       if (context._queryParams.size) {
         try {
-          item.queryParams = validateQueryParams(
+          item.queryParams = validation.validateParams(
             context._queryParams,
             req.queryParams
           );
@@ -336,7 +341,9 @@ function findMatchingStack(req, router) {
     return stack;
   }
 
-  throw error;
+  if (error) {
+    throw error;
+  }
 }
 
 function* resolveRoutes(node, result, suffix, path) {

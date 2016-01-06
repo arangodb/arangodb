@@ -26,6 +26,7 @@
 /// @author Copyright 2015-2016, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const parseMediaType = require('media-typer').parse;
 const tokenize = require('@arangodb/foxx/router/tokenize');
 
 module.exports = class SwaggerContext {
@@ -64,7 +65,18 @@ module.exports = class SwaggerContext {
     return this;
   }
   body(type, description) {
-    this._bodyParam = {type: type, description: description};
+    if (type === 'json') {
+      type = 'application/json';
+    } else if (type === 'text') {
+      type = 'text/plain';
+    } else if (type === 'binary') {
+      type = 'application/octet-stream';
+    }
+    this._bodyParam = {
+      type: type,
+      mime: parseMediaType(typeof type === 'string' ? type : 'application/json'),
+      description: description
+    };
     return this;
   }
   response(type, description) {
