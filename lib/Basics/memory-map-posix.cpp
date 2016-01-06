@@ -160,7 +160,7 @@ int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
     char buffer[256];
     char* p = strerror_r(errno, buffer, 256);
     LOG_INFO("madvise %d for %llu length %llu failed with: %s ", advice,
-             (unsigned long long)memoryAddress, (unsigned long long)numOfBytes,
+             (unsigned long long) memoryAddress, (unsigned long long) numOfBytes,
              p);
     return TRI_ERROR_INTERNAL;
   }

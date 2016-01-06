@@ -31,11 +31,11 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/json.h"
-#include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"

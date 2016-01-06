@@ -30,7 +30,7 @@
 #include "conversions.h"
 
 #include "Basics/fpconv.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------

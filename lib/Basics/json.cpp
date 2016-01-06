@@ -30,7 +30,7 @@
 #include "json.h"
 #include "Basics/files.h"
 #include "Basics/logging.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------

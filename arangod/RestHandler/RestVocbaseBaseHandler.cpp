@@ -29,9 +29,9 @@
 
 #include "RestVocbaseBaseHandler.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Utils/DocumentHelper.h"

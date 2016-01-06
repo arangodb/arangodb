@@ -31,7 +31,7 @@
 #include "Aql/Query.h"
 #include "Basics/logging.h"
 #include "Basics/random.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Indexes/FulltextIndex.h"
 #include "Indexes/GeoIndex2.h"
 #include "Indexes/HashIndex.h"

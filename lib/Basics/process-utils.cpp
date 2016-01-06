@@ -57,11 +57,11 @@
 #include <TlHelp32.h>
 #endif
 
-#include "Basics/tri-strings.h"
-#include "Basics/string-buffer.h"
 #include "Basics/locks.h"
 #include "Basics/logging.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables

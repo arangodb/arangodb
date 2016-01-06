@@ -25,7 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "string-buffer.h"
+#include "Basics/StringBuffer.h"
+
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
 

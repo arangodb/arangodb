@@ -29,10 +29,10 @@
 
 #include "v8-shape-conv.h"
 
-#include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"

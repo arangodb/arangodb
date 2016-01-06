@@ -32,7 +32,7 @@
 
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 #include "Basics/VelocyPackHelper.h"

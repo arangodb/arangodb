@@ -36,7 +36,7 @@
 #include "Basics/files.h"
 #include "Basics/levenshtein.h"
 #include "Basics/logging.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 
 using namespace std;

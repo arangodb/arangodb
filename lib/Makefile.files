@@ -56,7 +56,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/SpinLock.cpp \
 	lib/Basics/SpinLocker.cpp \
 	lib/Basics/ssl-helper.cpp \
-	lib/Basics/string-buffer.cpp \
+	lib/Basics/StringBuffer.cpp \
 	lib/Basics/StringUtils.cpp \
 	lib/Basics/structures.cpp \
 	lib/Basics/system-functions.cpp \

@@ -27,7 +27,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "string-buffer.h"
+#include "StringBuffer.h"
 #include "Basics/conversions.h"
 #include "Basics/fpconv.h"
 #include "Zip/zip.h"

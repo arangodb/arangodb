@@ -34,7 +34,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 #include "Basics/shell-colors.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/tri-strings.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-conv.h"

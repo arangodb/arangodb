@@ -34,7 +34,7 @@
 #include "Basics/logging.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/WriteLocker.h"

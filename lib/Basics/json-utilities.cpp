@@ -30,7 +30,7 @@
 #include "Basics/json-utilities.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
-#include "Basics/string-buffer.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
 // -----------------------------------------------------------------------------
