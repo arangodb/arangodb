@@ -33,17 +33,11 @@
 
 // debug mode
 #ifdef VELOCYPACK_DEBUG
-#ifndef DEBUG
-#define DEBUG
-#endif
 #include <cassert>
 #define VELOCYPACK_ASSERT(x) assert(x)
 
 #else
 
-#ifndef NDEBUG
-#define NDEBUG
-#endif
 #define VELOCYPACK_ASSERT(x)
 #endif
 
