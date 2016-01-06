@@ -31,13 +31,7 @@
 
 using VelocyPackHelper = triagens::basics::VelocyPackHelper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class VelocyPackHelper
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default if it is does not exist
@@ -116,12 +110,4 @@ std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

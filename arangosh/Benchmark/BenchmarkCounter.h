@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCHMARK_COUNTER_H
-#define ARANGODB_BENCHMARK_BENCHMARK_COUNTER_H 1
+#ifndef ARANGOSH_BENCHMARK_BENCHMARK_COUNTER_H
+#define ARANGOSH_BENCHMARK_BENCHMARK_COUNTER_H 1
 
 #include "Basics/Common.h"
 
@@ -38,13 +38,7 @@
 namespace triagens {
 namespace arangob {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class BenchmarkCounter
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 template <class T>
 class BenchmarkCounter {
@@ -67,11 +61,7 @@ class BenchmarkCounter {
 
   ~BenchmarkCounter() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the counter value
@@ -161,11 +151,7 @@ class BenchmarkCounter {
     _incompleteFailures += value;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief mutex protecting the counter
@@ -208,12 +194,4 @@ class BenchmarkCounter {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

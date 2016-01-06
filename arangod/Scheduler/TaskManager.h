@@ -30,8 +30,8 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_TASK_MANAGER_H
-#define ARANGODB_SCHEDULER_TASK_MANAGER_H 1
+#ifndef ARANGOD_SCHEDULER_TASK_MANAGER_H
+#define ARANGOD_SCHEDULER_TASK_MANAGER_H 1
 
 #include "Basics/Common.h"
 
@@ -92,12 +92,4 @@ class TaskManager {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

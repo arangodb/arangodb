@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_ATTRIBUTE_ACCESSOR_H
-#define ARANGODB_AQL_ATTRIBUTE_ACCESSOR_H 1
+#ifndef ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H
+#define ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
@@ -58,11 +58,7 @@ class AttributeAccessor {
     ATTRIBUTE_TYPE_REGULAR
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -76,11 +72,7 @@ class AttributeAccessor {
 
   ~AttributeAccessor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief execute the accessor
   ////////////////////////////////////////////////////////////////////////////////
@@ -89,11 +81,7 @@ class AttributeAccessor {
                size_t, std::vector<Variable const*> const&,
                std::vector<RegisterId> const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extract the _rev attribute from a ShapedJson marker
@@ -127,11 +115,7 @@ class AttributeAccessor {
   AqlValue extractRegular(AqlValue const&, triagens::arango::AqlTransaction*,
                           struct TRI_document_collection_t const*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the attribute names vector (e.g. [ "a", "b", "c" ] for a.b.c)
@@ -190,8 +174,3 @@ class AttributeAccessor {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

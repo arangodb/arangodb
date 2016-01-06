@@ -26,8 +26,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8PERIODIC_TASK_H
-#define ARANGODB_V8SERVER_V8PERIODIC_TASK_H 1
+#ifndef ARANGOD_V8_SERVER_V8_PERIODIC_TASK_H
+#define ARANGOD_V8_SERVER_V8_PERIODIC_TASK_H 1
 
 #include "Basics/Common.h"
 #include "Scheduler/PeriodicTask.h"
@@ -35,9 +35,6 @@
 
 struct TRI_json_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class V8PeriodicTask
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -49,11 +46,7 @@ namespace arango {
 class ApplicationV8;
 
 class V8PeriodicTask : public rest::PeriodicTask {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -69,11 +62,7 @@ class V8PeriodicTask : public rest::PeriodicTask {
 
   ~V8PeriodicTask();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get a task specific description in JSON format
@@ -87,11 +76,7 @@ class V8PeriodicTask : public rest::PeriodicTask {
 
   bool isUserDefined() const override { return true; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                              PeriodicTask
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief handles the next tick
@@ -99,11 +84,7 @@ class V8PeriodicTask : public rest::PeriodicTask {
 
   bool handlePeriod() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief system vocbase
@@ -152,12 +133,4 @@ class V8PeriodicTask : public rest::PeriodicTask {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

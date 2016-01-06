@@ -27,19 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_REPLICATION__COMMON_H
-#define ARANGODB_VOC_BASE_REPLICATION__COMMON_H 1
+#ifndef ARANGOD_VOC_BASE_REPLICATION_COMMON_H
+#define ARANGOD_VOC_BASE_REPLICATION_COMMON_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       REPLICATION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP response header for "check for more data?"
@@ -71,9 +65,6 @@
 
 #define TRI_REPLICATION_HEADER_ACTIVE "x-arango-replication-active"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication operations
@@ -104,9 +95,6 @@ typedef enum {
   REPLICATION_MAX
 } TRI_replication_operation_e;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp string in a target buffer
@@ -128,12 +116,4 @@ bool TRI_ExcludeCollectionReplication(char const*, bool);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

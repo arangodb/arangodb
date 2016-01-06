@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_IMPORT_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_IMPORT_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_IMPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -38,16 +38,10 @@
 #define RestImportTransaction \
   triagens::arango::SingleCollectionWriteTransaction<UINT64_MAX>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 RestImportHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  RestImportResult
-// -----------------------------------------------------------------------------
 
 struct RestImportResult {
  public:
@@ -75,11 +69,7 @@ struct RestImportResult {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestImportHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -87,11 +77,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   explicit RestImportHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -99,11 +85,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   status_t execute() override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine the collection type from the request
@@ -202,11 +184,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
   bool checkKeys(VPackSlice const&) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief enumeration for unique constraint handling
@@ -232,12 +210,4 @@ class RestImportHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -28,8 +28,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_SHAPED_JSON_H
-#define ARANGODB_VOC_BASE_SHAPED_JSON_H 1
+#ifndef ARANGOD_VOC_BASE_SHAPED_JSON_H
+#define ARANGOD_VOC_BASE_SHAPED_JSON_H 1
 
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
@@ -165,17 +165,11 @@
 /// @copydetails TRI_homogeneous_sized_list_shape_t
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_memory_zone_s;
 struct TRI_string_buffer_s;
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of short strings
@@ -189,13 +183,7 @@ class VocShaper;
 
 #define TRI_SHAPE_SIZE_VARIABLE ((TRI_shape_size_t)-1)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        JSON SHAPE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of a shape identifier
@@ -865,13 +853,7 @@ typedef struct TRI_shaped_sub_s {
   } _value;
 } TRI_shaped_sub_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    ATTRIBUTE PATH
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json storage type of an attribute path
@@ -891,9 +873,6 @@ typedef struct TRI_shape_path_s {
   // char _name[];
 } TRI_shape_path_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
@@ -907,9 +886,6 @@ void TRI_DestroyShapedJson(struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
 void TRI_FreeShapedJson(struct TRI_memory_zone_s*, TRI_shaped_json_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a list of TRI_shape_value_t
@@ -999,9 +975,6 @@ bool TRI_AtHomogeneousSizedListShapedJson(
     TRI_homogeneous_sized_list_shape_t const* shape, TRI_shaped_json_t const*,
     size_t position, TRI_shaped_json_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
@@ -1113,12 +1086,4 @@ class default_delete<TRI_shaped_json_t> {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

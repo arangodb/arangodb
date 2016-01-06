@@ -46,9 +46,6 @@
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -64,9 +61,6 @@ RestCursorHandler::RestCursorHandler(
       _query(nullptr),
       _queryKilled(false) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -102,9 +96,6 @@ HttpHandler::status_t RestCursorHandler::execute() {
 
 bool RestCursorHandler::cancel() { return cancelQuery(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes the query and returns the results/cursor
@@ -234,9 +225,6 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
@@ -1044,12 +1032,4 @@ void RestCursorHandler::deleteCursor() {
   json.dump(_response->body());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

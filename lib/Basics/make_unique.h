@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_MAKE_UNIQUE_H
-#define ARANGODB_BASICS_MAKE_UNIQUE_H 1
+#ifndef LIB_BASICS_MAKE_UNIQUE_H
+#define LIB_BASICS_MAKE_UNIQUE_H 1
 
 #include <cstddef>
 #include <memory>

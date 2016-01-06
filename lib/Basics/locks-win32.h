@@ -27,16 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_LOCKS__WIN32_H
-#define ARANGODB_BASICS_C_LOCKS__WIN32_H 1
+#ifndef LIB_BASICS_LOCKS_WIN32_H
+#define LIB_BASICS_LOCKS_WIN32_H 1
 
 #include "Basics/Common.h"
 
 #ifdef TRI_HAVE_WIN32_THREADS
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mutex type
@@ -98,12 +95,4 @@ typedef struct TRI_condition_s {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

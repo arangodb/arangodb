@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H
-#define ARANGODB_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H 1
+#ifndef ARANGOD_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H
+#define ARANGOD_HTTP_SERVER_APPLICATION_ENDPOINT_SERVER_H 1
 
 #include "Basics/Common.h"
 
@@ -39,9 +39,6 @@
 #include "Rest/EndpointList.h"
 #include "HttpServer/HttpHandlerFactory.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -50,9 +47,6 @@ class ApplicationScheduler;
 class AsyncJobManager;
 class HttpServer;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   class ApplicationEndpointServer
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application http server feature
@@ -63,11 +57,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
   ApplicationEndpointServer(ApplicationEndpointServer const&);
   ApplicationEndpointServer& operator=(ApplicationEndpointServer const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -84,11 +74,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
   ~ApplicationEndpointServer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief builds the servers
@@ -108,11 +94,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
   void setBasePath(std::string const& basePath) { _basePath = basePath; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        ApplicationFeature
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
   ////////////////////////////////////////////////////////////////////////////////
@@ -167,11 +149,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
   void stop();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the filename for the endpoints file
@@ -185,11 +163,7 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
   bool createSslContext();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -628,12 +602,4 @@ class ApplicationEndpointServer : public ApplicationFeature {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

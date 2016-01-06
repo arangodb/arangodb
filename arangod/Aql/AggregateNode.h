@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_AGGREGATE_NODE_H
-#define ARANGODB_AQL_AGGREGATE_NODE_H 1
+#ifndef ARANGOD_AQL_AGGREGATE_NODE_H
+#define ARANGOD_AQL_AGGREGATE_NODE_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AggregationOptions.h"
@@ -43,9 +43,6 @@ class ExecutionBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class AggregateNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class AggregateNode
@@ -262,11 +259,7 @@ class AggregateNode : public ExecutionNode {
     return v;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief options for the aggregation
@@ -328,8 +321,3 @@ class AggregateNode : public ExecutionNode {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

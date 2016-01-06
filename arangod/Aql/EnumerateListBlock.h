@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_ENUMERATE_LIST_BLOCK_H
-#define ARANGODB_AQL_ENUMERATE_LIST_BLOCK_H 1
+#ifndef ARANGOD_AQL_ENUMERATE_LIST_BLOCK_H
+#define ARANGOD_AQL_ENUMERATE_LIST_BLOCK_H 1
 
 #include "ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -39,9 +39,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                EnumerateListBlock
-// -----------------------------------------------------------------------------
 
 class EnumerateListBlock : public ExecutionBlock {
  public:
@@ -71,11 +68,7 @@ class EnumerateListBlock : public ExecutionBlock {
   /// @brief create an AqlValue from the inVariable using the current _index
   ////////////////////////////////////////////////////////////////////////////////
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an AqlValue from the inVariable using the current _index
@@ -89,11 +82,7 @@ class EnumerateListBlock : public ExecutionBlock {
 
   void throwArrayExpectedException();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief current position in the _inVariable
@@ -138,8 +127,3 @@ class EnumerateListBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

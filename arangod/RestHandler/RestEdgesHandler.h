@@ -27,37 +27,24 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_EDGES_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_EDGES_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_EDGES_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  RestEdgesHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace traverser {
 class TraverserExpression;
 }
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -65,11 +52,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   explicit RestEdgesHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -77,11 +60,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
 
   status_t execute() override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief reads all edges in given direction for given vertex

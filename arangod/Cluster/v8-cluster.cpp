@@ -44,9 +44,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  agency functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a v8 exception object
@@ -759,9 +756,6 @@ static void JS_VersionAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            cluster info functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a specific database exists
@@ -1177,9 +1171,6 @@ static void JS_UniqidClusterInfo(
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            server state functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the servers address
@@ -2160,9 +2151,6 @@ static void JS_Drop(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
@@ -2387,12 +2375,4 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

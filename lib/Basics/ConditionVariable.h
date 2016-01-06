@@ -28,8 +28,8 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CONDITION_VARIABLE_H
-#define ARANGODB_BASICS_CONDITION_VARIABLE_H 1
+#ifndef LIB_BASICS_CONDITION_VARIABLE_H
+#define LIB_BASICS_CONDITION_VARIABLE_H 1
 
 #include "Basics/Common.h"
 
@@ -38,9 +38,6 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class ConditionVariable
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief condition variable
@@ -76,11 +73,7 @@ class ConditionVariable {
   ConditionVariable(ConditionVariable const&) = delete;
   ConditionVariable& operator=(ConditionVariable const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a condition variable
@@ -94,11 +87,7 @@ class ConditionVariable {
 
   ~ConditionVariable();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief locks the condition variable
@@ -136,11 +125,7 @@ class ConditionVariable {
 
   void signal();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable
@@ -152,12 +137,4 @@ class ConditionVariable {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

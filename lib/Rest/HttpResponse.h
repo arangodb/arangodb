@@ -28,17 +28,14 @@
 /// @author Copyright 2008-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HTTP_RESPONSE_H
-#define ARANGODB_REST_HTTP_RESPONSE_H 1
+#ifndef LIB_REST_HTTP_RESPONSE_H
+#define LIB_REST_HTTP_RESPONSE_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/Dictionary.h"
 #include "Basics/StringBuffer.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class HttpResponse
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -55,11 +52,7 @@ class HttpResponse {
   HttpResponse(HttpResponse const&) = delete;
   HttpResponse& operator=(HttpResponse const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief http response codes
@@ -118,11 +111,7 @@ class HttpResponse {
     NOT_EXTENDED = 510
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             static public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the response is a HTTP HEAD response
@@ -153,11 +142,7 @@ class HttpResponse {
 
   static HttpResponseCode responseCode(int);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new http response
@@ -174,11 +159,7 @@ class HttpResponse {
 
   ~HttpResponse();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the response code
@@ -355,22 +336,14 @@ class HttpResponse {
 
   int deflate(size_t = 16384);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks for special headers
   ////////////////////////////////////////////////////////////////////////////////
 
   void checkHeader(const char* key, const char* value);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief response code
@@ -426,11 +399,7 @@ class HttpResponse {
 
   std::vector<char const*> _freeables;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public static
-  // members
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief batch error count header
@@ -458,12 +427,4 @@ class HttpResponse {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

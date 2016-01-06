@@ -28,8 +28,8 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8CLIENT_IMPORT_HELPER_H
-#define ARANGODB_V8CLIENT_IMPORT_HELPER_H 1
+#ifndef ARANGOSH_V8_CLIENT_IMPORT_HELPER_H
+#define ARANGOSH_V8_CLIENT_IMPORT_HELPER_H 1
 
 #include "Basics/Common.h"
 
@@ -248,12 +248,4 @@ class ImportHelper {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

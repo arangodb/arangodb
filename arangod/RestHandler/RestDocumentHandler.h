@@ -27,16 +27,13 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_DOCUMENT_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_DOCUMENT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_DOCUMENT_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RestDocumentHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -46,11 +43,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestDocumentHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -58,11 +51,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   explicit RestDocumentHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -70,11 +59,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   status_t execute() override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get collection type
@@ -185,12 +170,4 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

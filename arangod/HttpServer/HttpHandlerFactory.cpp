@@ -40,17 +40,11 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 namespace {
 sig_atomic_t MaintenanceMode = 0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                MaintenanceHandler
-// -----------------------------------------------------------------------------
 
 namespace {
 class MaintenanceHandler : public HttpHandler {
@@ -71,9 +65,6 @@ class MaintenanceHandler : public HttpHandler {
 };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
@@ -133,9 +124,6 @@ HttpHandlerFactory& HttpHandlerFactory::operator=(
 
 HttpHandlerFactory::~HttpHandlerFactory() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets maintenance mode
@@ -145,9 +133,6 @@ void HttpHandlerFactory::setMaintenance(bool value) {
   MaintenanceMode = value ? 1 : 0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authenticates a new request
@@ -354,12 +339,4 @@ void HttpHandlerFactory::addNotFoundHandler(create_fptr func) {
   _notFound = func;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

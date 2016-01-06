@@ -46,9 +46,6 @@
 
 using namespace triagens::wal;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a collection is volatile
@@ -177,9 +174,6 @@ static int WaitForDeletion(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the recover state
@@ -203,9 +197,6 @@ RecoverState::RecoverState(TRI_server_t* server, bool ignoreRecoveryErrors)
 
 RecoverState::~RecoverState() { releaseResources(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief release opened collections and databases so they can be shut down
@@ -1557,12 +1548,4 @@ int RecoverState::fillIndexes() {
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

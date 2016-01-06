@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_MODIFICATION_NODES_H
-#define ARANGODB_AQL_MODIFICATION_NODES_H 1
+#ifndef ARANGOD_AQL_MODIFICATION_NODES_H
+#define ARANGOD_AQL_MODIFICATION_NODES_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
@@ -44,9 +44,6 @@ struct Collection;
 class ExecutionBlock;
 class ExecutionPlan;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class ModificationNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for modification operations
@@ -84,11 +81,7 @@ class ModificationNode : public ExecutionNode {
   virtual void toJsonHelper(triagens::basics::Json& json,
                             TRI_memory_zone_t* zone, bool) const override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the database
@@ -167,11 +160,7 @@ class ModificationNode : public ExecutionNode {
 
   bool isModificationNode() const override { return true; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief _vocbase, the database
@@ -204,9 +193,6 @@ class ModificationNode : public ExecutionNode {
   Variable const* _outVariableNew;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class RemoveNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RemoveNode
@@ -270,11 +256,7 @@ class RemoveNode : public ModificationNode {
     vars.emplace(_inVariable);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input variable
@@ -283,9 +265,6 @@ class RemoveNode : public ModificationNode {
   Variable const* _inVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class InsertNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class InsertNode
@@ -350,11 +329,7 @@ class InsertNode : public ModificationNode {
     vars.emplace(_inVariable);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input variable
@@ -363,9 +338,6 @@ class InsertNode : public ModificationNode {
   Variable const* _inVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class UpdateNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class UpdateNode
@@ -443,11 +415,7 @@ class UpdateNode : public ModificationNode {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for documents
@@ -462,9 +430,6 @@ class UpdateNode : public ModificationNode {
   Variable const* _inKeyVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class ReplaceNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ReplaceNode
@@ -542,11 +507,7 @@ class ReplaceNode : public ModificationNode {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for documents
@@ -561,9 +522,6 @@ class ReplaceNode : public ModificationNode {
   Variable const* _inKeyVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class UpsertNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class UpsertNode
@@ -641,11 +599,7 @@ class UpsertNode : public ModificationNode {
     vars.emplace(_updateVariable);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input variable for the search document
@@ -677,8 +631,3 @@ class UpsertNode : public ModificationNode {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

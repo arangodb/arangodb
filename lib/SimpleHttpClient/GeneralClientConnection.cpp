@@ -36,9 +36,6 @@ using namespace triagens::rest;
 using namespace triagens::httpclient;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -62,9 +59,6 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint,
 
 GeneralClientConnection::~GeneralClientConnection() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new connection from an endpoint
@@ -176,12 +170,4 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

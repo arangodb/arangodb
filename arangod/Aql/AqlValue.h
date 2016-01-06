@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_AQL_VALUE_H
-#define ARANGODB_AQL_AQL_VALUE_H 1
+#ifndef ARANGOD_AQL_AQL_VALUE_H
+#define ARANGOD_AQL_AQL_VALUE_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Range.h"
@@ -42,9 +42,6 @@ namespace aql {
 
 class AqlItemBlock;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   struct AqlValue
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a struct to hold a value, registers hole AqlValue* during the
@@ -52,10 +49,7 @@ class AqlItemBlock;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct AqlValue {
-  // -----------------------------------------------------------------------------
-  // --SECTION-- typedefs
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief AqlValueType, indicates what sort of value we have
   ////////////////////////////////////////////////////////////////////////////////
@@ -68,11 +62,7 @@ struct AqlValue {
     RANGE    // a pointer to a range remembering lower and upper bound
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructors for the various value types, note that they all take
   /// ownership of the corresponding pointers
@@ -98,11 +88,7 @@ struct AqlValue {
 
   ~AqlValue() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the value type
   ////////////////////////////////////////////////////////////////////////////////
@@ -345,11 +331,7 @@ struct AqlValue {
                      TRI_document_collection_t const*, AqlValue const&,
                      TRI_document_collection_t const*, bool compareUtf8);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual data
   ////////////////////////////////////////////////////////////////////////////////
@@ -371,9 +353,6 @@ struct AqlValue {
 }  // closes namespace triagens::aql
 }  // closes namespace triagens
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                hash function helpers for AqlValue
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash function for AqlValue objects
@@ -445,8 +424,3 @@ struct equal_to<triagens::aql::AqlValue> {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

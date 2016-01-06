@@ -38,9 +38,6 @@
 
 using namespace triagens::wal;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the slots
@@ -71,9 +68,6 @@ Slots::Slots(LogfileManager* logfileManager, size_t numberOfSlots,
 
 Slots::~Slots() { delete[] _slots; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the statistics of the slots
@@ -570,9 +564,6 @@ void Slots::getActiveTickRange(Logfile* logfile, TRI_voc_tick_t& tickMin,
   tickMax = datafile->_tickMax;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief close a logfile
@@ -793,12 +784,4 @@ int Slots::newLogfile(uint32_t size, Logfile::StatusType& status) {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

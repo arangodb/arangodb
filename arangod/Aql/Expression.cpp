@@ -46,9 +46,6 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static members
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "constant" global object for NULL which can be shared by all
@@ -71,9 +68,6 @@ TRI_json_t const Expression::TrueJson = {TRI_JSON_BOOLEAN, {true}};
 
 TRI_json_t const Expression::FalseJson = {TRI_JSON_BOOLEAN, {false}};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            static helper function
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register warning
@@ -95,9 +89,6 @@ static void RegisterWarning(triagens::aql::Ast const* ast,
   ast->query()->registerWarning(code, msg.c_str());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the expression
@@ -158,9 +149,6 @@ Expression::~Expression() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all variables used in the expression
@@ -299,9 +287,6 @@ void Expression::invalidate() {
   // expression data will be freed in the destructor
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find a value in an AQL list node
@@ -1354,12 +1339,4 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

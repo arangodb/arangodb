@@ -27,16 +27,13 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H
+#define LIB_SIMPLE_HTTP_CLIENT_GENERAL_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
 #include "Rest/Endpoint.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           GeneralClientConnection
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace httpclient {
@@ -46,10 +43,7 @@ namespace httpclient {
 ////////////////////////////////////////////////////////////////////////////////
 
 class GeneralClientConnection {
-  // -----------------------------------------------------------------------------
-  // --SECTION-- typedefs
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief size of read buffer for read operations
@@ -57,11 +51,7 @@ class GeneralClientConnection {
 
   enum { READBUFFER_SIZE = 8192 };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   explicit GeneralClientConnection(GeneralClientConnection const&);
   GeneralClientConnection& operator=(GeneralClientConnection const&);
@@ -80,11 +70,7 @@ class GeneralClientConnection {
 
   virtual ~GeneralClientConnection();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new connection from an endpoint
@@ -168,11 +154,7 @@ class GeneralClientConnection {
 
   void setInterrupted(bool value) { _isInterrupted = value; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                         protected virtual
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -211,11 +193,7 @@ class GeneralClientConnection {
 
   virtual bool readable() = 0;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief details to errors
@@ -269,12 +247,4 @@ class GeneralClientConnection {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

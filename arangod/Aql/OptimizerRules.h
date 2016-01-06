@@ -27,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
-#define ARANGOD_AQL_OPTIMIZER_RULES 1
+#define ARANGOD_AQL_OPTIMIZER_RULES_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Optimizer.h"
@@ -35,9 +35,6 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           rules for the optimizer
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
@@ -279,8 +276,3 @@ void mergeFilterIntoTraversalRule(Optimizer* opt, ExecutionPlan* plan,
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

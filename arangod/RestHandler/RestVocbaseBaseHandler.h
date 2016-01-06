@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_VOCBASE_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/logging.h"
@@ -37,18 +37,12 @@
 #include "RestServer/VocbaseContext.h"
 #include "Utils/transactions.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_document_collection_t;
 class TRI_vocbase_col_t;
 struct TRI_vocbase_t;
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class RestVocbaseBaseHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -64,11 +58,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   RestVocbaseBaseHandler(RestVocbaseBaseHandler const&) = delete;
   RestVocbaseBaseHandler& operator=(RestVocbaseBaseHandler const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // constants
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief batch path
@@ -142,11 +132,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
 
   static const std::string UPLOAD_PATH;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -160,11 +146,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
 
   ~RestVocbaseBaseHandler();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief check if a collection needs to be created on the fly
@@ -373,11 +355,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
   int parseDocumentId(triagens::arango::CollectionNameResolver const*,
                       std::string const&, TRI_voc_cid_t&, TRI_voc_key_t&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief request context
@@ -391,11 +369,7 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
 
   TRI_vocbase_t* _vocbase;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -432,12 +406,4 @@ class RestVocbaseBaseHandler : public admin::RestBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

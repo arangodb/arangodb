@@ -51,9 +51,6 @@ using namespace triagens::arango;
 
 extern AnyServer* ArangoInstance;
 
-// -----------------------------------------------------------------------------
-// --SECTION--               Windows Service control functions - de/installation
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief running flag
@@ -228,9 +225,6 @@ static void DeleteService(int argc, char* argv[], bool force) {
   CloseServiceHandle(schService);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--         Windows Service control functions - Control other service
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Start the service and optionaly wait till its up & running
@@ -389,9 +383,6 @@ static void StopArangoService(bool WaitForShutdown) {
   exit(EXIT_SUCCESS);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                   Windows Service control functions - emit status
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flips the status for a service
@@ -469,9 +460,6 @@ static void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 Windows Service control functions
-// -----------------------------------------------------------------------------
 
 #include <DbgHelp.h>
 LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {

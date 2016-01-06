@@ -55,9 +55,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::httpclient;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base url of the replication API
@@ -65,9 +62,6 @@ using namespace triagens::httpclient;
 
 const std::string Syncer::BaseUrl = "/_api/replication";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -156,9 +150,6 @@ Syncer::~Syncer() {
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 string Syncer::rewriteLocation(void* data, const string& location) {
   Syncer* s = static_cast<Syncer*>(data);
@@ -177,9 +168,6 @@ string Syncer::rewriteLocation(void* data, const string& location) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from JSON
@@ -732,12 +720,4 @@ int Syncer::handleStateResponse(TRI_json_t const* json, string& errorMsg) {
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

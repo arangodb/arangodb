@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_LOCKS__MACOS_H
-#define ARANGODB_BASICS_C_LOCKS__MACOS_H 1
+#ifndef LIB_BASICS_LOCKS_MACOS_H
+#define LIB_BASICS_LOCKS_MACOS_H 1
 
 #include "Basics/Common.h"
 
@@ -36,9 +36,6 @@
 
 #include <libkern/OSAtomic.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief spin-lock type
@@ -60,12 +57,4 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

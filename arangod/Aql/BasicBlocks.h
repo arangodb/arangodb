@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_BASIC_BLOCKS_H
-#define ARANGODB_AQL_BASIC_BLOCKS_H 1
+#ifndef ARANGOD_AQL_BASIC_BLOCKS_H
+#define ARANGOD_AQL_BASIC_BLOCKS_H 1
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -39,9 +39,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    SingletonBlock
-// -----------------------------------------------------------------------------
 
 class SingletonBlock : public ExecutionBlock {
   void deleteInputVariables() {
@@ -90,9 +87,6 @@ class SingletonBlock : public ExecutionBlock {
   AqlItemBlock* _inputRegisterValues;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       FilterBlock
-// -----------------------------------------------------------------------------
 
 class FilterBlock : public ExecutionBlock {
  public:
@@ -145,9 +139,6 @@ class FilterBlock : public ExecutionBlock {
   std::vector<size_t> _chosen;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        LimitBlock
-// -----------------------------------------------------------------------------
 
 class LimitBlock : public ExecutionBlock {
  public:
@@ -199,9 +190,6 @@ class LimitBlock : public ExecutionBlock {
   bool const _fullCount;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       ReturnBlock
-// -----------------------------------------------------------------------------
 
 class ReturnBlock : public ExecutionBlock {
  public:
@@ -232,11 +220,7 @@ class ReturnBlock : public ExecutionBlock {
 
   RegisterId returnInheritedResults();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief if set to true, the return block will return the AqlItemBlocks it
@@ -248,9 +232,6 @@ class ReturnBlock : public ExecutionBlock {
   bool _returnInheritedResults;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    NoResultsBlock
-// -----------------------------------------------------------------------------
 
 class NoResultsBlock : public ExecutionBlock {
  public:
@@ -284,8 +265,3 @@ class NoResultsBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

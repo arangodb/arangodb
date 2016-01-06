@@ -27,16 +27,13 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTPS_SERVER_H
-#define ARANGODB_HTTP_SERVER_HTTPS_SERVER_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTPS_SERVER_H
+#define ARANGOD_HTTP_SERVER_HTTPS_SERVER_H 1
 
 #include "HttpServer/HttpServer.h"
 
 #include <openssl/ssl.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpsServer
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -46,11 +43,7 @@ namespace rest {
 ////////////////////////////////////////////////////////////////////////////////
 
 class HttpsServer : public HttpServer {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new http server
@@ -65,11 +58,7 @@ class HttpsServer : public HttpServer {
 
   ~HttpsServer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets the verification mode
@@ -83,11 +72,7 @@ class HttpsServer : public HttpServer {
 
   void setVerificationCallback(int (*func)(int, X509_STORE_CTX*));
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                HttpServer
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -109,11 +94,7 @@ class HttpsServer : public HttpServer {
 
   HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&) override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ssl context
@@ -138,12 +119,4 @@ class HttpsServer : public HttpServer {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

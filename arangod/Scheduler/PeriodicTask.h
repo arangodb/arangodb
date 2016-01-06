@@ -28,8 +28,8 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_PERIODIC_TASK_H
-#define ARANGODB_SCHEDULER_PERIODIC_TASK_H 1
+#ifndef ARANGOD_SCHEDULER_PERIODIC_TASK_H
+#define ARANGOD_SCHEDULER_PERIODIC_TASK_H 1
 
 #include "Basics/Common.h"
 #include "Scheduler/Task.h"
@@ -112,12 +112,4 @@ class PeriodicTask : virtual public Task {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

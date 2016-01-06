@@ -34,9 +34,6 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class CapConstraint
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum size
@@ -44,9 +41,6 @@ using namespace triagens::arango;
 
 int64_t const CapConstraint::MinSize = 16384;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 CapConstraint::CapConstraint(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
@@ -59,9 +53,6 @@ CapConstraint::CapConstraint(TRI_idx_iid_t iid,
 
 CapConstraint::~CapConstraint() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 size_t CapConstraint::memory() const { return 0; }
 
@@ -164,9 +155,6 @@ int CapConstraint::initialize(triagens::arango::Transaction* trx) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the cap constraint for the collection
@@ -219,12 +207,4 @@ int CapConstraint::apply(triagens::arango::Transaction* trx,
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

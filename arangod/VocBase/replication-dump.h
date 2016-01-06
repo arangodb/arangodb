@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_REPLICATION__DUMP_H
-#define ARANGODB_VOC_BASE_REPLICATION__DUMP_H 1
+#ifndef ARANGOD_VOC_BASE_REPLICATION_DUMP_H
+#define ARANGOD_VOC_BASE_REPLICATION_DUMP_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -38,20 +38,11 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_shape_s;
 class TRI_vocbase_col_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                REPLICATION LOGGER
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication dump container
@@ -105,9 +96,6 @@ struct TRI_replication_dump_t {
   bool _fromTickIncluded;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump data from a single collection
@@ -135,12 +123,4 @@ int TRI_DetermineOpenTransactionsReplication(TRI_replication_dump_t*,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

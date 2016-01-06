@@ -27,16 +27,13 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_OPERATING__SYSTEM_H
-#define ARANGODB_BASICS_C_OPERATING__SYSTEM_H 1
+#ifndef LIB_BASICS_OPERATING_SYSTEM_H
+#define LIB_BASICS_OPERATING_SYSTEM_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            global
-// -----------------------------------------------------------------------------
 
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
@@ -220,9 +217,6 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           FreeBSD
-// -----------------------------------------------------------------------------
 
 #ifdef __FreeBSD__
 
@@ -380,9 +374,6 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             linux
-// -----------------------------------------------------------------------------
 
 #ifdef __linux__
 
@@ -555,9 +546,6 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           windows
-// -----------------------------------------------------------------------------
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
@@ -803,9 +791,6 @@ typedef unsigned char bool;
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    GNU C compiler
-// -----------------------------------------------------------------------------
 
 #ifdef __GNUC__
 #define TRI_HAVE_GCC_UNUSED 1
@@ -813,9 +798,6 @@ typedef unsigned char bool;
 #define TRI_HAVE_GCC_BUILTIN 1
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                size_t overloading
-// -----------------------------------------------------------------------------
 
 #if defined(TRI_OVERLOAD_FUNCS_SIZE_T)
 #if TRI_SIZEOF_SIZE_T == 8
@@ -827,12 +809,4 @@ typedef unsigned char bool;
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

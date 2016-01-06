@@ -39,9 +39,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a loader
@@ -49,9 +46,6 @@ using namespace triagens::arango;
 
 ScriptLoader::ScriptLoader() : _scripts(), _directory(), _lock() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the directory for scripts
@@ -153,9 +147,6 @@ string const& ScriptLoader::findScript(string const& name) {
   return empty;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a list of all specified directory parts
@@ -190,12 +181,4 @@ vector<string> ScriptLoader::getDirectoryParts() {
   return directories;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

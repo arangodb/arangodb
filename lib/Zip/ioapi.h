@@ -23,9 +23,8 @@
 
 */
 
-#ifndef _ZLIBIOAPI64_H
-#define _ZLIBIOAPI64_H
-
+#ifndef LIB_ZIP_IOAPI_H
+#define LIB_ZIP_IOAPI_H 1
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -236,12 +235,4 @@ void fill_zlib_filefunc64_32_def_from_filefunc32(
 #endif
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

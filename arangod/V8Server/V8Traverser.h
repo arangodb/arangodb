@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_TRAVERSER_H
-#define ARANGODB_V8_TRAVERSER_H 1
+#ifndef ARANGOD_V8_SERVER_V8_TRAVERSER_H
+#define ARANGOD_V8_SERVER_V8_TRAVERSER_H 1
 
 #include "Utils/ExplicitTransaction.h"
 #include "VocBase/edge-collection.h"
@@ -175,16 +175,9 @@ struct ShortestPathOptions : BasicOptions {
   bool matchesVertex(VertexId const&) const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   class SingleServerTraversalPath
-// -----------------------------------------------------------------------------
 
 class SingleServerTraversalPath : public TraversalPath {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   explicit SingleServerTraversalPath(
       triagens::basics::EnumeratedPath<EdgeInfo, VertexId> const& path)
@@ -205,11 +198,7 @@ class SingleServerTraversalPath : public TraversalPath {
       triagens::arango::CollectionNameResolver*) override;
 
  private:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   triagens::basics::Json* edgeToJson(Transaction* trx,
                                      CollectionNameResolver* resolver,
                                      EdgeInfo const& e);
@@ -218,17 +207,10 @@ class SingleServerTraversalPath : public TraversalPath {
                                        CollectionNameResolver* resolver,
                                        VertexId const& v);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   triagens::basics::EnumeratedPath<EdgeInfo, VertexId> _path;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class DepthFirstTraverser
-// -----------------------------------------------------------------------------
 
 class DepthFirstTraverser : public Traverser {
  private:
@@ -295,11 +277,7 @@ class DepthFirstTraverser : public Traverser {
 
   TraversalPath* next() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   bool edgeMatchesConditions(TRI_doc_mptr_t&, size_t&, size_t);
 

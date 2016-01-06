@@ -27,8 +27,8 @@
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_SKIP__LIST_H
-#define ARANGODB_BASICS_C_SKIP__LIST_H 1
+#ifndef LIB_BASICS_SKIP_LIST_H
+#define LIB_BASICS_SKIP_LIST_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -40,13 +40,7 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         SKIP LIST
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a skiplist node
@@ -151,11 +145,7 @@ class SkipList {
   size_t _memoryUsed;
 
  public:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new skiplist
   ///
@@ -204,11 +194,7 @@ class SkipList {
     freeNode(_start);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the start node, note that this does not return the first
   /// data node but the (internal) artificial node stored under _start. This
@@ -505,11 +491,7 @@ class SkipList {
     return pos[0];
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief allocate a new SkipListNode of a certain height. If height is 0,
@@ -732,12 +714,4 @@ class SkipList {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

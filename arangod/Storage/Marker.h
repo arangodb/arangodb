@@ -27,17 +27,14 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STORAGE_MARKER_H
-#define ARANGODB_STORAGE_MARKER_H 1
+#ifndef ARANGOD_STORAGE_MARKER_H
+#define ARANGOD_STORAGE_MARKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/hashes.h"
 
 namespace arangodb {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      marker types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief available marker types. values must be < 128
@@ -71,9 +68,6 @@ enum MarkerType : uint8_t {
 
 static_assert(MarkerMax < 128, "invalid maximum marker type value");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                        helper struct for reading / writing values
-// -----------------------------------------------------------------------------
 
 struct MarkerHelper {
   uint32_t alignedSize(uint32_t value) { return ((value + 7) / 8) * 8; }
@@ -144,9 +138,6 @@ struct MarkerHelper {
    of the marker is coded in bytes from offset 1 to (including) 3.
 */
 
-// -----------------------------------------------------------------------------
-// --SECTION--                        generic read-only accessor for all markers
-// -----------------------------------------------------------------------------
 
 class MarkerReader {
  public:
@@ -226,9 +217,6 @@ class MarkerReader {
   uint64_t _length;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                       generic read-write accessor for all markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriter : public MarkerReader {
  public:
@@ -260,9 +248,6 @@ class MarkerWriter : public MarkerReader {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 generic accessor for meta markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorMeta : public T {
@@ -278,24 +263,15 @@ class MarkerAccessorMeta : public T {
   static uint64_t staticLength() { return 0; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                               read-only accessor for meta markers
-// -----------------------------------------------------------------------------
 
 typedef MarkerAccessorMeta<MarkerReader> MarkerReaderMeta;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                              read-write accessor for meta markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriterMeta : public MarkerAccessorMeta<MarkerWriter> {
  public:
   MarkerWriterMeta(uint8_t* begin) : MarkerAccessorMeta<MarkerWriter>(begin) {}
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                     generic accessor for document preface markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorDocumentPreface : public T {
@@ -324,15 +300,9 @@ class MarkerAccessorDocumentPreface : public T {
   static uint64_t staticLength() { return 16; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                   read-only accessor for document preface markers
-// -----------------------------------------------------------------------------
 
 typedef MarkerAccessorDocumentPreface<MarkerReader> MarkerReaderDocumentPreface;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                  read-write accessor for document preface markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriterDocumentPreface
     : public MarkerAccessorDocumentPreface<MarkerWriter> {
@@ -351,9 +321,6 @@ class MarkerWriterDocumentPreface
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             generic accessor for document markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorDocument : public T {
@@ -384,15 +351,9 @@ class MarkerAccessorDocument : public T {
   static uint64_t staticLength() { return 8; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                           read-only accessor for document markers
-// -----------------------------------------------------------------------------
 
 typedef MarkerAccessorDocument<MarkerReader> MarkerReaderDocument;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                          read-write accessor for document markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriterDocument : public MarkerAccessorDocument<MarkerWriter> {
  public:
@@ -405,9 +366,6 @@ class MarkerWriterDocument : public MarkerAccessorDocument<MarkerWriter> {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                          generic accessor for transaction markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorTransaction : public T {
@@ -430,15 +388,9 @@ class MarkerAccessorTransaction : public T {
   static uint64_t staticLength() { return 0; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                        read-only accessor for transaction markers
-// -----------------------------------------------------------------------------
 
 typedef MarkerAccessorTransaction<MarkerReader> MarkerReaderTransaction;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                       read-write accessor for transaction markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriterTransaction : public MarkerAccessorTransaction<MarkerWriter> {
   /* this is a marker accessor for transaction handling.
@@ -458,9 +410,6 @@ class MarkerWriterTransaction : public MarkerAccessorTransaction<MarkerWriter> {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                           generic accessor for structural markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorStructural : public T {
@@ -486,9 +435,6 @@ class MarkerAccessorStructural : public T {
   static uint64_t staticLength() { return 0; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             generic accessor for database markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorDatabase : public MarkerAccessorStructural<T> {
@@ -508,15 +454,9 @@ class MarkerAccessorDatabase : public MarkerAccessorStructural<T> {
   static uint64_t staticLength() { return 0; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                           read-only accessor for database markers
-// -----------------------------------------------------------------------------
 
 typedef MarkerAccessorDatabase<MarkerReader> MarkerReaderDatabase;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                          read-write accessor for database markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriterDatabase : public MarkerAccessorDatabase<MarkerWriter> {
  public:
@@ -524,9 +464,6 @@ class MarkerWriterDatabase : public MarkerAccessorDatabase<MarkerWriter> {
       : MarkerAccessorDatabase<MarkerWriter>(begin) {}
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                           generic accessor for collection markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorCollection : public MarkerAccessorStructural<T> {
@@ -547,15 +484,9 @@ class MarkerAccessorCollection : public MarkerAccessorStructural<T> {
   static uint64_t staticLength() { return 0; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                         read-only accessor for collection markers
-// -----------------------------------------------------------------------------
 
 typedef MarkerAccessorCollection<MarkerReader> MarkerReaderCollection;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                        read-write accessor for collection markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriterCollection : public MarkerAccessorCollection<MarkerWriter> {
  public:
@@ -563,9 +494,6 @@ class MarkerWriterCollection : public MarkerAccessorCollection<MarkerWriter> {
       : MarkerAccessorCollection<MarkerWriter>(begin) {}
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                generic accessor for index markers
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class MarkerAccessorIndex : public MarkerAccessorStructural<T> {
@@ -582,15 +510,9 @@ class MarkerAccessorIndex : public MarkerAccessorStructural<T> {
   static uint64_t staticLength() { return 0; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                              read-only accessor for index markers
-// -----------------------------------------------------------------------------
 
 typedef MarkerAccessorIndex<MarkerReader> MarkerReaderIndex;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             read-write accessor for index markers
-// -----------------------------------------------------------------------------
 
 class MarkerWriterIndex : public MarkerReaderIndex {
  public:
@@ -651,12 +573,4 @@ std::ostream& operator<<(std::ostream& stream,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

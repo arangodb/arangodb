@@ -39,9 +39,6 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the accessor
@@ -91,9 +88,6 @@ AttributeAccessor::AttributeAccessor(
 
 AttributeAccessor::~AttributeAccessor() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the accessor
@@ -314,12 +308,4 @@ AqlValue AttributeAccessor::extractRegular(
   return AqlValue(new Json(Json::Null));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

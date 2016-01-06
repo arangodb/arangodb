@@ -27,8 +27,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_HEARTBEAT_THREAD_H
-#define ARANGODB_CLUSTER_HEARTBEAT_THREAD_H 1
+#ifndef ARANGOD_CLUSTER_HEARTBEAT_THREAD_H
+#define ARANGOD_CLUSTER_HEARTBEAT_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -48,16 +48,9 @@ class ApplicationDispatcher;
 namespace arango {
 class ApplicationV8;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   HeartbeatThread
-// -----------------------------------------------------------------------------
 
 class HeartbeatThread : public basics::Thread {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   HeartbeatThread(HeartbeatThread const&);
   HeartbeatThread& operator=(HeartbeatThread const&);
@@ -76,11 +69,7 @@ class HeartbeatThread : public basics::Thread {
 
   ~HeartbeatThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the heartbeat
@@ -139,11 +128,7 @@ class HeartbeatThread : public basics::Thread {
 
   static bool hasRunOnce() { return (HasRunOnce == 1); }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop
@@ -151,11 +136,7 @@ class HeartbeatThread : public basics::Thread {
 
   void run();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop, coordinator version
@@ -205,11 +186,7 @@ class HeartbeatThread : public basics::Thread {
 
   bool fetchUsers(TRI_vocbase_t*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -320,12 +297,4 @@ class HeartbeatThread : public basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

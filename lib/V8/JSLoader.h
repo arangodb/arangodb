@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_JSLOADER_H
-#define ARANGODB_V8_JSLOADER_H 1
+#ifndef LIB_V8_JSLOADER_H
+#define LIB_V8_JSLOADER_H 1
 
 #include "Basics/Common.h"
 
@@ -36,9 +36,6 @@
 
 #include <v8.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class JSLoader
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -48,11 +45,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class JSLoader : public ScriptLoader {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   enum eState { eFailLoad, eFailExecute, eSuccess };
 
@@ -62,11 +55,7 @@ class JSLoader : public ScriptLoader {
 
   JSLoader();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes a named script in the global context
@@ -108,12 +97,4 @@ class JSLoader : public ScriptLoader {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

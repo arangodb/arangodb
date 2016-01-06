@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_REST_AQL_HANDLER_H
-#define ARANGODB_AQL_REST_AQL_HANDLER_H 1
+#ifndef ARANGOD_AQL_REST_AQL_HANDLER_H
+#define ARANGOD_AQL_REST_AQL_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Aql/QueryRegistry.h"
@@ -39,15 +39,9 @@
 #include "RestServer/VocbaseContext.h"
 #include "V8Server/ApplicationV8.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        i     class RestAqlHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -57,11 +51,7 @@ namespace aql {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestAqlHandler : public arango::RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -70,11 +60,7 @@ class RestAqlHandler : public arango::RestVocbaseBaseHandler {
   RestAqlHandler(rest::HttpRequest* request,
                  std::pair<arango::ApplicationV8*, QueryRegistry*>* pair);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -164,11 +150,7 @@ class RestAqlHandler : public arango::RestVocbaseBaseHandler {
 
   void getInfoQuery(std::string const& operation, std::string const& idString);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief handle for useQuery
@@ -184,11 +166,7 @@ class RestAqlHandler : public arango::RestVocbaseBaseHandler {
 
   TRI_json_t* parseJsonBody();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief dig out vocbase from context and query from ID, handle errors
@@ -237,12 +215,4 @@ class RestAqlHandler : public arango::RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

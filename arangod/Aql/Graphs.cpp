@@ -37,9 +37,6 @@ using namespace triagens::aql;
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Local utils
-// -----------------------------------------------------------------------------
 
 void Graph::insertVertexCollectionsFromJsonArray(triagens::basics::Json& arr) {
   for (size_t j = 0; j < arr.size(); ++j) {
@@ -50,9 +47,6 @@ void Graph::insertVertexCollectionsFromJsonArray(triagens::basics::Json& arr) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Graph Class
-// -----------------------------------------------------------------------------
 
 std::unordered_set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;

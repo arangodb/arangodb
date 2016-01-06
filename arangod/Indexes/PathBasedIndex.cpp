@@ -33,13 +33,7 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class PathBasedIndex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           struct PermutationState
-// -----------------------------------------------------------------------------
 
 triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
     const {
@@ -56,9 +50,6 @@ triagens::aql::AstNode const* PathBasedIndex::PermutationState::getValue()
   return nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the index
@@ -112,9 +103,6 @@ PathBasedIndex::PathBasedIndex(TRI_json_t const* json, bool allowPartialIndex)
 
 PathBasedIndex::~PathBasedIndex() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to insert a document into any index type
@@ -232,9 +220,6 @@ int PathBasedIndex::fillElement(std::vector<TRI_index_element_t*>& elements,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to create the sole index value insert
@@ -474,12 +459,4 @@ PathBasedIndex::fillPidPaths() {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -38,9 +38,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -55,9 +52,6 @@ RestActionHandler::RestActionHandler(HttpRequest* request,
   _action = TRI_LookupActionVocBase(request);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -119,9 +113,6 @@ HttpHandler::status_t RestActionHandler::execute() {
 
 bool RestActionHandler::cancel() { return _action->cancel(&_dataLock, &_data); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an action
@@ -149,6 +140,4 @@ TRI_action_result_t RestActionHandler::executeAction() {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

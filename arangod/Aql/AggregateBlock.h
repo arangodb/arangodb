@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_AGGREGATE_BLOCK_H
-#define ARANGODB_AQL_AGGREGATE_BLOCK_H 1
+#ifndef ARANGOD_AQL_AGGREGATE_BLOCK_H
+#define ARANGOD_AQL_AGGREGATE_BLOCK_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AggregateNode.h"
@@ -42,9 +42,6 @@ namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   AggregatorGroup
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief details about the current group
@@ -83,9 +80,6 @@ struct AggregatorGroup {
   void addValues(AqlItemBlock const* src, RegisterId groupRegister);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              SortedAggregateBlock
-// -----------------------------------------------------------------------------
 
 class SortedAggregateBlock : public ExecutionBlock {
  public:
@@ -141,9 +135,6 @@ class SortedAggregateBlock : public ExecutionBlock {
   std::vector<std::string> _variableNames;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              HashedAggregateBlock
-// -----------------------------------------------------------------------------
 
 class HashedAggregateBlock : public ExecutionBlock {
  public:
@@ -211,8 +202,3 @@ class HashedAggregateBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

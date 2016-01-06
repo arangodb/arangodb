@@ -27,14 +27,11 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_FULLTEXT_INDEX_FULLTEXT__LIST_H
-#define ARANGODB_FULLTEXT_INDEX_FULLTEXT__LIST_H 1
+#ifndef ARANGOD_FULLTEXT_INDEX_FULLTEXT_LIST_H
+#define ARANGOD_FULLTEXT_INDEX_FULLTEXT_LIST_H 1
 
 #include "fulltext-common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for a fulltext list
@@ -48,9 +45,6 @@ typedef void TRI_fulltext_list_t;
 
 typedef uint32_t TRI_fulltext_list_entry_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a list
@@ -70,9 +64,6 @@ TRI_fulltext_list_t* TRI_CreateListFulltextIndex(uint32_t);
 
 void TRI_FreeListFulltextIndex(TRI_fulltext_list_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the memory usage of a list
@@ -142,12 +133,4 @@ TRI_fulltext_list_entry_t* TRI_StartListFulltextIndex(
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

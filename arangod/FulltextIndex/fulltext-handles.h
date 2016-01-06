@@ -27,14 +27,11 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_FULLTEXT_INDEX_FULLTEXT__HANDLES_H
-#define ARANGODB_FULLTEXT_INDEX_FULLTEXT__HANDLES_H 1
+#ifndef ARANGOD_FULLTEXT_INDEX_FULLTEXT_HANDLES_H
+#define ARANGOD_FULLTEXT_INDEX_FULLTEXT_HANDLES_H 1
 
 #include "fulltext-common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for a fulltext handle entry
@@ -107,9 +104,6 @@ typedef struct TRI_fulltext_handles_s {
                                 // handles to new handles during compaction
 } TRI_fulltext_handles_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a handles instance
@@ -123,9 +117,6 @@ TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex(const uint32_t);
 
 void TRI_FreeHandlesFulltextIndex(TRI_fulltext_handles_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get number of documents (including deleted)
@@ -195,12 +186,4 @@ size_t TRI_MemoryHandleFulltextIndex(const TRI_fulltext_handles_t* const);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

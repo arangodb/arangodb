@@ -27,15 +27,12 @@
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_SERVER_STATISTICS_H
-#define ARANGODB_V8_SERVER_STATISTICS_H 1
+#ifndef ARANGOD_V8_SERVER_V8_STATISTICS_H
+#define ARANGOD_V8_SERVER_V8_STATISTICS_H 1
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           GENERAL
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the statistics functions
@@ -45,12 +42,4 @@ void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

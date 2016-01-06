@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ENDPOINT_UNIX_DOMAIN_H
-#define ARANGODB_REST_ENDPOINT_UNIX_DOMAIN_H 1
+#ifndef LIB_REST_ENDPOINT_UNIX_DOMAIN_H
+#define LIB_REST_ENDPOINT_UNIX_DOMAIN_H 1
 
 #include "Basics/Common.h"
 
@@ -46,16 +46,9 @@
 namespace triagens {
 namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                EndpointUnixDomain
-// -----------------------------------------------------------------------------
 
 class EndpointUnixDomain final : public Endpoint {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
@@ -70,11 +63,7 @@ class EndpointUnixDomain final : public Endpoint {
 
   ~EndpointUnixDomain();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connect the endpoint
@@ -118,11 +107,7 @@ class EndpointUnixDomain final : public Endpoint {
 
   std::string getHostString() const override { return "localhost"; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief socket file
@@ -137,12 +122,4 @@ class EndpointUnixDomain final : public Endpoint {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

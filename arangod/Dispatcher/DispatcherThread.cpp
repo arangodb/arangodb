@@ -44,13 +44,7 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class DispatcherThread
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            thread local variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global, but thread-local place to hold the current dispatcher
@@ -60,9 +54,6 @@ using namespace triagens::rest;
 thread_local DispatcherThread* DispatcherThread::currentDispatcherThread =
     nullptr;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a dispatcher thread
@@ -78,9 +69,6 @@ DispatcherThread::DispatcherThread(DispatcherQueue* queue)
   allowAsynchronousCancelation();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -162,9 +150,6 @@ void DispatcherThread::addStatus(VPackBuilder* b) {
   b->add("numberBlocked", VPackValue((int)_queue->_nrBlocked.load()));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief indicates that thread is doing a blocking operation
@@ -178,9 +163,6 @@ void DispatcherThread::block() { _queue->blockThread(); }
 
 void DispatcherThread::unblock() { _queue->unblockThread(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do the real work
@@ -259,6 +241,4 @@ void DispatcherThread::handleJob(Job* job) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

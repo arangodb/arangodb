@@ -45,15 +45,9 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   local constants
-// -----------------------------------------------------------------------------
 
 static char const* EMPTY_STR = "";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpRequest
-// -----------------------------------------------------------------------------
 
 int32_t const HttpRequest::MinCompatibility = 10300L;
 
@@ -62,9 +56,6 @@ std::string const HttpRequest::BatchContentType =
 
 std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http request constructor
@@ -134,9 +125,6 @@ HttpRequest::~HttpRequest() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -661,9 +649,6 @@ uint64_t HttpRequest::clientTaskId() const { return _clientTaskId; }
 
 void HttpRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the header type
@@ -1177,9 +1162,6 @@ void HttpRequest::setValues(char* buffer, char* end) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      public prefix/suffix methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the prefix path of the request
@@ -1235,9 +1217,6 @@ void HttpRequest::setRequestContext(RequestContext* requestContext,
   _isRequestContextOwner = isRequestContextOwner;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translate the HTTP protocol version
@@ -1445,12 +1424,4 @@ void HttpRequest::parseCookies(const char* buffer) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

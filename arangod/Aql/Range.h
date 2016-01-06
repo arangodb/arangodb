@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_RANGE_H
-#define ARANGODB_AQL_RANGE_H 1
+#ifndef ARANGOD_AQL_RANGE_H
+#define ARANGOD_AQL_RANGE_H 1
 
 #include "Basics/Common.h"
 
@@ -54,8 +54,3 @@ struct Range {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

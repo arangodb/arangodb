@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_SHAPE__ACCESSOR_H
-#define ARANGODB_VOC_BASE_SHAPE__ACCESSOR_H 1
+#ifndef ARANGOD_VOC_BASE_SHAPE_ACCESSOR_H
+#define ARANGOD_VOC_BASE_SHAPE_ACCESSOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -36,9 +36,6 @@
 
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shape access
@@ -52,9 +49,6 @@ typedef struct TRI_shape_access_s {
   void const** _code;          // bytecode
 } TRI_shape_access_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a shape accessor
@@ -85,12 +79,4 @@ void TRI_PrintShapeAccessor(TRI_shape_access_t*);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

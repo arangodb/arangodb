@@ -39,9 +39,6 @@ using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class CalculationBlock
-// -----------------------------------------------------------------------------
 
 CalculationBlock::CalculationBlock(ExecutionEngine* engine,
                                    CalculationNode const* en)
@@ -235,8 +232,3 @@ AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
   return res.release();
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

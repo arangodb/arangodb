@@ -27,9 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__VOCBASE_PRIVATE_H
-#define ARANGODB_V8SERVER_V8__VOCBASE_PRIVATE_H
-
+#ifndef ARANGOD_V8_SERVER_V8_VOCBASEPRIVATE_H
+#define ARANGOD_V8_SERVER_V8_VOCBASEPRIVATE_H 1
 #include "Basics/Common.h"
 #include "V8/v8-utils.h"
 #include "v8-vocbase.h"
@@ -55,9 +54,6 @@ extern int32_t const WRP_VOCBASE_TYPE;
 
 extern int32_t const WRP_VOCBASE_COL_TYPE;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro to make sure we won't continue if we are inside a transaction

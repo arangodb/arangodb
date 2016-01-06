@@ -27,8 +27,8 @@
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_THREAD_POOL_H
-#define ARANGODB_BASICS_THREAD_POOL_H 1
+#ifndef LIB_BASICS_THREAD_POOL_H
+#define LIB_BASICS_THREAD_POOL_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
@@ -43,16 +43,9 @@ namespace basics {
 
 class WorkerThread;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        ThreadPool
-// -----------------------------------------------------------------------------
 
 class ThreadPool {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ThreadPool(ThreadPool const&) = delete;
   ThreadPool& operator=(ThreadPool const&) = delete;
@@ -61,11 +54,7 @@ class ThreadPool {
 
   ~ThreadPool();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of threads in the pool
@@ -99,11 +88,7 @@ class ThreadPool {
     _condition.signal();
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   triagens::basics::ConditionVariable _condition;
 
@@ -121,12 +106,4 @@ class ThreadPool {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

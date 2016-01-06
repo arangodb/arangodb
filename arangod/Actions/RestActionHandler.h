@@ -27,22 +27,16 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ACTIONS_REST_ACTION_HANDLER_H
-#define ARANGODB_ACTIONS_REST_ACTION_HANDLER_H 1
+#ifndef ARANGOD_ACTIONS_REST_ACTION_HANDLER_H
+#define ARANGOD_ACTIONS_REST_ACTION_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Actions/actions.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 class TRI_action_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 RestActionHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -52,11 +46,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestActionHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor options
@@ -66,11 +56,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
     TRI_vocbase_t* _vocbase;
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -78,11 +64,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
   RestActionHandler(rest::HttpRequest*, action_options_t*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -102,11 +84,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
   bool cancel() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes an action
@@ -114,11 +92,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
   TRI_action_result_t executeAction();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief action
@@ -143,12 +117,4 @@ class RestActionHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

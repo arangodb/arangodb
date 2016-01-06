@@ -27,8 +27,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_SERVER_H
-#define ARANGODB_VOC_BASE_SERVER_H 1
+#ifndef ARANGOD_VOC_BASE_SERVER_H
+#define ARANGOD_VOC_BASE_SERVER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/locks.h"
@@ -53,9 +53,6 @@ class ApplicationEndpointServer;
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server structure
@@ -102,9 +99,6 @@ struct TRI_server_t {
 
 extern size_t PageSize;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a server instance with configuration
@@ -120,9 +114,6 @@ int TRI_InitServer(TRI_server_t*, triagens::rest::ApplicationEndpointServer*,
 
 void TRI_InitServerGlobals(void);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the global server id
@@ -257,9 +248,6 @@ int TRI_GetDatabaseNamesServer(TRI_server_t*, std::vector<std::string>&);
 
 void TRI_GetDatabaseDefaultsServer(TRI_server_t*, TRI_vocbase_defaults_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    tick functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new tick
@@ -279,9 +267,6 @@ void TRI_UpdateTickServer(TRI_voc_tick_t);
 
 TRI_voc_tick_t TRI_CurrentTickServer(void);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   other functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief msyncs a memory block between begin (incl) and end (excl)
@@ -303,12 +288,4 @@ TRI_vocbase_operationmode_e TRI_GetOperationModeServer();
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

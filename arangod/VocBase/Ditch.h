@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_DITCH_H
-#define ARANGODB_VOC_BASE_DITCH_H 1
+#ifndef ARANGOD_VOC_BASE_DITCH_H
+#define ARANGOD_VOC_BASE_DITCH_H 1
 
 #include "Basics/Common.h"
 #include "Basics/locks.h"
@@ -36,9 +36,6 @@
 
 #include <functional>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_document_collection_t;
 struct TRI_collection_t;
@@ -49,18 +46,11 @@ namespace arango {
 
 class Ditches;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class Ditch
-// -----------------------------------------------------------------------------
 
 class Ditch {
   friend class Ditches;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   Ditch(Ditch const&) = delete;
   Ditch& operator=(Ditch const&) = delete;
@@ -70,11 +60,7 @@ class Ditch {
  public:
   virtual ~Ditch();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ditch type
@@ -90,11 +76,7 @@ class Ditch {
     TRI_DITCH_COLLECTION_DROP
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the ditch type
@@ -138,19 +120,11 @@ class Ditch {
 
   struct TRI_document_collection_t* collection() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   Ditches* _ditches;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   Ditch* _prev;
   Ditch* _next;
@@ -158,9 +132,6 @@ class Ditch {
   int _line;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class DocumentDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document ditch
@@ -188,9 +159,6 @@ class DocumentDitch : public Ditch {
   bool _usedByTransaction;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class ReplicationDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication ditch
@@ -208,9 +176,6 @@ class ReplicationDitch : public Ditch {
   char const* typeName() const override final { return "replication"; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CompactionDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction ditch
@@ -228,9 +193,6 @@ class CompactionDitch : public Ditch {
   char const* typeName() const override final { return "compaction"; }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class DropDatafileDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile removal ditch
@@ -258,9 +220,6 @@ class DropDatafileDitch : public Ditch {
   std::function<void(struct TRI_datafile_s*, void*)> _callback;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RenameDatafileDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile rename ditch
@@ -288,9 +247,6 @@ class RenameDatafileDitch : public Ditch {
   std::function<void(struct TRI_datafile_s*, void*)> _callback;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CollectionDitch
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection unload ditch
@@ -342,20 +298,13 @@ class DropCollectionDitch : public Ditch {
   std::function<bool(struct TRI_collection_t*, void*)> _callback;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     class Ditches
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief doubly linked list of ditches
 ////////////////////////////////////////////////////////////////////////////////
 
 class Ditches {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   Ditches(Ditches const&) = delete;
   Ditches& operator=(Ditches const&) = delete;
@@ -364,11 +313,7 @@ class Ditches {
   explicit Ditches(struct TRI_document_collection_t*);
   ~Ditches();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the ditches - to be called on shutdown only
@@ -484,11 +429,7 @@ class Ditches {
       std::function<bool(struct TRI_collection_t*, void*)> callback,
       char const* filename, int line);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief inserts the ditch into the linked list of ditches
@@ -502,11 +443,7 @@ class Ditches {
 
   void unlink(Ditch*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   struct TRI_document_collection_t* _collection;
 
@@ -520,12 +457,4 @@ class Ditches {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,14 +27,11 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_FULLTEXT_INDEX_FULLTEXT__QUERY_H
-#define ARANGODB_FULLTEXT_INDEX_FULLTEXT__QUERY_H 1
+#ifndef ARANGOD_FULLTEXT_INDEX_FULLTEXT_QUERY_H
+#define ARANGOD_FULLTEXT_INDEX_FULLTEXT_QUERY_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of search words in a query
@@ -42,9 +39,6 @@
 
 #define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext query match options
@@ -78,9 +72,6 @@ typedef struct TRI_fulltext_query_s {
   size_t _maxResults;
 } TRI_fulltext_query_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query
@@ -94,9 +85,6 @@ TRI_fulltext_query_t* TRI_CreateQueryFulltextIndex(size_t, size_t);
 
 void TRI_FreeQueryFulltextIndex(TRI_fulltext_query_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query from a query string
@@ -116,12 +104,4 @@ bool TRI_SetQueryFulltextIndex(TRI_fulltext_query_t*, size_t, char const*,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

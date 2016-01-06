@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MEMORY__MAP_H
-#define ARANGODB_BASICS_C_MEMORY__MAP_H 1
+#ifndef LIB_BASICS_MEMORY_MAP_H
+#define LIB_BASICS_MEMORY_MAP_H 1
 
 #include "Basics/Common.h"
 
@@ -58,9 +58,6 @@
 #include "Basics/memory-map-win32.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MEMORY MAPPING
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes changes made in memory back to disk
@@ -99,12 +96,4 @@ int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

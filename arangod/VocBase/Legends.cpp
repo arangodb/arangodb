@@ -339,12 +339,4 @@ void JsonLegend::dump(void* buf) {
     memset(c + shapeDataLength, 0, static_cast<size_t>(i) - shapeDataLength);
   }
 }
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

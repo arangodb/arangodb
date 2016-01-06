@@ -33,13 +33,7 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      AqlItemBlock
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the block
@@ -204,9 +198,6 @@ void AqlItemBlock::destroy() {
   _valueCount.clear();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shrink the block to the specified number of rows
@@ -592,8 +583,3 @@ Json AqlItemBlock::toJson(triagens::arango::AqlTransaction* trx) const {
   return json;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ENDPOINT_IP_V4_H
-#define ARANGODB_REST_ENDPOINT_IP_V4_H 1
+#ifndef LIB_REST_ENDPOINT_IP_V4_H
+#define LIB_REST_ENDPOINT_IP_V4_H 1
 
 #include "Basics/Common.h"
 
@@ -37,16 +37,9 @@
 namespace triagens {
 namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      EndpointIpV4
-// -----------------------------------------------------------------------------
 
 class EndpointIpV4 final : public EndpointIp {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
@@ -61,11 +54,7 @@ class EndpointIpV4 final : public EndpointIp {
 
   ~EndpointIpV4();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get endpoint domain
@@ -86,12 +75,4 @@ class EndpointIpV4 final : public EndpointIp {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

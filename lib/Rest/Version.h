@@ -27,17 +27,14 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_VERSION_H
-#define ARANGODB_REST_VERSION_H 1
+#ifndef LIB_REST_VERSION_H
+#define LIB_REST_VERSION_H 1
 
 #include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 struct TRI_memory_zone_s;
@@ -45,16 +42,9 @@ struct TRI_memory_zone_s;
 namespace triagens {
 namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     class Version
-// -----------------------------------------------------------------------------
 
 class Version {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the version information
@@ -64,11 +54,7 @@ class Version {
   Version(Version const&) = delete;
   Version& operator=(Version const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           public static
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize
@@ -166,11 +152,7 @@ class Version {
 
   static void getVPack(VPackBuilder&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           public static
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   static std::map<std::string, std::string> Values;
 };
@@ -179,12 +161,4 @@ class Version {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PROGRAM_OPTIONS_DESCRIPTION_H
-#define ARANGODB_BASICS_PROGRAM_OPTIONS_DESCRIPTION_H 1
+#ifndef LIB_BASICS_PROGRAM_OPTIONS_DESCRIPTION_H
+#define LIB_BASICS_PROGRAM_OPTIONS_DESCRIPTION_H 1
 
 #include "Basics/Common.h"
 #include <functional>
@@ -38,9 +38,6 @@ struct TRI_json_t;
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   class ProgramOptionsDescription
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ProgramOptionsDescription
@@ -49,11 +46,7 @@ namespace basics {
 class ProgramOptionsDescription {
   friend class ProgramOptions;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -79,11 +72,7 @@ class ProgramOptionsDescription {
 
   ProgramOptionsDescription& operator=(const ProgramOptionsDescription&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief changes the name
@@ -244,11 +233,7 @@ class ProgramOptionsDescription {
 
   struct TRI_json_t* getDefault(std::string const&) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief option types
@@ -272,11 +257,7 @@ class ProgramOptionsDescription {
     OPTION_TYPE_TIME
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief computes all names
@@ -312,11 +293,7 @@ class ProgramOptionsDescription {
 
   std::string check(const std::string& name, void* value);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief name of the section
@@ -481,12 +458,4 @@ class ProgramOptionsDescription {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

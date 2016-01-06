@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_SORT_CONDITION_H
-#define ARANGODB_AQL_SORT_CONDITION_H 1
+#ifndef ARANGOD_AQL_SORT_CONDITION_H
+#define ARANGOD_AQL_SORT_CONDITION_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Variable.h"
@@ -38,16 +38,9 @@ namespace triagens {
 namespace aql {
 struct AstNode;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class SortCondition
-// -----------------------------------------------------------------------------
 
 class SortCondition {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   SortCondition(SortCondition const&) = delete;
   SortCondition& operator=(SortCondition const&) = delete;
@@ -77,11 +70,7 @@ class SortCondition {
 
   ~SortCondition();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the condition consists only of attribute accesses
@@ -134,11 +123,7 @@ class SortCondition {
       Variable const*,
       std::vector<std::vector<triagens::basics::AttributeName>> const&) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sort expressions
@@ -177,12 +162,4 @@ class SortCondition {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

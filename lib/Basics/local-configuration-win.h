@@ -29,16 +29,13 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_LOCAL__CONFIGURATION__WIN_H
-#define ARANGODB_BASICS_C_LOCAL__CONFIGURATION__WIN_H 1
+#ifndef LIB_BASICS_LOCAL_CONFIGURATION_WIN_H
+#define LIB_BASICS_LOCAL_CONFIGURATION_WIN_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     Special Configuration Options
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enable logging
@@ -48,12 +45,4 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

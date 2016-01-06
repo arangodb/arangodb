@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_AQL_ITEM_BLOCK_H
-#define ARANGODB_AQL_AQL_ITEM_BLOCK_H 1
+#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_H
+#define ARANGOD_AQL_AQL_ITEM_BLOCK_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -39,9 +39,6 @@ struct TRI_document_collection_t;
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      AqlItemBlock
-// -----------------------------------------------------------------------------
 
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -64,11 +61,7 @@ namespace aql {
 class AqlItemBlock {
   friend class AqlItemBlockManager;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the block
@@ -87,11 +80,7 @@ class AqlItemBlock {
  private:
   void destroy();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief getValue, get the value of a register
@@ -350,11 +339,7 @@ class AqlItemBlock {
 
   triagens::basics::Json toJson(triagens::arango::AqlTransaction* trx) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -399,8 +384,3 @@ class AqlItemBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

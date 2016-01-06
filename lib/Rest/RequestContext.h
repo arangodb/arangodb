@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_CONTEXT_H
-#define ARANGODB_REST_REQUEST_CONTEXT_H 1
+#ifndef LIB_REST_REQUEST_CONTEXT_H
+#define LIB_REST_REQUEST_CONTEXT_H 1
 
 #include "Basics/Common.h"
 #include "Rest/RequestUser.h"
@@ -40,16 +40,9 @@ namespace rest {
 
 class HttpRequest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class RequestContext
-// -----------------------------------------------------------------------------
 
 class RequestContext {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the request context
@@ -63,11 +56,7 @@ class RequestContext {
   RequestContext(const RequestContext&);
   RequestContext& operator=(const RequestContext&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get request user
@@ -87,11 +76,7 @@ class RequestContext {
 
   virtual HttpResponse::HttpResponseCode authenticate() = 0;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the request of the context
@@ -104,12 +89,4 @@ class RequestContext {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

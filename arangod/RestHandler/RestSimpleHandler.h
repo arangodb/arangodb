@@ -27,17 +27,14 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_SIMPLE_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_SIMPLE_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_SIMPLE_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_SIMPLE_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class RestSimpleHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -53,11 +50,7 @@ class ApplicationV8;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestSimpleHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -67,11 +60,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
                     std::pair<triagens::arango::ApplicationV8*,
                               triagens::aql::QueryRegistry*>*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -85,11 +74,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
 
   bool cancel() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief register the currently running query
@@ -127,11 +112,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
 
   void lookupByKeys(VPackSlice const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief _applicationV8
@@ -168,12 +149,4 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

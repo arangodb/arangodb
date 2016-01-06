@@ -28,18 +28,12 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_ASSOCIATIVE_H
-#define ARANGODB_BASICS_C_ASSOCIATIVE_H 1
+#ifndef LIB_BASICS_ASSOCIATIVE_H
+#define LIB_BASICS_ASSOCIATIVE_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              ASSOCIATIVE POINTERS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array of pointers
@@ -74,9 +68,6 @@ typedef struct TRI_associative_pointer_s {
   TRI_memory_zone_t* _memoryZone;
 } TRI_associative_pointer_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes an array
@@ -97,9 +88,6 @@ int TRI_InitAssociativePointer(
 
 void TRI_DestroyAssociativePointer(TRI_associative_pointer_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General hash function that can be used to hash a string key
@@ -167,12 +155,4 @@ void* TRI_RemoveKeyAssociativePointer(TRI_associative_pointer_t*,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

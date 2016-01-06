@@ -38,9 +38,6 @@ using namespace triagens::arango;
 
 const std::string graphs = "_graphs";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      GraphFactory
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Load a graph from the _graphs collection; local and coordinator way

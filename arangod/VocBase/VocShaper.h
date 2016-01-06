@@ -28,8 +28,8 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_VOC_SHAPER_H
-#define ARANGODB_VOC_BASE_VOC_SHAPER_H 1
+#ifndef ARANGOD_VOC_BASE_VOC_SHAPER_H
+#define ARANGOD_VOC_BASE_VOC_SHAPER_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/datafile.h"
@@ -41,17 +41,10 @@
 
 #define NUM_SHAPE_ACCESSORS 8
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         VocShaper
-// -----------------------------------------------------------------------------
 
 class VocShaper : public Shaper {
  public:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   VocShaper(VocShaper const&);
   VocShaper& operator=(VocShaper const&);
 
@@ -59,11 +52,7 @@ class VocShaper : public Shaper {
 
   ~VocShaper();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the shaper's memory zone
@@ -162,11 +151,7 @@ class VocShaper : public Shaper {
                          TRI_shape_pid_t pid, TRI_shaped_json_t* result,
                          TRI_shape_t const** shape);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief looks up a shape path by identifier
@@ -174,11 +159,7 @@ class VocShaper : public Shaper {
 
   TRI_shape_path_t const* findShapePathByName(char const* name, bool create);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   TRI_memory_zone_t* _memoryZone;
   TRI_document_collection_t* _collection;
@@ -306,12 +287,4 @@ void TRI_FillShapedSub(TRI_shaped_sub_t*, TRI_shaped_json_t const*,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

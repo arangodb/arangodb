@@ -26,8 +26,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H
-#define ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_SHUTDOWN_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "ApplicationServer/ApplicationServer.h"
@@ -37,20 +37,13 @@
 namespace triagens {
 namespace admin {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RestShutdownHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestShutdownHandler : public RestBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -58,11 +51,7 @@ class RestShutdownHandler : public RestBaseHandler {
 
   RestShutdownHandler(rest::HttpRequest*, void* applicationServer);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -76,11 +65,7 @@ class RestShutdownHandler : public RestBaseHandler {
 
   status_t execute() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -93,12 +78,4 @@ class RestShutdownHandler : public RestBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

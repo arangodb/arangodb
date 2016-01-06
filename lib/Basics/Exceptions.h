@@ -28,8 +28,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_EXCEPTIONS_H
-#define ARANGODB_BASICS_EXCEPTIONS_H 1
+#ifndef LIB_BASICS_EXCEPTIONS_H
+#define LIB_BASICS_EXCEPTIONS_H 1
 
 #include "Basics/Common.h"
 
@@ -37,9 +37,6 @@
 
 #include "Basics/StringUtils.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief diagnostic output
@@ -84,16 +81,10 @@
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw triagens::basics::Exception(code, message, __FILE__, __LINE__)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class Exception
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief arango exception type
@@ -132,12 +123,4 @@ class Exception : public virtual std::exception {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

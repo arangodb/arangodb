@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_UPLOAD_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_UPLOAD_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_UPLOAD_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -39,15 +39,8 @@ namespace triagens {
 namespace arango {
 
 class RestUploadHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION-- RestUploadHandler
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -61,11 +54,7 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
 
   ~RestUploadHandler();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               HttpHandler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -85,12 +74,4 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

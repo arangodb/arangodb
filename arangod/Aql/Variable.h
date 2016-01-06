@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_VARIABLE_H
-#define ARANGODB_AQL_VARIABLE_H 1
+#ifndef ARANGOD_AQL_VARIABLE_H
+#define ARANGOD_AQL_VARIABLE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -37,9 +37,6 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   struct Variable
-// -----------------------------------------------------------------------------
 
 struct Variable {
   ////////////////////////////////////////////////////////////////////////////////
@@ -58,11 +55,7 @@ struct Variable {
 
   ~Variable();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a constant value for the variable
   /// this constant value is used for constant propagation in optimizations
@@ -108,11 +101,7 @@ struct Variable {
   static Variable const* replace(
       Variable const*, std::unordered_map<VariableId, Variable const*> const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief variable name
   ////////////////////////////////////////////////////////////////////////////////
@@ -154,12 +143,4 @@ struct Variable {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

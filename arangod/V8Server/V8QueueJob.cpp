@@ -41,9 +41,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new V8 job
@@ -74,9 +71,6 @@ V8QueueJob::~V8QueueJob() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Job methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -176,12 +170,4 @@ void V8QueueJob::cleanup(DispatcherQueue* queue) {
 
 void V8QueueJob::handleError(Exception const& ex) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

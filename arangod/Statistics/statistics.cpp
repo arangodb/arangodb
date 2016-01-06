@@ -38,9 +38,6 @@
 using namespace triagens::basics;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                              private request statistics variables
-// -----------------------------------------------------------------------------
 
 static size_t const QUEUE_SIZE = 1000;
 
@@ -66,9 +63,6 @@ static boost::lockfree::queue<TRI_request_statistics_t*,
                               boost::lockfree::capacity<QUEUE_SIZE>>
     RequestFinishedList;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                              private request statistics functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes a statistics block
@@ -143,9 +137,6 @@ static size_t ProcessAllRequestStatistics() {
   return count;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                               public request statistics functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
@@ -209,9 +200,6 @@ void TRI_FillRequestStatistics(StatisticsDistribution& totalTime,
   bytesReceived = *TRI_BytesReceivedDistributionStatistics;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                           private connection statistics variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for connection data
@@ -227,9 +215,6 @@ static boost::lockfree::queue<TRI_connection_statistics_t*,
                               boost::lockfree::capacity<QUEUE_SIZE>>
     ConnectionFreeList;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                            public connection statistics functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
@@ -301,9 +286,6 @@ void TRI_FillConnectionStatistics(StatisticsCounter& httpConnections,
   connectionTime = *TRI_ConnectionTimeDistributionStatistics;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                public server statistics functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the global server statistics
@@ -318,9 +300,6 @@ TRI_server_statistics_t TRI_GetServerStatistics() {
   return server;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown flag
@@ -334,9 +313,6 @@ static std::atomic<bool> Shutdown;
 
 static TRI_thread_t StatisticsThread;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for new statistics and process them
@@ -405,9 +381,6 @@ static void StatisticsQueueWorker(void* data) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   public variable
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics enabled flags
@@ -511,9 +484,6 @@ StatisticsDistribution* TRI_BytesReceivedDistributionStatistics;
 
 TRI_server_statistics_t TRI_ServerStatistics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the current wallclock time
@@ -521,9 +491,6 @@ TRI_server_statistics_t TRI_ServerStatistics;
 
 double TRI_StatisticsTime() { return TRI_microtime(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
@@ -616,12 +583,4 @@ void TRI_ShutdownStatistics(void) {
   TRI_ASSERT(res == 0);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

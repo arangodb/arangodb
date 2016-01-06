@@ -195,9 +195,6 @@ class SimpleEdgeExpander {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            BasicOptions FUNCTIONS
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Insert a new vertex matcher object
@@ -324,9 +321,6 @@ bool BasicOptions::matchesEdge(EdgeId& e, TRI_doc_mptr_copy_t* edge) const {
   return it->second->matches(e.cid, edge);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     ShortestPathOptions FUNCTIONS
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
@@ -340,9 +334,6 @@ bool ShortestPathOptions::matchesVertex(VertexId const& v) const {
   return BasicOptions::matchesVertex(v);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        NeighborsOptions FUNCTIONS
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Checks if a vertex matches to given examples
@@ -371,9 +362,6 @@ void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
   _explicitCollections.emplace(cid);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          private Helper Functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Wrapper for the shortest path computation
@@ -667,9 +655,6 @@ void TRI_RunNeighborsSearch(vector<EdgeCollectionInfo*>& collectionInfos,
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   class SingleServerTraversalPath
-// -----------------------------------------------------------------------------
 
 Json* SingleServerTraversalPath::pathToJson(Transaction* trx,
                                             CollectionNameResolver* resolver) {
@@ -761,9 +746,6 @@ Json* SingleServerTraversalPath::vertexToJson(Transaction* trx,
                            resolver, v.cid, &mptr));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class DepthFirstTraverser
-// -----------------------------------------------------------------------------
 
 DepthFirstTraverser::DepthFirstTraverser(
     std::vector<TRI_document_collection_t*> const& edgeCollections,

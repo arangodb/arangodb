@@ -34,9 +34,6 @@ using namespace std;
 using namespace triagens::arango;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class SubqueryBlock
-// -----------------------------------------------------------------------------
 
 SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
                              ExecutionBlock* subquery)
@@ -194,8 +191,3 @@ void SubqueryBlock::destroySubqueryResults(
   delete results;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

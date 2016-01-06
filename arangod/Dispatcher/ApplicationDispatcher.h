@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DISPATCHER_APPLICATION_DISPATCHER_H
-#define ARANGODB_DISPATCHER_APPLICATION_DISPATCHER_H 1
+#ifndef ARANGOD_DISPATCHER_APPLICATION_DISPATCHER_H
+#define ARANGOD_DISPATCHER_APPLICATION_DISPATCHER_H 1
 
 #include "Basics/Common.h"
 
@@ -36,9 +36,6 @@
 
 #include "Scheduler/ApplicationScheduler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -46,9 +43,6 @@ class ApplicationScheduler;
 class Dispatcher;
 class Task;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       class ApplicationDispatcher
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server with dispatcher
@@ -59,11 +53,7 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
   ApplicationDispatcher(ApplicationDispatcher const&);
   ApplicationDispatcher& operator=(ApplicationDispatcher const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -77,11 +67,7 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   ~ApplicationDispatcher();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets the scheduler
@@ -125,11 +111,7 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   void setProcessorAffinity(const std::vector<size_t>& cores);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        ApplicationFeature
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -167,11 +149,7 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   void stop();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief builds the dispatcher
   ////////////////////////////////////////////////////////////////////////////////
@@ -184,11 +162,7 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
   void buildDispatcherReporter();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief application dispatcher
@@ -231,12 +205,4 @@ class ApplicationDispatcher : virtual public ApplicationFeature {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

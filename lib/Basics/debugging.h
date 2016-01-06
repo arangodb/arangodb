@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_DEBUGGING_H
-#define ARANGODB_BASICS_C_DEBUGGING_H 1
+#ifndef LIB_BASICS_DEBUGGING_H
+#define LIB_BASICS_DEBUGGING_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
@@ -36,9 +36,6 @@
 
 #include <ostream>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief macro TRI_IF_FAILURE
@@ -57,9 +54,6 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
@@ -227,12 +221,4 @@ std::ostream& operator<<(std::ostream& stream,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

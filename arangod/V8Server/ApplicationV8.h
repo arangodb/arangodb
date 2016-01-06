@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_APPLICATION_V8_H
-#define ARANGODB_V8SERVER_APPLICATION_V8_H 1
+#ifndef ARANGOD_V8_SERVER_APPLICATION_V8_H
+#define ARANGOD_V8_SERVER_APPLICATION_V8_H 1
 
 #include "ApplicationServer/ApplicationFeature.h"
 
@@ -37,9 +37,6 @@
 #include "Basics/ConditionVariable.h"
 #include "V8/JSLoader.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
@@ -61,9 +58,6 @@ class ApplicationScheduler;
 
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class GlobalContextMethods
-// -----------------------------------------------------------------------------
 
 class GlobalContextMethods {
  public:
@@ -159,9 +153,6 @@ class GlobalContextMethods {
   static char const* CodeWarmupExports;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class BufferAllocator
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a buffer allocator used for V8
@@ -184,9 +175,6 @@ class BufferAllocator : public v8::ArrayBuffer::Allocator {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ApplicationV8
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application simple user and session management feature
@@ -196,11 +184,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   ApplicationV8(ApplicationV8 const&) = delete;
   ApplicationV8& operator=(ApplicationV8 const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief V8 isolate and context
@@ -285,11 +269,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
     bool _hasActiveExternals;
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -304,11 +284,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
 
   ~ApplicationV8();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the app-path
   ////////////////////////////////////////////////////////////////////////////////
@@ -392,11 +368,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
 
   void prepareServer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        ApplicationFeature
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -434,11 +406,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
 
   void stop();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine which of the free contexts should be picked for the GC
@@ -470,11 +438,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
 
   void shutdownV8Instance(size_t i);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief server object
@@ -710,6 +674,4 @@ class ApplicationV8 : public rest::ApplicationFeature {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

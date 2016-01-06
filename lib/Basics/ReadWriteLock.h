@@ -28,8 +28,8 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_READ_WRITE_LOCK_H
-#define ARANGODB_BASICS_READ_WRITE_LOCK_H 1
+#ifndef LIB_BASICS_READ_WRITE_LOCK_H
+#define LIB_BASICS_READ_WRITE_LOCK_H 1
 
 #include "Basics/Common.h"
 
@@ -40,9 +40,6 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ReadWriteLock
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read-write lock
@@ -52,11 +49,7 @@ class ReadWriteLock {
   ReadWriteLock(ReadWriteLock const&);
   ReadWriteLock& operator=(ReadWriteLock const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a read-write lock
@@ -70,11 +63,7 @@ class ReadWriteLock {
 
   ~ReadWriteLock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check for read locked
@@ -122,11 +111,7 @@ class ReadWriteLock {
 
   void unlock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief read-write lock variable
@@ -169,12 +154,4 @@ class ReadWriteLock {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

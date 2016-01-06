@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_V8TRANSACTION_CONTEXT_H
-#define ARANGODB_UTILS_V8TRANSACTION_CONTEXT_H 1
+#ifndef ARANGOD_UTILS_V8_TRANSACTION_CONTEXT_H
+#define ARANGOD_UTILS_V8_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
 #include "Utils/TransactionContext.h"
@@ -42,16 +42,8 @@ namespace triagens {
 namespace arango {
 
 class V8TransactionContext final : public TransactionContext {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        class
-  // V8TransactionContext
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the context
@@ -65,11 +57,7 @@ class V8TransactionContext final : public TransactionContext {
 
   ~V8TransactionContext();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -141,11 +129,7 @@ class V8TransactionContext final : public TransactionContext {
 
   static bool IsEmbedded();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the v8 thread-local "global" transaction context
@@ -194,12 +178,4 @@ class V8TransactionContext final : public TransactionContext {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

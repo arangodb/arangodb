@@ -35,9 +35,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  methods of Index
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the index
@@ -151,8 +148,3 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

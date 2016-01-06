@@ -26,8 +26,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8LINE_EDITOR_H
-#define ARANGODB_V8_V8LINE_EDITOR_H 1
+#ifndef LIB_V8_V8_LINE_EDITOR_H
+#define LIB_V8_V8_LINE_EDITOR_H 1
 
 #include "Utilities/LineEditor.h"
 
@@ -35,9 +35,6 @@
 
 namespace arangodb {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class V8LineEditor
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief V8LineEditor
@@ -47,11 +44,7 @@ class V8LineEditor : public LineEditor {
   V8LineEditor(LineEditor const&) = delete;
   V8LineEditor& operator=(LineEditor const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -66,11 +59,7 @@ class V8LineEditor : public LineEditor {
 
   ~V8LineEditor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the editor's isolate
@@ -90,11 +79,7 @@ class V8LineEditor : public LineEditor {
 
   void setExecutingCommand(bool value) { _executingCommand.store(value); }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief isolate
@@ -118,6 +103,4 @@ class V8LineEditor : public LineEditor {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

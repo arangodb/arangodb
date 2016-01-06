@@ -41,9 +41,6 @@ using namespace triagens::aql;
 
 const static bool Optional = true;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum register id that can be assigned.
@@ -81,9 +78,6 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(UPSERT), "UpsertNode"},
     {static_cast<int>(TRAVERSAL), "TraversalNode"}};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          methods of ExecutionNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the type name of the node
@@ -595,9 +589,6 @@ ExecutionNode const* ExecutionNode::getLoop() const {
   return nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory for (optional) variables from json.
@@ -815,9 +806,6 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   */
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                struct ExecutionNode::RegisterPlan
-// -----------------------------------------------------------------------------
 
 // Copy constructor used for a subquery:
 ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v,
@@ -1159,9 +1147,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          methods of SingletonNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SingletonNode
@@ -1193,9 +1178,6 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
   return 1.0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                methods of EnumerateCollectionNode
-// -----------------------------------------------------------------------------
 
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, triagens::basics::Json const& base)
@@ -1266,9 +1248,6 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems * (_random ? 1.005 : 1.0);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      methods of EnumerateListNode
-// -----------------------------------------------------------------------------
 
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      triagens::basics::Json const& base)
@@ -1372,9 +1351,6 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
   return depCost + static_cast<double>(length) * incoming;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              methods of LimitNode
-// -----------------------------------------------------------------------------
 
 LimitNode::LimitNode(ExecutionPlan* plan, triagens::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -1418,9 +1394,6 @@ double LimitNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        methods of CalculationNode
-// -----------------------------------------------------------------------------
 
 CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  triagens::basics::Json const& base)
@@ -1492,9 +1465,6 @@ double CalculationNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           methods of SubqueryNode
-// -----------------------------------------------------------------------------
 
 SubqueryNode::SubqueryNode(ExecutionPlan* plan,
                            triagens::basics::Json const& base)
@@ -1689,9 +1659,6 @@ bool SubqueryNode::canThrow() {
   return finder._canThrow;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of FilterNode
-// -----------------------------------------------------------------------------
 
 FilterNode::FilterNode(ExecutionPlan* plan, triagens::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -1747,9 +1714,6 @@ double FilterNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of ReturnNode
-// -----------------------------------------------------------------------------
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, triagens::basics::Json const& base)
     : ExecutionNode(plan, base),
@@ -1802,9 +1766,6 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          methods of NoResultsNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for NoResultsNode
@@ -1832,8 +1793,3 @@ double NoResultsNode::estimateCost(size_t& nrItems) const {
   return 0.5;  // just to make it non-zero
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -53,9 +53,6 @@ using namespace triagens::arango;
     TRI_Free(zone, what);       \
     what = 0;                   \
   }
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -64,9 +61,6 @@ using namespace triagens::arango;
 RestEdgeHandler::RestEdgeHandler(HttpRequest* request)
     : RestDocumentHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock API_EDGE_CREATE
@@ -845,12 +839,4 @@ bool RestEdgeHandler::createDocumentCoordinator(string const& collname,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

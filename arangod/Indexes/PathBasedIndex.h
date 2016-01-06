@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_PATH_BASED_INDEX_H
-#define ARANGODB_INDEXES_PATH_BASED_INDEX_H 1
+#ifndef ARANGOD_INDEXES_PATH_BASED_INDEX_H
+#define ARANGOD_INDEXES_PATH_BASED_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
@@ -40,9 +40,6 @@
 struct TRI_json_t;
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class PathBasedIndex
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -74,16 +71,8 @@ class PathBasedIndex : public Index {
     size_t const n;
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                          shared Permuation
-  // struct
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   PathBasedIndex() = delete;
 
@@ -96,11 +85,7 @@ class PathBasedIndex : public Index {
 
   ~PathBasedIndex();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the index should reveal its fields
@@ -125,11 +110,7 @@ class PathBasedIndex : public Index {
     return TRI_index_element_t::memoryUsage(_paths.size());
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to insert a document into any index type
@@ -144,11 +125,7 @@ class PathBasedIndex : public Index {
 
   inline size_t numPaths() const { return _paths.size(); }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief helper function to transform AttributeNames into pid lists
@@ -173,11 +150,7 @@ class PathBasedIndex : public Index {
                         std::unordered_set<std::vector<TRI_shaped_json_t>>&,
                         std::vector<TRI_shaped_json_t>&, bool);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the shaper for the collection
@@ -208,12 +181,4 @@ class PathBasedIndex : public Index {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

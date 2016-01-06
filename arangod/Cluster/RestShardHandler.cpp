@@ -41,9 +41,6 @@ using namespace std;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -55,9 +52,6 @@ RestShardHandler::RestShardHandler(triagens::rest::HttpRequest* request,
   TRI_ASSERT(_dispatcher != nullptr);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -106,12 +100,4 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

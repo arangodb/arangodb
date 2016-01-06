@@ -27,16 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_TRI__STRINGS_H
-#define ARANGODB_BASICS_C_TRI__STRINGS_H 1
+#ifndef LIB_BASICS_TRI_STRINGS_H
+#define LIB_BASICS_TRI_STRINGS_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/vector.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an ASCII string to lower case
@@ -192,13 +189,7 @@ void TRI_FreeStringZ(TRI_memory_zone_t*, char*, char const* file, int line);
 void TRI_FreeString(TRI_memory_zone_t*, char*);
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     STRING ESCAPE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into printable representation
@@ -271,12 +262,4 @@ char* TRI_PrefixUtf8String(const char*, const uint32_t);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

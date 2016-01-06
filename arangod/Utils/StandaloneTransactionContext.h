@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_STANDALONE_TRANSACTION_CONTEXT_H
-#define ARANGODB_UTILS_STANDALONE_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGOD_UTILS_STANDALONE_TRANSACTION_CONTEXT_H
+#define ARANGOD_UTILS_STANDALONE_TRANSACTION_CONTEXT_H 1
 
 #include "Basics/Common.h"
 
@@ -45,16 +45,8 @@ namespace triagens {
 namespace arango {
 
 class StandaloneTransactionContext final : public TransactionContext {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                class
-  // StandaloneTransactionContext
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the context
@@ -68,11 +60,7 @@ class StandaloneTransactionContext final : public TransactionContext {
 
   ~StandaloneTransactionContext();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
@@ -110,11 +98,7 @@ class StandaloneTransactionContext final : public TransactionContext {
 
   bool isEmbeddable() const override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief collection name resolver
@@ -133,12 +117,4 @@ class StandaloneTransactionContext final : public TransactionContext {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

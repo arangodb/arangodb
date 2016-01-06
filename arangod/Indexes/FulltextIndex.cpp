@@ -38,9 +38,6 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extraction context
@@ -103,13 +100,7 @@ static bool ListTextExtractor(VocShaper* shaper, TRI_shape_t const* shape,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class FulltextIndex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 FulltextIndex::FulltextIndex(TRI_idx_iid_t iid,
                              TRI_document_collection_t* collection,
@@ -146,9 +137,6 @@ FulltextIndex::~FulltextIndex() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 size_t FulltextIndex::memory() const {
   return TRI_MemoryFulltextIndex(_fulltextIndex);
@@ -231,9 +219,6 @@ int FulltextIndex::cleanup() {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback function called by the fulltext index to determine the
@@ -336,12 +321,4 @@ TRI_fulltext_wordlist_t* FulltextIndex::wordlist(
   return wordlist;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

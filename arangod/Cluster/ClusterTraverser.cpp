@@ -33,9 +33,6 @@
 using ClusterTraversalPath = triagens::arango::traverser::ClusterTraversalPath;
 using ClusterTraverser = triagens::arango::traverser::ClusterTraverser;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class ClusterTraversalPath
-// -----------------------------------------------------------------------------
 
 triagens::basics::Json* ClusterTraversalPath::pathToJson(
     triagens::arango::Transaction*, triagens::arango::CollectionNameResolver*) {
@@ -81,9 +78,6 @@ triagens::basics::Json* ClusterTraversalPath::lastVertexToJson(
   return _traverser->vertexToJson(_path.vertices.back());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class ClusterTraverser
-// -----------------------------------------------------------------------------
 
 bool ClusterTraverser::VertexGetter::operator()(std::string const& edgeId,
                                                 std::string const& vertexId,

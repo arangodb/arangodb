@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_HANDLER_CREATOR_H
-#define ARANGODB_ADMIN_REST_HANDLER_CREATOR_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_HANDLER_CREATOR_H
+#define ARANGOD_REST_HANDLER_REST_HANDLER_CREATOR_H 1
 
 #include "Basics/Common.h"
 
@@ -40,9 +40,6 @@ class HttpRequest;
 
 namespace admin {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class RestHandlerCreator
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creator function
@@ -50,11 +47,7 @@ namespace admin {
 
 template <typename H>
 class RestHandlerCreator : public H {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public static
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create with void pointer data
@@ -86,12 +79,4 @@ class RestHandlerCreator : public H {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

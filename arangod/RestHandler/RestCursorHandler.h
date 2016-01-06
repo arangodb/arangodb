@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_CURSOR_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_CURSOR_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -39,9 +39,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class RestCursorHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -58,11 +55,7 @@ class Cursor;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -72,11 +65,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
                     std::pair<triagens::arango::ApplicationV8*,
                               triagens::aql::QueryRegistry*>*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -90,11 +79,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool cancel() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief processes the query and returns the results/cursor
@@ -103,11 +88,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   void processQuery(VPackSlice const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief register the currently running query
@@ -171,11 +152,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   void deleteCursor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief _applicationV8
@@ -212,12 +189,4 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

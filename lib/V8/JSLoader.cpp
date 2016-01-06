@@ -40,9 +40,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a loader
@@ -50,9 +47,6 @@ using namespace triagens::arango;
 
 JSLoader::JSLoader() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a named script in the global context
@@ -213,12 +207,4 @@ bool JSLoader::executeAllScripts(v8::Isolate* isolate,
   return ok;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

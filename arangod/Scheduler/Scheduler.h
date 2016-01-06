@@ -28,8 +28,8 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_SCHEDULER_H
-#define ARANGODB_SCHEDULER_SCHEDULER_H 1
+#ifndef ARANGOD_SCHEDULER_SCHEDULER_H
+#define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
 #include "Basics/Common.h"
 
@@ -38,9 +38,6 @@
 
 #include "Basics/Mutex.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 
@@ -53,9 +50,6 @@ namespace rest {
 class SchedulerThread;
 class TaskData;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class Scheduler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief input-output scheduler
@@ -65,11 +59,7 @@ class Scheduler : private TaskManager {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  static
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler singleton
@@ -77,11 +67,7 @@ class Scheduler : private TaskManager {
 
   static std::unique_ptr<Scheduler> SCHEDULER;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -105,11 +91,7 @@ class Scheduler : private TaskManager {
 
   virtual ~Scheduler();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief starts scheduler, keeps running
@@ -251,11 +233,7 @@ class Scheduler : private TaskManager {
 
   Task* lookupTaskById(uint64_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                            virtual public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief main event loop
@@ -337,11 +315,7 @@ class Scheduler : private TaskManager {
 
   virtual void signalTask(std::unique_ptr<TaskData>&) = 0;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a new task
@@ -357,11 +331,7 @@ class Scheduler : private TaskManager {
 
   int checkInsertTask(Task const*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of scheduler threads
@@ -375,11 +345,7 @@ class Scheduler : private TaskManager {
 
   SchedulerThread** threads;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                            static private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the signal handlers for the scheduler
@@ -387,11 +353,7 @@ class Scheduler : private TaskManager {
 
   static void initializeSignalHandlers();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief true if scheduler is shutting down
@@ -440,6 +402,4 @@ class Scheduler : private TaskManager {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

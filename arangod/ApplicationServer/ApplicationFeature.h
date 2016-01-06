@@ -27,25 +27,19 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_SERVER_APPLICATION_FEATURE_H
-#define ARANGODB_APPLICATION_SERVER_APPLICATION_FEATURE_H 1
+#ifndef ARANGOD_APPLICATION_SERVER_APPLICATION_FEATURE_H
+#define ARANGOD_APPLICATION_SERVER_APPLICATION_FEATURE_H 1
 
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationServer.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
 class ProgramOptionsDescription;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class ApplicationFeature
-// -----------------------------------------------------------------------------
 
 namespace rest {
 
@@ -58,11 +52,7 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationFeature const&);
   ApplicationFeature& operator=(ApplicationFeature const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -76,11 +66,7 @@ class ApplicationFeature {
 
   virtual ~ApplicationFeature();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the name
@@ -149,11 +135,7 @@ class ApplicationFeature {
 
   void disable();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief feature is disabled
@@ -161,11 +143,7 @@ class ApplicationFeature {
 
   bool _disabled;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief name of the feature
@@ -178,12 +156,4 @@ class ApplicationFeature {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -49,13 +49,7 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         REST_VOCBASE_BASE_HANDLER
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
@@ -131,9 +125,6 @@ const string RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 
 const string RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -151,9 +142,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a collection needs to be created on the fly
@@ -618,13 +606,7 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
   return p.steal();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           HANDLER
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a document handle
@@ -707,12 +689,4 @@ void RestVocbaseBaseHandler::finalizeExecute() {
   RestBaseHandler::finalizeExecute();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

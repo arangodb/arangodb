@@ -41,9 +41,6 @@
 
 // #define DEBUG_JSON_SHAPER 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 static bool FillShapeValueJson(VocShaper*, TRI_shape_value_t*,
                                TRI_json_t const*, size_t, bool);
@@ -55,9 +52,6 @@ template <typename T>
 static bool StringifyJsonShapeData(T*, TRI_string_buffer_t*, TRI_shape_t const*,
                                    char const*, uint64_t);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shape cache (caches pointer to last shape)
@@ -68,9 +62,6 @@ typedef struct shape_cache_s {
   TRI_shape_t const* _shape;
 } shape_cache_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a TRI_shape_t for debugging
@@ -2014,9 +2005,6 @@ static bool StringifyJsonShapeData(T* shaper, TRI_string_buffer_t* buffer,
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
@@ -2035,9 +2023,6 @@ void TRI_FreeShapedJson(TRI_memory_zone_t* zone, TRI_shaped_json_t* shaped) {
   TRI_Free(zone, shaped);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sorts a list of TRI_shape_value_t
@@ -2592,12 +2577,4 @@ template bool TRI_StringifyArrayShapedJson<triagens::basics::LegendReader>(
     triagens::basics::LegendReader*, struct TRI_string_buffer_s*,
     TRI_shaped_json_t const*, bool);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

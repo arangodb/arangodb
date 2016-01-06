@@ -53,9 +53,6 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace triagens::httpclient;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -99,9 +96,6 @@ ContinuousSyncer::ContinuousSyncer(
 
 ContinuousSyncer::~ContinuousSyncer() { abortOngoingTransactions(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run method, performs continuous synchronization
@@ -297,9 +291,6 @@ retry:
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abort all ongoing transactions
@@ -1518,12 +1509,4 @@ int ContinuousSyncer::followMasterLog(string& errorMsg,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

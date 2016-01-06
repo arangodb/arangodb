@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_INITIALIZE_BASICS_H
-#define ARANGODB_BASICS_INITIALIZE_BASICS_H 1
+#ifndef LIB_BASICS_INITIALIZE_BASICS_H
+#define LIB_BASICS_INITIALIZE_BASICS_H 1
 
 #include "Basics/Common.h"
 
@@ -73,12 +73,4 @@ extern void ShutdownBasics();
   } while (0)
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

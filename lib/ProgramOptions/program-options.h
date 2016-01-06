@@ -28,16 +28,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PROGRAM_OPTIONS_PROGRAM__OPTIONS_H
-#define ARANGODB_PROGRAM_OPTIONS_PROGRAM__OPTIONS_H 1
+#ifndef LIB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H
+#define LIB_PROGRAM_OPTIONS_PROGRAM_OPTIONS_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/vector.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief describes the supported description types
@@ -130,9 +127,6 @@ typedef struct TRI_program_options_s {
   TRI_vector_string_t _arguments;
 } TRI_program_options_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new program options description
@@ -164,9 +158,6 @@ void TRI_DestroyProgramOptions(TRI_program_options_t* options);
 
 void TRI_FreeProgramOptions(TRI_program_options_t* options);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a flag option
@@ -226,16 +217,5 @@ bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

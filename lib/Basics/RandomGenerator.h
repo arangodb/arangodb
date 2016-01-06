@@ -28,8 +28,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_RANDOM_GENERATOR_H
-#define ARANGODB_BASICS_RANDOM_GENERATOR_H 1
+#ifndef LIB_BASICS_RANDOM_GENERATOR_H
+#define LIB_BASICS_RANDOM_GENERATOR_H 1
 
 #include "Basics/Common.h"
 
@@ -197,12 +197,4 @@ class UniformCharacter {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

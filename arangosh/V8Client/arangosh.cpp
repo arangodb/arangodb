@@ -71,9 +71,6 @@ using namespace triagens::v8client;
 using namespace triagens::arango;
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief command prompt
@@ -191,9 +188,6 @@ static uint64_t GcInterval = 10;
 
 static bool VoiceMode = false;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              JavaScript functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
@@ -264,9 +258,6 @@ static void JS_StopOutputPager(
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   import function
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief imports a CSV file
@@ -458,9 +449,6 @@ static void JS_CompareString(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private enums
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enum for wrapped V8 objects
@@ -468,9 +456,6 @@ static void JS_CompareString(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 enum WRAP_CLASS_TYPES { WRAP_TYPE_CONNECTION = 1 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 typedef enum __eRunMode {
   eInteractive,
@@ -1917,9 +1902,6 @@ static bool RunJsLint(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   return ok;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -2627,12 +2609,4 @@ int main(int argc, char* args[]) {
   return ret;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

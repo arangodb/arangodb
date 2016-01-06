@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_CLUSTERTRAVERSER_H
-#define ARANGODB_CLUSTER_CLUSTERTRAVERSER_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H
+#define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H 1
 
 #include "VocBase/Traverser.h"
 
@@ -40,9 +40,6 @@ class Transaction;
 namespace traverser {
 
 class ClusterTraversalPath;
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class ClusterTraverser
-// -----------------------------------------------------------------------------
 
 class ClusterTraverser : public Traverser {
  public:
@@ -76,19 +73,11 @@ class ClusterTraverser : public Traverser {
   triagens::basics::Json* vertexToJson(std::string const&) const;
 
  private:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   bool vertexMatchesCondition(TRI_json_t*,
                               std::vector<TraverserExpression*> const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // classes
-  // -----------------------------------------------------------------------------
-
+  
   class VertexGetter {
    public:
     explicit VertexGetter(ClusterTraverser* traverser)
@@ -115,11 +104,7 @@ class ClusterTraverser : public Traverser {
     size_t _continueConst;
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   std::unordered_map<std::string, TRI_json_t*> _edges;
 
   std::unordered_map<std::string, TRI_json_t*> _vertices;

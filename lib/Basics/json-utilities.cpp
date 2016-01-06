@@ -33,9 +33,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
                                   TRI_json_t const* lhs, TRI_json_t const* rhs,
@@ -178,9 +175,6 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
   return TRI_UniquifyArrayJson(keys.get());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two json values
@@ -683,12 +677,4 @@ uint64_t TRI_FastHashJson(TRI_json_t const* json) {
   return FastHashJsonRecursive(0x012345678, json);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

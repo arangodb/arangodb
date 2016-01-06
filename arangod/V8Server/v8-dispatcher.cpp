@@ -48,9 +48,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
@@ -70,9 +67,6 @@ static Scheduler* GlobalScheduler = nullptr;
 
 static Dispatcher* GlobalDispatcher = nullptr;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to compile the command
@@ -113,9 +107,6 @@ static string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   return TRI_ObjectToString(arg);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a task
@@ -334,9 +325,6 @@ static void JS_GetTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 dispatcher function inside the global variable
@@ -373,12 +361,4 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

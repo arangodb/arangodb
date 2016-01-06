@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTOR_H
-#define ARANGODB_AQL_EXECUTOR_H 1
+#ifndef ARANGOD_AQL_EXECUTOR_H
+#define ARANGOD_AQL_EXECUTOR_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
@@ -49,16 +49,9 @@ struct AstNode;
 class Query;
 struct V8Expression;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class Executor
-// -----------------------------------------------------------------------------
 
 class Executor {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the executor
@@ -72,11 +65,7 @@ class Executor {
 
   ~Executor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief generates an expression execution object
@@ -103,11 +92,7 @@ class Executor {
 
   static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief traverse the expression and note all (big) array/object literals
@@ -273,11 +258,7 @@ class Executor {
 
   v8::Handle<v8::Value> compileExpression();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief a string buffer used for operations
@@ -309,11 +290,7 @@ class Executor {
 
   static std::unordered_map<std::string, Function const> const FunctionNames;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           public static
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief minimum number of array members / object attributes for considering
@@ -333,12 +310,4 @@ class Executor {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

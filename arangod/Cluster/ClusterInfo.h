@@ -28,8 +28,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_CLUSTER_INFO_H
-#define ARANGODB_CLUSTER_CLUSTER_INFO_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_INFO_H
+#define ARANGOD_CLUSTER_CLUSTER_INFO_H 1
 
 #include "Basics/Common.h"
 #include <mutex>
@@ -49,27 +49,17 @@ namespace triagens {
 namespace arango {
 class ClusterInfo;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       some types for ClusterInfo
-// -----------------------------------------------------------------------------
 
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class CollectionInfo
-// -----------------------------------------------------------------------------
 
 class CollectionInfo {
   friend class ClusterInfo;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   CollectionInfo();
 
@@ -85,11 +75,7 @@ class CollectionInfo {
 
   ~CollectionInfo();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether there is no info contained
@@ -342,16 +328,8 @@ class CollectionInfo {
 
   TRI_json_t const* getJson() const { return _json; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
+  
  private:
   TRI_json_t* _json;
 
@@ -362,18 +340,11 @@ class CollectionInfo {
   mutable std::shared_ptr<ShardMap> _shardMapCache;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       class CollectionInfoCurrent
-// -----------------------------------------------------------------------------
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   CollectionInfoCurrent();
 
@@ -394,11 +365,7 @@ class CollectionInfoCurrent {
 
   void copyAllJsons();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add a new shardID and JSON pair, returns true if OK and false
   /// if the shardID already exists. In the latter case nothing happens.
@@ -501,11 +468,7 @@ class CollectionInfoCurrent {
     return std::string();
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief local helper to return boolean flags
   ////////////////////////////////////////////////////////////////////////////////
@@ -535,22 +498,12 @@ class CollectionInfoCurrent {
     return m;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   std::unordered_map<ShardID, TRI_json_t*> _jsons;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class ClusterInfo
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          typedefs
-// -----------------------------------------------------------------------------
 
 class ClusterInfo {
  private:
@@ -564,11 +517,7 @@ class ClusterInfo {
       AllCollectionsCurrent;
   typedef std::shared_ptr<std::vector<ServerID> const> FollowerInfo;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
@@ -592,11 +541,7 @@ class ClusterInfo {
 
   ~ClusterInfo();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public static
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
@@ -604,11 +549,7 @@ class ClusterInfo {
 
   static ClusterInfo* instance();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get a number of cluster-wide unique IDs, returns the first
@@ -941,11 +882,7 @@ class ClusterInfo {
 
   FollowerInfo newFollowerInfo(ShardID& c, int64_t& index);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   AgencyComm _agency;
 
@@ -1046,11 +983,7 @@ class ClusterInfo {
 
   triagens::basics::Mutex _idLock;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                          private static
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the sole instance
   ////////////////////////////////////////////////////////////////////////////////
@@ -1081,12 +1014,4 @@ class ClusterInfo {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

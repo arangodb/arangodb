@@ -28,8 +28,8 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DISPATCHER_DISPATCHER_QUEUE_H
-#define ARANGODB_DISPATCHER_DISPATCHER_QUEUE_H 1
+#ifndef ARANGOD_DISPATCHER_DISPATCHER_QUEUE_H
+#define ARANGOD_DISPATCHER_DISPATCHER_QUEUE_H 1
 
 #include "Basics/Common.h"
 
@@ -38,18 +38,12 @@
 #include "Basics/ConditionVariable.h"
 #include "Dispatcher/Dispatcher.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
 class DispatcherThread;
 class Job;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class DispatcherQueue
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatcher queue
@@ -62,10 +56,7 @@ class DispatcherQueue {
   friend class Dispatcher;
   friend class DispatcherThread;
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                    constructors and destructors
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new dispatcher queue
@@ -81,10 +72,7 @@ class DispatcherQueue {
 
   ~DispatcherQueue();
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                  public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief adds a job
@@ -161,10 +149,7 @@ class DispatcherQueue {
 
   void setProcessorAffinity(const std::vector<size_t>& cores);
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                 private methods
-  // ---------------------------------------------------------------------------
-
+  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief deletes old threads
@@ -172,10 +157,7 @@ class DispatcherQueue {
 
   void deleteOldThreads();
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                               private variables
-  // ---------------------------------------------------------------------------
-
+  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief id
@@ -361,6 +343,4 @@ class DispatcherQueue {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

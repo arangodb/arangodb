@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_TRANSACTION_H
-#define ARANGODB_VOC_BASE_TRANSACTION_H 1
+#ifndef ARANGOD_VOC_BASE_TRANSACTION_H
+#define ARANGOD_VOC_BASE_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -44,20 +44,11 @@ struct DocumentOperation;
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_vocbase_t;
 class TRI_vocbase_col_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 TRANSACTION TYPES
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief top level of a transaction
@@ -77,9 +68,6 @@ class TRI_vocbase_col_t;
 
 #define TRI_TRANSACTION_DEFAULT_SLEEP_DURATION 10000ULL
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction type
@@ -103,13 +91,7 @@ typedef enum {
   TRI_TRANSACTION_ABORTED = 4
 } TRI_transaction_status_e;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       TRANSACTION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for transaction hints
@@ -170,9 +152,6 @@ typedef struct TRI_transaction_collection_s {
   bool _waitForSync;      // whether or not the collection has waitForSync
 } TRI_transaction_collection_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new transaction
@@ -187,9 +166,6 @@ TRI_transaction_t* TRI_CreateTransaction(TRI_vocbase_t*, TRI_voc_tid_t, double,
 
 void TRI_FreeTransaction(TRI_transaction_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the transaction as a string
@@ -301,12 +277,4 @@ int TRI_AbortTransaction(TRI_transaction_t*, int);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

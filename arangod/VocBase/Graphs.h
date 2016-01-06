@@ -28,8 +28,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GRAPHS_LOOKUP_H
-#define ARANGODB_GRAPHS_LOOKUP_H 1
+#ifndef ARANGOD_VOC_BASE_GRAPHS_H
+#define ARANGOD_VOC_BASE_GRAPHS_H 1
 
 #include "VocBase/vocbase.h"
 
@@ -39,9 +39,6 @@ class Graph;
 }
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                Factory for graphs
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get an instance of Graph by Name.
@@ -56,9 +53,6 @@ triagens::aql::Graph* lookupGraphByName(TRI_vocbase_t*, std::string const&);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

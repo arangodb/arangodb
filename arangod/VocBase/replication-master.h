@@ -27,20 +27,14 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_REPLICATION__MASTER_H
-#define ARANGODB_VOC_BASE_REPLICATION__MASTER_H 1
+#ifndef ARANGOD_VOC_BASE_REPLICATION_MASTER_H
+#define ARANGOD_VOC_BASE_REPLICATION_MASTER_H 1
 
 #include "Basics/Common.h"
 
 #include "VocBase/replication-common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           REPLICATION MASTER INFO
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state information about replication master
@@ -55,9 +49,6 @@ typedef struct TRI_replication_master_info_s {
   bool _active;
 } TRI_replication_master_info_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a master info struct
@@ -80,12 +71,4 @@ void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const*,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

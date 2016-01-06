@@ -58,17 +58,11 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 static TRI_action_result_t ExecuteActionVocbase(
     TRI_vocbase_t* vocbase, v8::Isolate* isolate, TRI_action_t const* action,
     v8::Handle<v8::Function> callback, HttpRequest* request);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global V8 dealer
@@ -76,13 +70,7 @@ static TRI_action_result_t ExecuteActionVocbase(
 
 static ApplicationV8* GlobalV8Dealer = nullptr;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class v8_action_t
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief action description for V8
@@ -243,9 +231,6 @@ class v8_action_t : public TRI_action_t {
   ReadWriteLock _callbacksLock;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the action options
@@ -812,9 +797,6 @@ static TRI_action_result_t ExecuteActionVocbase(
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a new action
@@ -1266,9 +1248,6 @@ static void JS_AccessSid(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
@@ -1313,12 +1292,4 @@ void TRI_InitV8Actions(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, context, TRI_V8_ASCII_STRING("SYS_SEND_CHUNK"), JS_SendChunk);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

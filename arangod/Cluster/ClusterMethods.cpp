@@ -47,9 +47,6 @@ using namespace triagens::arango;
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a numeric value from an hierarchical JSON
@@ -1657,12 +1654,4 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
 }  // namespace arango
 }  // namespace triagens
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

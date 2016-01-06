@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEX_OPERATORS_INDEX__OPERATOR_H
-#define ARANGODB_INDEX_OPERATORS_INDEX__OPERATOR_H 1
+#ifndef ARANGOD_INDEX_OPERATORS_INDEX_OPERATOR_H
+#define ARANGOD_INDEX_OPERATORS_INDEX_OPERATOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -37,9 +37,6 @@
 
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Explanation of what an index operator is capable of and how one has to
@@ -166,12 +163,4 @@ TRI_index_operator_t* TRI_CreateIndexOperator(TRI_index_operator_type_e,
                                               TRI_json_t*, VocShaper*, size_t);
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

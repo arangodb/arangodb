@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_ASTNODE_H
-#define ARANGODB_AQL_ASTNODE_H 1
+#ifndef ARANGOD_AQL_AST_NODE_H
+#define ARANGOD_AQL_AST_NODE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
@@ -201,9 +201,6 @@ enum AstNodeType : uint32_t {
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
 static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    struct AstNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the node
@@ -216,11 +213,7 @@ struct AstNode {
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the node
   ////////////////////////////////////////////////////////////////////////////////
@@ -271,11 +264,7 @@ struct AstNode {
 
   ~AstNode();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief test if all members of a node are equality comparisons
@@ -879,11 +868,7 @@ struct AstNode {
 
   std::string toString() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stringify the value of a node into a string buffer
   /// this method is used when generated JavaScript code for the node!
@@ -892,11 +877,7 @@ struct AstNode {
 
   void appendValue(triagens::basics::StringBuffer*) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the node type
@@ -916,11 +897,7 @@ struct AstNode {
 
   AstNodeValue value;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief precomputed JSON value (used when executing expressions)
@@ -971,12 +948,4 @@ std::ostream& operator<<(std::ostream&, triagens::aql::AstNode const&);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

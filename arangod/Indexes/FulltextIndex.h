@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_FULLTEXT_INDEX_H
-#define ARANGODB_INDEXES_FULLTEXT_INDEX_H 1
+#ifndef ARANGOD_INDEXES_FULLTEXT_INDEX_H
+#define ARANGOD_INDEXES_FULLTEXT_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "FulltextIndex/fulltext-common.h"
@@ -39,19 +39,12 @@
 
 struct TRI_fulltext_wordlist_s;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class FulltextIndex
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
 
 class FulltextIndex final : public Index {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   FulltextIndex() = delete;
 
@@ -60,11 +53,7 @@ class FulltextIndex final : public Index {
 
   ~FulltextIndex();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
@@ -97,19 +86,11 @@ class FulltextIndex final : public Index {
 
   TRI_fts_index_t* internals() { return _fulltextIndex; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   struct TRI_fulltext_wordlist_s* wordlist(struct TRI_doc_mptr_t const*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the indexed attribute (path)
@@ -134,12 +115,4 @@ class FulltextIndex final : public Index {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

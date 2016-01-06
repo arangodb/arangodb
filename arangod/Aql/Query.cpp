@@ -58,9 +58,6 @@ using namespace arangodb;
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               static const values
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief empty string singleton
@@ -87,9 +84,6 @@ static_assert(sizeof(StateNames) / sizeof(std::string) ==
                   static_cast<size_t>(ExecutionState::INVALID_STATE),
               "invalid number of ExecutionState values");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    struct Profile
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a profile
@@ -169,9 +163,6 @@ TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
   return result.steal();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class Query
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not query tracking is disabled globally
@@ -179,9 +170,6 @@ TRI_json_t* Profile::toJson(TRI_memory_zone_t*) {
 
 bool Query::DoDisableQueryTracking = false;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a query
@@ -372,9 +360,6 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
 void Query::addNode(AstNode* node) { _nodes.emplace_back(node); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a region from the query
@@ -1255,9 +1240,6 @@ TRI_json_t* Query::warningsToJson(TRI_memory_zone_t* zone) const {
   return json;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the query
@@ -1540,12 +1522,4 @@ Graph const* Query::lookupGraphByName(std::string const& name) {
   return g.release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

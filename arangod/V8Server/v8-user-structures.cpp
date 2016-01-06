@@ -40,9 +40,6 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            struct KeySpaceElement
-// -----------------------------------------------------------------------------
 
 struct KeySpaceElement {
   KeySpaceElement() = delete;
@@ -76,9 +73,6 @@ struct KeySpaceElement {
   TRI_json_t* json;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class KeySpace
-// -----------------------------------------------------------------------------
 
 class KeySpace {
  public:
@@ -810,9 +804,6 @@ class KeySpace {
   TRI_associative_pointer_t _hash;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             struct UserStructures
-// -----------------------------------------------------------------------------
 
 struct UserStructures {
   struct {
@@ -821,9 +812,6 @@ struct UserStructures {
   } hashes;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context
@@ -1790,9 +1778,6 @@ static void JS_KeyCount(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures for a database
@@ -1892,12 +1877,4 @@ void TRI_InitV8UserStructures(v8::Isolate* isolate,
       isolate, context, TRI_V8_ASCII_STRING("KEY_SET_AT"), JS_KeySetAt, true);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

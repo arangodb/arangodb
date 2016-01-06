@@ -27,16 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_APPLICATION__EXIT_H
-#define ARANGODB_BASICS_C_APPLICATION__EXIT_H 1
+#ifndef LIB_BASICS_APPLICATION_EXIT_H
+#define LIB_BASICS_APPLICATION_EXIT_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          Special Application Exit
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exit function type
@@ -58,12 +55,4 @@ void TRI_Application_Exit_SetExit(TRI_ExitFunction_t);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

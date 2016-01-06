@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ARANGO_COLLECTION_KEYS_REPOSITORY_H
-#define ARANGODB_ARANGO_COLLECTION_KEYS_REPOSITORY_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_KEYS_REPOSITORY_H
+#define ARANGOD_UTILS_COLLECTION_KEYS_REPOSITORY_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -42,16 +42,9 @@ namespace arango {
 
 class CollectionKeys;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    class CollectionKeysRepository
-// -----------------------------------------------------------------------------
 
 class CollectionKeysRepository {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a collection keys repository
@@ -65,11 +58,7 @@ class CollectionKeysRepository {
 
   ~CollectionKeysRepository();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stores collection keys in the repository
@@ -109,11 +98,7 @@ class CollectionKeysRepository {
 
   bool garbageCollect(bool);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief mutex for the repository
@@ -138,12 +123,4 @@ class CollectionKeysRepository {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_AGGREGATION_OPTIONS_H
-#define ARANGODB_AQL_AGGREGATION_OPTIONS_H 1
+#ifndef ARANGOD_AQL_AGGREGATION_OPTIONS_H
+#define ARANGOD_AQL_AGGREGATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -39,11 +39,7 @@ namespace aql {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct AggregationOptions {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief selected aggregation method
   ////////////////////////////////////////////////////////////////////////////////
@@ -54,11 +50,7 @@ struct AggregationOptions {
     AGGREGATION_METHOD_SORTED
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor, using default values
   ////////////////////////////////////////////////////////////////////////////////
@@ -71,11 +63,7 @@ struct AggregationOptions {
 
   AggregationOptions(triagens::basics::Json const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the hash method can be used
   ////////////////////////////////////////////////////////////////////////////////
@@ -101,11 +89,7 @@ struct AggregationOptions {
   static std::string methodToString(
       AggregationOptions::AggregationMethod method);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   AggregationMethod method;
 };
 
@@ -114,8 +98,3 @@ struct AggregationOptions {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

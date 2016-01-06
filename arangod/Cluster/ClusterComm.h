@@ -27,8 +27,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_CLUSTER_COMM_H
-#define ARANGODB_CLUSTER_CLUSTER_COMM_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_COMM_H
+#define ARANGOD_CLUSTER_CLUSTER_COMM_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -46,15 +46,9 @@
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             forward declarations
-// -----------------------------------------------------------------------------
 
 class ClusterCommThread;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       some types for ClusterComm
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a client transaction ID
@@ -175,9 +169,6 @@ struct ClusterCommOperation {
 void ClusterCommRestCallback(std::string& coordinator,
                              rest::HttpResponse* response);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      ClusterComm
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the class for the cluster communications library
@@ -186,11 +177,7 @@ void ClusterCommRestCallback(std::string& coordinator,
 class ClusterComm {
   friend class ClusterCommThread;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                     constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
   ///
@@ -209,11 +196,7 @@ class ClusterComm {
  public:
   ~ClusterComm();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
   ////////////////////////////////////////////////////////////////////////////////
@@ -321,11 +304,7 @@ class ClusterComm {
   void asyncAnswer(std::string& coordinatorHeader,
                    rest::HttpResponse* responseToSend);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                          private methods and
-  // data
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
@@ -409,20 +388,13 @@ class ClusterComm {
 
 };  // end of class ClusterComm
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                ClusterCommThread
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our background communications thread
 ////////////////////////////////////////////////////////////////////////////////
 
 class ClusterCommThread : public basics::Thread {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ClusterCommThread(ClusterCommThread const&);
   ClusterCommThread& operator=(ClusterCommThread const&);
@@ -440,11 +412,7 @@ class ClusterCommThread : public basics::Thread {
 
   ~ClusterCommThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the ClusterCommThread
@@ -471,11 +439,7 @@ class ClusterCommThread : public basics::Thread {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief ClusterCommThread main loop
@@ -483,17 +447,9 @@ class ClusterCommThread : public basics::Thread {
 
   void run();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance
@@ -518,12 +474,4 @@ class ClusterCommThread : public basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

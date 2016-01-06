@@ -1250,8 +1250,3 @@ int AqlValue::Compare(triagens::arango::AqlTransaction* trx,
   }
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

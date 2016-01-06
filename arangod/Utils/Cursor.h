@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ARANGO_CURSOR_H
-#define ARANGODB_ARANGO_CURSOR_H 1
+#ifndef ARANGOD_UTILS_CURSOR_H
+#define ARANGOD_UTILS_CURSOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
@@ -42,9 +42,6 @@ namespace arango {
 
 class CollectionExport;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      class Cursor
-// -----------------------------------------------------------------------------
 
 typedef TRI_voc_tick_t CursorId;
 
@@ -57,11 +54,7 @@ class Cursor {
 
   virtual ~Cursor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   CursorId id() const { return _id; }
 
@@ -104,11 +97,7 @@ class Cursor {
 
   virtual void dump(triagens::basics::StringBuffer&) = 0;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   CursorId const _id;
   size_t const _batchSize;
@@ -121,9 +110,6 @@ class Cursor {
   bool _isUsed;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class JsonCursor
-// -----------------------------------------------------------------------------
 
 class JsonCursor : public Cursor {
  public:
@@ -132,11 +118,7 @@ class JsonCursor : public Cursor {
 
   ~JsonCursor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   bool hasNext() override final;
 
@@ -146,19 +128,11 @@ class JsonCursor : public Cursor {
 
   void dump(triagens::basics::StringBuffer&) override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  private:
   void freeJson();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   TRI_vocbase_t* _vocbase;
   struct TRI_json_t* _json;
@@ -166,9 +140,6 @@ class JsonCursor : public Cursor {
   bool _cached;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ExportCursor
-// -----------------------------------------------------------------------------
 
 class ExportCursor : public Cursor {
  public:
@@ -177,11 +148,7 @@ class ExportCursor : public Cursor {
 
   ~ExportCursor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   bool hasNext() override final;
 
@@ -191,11 +158,7 @@ class ExportCursor : public Cursor {
 
   void dump(triagens::basics::StringBuffer&) override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   TRI_vocbase_t* _vocbase;
   triagens::arango::CollectionExport* _ex;
@@ -206,12 +169,4 @@ class ExportCursor : public Cursor {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

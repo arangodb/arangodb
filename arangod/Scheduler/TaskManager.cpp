@@ -46,12 +46,4 @@ bool TaskManager::setupTask(Task* task, Scheduler* scheduler, EventLoop loop) {
 
 void TaskManager::cleanupTask(Task* task) { task->cleanup(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

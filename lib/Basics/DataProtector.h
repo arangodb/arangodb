@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DATA_PROTECTOR_H
-#define ARANGODB_BASICS_DATA_PROTECTOR_H 1
+#ifndef LIB_BASICS_DATA_PROTECTOR_H
+#define LIB_BASICS_DATA_PROTECTOR_H 1
 
 #include "Basics/Common.h"
 
@@ -171,8 +171,3 @@ class DataProtector {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

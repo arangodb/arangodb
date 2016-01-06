@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_VOCBASE_CONTEXT_H
-#define ARANGODB_REST_SERVER_VOCBASE_CONTEXT_H 1
+#ifndef ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H
+#define ARANGOD_REST_SERVER_VOCBASE_CONTEXT_H 1
 
 #include "Basics/Common.h"
 
@@ -36,16 +36,10 @@
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class VocbaseContext
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -55,11 +49,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class VocbaseContext : public triagens::rest::RequestContext {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             static public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief defines a sid
@@ -86,11 +76,7 @@ class VocbaseContext : public triagens::rest::RequestContext {
 
   static double accessSid(std::string const& database, std::string const& sid);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -104,11 +90,7 @@ class VocbaseContext : public triagens::rest::RequestContext {
 
   ~VocbaseContext();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get vocbase of context
@@ -134,11 +116,7 @@ class VocbaseContext : public triagens::rest::RequestContext {
 
   rest::HttpResponse::HttpResponseCode authenticate();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief time to live for server sessions
@@ -154,11 +132,7 @@ class VocbaseContext : public triagens::rest::RequestContext {
 
   static double ServerSessionTtl;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the server
@@ -177,12 +151,4 @@ class VocbaseContext : public triagens::rest::RequestContext {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_TRI__ZIP_H
-#define ARANGODB_BASICS_C_TRI__ZIP_H 1
+#ifndef LIB_BASICS_TRI_ZIP_H
+#define LIB_BASICS_TRI_ZIP_H 1
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -37,9 +37,6 @@
 #include "Basics/Common.h"
 #include "Basics/vector.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
@@ -57,12 +54,4 @@ int TRI_UnzipFile(const char*, const char*, const bool, const bool, const char*,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

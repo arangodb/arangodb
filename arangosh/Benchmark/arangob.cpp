@@ -58,9 +58,6 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace triagens::arangob;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -152,9 +149,6 @@ static bool verbose = false;
 
 #include "Benchmark/test-cases.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update the number of ready threads. this is a callback function
@@ -218,9 +212,6 @@ static void ParseProgramOptions(int argc, char* argv[]) {
       argc, argv, "arangob.conf");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startup and exit functions
@@ -464,12 +455,4 @@ int main(int argc, char* argv[]) {
   return ret;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

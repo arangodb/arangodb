@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__VPACK_H
-#define ARANGODB_V8_V8__VPACK_H 1
+#ifndef LIB_V8_V8_VPACK_H
+#define LIB_V8_V8_VPACK_H 1
 
 #include "Basics/Common.h"
 #include "V8/v8-globals.h"
@@ -37,13 +37,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              CONVERSION FUNCTIONS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a VPack value into a V8 object
@@ -60,12 +54,4 @@ int TRI_V8ToVPack(v8::Isolate* isolate, VPackBuilder& builder,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

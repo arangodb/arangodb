@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_STATS_H
-#define ARANGODB_AQL_EXECUTION_STATS_H 1
+#ifndef ARANGOD_AQL_EXECUTION_STATS_H
+#define ARANGOD_AQL_EXECUTION_STATS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -140,12 +140,4 @@ struct ExecutionStats {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

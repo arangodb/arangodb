@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_THREADS_H
-#define ARANGODB_BASICS_C_THREADS_H 1
+#ifndef LIB_BASICS_THREADS_H
+#define LIB_BASICS_THREADS_H 1
 
 #include "Basics/Common.h"
 
@@ -48,13 +48,7 @@
 #include "Basics/threads-win32.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            THREAD
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a thread
@@ -62,9 +56,6 @@
 
 void TRI_InitThread(TRI_thread_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process identifier
@@ -129,12 +120,4 @@ void TRI_SetProcessorAffinity(TRI_thread_t*, size_t core);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -37,9 +37,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              methods of IndexNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for IndexNode
@@ -208,8 +205,3 @@ void IndexNode::getVariablesUsedHere(
   vars.erase(_outVariable);
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

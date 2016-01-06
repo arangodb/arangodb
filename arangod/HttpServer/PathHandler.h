@@ -27,8 +27,8 @@
 /// @author Copyright 2008-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_PATH_HANDLER_H
-#define ARANGODB_HTTP_SERVER_PATH_HANDLER_H 1
+#ifndef ARANGOD_HTTP_SERVER_PATH_HANDLER_H
+#define ARANGOD_HTTP_SERVER_PATH_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "HttpServer/HttpHandler.h"
@@ -118,12 +118,4 @@ class PathHandler : public HttpHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

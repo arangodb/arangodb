@@ -25,8 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_TRAVERSAL_BLOCK_H
-#define ARANGODB_AQL_TRAVERSAL_BLOCK_H 1
+#ifndef ARANGOD_AQL_TRAVERSAL_BLOCK_H
+#define ARANGOD_AQL_TRAVERSAL_BLOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/TraversalNode.h"
@@ -35,9 +35,6 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    TraversalBlock
-// -----------------------------------------------------------------------------
 
 class TraversalBlock : public ExecutionBlock {
  public:
@@ -77,11 +74,7 @@ class TraversalBlock : public ExecutionBlock {
 
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief vertices buffer
@@ -214,11 +207,7 @@ class TraversalBlock : public ExecutionBlock {
 
   std::vector<std::vector<RegisterId>> _inRegs;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief continue fetching of paths
   ////////////////////////////////////////////////////////////////////////////////

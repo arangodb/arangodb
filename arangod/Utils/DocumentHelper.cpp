@@ -36,13 +36,7 @@
 using namespace triagens::arango;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class DocumentHelper
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
@@ -134,12 +128,4 @@ int DocumentHelper::getKey(TRI_json_t const* json, TRI_voc_key_t* key) {
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

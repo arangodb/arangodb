@@ -26,8 +26,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_INDEX_BLOCK_H
-#define ARANGODB_AQL_INDEX_BLOCK_H 1
+#ifndef ARANGOD_AQL_INDEX_BLOCK_H
+#define ARANGOD_AQL_INDEX_BLOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -52,9 +52,6 @@ struct AstNode;
 struct Collection;
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        IndexBlock
-// -----------------------------------------------------------------------------
 
 class IndexBlock : public ExecutionBlock {
  public:
@@ -84,11 +81,7 @@ class IndexBlock : public ExecutionBlock {
 
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief adds a SORT to a dynamic IN condition
@@ -138,11 +131,7 @@ class IndexBlock : public ExecutionBlock {
 
   void cleanupNonConstExpressions();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief collection
@@ -233,8 +222,3 @@ class IndexBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

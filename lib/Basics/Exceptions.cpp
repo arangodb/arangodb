@@ -32,9 +32,6 @@
 using namespace std;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief controls if backtraces are printed with exceptions
@@ -42,9 +39,6 @@ using namespace triagens::basics;
 
 static bool WithBackTrace = false;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class Exception
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief controls whether a backtrace is created for each exception
@@ -187,12 +181,4 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   return std::string(buffer);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

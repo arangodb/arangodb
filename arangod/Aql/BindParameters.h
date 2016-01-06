@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_BIND_PARAMETERS_H
-#define ARANGODB_AQL_QUERY_BIND_PARAMETERS_H 1
+#ifndef ARANGOD_AQL_BIND_PARAMETERS_H
+#define ARANGOD_AQL_BIND_PARAMETERS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -42,16 +42,9 @@ namespace aql {
 typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>>
     BindParametersType;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class BindParameters
-// -----------------------------------------------------------------------------
 
 class BindParameters {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   BindParameters(BindParameters const&) = delete;
   BindParameters& operator=(BindParameters const&) = delete;
@@ -69,11 +62,7 @@ class BindParameters {
 
   ~BindParameters();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return all parameters
@@ -104,11 +93,7 @@ class BindParameters {
 
   static void StripCollectionNames(TRI_json_t*, char const*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief process the parameters
@@ -116,11 +101,7 @@ class BindParameters {
 
   void process();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the parameter json
@@ -145,12 +126,4 @@ class BindParameters {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

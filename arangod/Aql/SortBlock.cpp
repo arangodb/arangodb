@@ -37,9 +37,6 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class SortBlock
-// -----------------------------------------------------------------------------
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable) {
@@ -242,9 +239,6 @@ void SortBlock::doSorting() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class SortBlock::OurLessThan
-// -----------------------------------------------------------------------------
 
 bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
                                         std::pair<size_t, size_t> const& b) {
@@ -266,8 +260,3 @@ bool SortBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
   return false;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

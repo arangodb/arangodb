@@ -29,9 +29,6 @@
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 static void defaultExitFunction(int, void*);
 
@@ -47,12 +44,4 @@ void TRI_Application_Exit_SetExit(TRI_ExitFunction_t exitFunction) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

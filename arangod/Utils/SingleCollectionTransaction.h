@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_SINGLE_COLLECTION_TRANSACTION_H
-#define ARANGODB_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H
+#define ARANGOD_UTILS_SINGLE_COLLECTION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -49,16 +49,8 @@ namespace triagens {
 namespace arango {
 
 class SingleCollectionTransaction : public Transaction {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                 class
-  // SingleCollectionTransaction
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection id
@@ -98,11 +90,7 @@ class SingleCollectionTransaction : public Transaction {
 
   virtual ~SingleCollectionTransaction() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying transaction collection
@@ -257,11 +245,7 @@ class SingleCollectionTransaction : public Transaction {
     return this->readSlice(this->trxCollection(), docs);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief collection id
@@ -292,12 +276,4 @@ class SingleCollectionTransaction : public Transaction {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

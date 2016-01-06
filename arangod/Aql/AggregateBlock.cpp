@@ -39,9 +39,6 @@ using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 using StringBuffer = triagens::basics::StringBuffer;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            struct AggregatorGroup
-// -----------------------------------------------------------------------------
 
 AggregatorGroup::AggregatorGroup(bool count)
     : firstRow(0),
@@ -60,9 +57,6 @@ AggregatorGroup::~AggregatorGroup() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 void AggregatorGroup::initialize(size_t capacity) {
   // TRI_ASSERT(capacity > 0);
@@ -133,9 +127,6 @@ void AggregatorGroup::addValues(AqlItemBlock const* src,
   rowsAreValid = false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class SortedAggregateBlock
-// -----------------------------------------------------------------------------
 
 SortedAggregateBlock::SortedAggregateBlock(ExecutionEngine* engine,
                                            AggregateNode const* en)
@@ -469,9 +460,6 @@ void SortedAggregateBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
   _currentGroup.reset();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class HashedAggregateBlock
-// -----------------------------------------------------------------------------
 
 HashedAggregateBlock::HashedAggregateBlock(ExecutionEngine* engine,
                                            AggregateNode const* en)
@@ -736,8 +724,3 @@ bool HashedAggregateBlock::GroupKeyEqual::operator()(
   return true;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

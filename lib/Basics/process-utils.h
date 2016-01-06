@@ -27,15 +27,12 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_PROCESS__UTILS_H
-#define ARANGODB_BASICS_C_PROCESS__UTILS_H 1
+#ifndef LIB_BASICS_PROCESS_UTILS_H
+#define LIB_BASICS_PROCESS_UTILS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalid process id
@@ -47,9 +44,6 @@
 #define TRI_INVALID_PROCESS_ID (-1)
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief physical memory
@@ -139,9 +133,6 @@ typedef struct TRI_external_status_s {
   std::string _errorMessage;
 } TRI_external_status_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
@@ -189,13 +180,7 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
 
 bool TRI_KillExternalProcess(TRI_external_id_t pid);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            modules initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the process components
@@ -211,12 +196,4 @@ void TRI_ShutdownProcess(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

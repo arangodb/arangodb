@@ -33,13 +33,7 @@
 using namespace triagens::aql;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           the QueryRegistry class
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          constructors/destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -298,8 +292,3 @@ void QueryRegistry::expireQueries() {
   }
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

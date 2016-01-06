@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOCBASE_TRAVERSER_H
-#define ARANGODB_VOCBASE_TRAVERSER_H 1
+#ifndef ARANGOD_VOC_BASE_TRAVERSER_H
+#define ARANGOD_VOC_BASE_TRAVERSER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Traverser.h"
@@ -45,9 +45,6 @@ namespace triagens {
 namespace arango {
 namespace traverser {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   struct VertexId
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Template for a vertex id. Is simply a pair of cid and key
@@ -88,9 +85,6 @@ VertexId IdStringToVertexId(
     triagens::arango::CollectionNameResolver const* resolver,
     std::string const& vertex);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        struct TraverserExpression
-// -----------------------------------------------------------------------------
 
 class TraverserExpression {
  public:
@@ -145,9 +139,6 @@ class TraverserExpression {
   std::vector<std::string*> _stringRegister;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class TraversalPath
-// -----------------------------------------------------------------------------
 
 class TraversalPath {
  public:
@@ -199,9 +190,6 @@ class TraversalPath {
   size_t _readDocuments;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Traverser options
-// -----------------------------------------------------------------------------
 
 struct TraverserOptions {
  private:
@@ -233,9 +221,6 @@ struct TraverserOptions {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class Traverser
-// -----------------------------------------------------------------------------
 
 class Traverser {
  public:
@@ -376,9 +361,6 @@ class Traverser {
 }  // arango
 }  // triagens
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     functions for std::containers
-// -----------------------------------------------------------------------------
 
 namespace std {
 template <>

@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_SORT_BLOCK_H
-#define ARANGODB_AQL_SORT_BLOCK_H 1
+#ifndef ARANGOD_AQL_SORT_BLOCK_H
+#define ARANGOD_AQL_SORT_BLOCK_H 1
 
 #include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
@@ -43,9 +43,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         SortBlock
-// -----------------------------------------------------------------------------
 
 class SortBlock : public ExecutionBlock {
  public:
@@ -108,8 +105,3 @@ class SortBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

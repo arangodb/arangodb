@@ -45,9 +45,6 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a string
@@ -256,9 +253,6 @@ static void ClearAuthInfo(TRI_vocbase_t* vocbase) {
   vocbase->_authCache._nrUsed = 0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 uint64_t VocbaseAuthInfo::hash() const {
   return TRI_FnvHashString(_username.c_str());
@@ -617,12 +611,4 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t* vocbase, char const* hash,
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

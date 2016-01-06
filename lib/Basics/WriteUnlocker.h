@@ -28,15 +28,12 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_WRITE_UNLOCKER_H
-#define ARANGODB_BASICS_WRITE_UNLOCKER_H 1
+#ifndef LIB_BASICS_WRITE_UNLOCKER_H
+#define LIB_BASICS_WRITE_UNLOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct unlocker with file and line information
@@ -52,9 +49,6 @@
   triagens::basics::WriteUnlocker<std::remove_reference<decltype(b)>::type> \
       WRITE_UNLOCKER_VAR_B(__LINE__)(&b, __FILE__, __LINE__)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class WriteUnlocker
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -71,11 +65,7 @@ class WriteUnlocker {
   WriteUnlocker(WriteUnlocker const&);
   WriteUnlocker& operator=(WriteUnlocker const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief unlocks the lock
@@ -103,11 +93,7 @@ class WriteUnlocker {
 
           ~WriteUnlocker() { _readWriteLock->writeLock(); }
 
-          // -----------------------------------------------------------------------------
-          // --SECTION--                                                 private
-          // variables
-          // -----------------------------------------------------------------------------
-
+          
          private:
           ////////////////////////////////////////////////////////////////////////////////
           /// @brief the read-write lock
@@ -132,12 +118,4 @@ class WriteUnlocker {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

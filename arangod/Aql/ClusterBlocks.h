@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_CLUSTER_BLOCKS_H
-#define ARANGODB_AQL_CLUSTER_BLOCKS_H 1
+#ifndef ARANGOD_AQL_CLUSTER_BLOCKS_H
+#define ARANGOD_AQL_CLUSTER_BLOCKS_H 1
 
 #include "Basics/Common.h"
 #include "Aql/ClusterNodes.h"
@@ -47,9 +47,6 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       GatherBlock
-// -----------------------------------------------------------------------------
 
 class GatherBlock : public ExecutionBlock {
  public:
@@ -185,9 +182,6 @@ class GatherBlock : public ExecutionBlock {
   };
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  BlockWithClients
-// -----------------------------------------------------------------------------
 
 class BlockWithClients : public ExecutionBlock {
  public:
@@ -196,11 +190,7 @@ class BlockWithClients : public ExecutionBlock {
 
   virtual ~BlockWithClients() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                   BlockWithClients public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initializeCursor
@@ -283,11 +273,7 @@ class BlockWithClients : public ExecutionBlock {
   virtual int64_t remainingForShard(std::string const& shardId) = 0;
 
  protected:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                BlockWithClients protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief getOrSkipSomeForShard
   ////////////////////////////////////////////////////////////////////////////////
@@ -304,11 +290,7 @@ class BlockWithClients : public ExecutionBlock {
 
   size_t getClientId(std::string const& shardId);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                   BlockWithClients protected
-  // data
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief _shardIdMap: map from shardIds to clientNrs
   ////////////////////////////////////////////////////////////////////////////////
@@ -329,9 +311,6 @@ class BlockWithClients : public ExecutionBlock {
   std::vector<bool> _doneForClient;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      ScatterBlock
-// -----------------------------------------------------------------------------
 
 class ScatterBlock : public BlockWithClients {
  public:
@@ -389,9 +368,6 @@ class ScatterBlock : public BlockWithClients {
   std::vector<std::pair<size_t, size_t>> _posForClient;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   DistributeBlock
-// -----------------------------------------------------------------------------
 
 class DistributeBlock : public BlockWithClients {
  public:
@@ -509,9 +485,6 @@ class DistributeBlock : public BlockWithClients {
   bool _usesDefaultSharding;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       RemoteBlock
-// -----------------------------------------------------------------------------
 
 class RemoteBlock : public ExecutionBlock {
   ////////////////////////////////////////////////////////////////////////////////
@@ -626,8 +599,3 @@ class RemoteBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

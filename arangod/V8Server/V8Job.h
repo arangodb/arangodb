@@ -26,8 +26,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8JOB_H
-#define ARANGODB_V8SERVER_V8JOB_H 1
+#ifndef ARANGOD_V8_SERVER_V8_JOB_H
+#define ARANGOD_V8_SERVER_V8_JOB_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -35,9 +35,6 @@
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class V8Job
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -48,11 +45,7 @@ class V8Job : public rest::Job {
   V8Job(V8Job const&) = delete;
   V8Job& operator=(V8Job const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new V8 job
@@ -67,11 +60,7 @@ class V8Job : public rest::Job {
 
   ~V8Job();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                       Job
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -103,11 +92,7 @@ class V8Job : public rest::Job {
 
   virtual const std::string& getName() const override { return _command; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase
@@ -150,12 +135,4 @@ class V8Job : public rest::Job {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

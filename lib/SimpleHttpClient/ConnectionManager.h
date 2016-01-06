@@ -26,8 +26,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H
+#define LIB_SIMPLE_HTTP_CLIENT_CONNECTION_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -41,9 +41,6 @@
 namespace triagens {
 namespace httpclient {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ConnectionManager
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief options for connections
@@ -62,11 +59,7 @@ struct ConnectionOptions {
 ////////////////////////////////////////////////////////////////////////////////
 
 class ConnectionManager {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                     constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
   ///
@@ -93,11 +86,7 @@ class ConnectionManager {
 
   static void initialize();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 public
-  // subclasses
-  // -----------------------------------------------------------------------------
-
+  
   struct ServerConnections;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -169,11 +158,7 @@ class ConnectionManager {
     void closeUnusedConnections(double);
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
   ////////////////////////////////////////////////////////////////////////////////
@@ -205,11 +190,7 @@ class ConnectionManager {
 
   void closeUnusedConnections(double limit);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                         private methods and
-  // data
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief hash the endpoint value into a bucket
@@ -242,12 +223,4 @@ class ConnectionManager {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

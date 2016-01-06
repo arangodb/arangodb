@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_WALKER_WORKER_H
-#define ARANGODB_AQL_WALKER_WORKER_H 1
+#ifndef ARANGOD_AQL_WALKER_WORKER_H
+#define ARANGOD_AQL_WALKER_WORKER_H 1
 
 #include "Basics/Common.h"
 
@@ -39,21 +39,13 @@ namespace aql {
 
 template <class T>
 class WalkerWorker {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   WalkerWorker() {}
 
   virtual ~WalkerWorker() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   virtual bool before(T*) {
     return false;  // true to abort the whole walking process
   }
@@ -94,11 +86,7 @@ class WalkerWorker {
 
 #endif
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
 #ifdef TRI_ENABLE_FAILURE_TESTS
   std::unordered_set<T*> _done;
@@ -109,8 +97,3 @@ class WalkerWorker {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -28,8 +28,8 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_UTF8HELPER_H
-#define ARANGODB_BASICS_UTF8HELPER_H 1
+#ifndef LIB_BASICS_UTF8_HELPER_H
+#define LIB_BASICS_UTF8_HELPER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/vector.h"
@@ -37,9 +37,6 @@
 #include <unicode/regex.h>
 #include <unicode/ustring.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class Utf8Helper
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -189,9 +186,6 @@ class Utf8Helper {
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        public non-class functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
@@ -275,12 +269,4 @@ bool TRI_get_words(TRI_vector_string_t*& words, char const* text,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

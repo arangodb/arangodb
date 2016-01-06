@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_MODIFICATION_BLOCKS_H
-#define ARANGODB_AQL_MODIFICATION_BLOCKS_H 1
+#ifndef ARANGOD_AQL_MODIFICATION_BLOCKS_H
+#define ARANGOD_AQL_MODIFICATION_BLOCKS_H 1
 
 #include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
@@ -45,9 +45,6 @@ struct Collection;
 
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ModificationBlock
-// -----------------------------------------------------------------------------
 
 class ModificationBlock : public ExecutionBlock {
  public:
@@ -69,11 +66,7 @@ class ModificationBlock : public ExecutionBlock {
 
   AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse
@@ -113,11 +106,7 @@ class ModificationBlock : public ExecutionBlock {
 
   void handleResult(int, bool, std::string const* errorMessage = nullptr);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief output register ($OLD)
@@ -156,9 +145,6 @@ class ModificationBlock : public ExecutionBlock {
   triagens::basics::StringBuffer _buffer;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       RemoveBlock
-// -----------------------------------------------------------------------------
 
 class RemoveBlock : public ModificationBlock {
  public:
@@ -174,11 +160,7 @@ class RemoveBlock : public ModificationBlock {
 
   ~RemoveBlock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for removing data
@@ -187,9 +169,6 @@ class RemoveBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       InsertBlock
-// -----------------------------------------------------------------------------
 
 class InsertBlock : public ModificationBlock {
  public:
@@ -205,11 +184,7 @@ class InsertBlock : public ModificationBlock {
 
   ~InsertBlock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for inserting data
@@ -218,9 +193,6 @@ class InsertBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       UpdateBlock
-// -----------------------------------------------------------------------------
 
 class UpdateBlock : public ModificationBlock {
  public:
@@ -236,11 +208,7 @@ class UpdateBlock : public ModificationBlock {
 
   ~UpdateBlock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for updating data
@@ -249,9 +217,6 @@ class UpdateBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      ReplaceBlock
-// -----------------------------------------------------------------------------
 
 class ReplaceBlock : public ModificationBlock {
  public:
@@ -267,11 +232,7 @@ class ReplaceBlock : public ModificationBlock {
 
   ~ReplaceBlock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for replacing data
@@ -280,9 +241,6 @@ class ReplaceBlock : public ModificationBlock {
   AqlItemBlock* work(std::vector<AqlItemBlock*>&) override final;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       UpsertBlock
-// -----------------------------------------------------------------------------
 
 class UpsertBlock : public ModificationBlock {
  public:
@@ -298,11 +256,7 @@ class UpsertBlock : public ModificationBlock {
 
   ~UpsertBlock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual work horse for updating data
@@ -316,8 +270,3 @@ class UpsertBlock : public ModificationBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

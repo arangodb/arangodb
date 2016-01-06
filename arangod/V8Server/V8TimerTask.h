@@ -26,8 +26,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8TIMER_TASK_H
-#define ARANGODB_V8SERVER_V8TIMER_TASK_H 1
+#ifndef ARANGOD_V8_SERVER_V8_TIMER_TASK_H
+#define ARANGOD_V8_SERVER_V8_TIMER_TASK_H 1
 
 #include "Basics/Common.h"
 
@@ -37,9 +37,6 @@
 
 struct TRI_json_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class V8TimerTask
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -51,11 +48,7 @@ namespace arango {
 class ApplicationV8;
 
 class V8TimerTask : public rest::TimerTask {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -71,11 +64,7 @@ class V8TimerTask : public rest::TimerTask {
 
   ~V8TimerTask();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get a task specific description in JSON format
@@ -89,11 +78,7 @@ class V8TimerTask : public rest::TimerTask {
 
   bool isUserDefined() const override { return true; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                              PeriodicTask
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief handles the timer event
@@ -101,11 +86,7 @@ class V8TimerTask : public rest::TimerTask {
 
   bool handleTimeout() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief system vocbase
@@ -154,12 +135,4 @@ class V8TimerTask : public rest::TimerTask {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

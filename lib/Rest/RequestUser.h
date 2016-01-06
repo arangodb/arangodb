@@ -27,24 +27,17 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_USER_H
-#define ARANGODB_REST_REQUEST_USER_H 1
+#ifndef LIB_REST_REQUEST_USER_H
+#define LIB_REST_REQUEST_USER_H 1
 
 #include "Basics/Common.h"
 
 namespace triagens {
 namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class RequestUser
-// -----------------------------------------------------------------------------
 
 class RequestUser {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the request user
@@ -62,12 +55,4 @@ class RequestUser {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

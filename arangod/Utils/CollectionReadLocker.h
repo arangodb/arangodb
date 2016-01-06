@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_COLLECTION_READ_LOCKER_H
-#define ARANGODB_UTILS_COLLECTION_READ_LOCKER_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_READ_LOCKER_H
+#define ARANGOD_UTILS_COLLECTION_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
 
@@ -37,16 +37,9 @@
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class CollectionReadLocker
-// -----------------------------------------------------------------------------
 
 class CollectionReadLocker {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   CollectionReadLocker(CollectionReadLocker const&) = delete;
   CollectionReadLocker& operator=(CollectionReadLocker const&) = delete;
@@ -69,11 +62,7 @@ class CollectionReadLocker {
 
   ~CollectionReadLocker() { unlock(); }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief release the lock
   ////////////////////////////////////////////////////////////////////////////////
@@ -85,11 +74,7 @@ class CollectionReadLocker {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief collection pointer
@@ -108,12 +93,4 @@ class CollectionReadLocker {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

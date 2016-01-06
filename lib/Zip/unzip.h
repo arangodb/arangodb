@@ -396,12 +396,4 @@ extern int ZEXPORT unzSetOffset(unzFile file, uLong pos);
 #endif
 
 #endif /* _unz64_H */
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -52,9 +52,6 @@ using namespace triagens::arango;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a binary search for the given key in the markers vector
@@ -115,9 +112,6 @@ static bool FindRange(std::vector<TRI_df_marker_t const*> const& markers,
   return found;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 size_t const InitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 
@@ -161,9 +155,6 @@ InitialSyncer::~InitialSyncer() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run method, performs a full synchronization
@@ -282,9 +273,6 @@ int InitialSyncer::run(string& errorMsg, bool incremental) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send a WAL flush command
@@ -1989,12 +1977,4 @@ int InitialSyncer::iterateCollections(
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

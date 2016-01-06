@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_TRAVERSER_H
-#define ARANGODB_BASICS_TRAVERSER_H 1
+#ifndef LIB_BASICS_TRAVERSER_H
+#define LIB_BASICS_TRAVERSER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -43,9 +43,6 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class PriorityQueue
-// -----------------------------------------------------------------------------
 
 template <typename Key, typename Value, typename Weight>
 class PriorityQueue {
@@ -247,11 +244,7 @@ class PriorityQueue {
     return true;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief swap, two positions in the heap, adjusts the _lookup table
@@ -380,11 +373,7 @@ class PriorityQueue {
     repairDown();
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                     private
-  // parts
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief _popped, number of elements that have been popped from the
   /// beginning
@@ -428,16 +417,10 @@ class PriorityQueue {
   std::vector<Value*> _history;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class PathFinder
-// -----------------------------------------------------------------------------
 
 template <typename VertexId, typename EdgeId, typename EdgeWeight>
 class PathFinder {
-  // -----------------------------------------------------------------------------
-  // --SECTION-- types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Path, type for the result
@@ -513,11 +496,7 @@ class PathFinder {
     std::mutex _mutex;
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                          subclasses for
-  // searching
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief a Dijkstra searcher for the multi-threaded search
   ////////////////////////////////////////////////////////////////////////////////
@@ -843,11 +822,7 @@ class PathFinder {
 
   ~PathFinder(){};
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Find the shortest path between start and target.
   ///        Only edges having the given direction are followed.
@@ -1093,11 +1068,7 @@ class PathFinder {
    * algorithm is correct.
    */
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                       public
-  // data
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lowest total weight for a complete path found
   ////////////////////////////////////////////////////////////////////////////////
@@ -1138,20 +1109,13 @@ class PathFinder {
   bool _intermediateSet;
   VertexId _intermediate;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      private
-  // data
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ExpanderFunction _forwardExpander;
   ExpanderFunction _backwardExpander;
   bool _bidirectional;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             struct EnumeratedPath
-// -----------------------------------------------------------------------------
 
 template <typename edgeIdentifier, typename vertexIdentifier>
 struct EnumeratedPath {
@@ -1160,22 +1124,12 @@ struct EnumeratedPath {
   EnumeratedPath() {}
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class PathIterator
-// -----------------------------------------------------------------------------
 
 template <typename edgeIdentifier, typename vertexIdentifier, typename edgeItem>
 class PathEnumerator {
-  // -----------------------------------------------------------------------------
-  // --SECTION-- constructor
-  // -----------------------------------------------------------------------------
-
+  
  private:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 enumeration
-  // state
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief List of the last path is used to
   ////////////////////////////////////////////////////////////////////////////////
@@ -1202,11 +1156,7 @@ class PathEnumerator {
 
   std::stack<size_t> _lastEdgesIdx;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                     data
-  // provider
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Function to get the next edge from index.
   ////////////////////////////////////////////////////////////////////////////////
@@ -1223,10 +1173,7 @@ class PathEnumerator {
                      vertexIdentifier&)> _getVertex;
 
  public:
-  // -----------------------------------------------------------------------------
-  // --SECTION-- constructor
-  // -----------------------------------------------------------------------------
-
+  
   PathEnumerator(
       std::function<void(vertexIdentifier const&, std::vector<edgeIdentifier>&,
                          edgeItem*&, size_t&, bool&)> getEdge,
@@ -1245,11 +1192,7 @@ class PathEnumerator {
 
   ~PathEnumerator() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
   ////////////////////////////////////////////////////////////////////////////////
@@ -1470,12 +1413,4 @@ class ConstDistanceFinder {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

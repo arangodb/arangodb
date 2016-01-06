@@ -37,9 +37,6 @@
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clean interval in microseconds
@@ -59,9 +56,6 @@ static int const CLEANUP_CURSOR_ITERATIONS = 3;
 
 static int const CLEANUP_INDEX_ITERATIONS = 5;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks all datafiles of a collection
@@ -233,9 +227,6 @@ static void CleanupCursors(TRI_vocbase_t* vocbase, bool force) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup event loop
@@ -336,12 +327,4 @@ void TRI_CleanupVocBase(void* data) {
   LOG_TRACE("shutting down cleanup thread");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

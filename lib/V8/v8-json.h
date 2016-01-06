@@ -34,12 +34,4 @@
 v8::Handle<v8::Value> TRI_FromJsonString(v8::Isolate* isolate, char const* text,
                                          char** error);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

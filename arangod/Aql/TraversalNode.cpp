@@ -47,9 +47,6 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                  struct SimpleTraverserExpression
-// -----------------------------------------------------------------------------
 
 SimpleTraverserExpression::SimpleTraverserExpression(triagens::aql::Ast* ast,
                                                      triagens::basics::Json j)
@@ -598,8 +595,3 @@ void TraversalNode::storeSimpleExpression(bool isEdgeAccess, size_t indexAccess,
   e.release();
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

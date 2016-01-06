@@ -36,15 +36,9 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          CollectionKeysRepository
-// -----------------------------------------------------------------------------
 
 size_t const CollectionKeysRepository::MaxCollectCount = 32;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a collection keys repository
@@ -93,9 +87,6 @@ CollectionKeysRepository::~CollectionKeysRepository() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores collection keys in the repository
@@ -269,12 +260,4 @@ bool CollectionKeysRepository::garbageCollect(bool force) {
   return (!found.empty());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

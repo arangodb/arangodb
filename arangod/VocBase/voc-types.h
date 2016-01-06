@@ -27,15 +27,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_VOC__TYPES_H
-#define ARANGODB_VOC_BASE_VOC__TYPES_H 1
+#ifndef ARANGOD_VOC_BASE_VOC_TYPES_H
+#define ARANGOD_VOC_BASE_VOC_TYPES_H 1
 
 #include "Basics/Common.h"
 #include "Cluster/ServerState.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection meta info filename
@@ -43,9 +40,6 @@
 
 #define TRI_VOC_PARAMETER_FILE "parameter.json"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tick type (48bit)
@@ -153,12 +147,4 @@ typedef struct TRI_document_edge_s {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

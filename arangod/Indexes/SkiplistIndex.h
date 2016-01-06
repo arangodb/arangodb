@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_SKIPLIST_INDEX_H
-#define ARANGODB_INDEXES_SKIPLIST_INDEX_H 1
+#ifndef ARANGOD_INDEXES_SKIPLIST_INDEX_H
+#define ARANGOD_INDEXES_SKIPLIST_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
@@ -73,11 +73,7 @@ class SkiplistIterator {
  private:
   friend class SkiplistIndex;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // structs
-  // -----------------------------------------------------------------------------
-
+  
  private:
   // Shorthand for the skiplist node
   typedef triagens::basics::SkipListNode<TRI_skiplist_index_key_t,
@@ -91,11 +87,7 @@ class SkiplistIterator {
         : _leftEndPoint(nullptr), _rightEndPoint(nullptr) {}
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   SkiplistIndex const* _index;
   size_t _currentInterval;  // starts with 0, current interval used
@@ -103,11 +95,7 @@ class SkiplistIterator {
   Node* _cursor;
   std::vector<SkiplistIteratorInterval> _intervals;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   SkiplistIterator(SkiplistIndex const* idx, bool reverse)
       : _index(idx), _currentInterval(0), _reverse(reverse), _cursor(nullptr) {}
@@ -126,11 +114,7 @@ class SkiplistIterator {
   // SkiplistPrevIterationCallback for the exact
   // condition for the iterator to be exhausted.
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   size_t size() const;
 
@@ -143,11 +127,7 @@ class SkiplistIterator {
   void findHelper(TRI_index_operator_t const* indexOperator,
                   std::vector<SkiplistIteratorInterval>& interval);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   bool hasPrevIteration() const;
   TRI_index_element_t* prevIteration();
@@ -194,9 +174,6 @@ class SkiplistIndexIterator final : public IndexIterator {
   size_t _currentOperator;
   SkiplistIterator* _iterator;
 };
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class SkiplistIndex
-// -----------------------------------------------------------------------------
 
 class SkiplistIndex final : public PathBasedIndex {
   struct KeyElementComparator {
@@ -227,11 +204,7 @@ class SkiplistIndex final : public PathBasedIndex {
   typedef triagens::basics::SkipList<TRI_skiplist_index_key_t,
                                      TRI_index_element_t> TRI_Skiplist;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   SkiplistIndex() = delete;
 
@@ -244,11 +217,7 @@ class SkiplistIndex final : public PathBasedIndex {
 
   ~SkiplistIndex();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_SKIPLIST_INDEX;
@@ -299,11 +268,7 @@ class SkiplistIndex final : public PathBasedIndex {
   triagens::aql::AstNode* specializeCondition(
       triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   bool isDuplicateOperator(triagens::aql::AstNode const*,
                            std::unordered_set<int> const&) const;
@@ -326,11 +291,7 @@ class SkiplistIndex final : public PathBasedIndex {
       std::unordered_map<size_t, std::vector<triagens::aql::AstNode const*>>&,
       size_t&, bool) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ElementElementComparator CmpElmElm;
 
@@ -347,12 +308,4 @@ class SkiplistIndex final : public PathBasedIndex {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

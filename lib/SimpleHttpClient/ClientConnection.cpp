@@ -62,9 +62,6 @@ using namespace triagens::httpclient;
 using namespace triagens::rest;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -81,9 +78,6 @@ ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
 
 ClientConnection::~ClientConnection() { disconnect(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the socket is still alive
@@ -114,9 +108,6 @@ bool ClientConnection::checkSocket() {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         protected virtual methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect
@@ -420,12 +411,4 @@ bool ClientConnection::readable() {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

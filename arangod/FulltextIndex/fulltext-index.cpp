@@ -38,9 +38,6 @@
 #include "fulltext-result.h"
 #include "fulltext-wordlist.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use padding for pointers in binary data
@@ -55,9 +52,6 @@
 
 #define MAX_WORD_BYTES ((TRI_FULLTEXT_MAX_WORD_LENGTH)*4)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the type of characters indexed. should be one byte long
@@ -131,9 +125,6 @@ typedef struct {
   uint32_t _initialNodeHandles;  // how many handles to allocate per node
 } index_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          forwards
-// -----------------------------------------------------------------------------
 
 static uint32_t NodeNumFollowers(const node_t* const);
 
@@ -149,9 +140,6 @@ static void FreeNode(index_t* const, node_t*);
 
 static size_t MemorySubNodeList(const uint32_t);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print some indentation
@@ -1210,9 +1198,6 @@ TRI_fulltext_result_t* FindDocuments (index_t* const idx,
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  string functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the common prefix length of two words
@@ -1231,9 +1216,6 @@ static inline size_t CommonPrefixLength(const char* const lhs,
   return length;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the fulltext index
@@ -1317,9 +1299,6 @@ void TRI_FreeFtsIndex(TRI_fts_index_t* ftx) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             document addition / removal functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a document from the index
@@ -1469,9 +1448,6 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   query functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all documents that contain a word (exact match)
@@ -1600,9 +1576,6 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex(TRI_fts_index_t* const ftx,
   return MakeListResult(idx, result, maxResults);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dump index tree
@@ -1753,12 +1726,4 @@ bool TRI_CompactFulltextIndex(TRI_fts_index_t* const ftx) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

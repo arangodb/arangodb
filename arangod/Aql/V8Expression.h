@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_V8_EXPRESSION_H
-#define ARANGODB_AQL_V8_EXPRESSION_H 1
+#ifndef ARANGOD_AQL_V8_EXPRESSION_H
+#define ARANGOD_AQL_V8_EXPRESSION_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
@@ -42,16 +42,9 @@ class AqlItemBlock;
 class Query;
 struct Variable;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               struct V8Expression
-// -----------------------------------------------------------------------------
 
 struct V8Expression {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the v8 expression
   ////////////////////////////////////////////////////////////////////////////////
@@ -65,11 +58,7 @@ struct V8Expression {
 
   ~V8Expression();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets attribute restrictions. these prevent input variables to be
   /// fully constructed as V8 objects (which can be very expensive), but limits
@@ -93,11 +82,7 @@ struct V8Expression {
                    size_t, std::vector<Variable const*> const&,
                    std::vector<RegisterId> const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the isolate used when executing and destroying the expression
   ////////////////////////////////////////////////////////////////////////////////
@@ -142,12 +127,4 @@ struct V8Expression {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

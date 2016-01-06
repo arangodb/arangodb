@@ -39,9 +39,6 @@ using namespace std;
 using namespace triagens::arango;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ServerState - will live as long as the server is
@@ -50,9 +47,6 @@ using namespace triagens::basics;
 
 static ServerState Instance;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       ServerState
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -85,9 +79,6 @@ ServerState::ServerState()
 
 ServerState::~ServerState() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the (sole) instance
@@ -183,9 +174,6 @@ std::string ServerState::stateToString(StateEnum state) {
   return "";
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the authentication data for cluster-internal communication
@@ -681,9 +669,6 @@ bool ServerState::redetermineRole() {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the server role by fetching data from the agency
@@ -963,12 +948,4 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   return role;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

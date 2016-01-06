@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_ALLOCATOR_THREAD_H
-#define ARANGODB_WAL_ALLOCATOR_THREAD_H 1
+#ifndef ARANGOD_WAL_ALLOCATOR_THREAD_H
+#define ARANGOD_WAL_ALLOCATOR_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -42,9 +42,6 @@ namespace wal {
 
 class LogfileManager;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class AllocatorThread
-// -----------------------------------------------------------------------------
 
 class AllocatorThread : public basics::Thread {
   ////////////////////////////////////////////////////////////////////////////////
@@ -55,11 +52,7 @@ class AllocatorThread : public basics::Thread {
   AllocatorThread(AllocatorThread const&) = delete;
   AllocatorThread& operator=(AllocatorThread const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the allocator thread
@@ -73,11 +66,7 @@ class AllocatorThread : public basics::Thread {
 
   ~AllocatorThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stops the allocator thread
@@ -115,11 +104,7 @@ class AllocatorThread : public basics::Thread {
     return _inRecovery;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -127,11 +112,7 @@ class AllocatorThread : public basics::Thread {
 
   void run();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates a new reserve logfile
@@ -139,11 +120,7 @@ class AllocatorThread : public basics::Thread {
 
   int createReserveLogfile(uint32_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -204,12 +181,4 @@ class AllocatorThread : public basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

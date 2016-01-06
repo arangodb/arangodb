@@ -32,13 +32,7 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class NodeFinder
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for one node type
@@ -60,9 +54,6 @@ NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
     std::vector<ExecutionNode*>& out, bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for one node type
@@ -95,13 +86,7 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class EndNodeFinder
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief node finder for one node type
@@ -111,9 +96,6 @@ EndNodeFinder::EndNodeFinder(std::vector<ExecutionNode*>& out,
                              bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief before method for one node type
@@ -135,12 +117,4 @@ bool EndNodeFinder::before(ExecutionNode* en) {
 }  // namespace triagens::aql
 }  // namespace triagens
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

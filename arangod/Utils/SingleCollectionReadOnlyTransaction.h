@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
-#define ARANGODB_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H
+#define ARANGOD_UTILS_SINGLE_COLLECTION_READ_ONLY_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -43,16 +43,8 @@ namespace triagens {
 namespace arango {
 
 class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                         class
-  // SingleCollectionReadOnlyTransaction
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection object
@@ -87,12 +79,4 @@ class SingleCollectionReadOnlyTransaction : public SingleCollectionTransaction {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

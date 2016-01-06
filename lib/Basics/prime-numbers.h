@@ -27,14 +27,11 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_PRIME__NUMBERS_H
-#define ARANGODB_BASICS_C_PRIME__NUMBERS_H 1
+#ifndef LIB_BASICS_PRIME_NUMBERS_H
+#define LIB_BASICS_PRIME_NUMBERS_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a prime number not lower than value
@@ -44,12 +41,4 @@ uint64_t TRI_NearPrime(uint64_t);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

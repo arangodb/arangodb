@@ -27,17 +27,14 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_EXPORT_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_EXPORT_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_EXPORT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_EXPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Utils/CollectionExport.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class RestExportHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 
@@ -48,11 +45,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestExportHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -60,11 +53,7 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 
   explicit RestExportHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -72,11 +61,7 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 
   status_t execute() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief build options for the query as JSON
@@ -102,11 +87,7 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 
   void deleteCursor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief restrictions for export
@@ -119,12 +100,4 @@ class RestExportHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

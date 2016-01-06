@@ -46,9 +46,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/VocShaper.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
 
 static char const* ReasonNoDatafiles =
     "skipped compaction because collection has no datafiles";
@@ -138,9 +135,6 @@ static char const* ReasonNothingToCompact =
 
 static int const COMPACTOR_INTERVAL = (1 * 1000 * 1000);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compaction blocker entry
@@ -185,9 +179,6 @@ struct compaction_info_t {
   bool _keepDeletions;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a marker's size
@@ -1292,9 +1283,6 @@ static bool CheckAndLockCompaction(TRI_vocbase_t* vocbase) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the compaction blockers structure
@@ -1597,12 +1585,4 @@ void TRI_CompactorVocBase(void* data) {
   LOG_TRACE("shutting down compactor thread");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

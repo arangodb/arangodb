@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_SYNCHRONIZER_THREAD_H
-#define ARANGODB_WAL_SYNCHRONIZER_THREAD_H 1
+#ifndef ARANGOD_WAL_SYNCHRONIZER_THREAD_H
+#define ARANGOD_WAL_SYNCHRONIZER_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -41,9 +41,6 @@ namespace wal {
 
 class LogfileManager;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class SynchronizerThread
-// -----------------------------------------------------------------------------
 
 class SynchronizerThread : public basics::Thread {
   ////////////////////////////////////////////////////////////////////////////////
@@ -54,11 +51,7 @@ class SynchronizerThread : public basics::Thread {
   SynchronizerThread(SynchronizerThread const&) = delete;
   SynchronizerThread& operator=(SynchronizerThread const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the synchronizer thread
@@ -72,11 +65,7 @@ class SynchronizerThread : public basics::Thread {
 
   ~SynchronizerThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stops the synchronizer thread
@@ -90,11 +79,7 @@ class SynchronizerThread : public basics::Thread {
 
   void signalSync();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -102,11 +87,7 @@ class SynchronizerThread : public basics::Thread {
 
   void run();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief synchronize an unsynchronized region
@@ -120,11 +101,7 @@ class SynchronizerThread : public basics::Thread {
 
   int getLogfileDescriptor(Logfile::IdType);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -170,12 +147,4 @@ class SynchronizerThread : public basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

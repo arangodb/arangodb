@@ -62,9 +62,6 @@ using Json = triagens::basics::Json;
 #define LEAVE_BLOCK
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class IndexBlock
-// -----------------------------------------------------------------------------
 
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
@@ -633,8 +630,3 @@ void IndexBlock::cleanupNonConstExpressions() {
   _nonConstExpressions.clear();
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

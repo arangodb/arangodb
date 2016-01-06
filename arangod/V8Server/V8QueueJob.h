@@ -25,17 +25,14 @@
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8_QUEUE_JOB_H
-#define ARANGODB_V8SERVER_V8_QUEUE_JOB_H 1
+#ifndef ARANGOD_V8_SERVER_V8_QUEUE_JOB_H
+#define ARANGOD_V8_SERVER_V8_QUEUE_JOB_H 1
 
 #include "Dispatcher/Job.h"
 #include "Basics/json.h"
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class V8Job
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -45,11 +42,7 @@ class V8QueueJob : public rest::Job {
   V8QueueJob(V8QueueJob const&) = delete;
   V8QueueJob& operator=(V8QueueJob const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new V8 queue job
@@ -63,11 +56,7 @@ class V8QueueJob : public rest::Job {
 
   ~V8QueueJob();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                       Job
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -99,11 +88,7 @@ class V8QueueJob : public rest::Job {
 
   void handleError(basics::Exception const& ex) override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief queue name
@@ -140,6 +125,4 @@ class V8QueueJob : public rest::Job {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

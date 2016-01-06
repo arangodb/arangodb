@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ARANGO_CURSORS_H
-#define ARANGODB_ARANGO_CURSORS_H 1
+#ifndef ARANGOD_UTILS_CURSOR_REPOSITORY_H
+#define ARANGOD_UTILS_CURSOR_REPOSITORY_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -43,16 +43,9 @@ namespace arango {
 
 class CollectionExport;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class CursorRepository
-// -----------------------------------------------------------------------------
 
 class CursorRepository {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursors repository
@@ -66,11 +59,7 @@ class CursorRepository {
 
   ~CursorRepository();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates a cursor and stores it in the registry
@@ -121,11 +110,7 @@ class CursorRepository {
 
   bool garbageCollect(bool);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase
@@ -156,12 +141,4 @@ class CursorRepository {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

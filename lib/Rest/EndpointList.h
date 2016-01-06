@@ -27,27 +27,20 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ENDPOINT_LIST_H
-#define ARANGODB_REST_ENDPOINT_LIST_H 1
+#ifndef LIB_REST_ENDPOINT_LIST_H
+#define LIB_REST_ENDPOINT_LIST_H 1
 
 #include "Basics/Common.h"
 
 #include "Rest/Endpoint.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      EndpointList
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
 
 class EndpointList {
  public:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint list
@@ -61,11 +54,7 @@ class EndpointList {
 
   ~EndpointList();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns whether the list is empty
@@ -128,11 +117,7 @@ class EndpointList {
 
   static std::string getEncryptionName(Endpoint::EncryptionType);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief list of endpoints
@@ -146,12 +131,4 @@ class EndpointList {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -1,6 +1,5 @@
-#ifndef FPCONV_H
-#define FPCONV_H
-
+#ifndef LIB_BASICS_FPCONV_H
+#define LIB_BASICS_FPCONV_H 1
 /* Fast and accurate double to string conversion based on Florian Loitsch's
  * Grisu-algorithm[1].
  *

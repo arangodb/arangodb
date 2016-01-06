@@ -28,17 +28,14 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_SCHEDULER_LIBEV_H
-#define ARANGODB_SCHEDULER_SCHEDULER_LIBEV_H 1
+#ifndef ARANGOD_SCHEDULER_SCHEDULER_LIBEV_H
+#define ARANGOD_SCHEDULER_SCHEDULER_LIBEV_H 1
 
 #include "Basics/Common.h"
 #include "Scheduler/Scheduler.h"
 #include "Basics/Mutex.h"
 #include "Basics/SpinLock.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class SchedulerLibev
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -52,11 +49,7 @@ class SchedulerLibev : public Scheduler {
   SchedulerLibev(SchedulerLibev const&);
   SchedulerLibev& operator=(SchedulerLibev const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             static public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the available backends
@@ -70,11 +63,7 @@ class SchedulerLibev : public Scheduler {
 
   static void switchAllocator();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates a scheduler
@@ -88,11 +77,7 @@ class SchedulerLibev : public Scheduler {
 
   ~SchedulerLibev();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 Scheduler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -174,11 +159,7 @@ class SchedulerLibev : public Scheduler {
 
   void signalTask(std::unique_ptr<TaskData>&) override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief looks up an event lookup
@@ -186,11 +167,7 @@ class SchedulerLibev : public Scheduler {
 
   void* lookupLoop(EventLoop);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief backend to use
@@ -221,12 +198,4 @@ class SchedulerLibev : public Scheduler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ARANGO_COLLECTION_KEYS_H
-#define ARANGODB_ARANGO_COLLECTION_KEYS_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_KEYS_H
+#define ARANGOD_UTILS_COLLECTION_KEYS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -46,9 +46,6 @@ class DocumentDitch;
 
 typedef TRI_voc_tick_t CollectionKeysId;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class CollectionKeys
-// -----------------------------------------------------------------------------
 
 class CollectionKeys {
  public:
@@ -60,11 +57,7 @@ class CollectionKeys {
 
   ~CollectionKeys();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   CollectionKeysId id() const { return _id; }
 
@@ -125,11 +118,7 @@ class CollectionKeys {
   void dumpDocs(triagens::basics::Json&, size_t, size_t,
                 VPackSlice const&) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   struct TRI_vocbase_t* _vocbase;
   triagens::arango::CollectionGuard* _guard;
@@ -151,12 +140,4 @@ class CollectionKeys {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

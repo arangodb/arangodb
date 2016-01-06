@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_REPLICATION__APPLIER_H
-#define ARANGODB_VOC_BASE_REPLICATION__APPLIER_H 1
+#ifndef ARANGOD_VOC_BASE_REPLICATION_APPLIER_H
+#define ARANGOD_VOC_BASE_REPLICATION_APPLIER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -37,21 +37,12 @@
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 struct TRI_server_t;
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               REPLICATION APPLIER
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct containing a replication apply configuration
@@ -248,11 +239,7 @@ class TRI_replication_applier_t {
 
   std::shared_ptr<VPackBuilder> toVelocyPack() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief register an applier error
@@ -273,9 +260,6 @@ class TRI_replication_applier_t {
   TRI_thread_t _thread;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a replication applier
@@ -284,9 +268,6 @@ class TRI_replication_applier_t {
 TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_server_t*,
                                                         TRI_vocbase_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a JSON representation of the replication apply configuration
@@ -378,12 +359,4 @@ int TRI_SaveConfigurationReplicationApplier(
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

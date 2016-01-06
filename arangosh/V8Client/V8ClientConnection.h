@@ -28,17 +28,14 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8CLIENT_V8CLIENT_CONNECTION_H
-#define ARANGODB_V8CLIENT_V8CLIENT_CONNECTION_H 1
+#ifndef ARANGOSH_V8_CLIENT_V8_CLIENT_CONNECTION_H
+#define ARANGOSH_V8_CLIENT_V8_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
 #include "Rest/HttpRequest.h"
 
 #include <v8.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace httpclient {
@@ -52,9 +49,6 @@ class Endpoint;
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class V8ClientConnection
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace v8client {
@@ -68,11 +62,7 @@ class V8ClientConnection {
   V8ClientConnection(V8ClientConnection const&);
   V8ClientConnection& operator=(V8ClientConnection const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -88,11 +78,7 @@ class V8ClientConnection {
 
   ~V8ClientConnection();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief request location rewriter (injects database name)
@@ -279,11 +265,7 @@ class V8ClientConnection {
       std::string const& body,
       std::map<std::string, std::string> const& headerFields, bool raw);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes a request
@@ -318,11 +300,7 @@ class V8ClientConnection {
       std::string const& location, std::string const& body,
       std::map<std::string, std::string> const& headerFields);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connection
@@ -377,12 +355,4 @@ class V8ClientConnection {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

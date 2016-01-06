@@ -35,9 +35,6 @@ using namespace std;
 using namespace triagens::admin;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -49,9 +46,6 @@ RestShutdownHandler::RestShutdownHandler(triagens::rest::HttpRequest* request,
       _applicationServer(
           static_cast<triagens::rest::ApplicationServer*>(applicationServer)) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -90,12 +84,4 @@ HttpHandler::status_t RestShutdownHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

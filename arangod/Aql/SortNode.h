@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_SORT_NODE_H
-#define ARANGODB_AQL_SORT_NODE_H 1
+#ifndef ARANGOD_AQL_SORT_NODE_H
+#define ARANGOD_AQL_SORT_NODE_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
@@ -47,9 +47,6 @@ class ExecutionBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class SortNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class SortNode
@@ -159,11 +156,7 @@ class SortNode : public ExecutionNode {
 
   bool simplify(ExecutionPlan*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief pairs, consisting of variable and sort direction
@@ -184,8 +177,3 @@ class SortNode : public ExecutionNode {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

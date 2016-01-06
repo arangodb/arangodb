@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_JOB_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_JOB_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_JOB_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_JOB_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "HttpServer/AsyncJobManager.h"
@@ -42,20 +42,13 @@ class Dispatcher;
 
 namespace admin {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class RestJobHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestJobHandler : public RestBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -64,11 +57,7 @@ class RestJobHandler : public RestBaseHandler {
   RestJobHandler(rest::HttpRequest* request,
                  std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -82,11 +71,7 @@ class RestJobHandler : public RestBaseHandler {
 
   status_t execute() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief put handler
   ////////////////////////////////////////////////////////////////////////////////
@@ -123,11 +108,7 @@ class RestJobHandler : public RestBaseHandler {
 
   void deleteJob();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -146,12 +127,4 @@ class RestJobHandler : public RestBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

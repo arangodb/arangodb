@@ -34,9 +34,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of RemoteNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for RemoteNode from Json
@@ -94,9 +91,6 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
   return 1.0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            methods of ScatterNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a scatter node from JSON
@@ -139,9 +133,6 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems * nrShards;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         methods of DistributeNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a distribute node from JSON
@@ -193,9 +184,6 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of GatherNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a gather node from JSON
@@ -247,8 +235,3 @@ double GatherNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

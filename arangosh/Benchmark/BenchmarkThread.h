@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCHMARK_THREAD_H
-#define ARANGODB_BENCHMARK_BENCHMARK_THREAD_H 1
+#ifndef ARANGOSH_BENCHMARK_BENCHMARK_THREAD_H
+#define ARANGOSH_BENCHMARK_BENCHMARK_THREAD_H 1
 
 #include "Basics/Common.h"
 
@@ -46,13 +46,7 @@
 namespace triagens {
 namespace arangob {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class BenchmarkThread
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 class BenchmarkThread : public triagens::basics::Thread {
  public:
@@ -106,11 +100,7 @@ class BenchmarkThread : public triagens::basics::Thread {
     delete _connection;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                         virtual protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the thread program
@@ -198,11 +188,7 @@ class BenchmarkThread : public triagens::basics::Thread {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief request location rewriter (injects database name)
@@ -410,11 +396,7 @@ class BenchmarkThread : public triagens::basics::Thread {
     delete result;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the threads offset value
@@ -428,11 +410,7 @@ class BenchmarkThread : public triagens::basics::Thread {
 
   double getTime() const { return _time; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the operation to benchmark
@@ -589,12 +567,4 @@ class BenchmarkThread : public triagens::basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

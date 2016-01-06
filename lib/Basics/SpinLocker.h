@@ -28,15 +28,12 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SPIN_LOCKER_H
-#define ARANGODB_BASICS_SPIN_LOCKER_H 1
+#ifndef LIB_BASICS_SPIN_LOCKER_H
+#define LIB_BASICS_SPIN_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SpinLock.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
@@ -61,9 +58,6 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class SpinLocker
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -79,11 +73,7 @@ class SpinLocker {
   SpinLocker(SpinLocker const&);
   SpinLocker& operator=(SpinLocker const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a lock
@@ -107,11 +97,7 @@ class SpinLocker {
 
   ~SpinLocker();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the mutex
@@ -146,12 +132,4 @@ class SpinLocker {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

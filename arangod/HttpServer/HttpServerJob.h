@@ -28,17 +28,14 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_SERVER_JOB_H
-#define ARANGODB_HTTP_SERVER_HTTP_SERVER_JOB_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H
+#define ARANGOD_HTTP_SERVER_HTTP_SERVER_JOB_H 1
 
 #include "Dispatcher/Job.h"
 
 #include "Basics/Exceptions.h"
 #include "Basics/WorkMonitor.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class HttpServerJob
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -53,10 +50,7 @@ class HttpServerJob : public Job {
   HttpServerJob(HttpServerJob const&) = delete;
   HttpServerJob& operator=(HttpServerJob const&) = delete;
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                    constructors and destructors
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new server job
@@ -71,10 +65,7 @@ class HttpServerJob : public Job {
 
   ~HttpServerJob();
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                  public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the underlying handler
@@ -82,10 +73,7 @@ class HttpServerJob : public Job {
 
   HttpHandler* handler() const { return _handler.get(); }
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                     Job methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -117,10 +105,7 @@ class HttpServerJob : public Job {
 
   void handleError(basics::Exception const&) override;
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                             protected variables
-  // ---------------------------------------------------------------------------
-
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief general server
@@ -151,6 +136,4 @@ class HttpServerJob : public Job {
 
 #endif
 
-// ---------------------------------------------------------------------------
-// --SECTION--                                                     END-OF-FILE
-// ---------------------------------------------------------------------------
+

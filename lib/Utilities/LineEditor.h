@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_LINE_EDITOR_H
-#define ARANGODB_UTILITIES_LINE_EDITOR_H 1
+#ifndef LIB_UTILITIES_LINE_EDITOR_H
+#define LIB_UTILITIES_LINE_EDITOR_H 1
 
 #include "Basics/Common.h"
 #include <functional>
@@ -36,9 +36,6 @@
 namespace arangodb {
 class ShellBase;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class LineEditor
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor
@@ -48,11 +45,7 @@ class LineEditor {
   LineEditor(LineEditor const&) = delete;
   LineEditor& operator=(LineEditor const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // constants
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of history entries
@@ -60,11 +53,7 @@ class LineEditor {
 
   static const int MAX_HISTORY_ENTRIES = 1000;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -78,11 +67,7 @@ class LineEditor {
 
   virtual ~LineEditor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the shell implementation supports colors
@@ -127,11 +112,7 @@ class LineEditor {
 
   void setSignalFunction(std::function<void()> const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the shell implementation
@@ -149,6 +130,4 @@ class LineEditor {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

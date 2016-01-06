@@ -48,9 +48,6 @@
 
 using namespace triagens::wal;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a reference to an existing datafile statistics struct
@@ -80,9 +77,6 @@ static inline TRI_doc_datafile_info_t& createDfi(CollectorCache* cache,
   return getDfi(cache, fid);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    CollectorState
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state that is built up when scanning a WAL logfile
@@ -336,9 +330,6 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CollectorThread
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait interval for the collector thread when idle
@@ -346,9 +337,6 @@ static bool ScanMarker(TRI_df_marker_t const* marker, void* data,
 
 uint64_t const CollectorThread::Interval = 1000000;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the collector thread
@@ -376,9 +364,6 @@ CollectorThread::CollectorThread(LogfileManager* logfileManager,
 
 CollectorThread::~CollectorThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector result
@@ -422,9 +407,6 @@ void CollectorThread::signal() {
   guard.signal();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief main loop
@@ -529,9 +511,6 @@ bool CollectorThread::hasQueuedOperations(TRI_voc_cid_t cid) {
   return (_operationsQueue.find(cid) != _operationsQueue.end());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief step 1: perform collection of a logfile (if any)
@@ -1655,12 +1634,4 @@ void CollectorThread::finishMarker(char const* walPosition,
       datafilePosition, marker->_size, walPosition, cache->lastFid));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

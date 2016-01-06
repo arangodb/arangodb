@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_INDEX_H
-#define ARANGODB_INDEXES_INDEX_H 1
+#ifndef ARANGOD_INDEXES_INDEX_H
+#define ARANGOD_INDEXES_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
@@ -42,9 +42,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_doc_mptr_t;
 struct TRI_document_collection_t;
@@ -64,9 +61,6 @@ class Transaction;
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              struct index_element
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Unified index element. Do not directly construct it.
@@ -140,16 +134,9 @@ namespace arango {
 class IndexIterator;
 struct IndexIteratorContext;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class Index
-// -----------------------------------------------------------------------------
 
 class Index {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   Index() = delete;
   Index(Index const&) = delete;
@@ -182,11 +169,7 @@ class Index {
     TRI_IDX_TYPE_CAP_CONSTRAINT
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the index id
@@ -406,11 +389,7 @@ class Index {
                            triagens::aql::Variable const* reference,
                            bool) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   TRI_idx_iid_t const _iid;
 
@@ -432,12 +411,4 @@ std::ostream& operator<<(std::ostream&, triagens::arango::Index const&);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

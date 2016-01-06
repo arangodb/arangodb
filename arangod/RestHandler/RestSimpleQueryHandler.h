@@ -27,15 +27,12 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_SIMPLE_QUERY_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestCursorHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class RestSimpleQueryHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -50,11 +47,7 @@ class ApplicationV8;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestSimpleQueryHandler : public RestCursorHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -64,11 +57,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
                          std::pair<triagens::arango::ApplicationV8*,
                                    triagens::aql::QueryRegistry*>*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -76,11 +65,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
 
   status_t execute() override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return a cursor with all documents from the collection
@@ -93,12 +78,4 @@ class RestSimpleQueryHandler : public RestCursorHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

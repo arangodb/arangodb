@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_RESULT_H
-#define ARANGODB_AQL_QUERY_RESULT_H 1
+#ifndef ARANGOD_AQL_QUERY_RESULT_H
+#define ARANGOD_AQL_QUERY_RESULT_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -39,9 +39,6 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                struct QueryResult
-// -----------------------------------------------------------------------------
 
 struct QueryResult {
   QueryResult& operator=(QueryResult const& other) = delete;
@@ -109,12 +106,4 @@ struct QueryResult {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

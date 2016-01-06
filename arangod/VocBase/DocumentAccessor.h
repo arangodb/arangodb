@@ -27,8 +27,8 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_DOCUMENT_ACCESSOR_H
-#define ARANGODB_VOC_BASE_DOCUMENT_ACCESSOR_H 1
+#ifndef ARANGOD_VOC_BASE_DOCUMENT_ACCESSOR_H
+#define ARANGOD_VOC_BASE_DOCUMENT_ACCESSOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -51,17 +51,10 @@ class CollectionNameResolver;
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  DocumentAccessor
-// -----------------------------------------------------------------------------
 
 class DocumentAccessor {
  public:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   DocumentAccessor(DocumentAccessor const&);
   DocumentAccessor& operator=(DocumentAccessor const&);
 
@@ -74,11 +67,7 @@ class DocumentAccessor {
 
   ~DocumentAccessor();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   bool hasKey(std::string const& attribute) const;
 
@@ -96,11 +85,7 @@ class DocumentAccessor {
 
   triagens::basics::Json toJson();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   void setToNull();
 
@@ -108,11 +93,7 @@ class DocumentAccessor {
 
   void lookupDocumentAttribute(char const* name, size_t nameLength);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   triagens::arango::CollectionNameResolver const* _resolver;
 
@@ -255,12 +236,4 @@ static inline bool TRI_MATCHES_MARKER_KEY(triagens::arango::Transaction* trx,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

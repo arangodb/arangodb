@@ -170,13 +170,7 @@ static ExecutionBlock* CreateBlock(
   return nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class ExecutionEngine
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the engine
@@ -210,9 +204,6 @@ ExecutionEngine::~ExecutionEngine() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                     walker class for ExecutionNode to instantiate
-// -----------------------------------------------------------------------------
 
 struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionEngine* engine;
@@ -265,9 +256,6 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                     walker class for ExecutionNode to instantiate
-// -----------------------------------------------------------------------------
 
 // Here is a description of how the instantiation of an execution plan
 // works in the cluster. See below for a complete example
@@ -875,9 +863,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution engine from a plan
@@ -1095,12 +1080,4 @@ void ExecutionEngine::addBlock(ExecutionBlock* block) {
   _blocks.emplace_back(block);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

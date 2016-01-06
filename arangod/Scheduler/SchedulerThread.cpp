@@ -53,9 +53,6 @@ using namespace triagens::rest;
 #define SCHEDULER_LOCKER(a) MUTEX_LOCKER(a)
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -83,9 +80,6 @@ SchedulerThread::SchedulerThread(Scheduler* scheduler, EventLoop loop,
 
 SchedulerThread::~SchedulerThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the scheduler thread is up and running
@@ -227,9 +221,6 @@ void SchedulerThread::signalTask(std::unique_ptr<TaskData>& data) {
   _scheduler->wakeupLoop(_loop);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -391,6 +382,4 @@ void SchedulerThread::addStatus(VPackBuilder* b) {
   b->add("numberTasks", VPackValue(_numberTasks.load()));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

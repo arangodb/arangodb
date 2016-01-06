@@ -69,9 +69,6 @@
 
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sleep interval used when polling for a loading collection's status
@@ -79,17 +76,11 @@ using namespace std;
 
 #define COLLECTION_STATUS_POLL_INTERVAL (1000 * 10)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 static std::atomic<TRI_voc_tick_t> QueryId(1);
 
 static std::atomic<bool> ThrowCollectionNotLoaded(false);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief states for TRI_DropCollectionVocBase()
@@ -101,13 +92,7 @@ enum DropState {
   DROP_PERFORM  // drop done, must perform actual cleanup routine
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             DICTIONARY FUNCTOIONS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes the collection id
@@ -177,13 +162,7 @@ static bool EqualKeyCollectionName(TRI_associative_pointer_t* array,
   return TRI_EqualString(k, e->_name);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           VOCBASE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write a drop collection marker into the log
@@ -1331,9 +1310,6 @@ static int ScanTrxCollection(TRI_vocbase_t* vocbase) {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the memory associated with a collection
@@ -1379,9 +1355,6 @@ static bool FilenameStringComparator(std::string const& lhs,
   return numLeft < numRight;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class TRI_vocbase_col_t
-// -----------------------------------------------------------------------------
 
 void TRI_vocbase_col_t::toVelocyPack(VPackBuilder& builder, bool includeIndexes,
                                      TRI_voc_tick_t maxTick) {
@@ -1476,9 +1449,6 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_col_t::toVelocyPackIndexes(
   return builder;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object, without threads and some other attributes
@@ -2434,9 +2404,6 @@ void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t* vocbase,
   ThrowCollectionNotLoaded.store(value, std::memory_order_seq_cst);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     TRI_vocbase_t
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a vocbase object
@@ -2570,12 +2537,4 @@ TRI_vocbase_t::getReplicationClients() {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -39,9 +39,6 @@
 using namespace std;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global JSON-ified program options value
@@ -49,9 +46,6 @@ using namespace triagens::basics;
 
 static std::unique_ptr<TRI_json_t> ProgramOptionsJson;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a key in a map, returns empty if not found
@@ -354,13 +348,7 @@ static void ExtractVectorUInt64(char const* name, TRI_vector_string_t* ptr,
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class ProgramOptions
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -408,9 +396,6 @@ ProgramOptions::~ProgramOptions() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse command line
@@ -535,9 +520,6 @@ string ProgramOptions::lastError() { return _errorMessage; }
 
 TRI_json_t const* ProgramOptions::getJson() { return ProgramOptionsJson.get(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates description for the main section
@@ -877,12 +859,4 @@ bool ProgramOptions::extractValues(ProgramOptionsDescription const& description,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

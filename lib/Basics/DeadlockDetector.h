@@ -27,8 +27,8 @@
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_DEADLOCK_DETECTOR_H
-#define ARANGODB_BASICS_DEADLOCK_DETECTOR_H 1
+#ifndef LIB_BASICS_DEADLOCK_DETECTOR_H
+#define LIB_BASICS_DEADLOCK_DETECTOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -38,17 +38,10 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  DeadlockDetector
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class DeadlockDetector {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   DeadlockDetector() = default;
   ~DeadlockDetector() = default;
@@ -56,11 +49,7 @@ class DeadlockDetector {
   DeadlockDetector(DeadlockDetector const&) = delete;
   DeadlockDetector& operator=(DeadlockDetector const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   bool isDeadlocked(T const* value) {
     auto tid = TRI_CurrentThreadId();
@@ -167,11 +156,7 @@ class DeadlockDetector {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lock for managing the readers
@@ -191,12 +176,4 @@ class DeadlockDetector {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

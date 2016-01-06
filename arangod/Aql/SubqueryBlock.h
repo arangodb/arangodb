@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_SUBQUERY_BLOCK_H
-#define ARANGODB_AQL_SUBQUERY_BLOCK_H 1
+#ifndef ARANGOD_AQL_SUBQUERY_BLOCK_H
+#define ARANGOD_AQL_SUBQUERY_BLOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -39,9 +39,6 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     SubqueryBlock
-// -----------------------------------------------------------------------------
 
 class SubqueryBlock : public ExecutionBlock {
  public:
@@ -108,8 +105,3 @@ class SubqueryBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

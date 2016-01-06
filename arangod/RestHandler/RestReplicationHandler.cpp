@@ -64,17 +64,11 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       initialize static variables
-// -----------------------------------------------------------------------------
 
 uint64_t const RestReplicationHandler::defaultChunkSize = 128 * 1024;
 
 uint64_t const RestReplicationHandler::maxChunkSize = 128 * 1024 * 1024;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -89,9 +83,6 @@ RestReplicationHandler::RestReplicationHandler(HttpRequest* request)
 
 RestReplicationHandler::~RestReplicationHandler() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -304,9 +295,6 @@ BAD_CALL:
   return status_t(HttpHandler::HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator to sort collections
@@ -350,9 +338,6 @@ bool RestReplicationHandler::filterCollection(TRI_vocbase_col_t* collection,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error if called on a coordinator server
@@ -5226,12 +5211,4 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
   handleCommandApplierGetState();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

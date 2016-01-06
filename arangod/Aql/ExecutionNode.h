@@ -23,8 +23,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_NODE_H
-#define ARANGODB_AQL_EXECUTION_NODE_H 1
+#ifndef ARANGOD_AQL_EXECUTION_NODE_H
+#define ARANGOD_AQL_EXECUTION_NODE_H 1
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
@@ -93,11 +93,7 @@ class ExecutionNode {
     INDEX = 23
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ExecutionNode() = delete;
   ExecutionNode(ExecutionNode const&) = delete;
   ExecutionNode& operator=(ExecutionNode const&) = delete;
@@ -127,11 +123,7 @@ class ExecutionNode {
 
   virtual ~ExecutionNode() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief factory from json.
@@ -662,11 +654,7 @@ class ExecutionNode {
 
   ExecutionNode const* getLoop() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief factory for (optional) variables from json.
@@ -698,11 +686,7 @@ class ExecutionNode {
     _regsToClear = toClear;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief node id
@@ -780,11 +764,7 @@ class ExecutionNode {
 
   std::unordered_set<RegisterId> _regsToClear;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           public static
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief NodeType to string mapping
@@ -800,9 +780,6 @@ class ExecutionNode {
   static RegisterId const MaxRegisterId;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class SingletonNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class SingletonNode
@@ -854,9 +831,6 @@ class SingletonNode : public ExecutionNode {
   double estimateCost(size_t&) const override final;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     class EnumerateCollectionNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class EnumerateCollectionNode
@@ -948,11 +922,7 @@ class EnumerateCollectionNode : public ExecutionNode {
 
   Variable const* outVariable() const { return _outVariable; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the database
@@ -979,9 +949,6 @@ class EnumerateCollectionNode : public ExecutionNode {
   bool _random;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class EnumerateListNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class EnumerateListNode
@@ -1066,11 +1033,7 @@ class EnumerateListNode : public ExecutionNode {
 
   Variable const* outVariable() const { return _outVariable; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input variable to read from
@@ -1085,9 +1048,6 @@ class EnumerateListNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class LimitNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class LimitNode
@@ -1187,9 +1147,6 @@ class LimitNode : public ExecutionNode {
   bool _fullCount;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CalculationNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class CalculationNode
@@ -1338,11 +1295,7 @@ class CalculationNode : public ExecutionNode {
 
   bool canThrow() override { return _expression->canThrow(); }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief an optional condition variable for the calculation
@@ -1371,9 +1324,6 @@ class CalculationNode : public ExecutionNode {
   bool _canRemoveIfThrows;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class SubqueryNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class SubqueryNode
@@ -1490,11 +1440,7 @@ class SubqueryNode : public ExecutionNode {
 
   bool canThrow() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief we need to have an expression and where to write the result
@@ -1509,9 +1455,6 @@ class SubqueryNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class FilterNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class FilterNode
@@ -1585,9 +1528,6 @@ class FilterNode : public ExecutionNode {
   Variable const* _inVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            struct SortInformation
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is an auxilliary struct for processed sort criteria information
@@ -1646,9 +1586,6 @@ struct SortInformation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class ReturnNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ReturnNode
@@ -1714,11 +1651,7 @@ class ReturnNode : public ExecutionNode {
     vars.emplace(_inVariable);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief we need to know the offset and limit
@@ -1727,9 +1660,6 @@ class ReturnNode : public ExecutionNode {
   Variable const* _inVariable;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class NoResultsNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class NoResultsNode
@@ -1787,8 +1717,3 @@ class NoResultsNode : public ExecutionNode {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_EDGE_INDEX_H
-#define ARANGODB_INDEXES_EDGE_INDEX_H 1
+#ifndef ARANGOD_INDEXES_EDGE_INDEX_H
+#define ARANGOD_INDEXES_EDGE_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
@@ -40,9 +40,6 @@
 
 struct TRI_json_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class EdgeIndex
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -90,11 +87,7 @@ class EdgeIndexIterator final : public IndexIterator {
 };
 
 class EdgeIndex final : public Index {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   EdgeIndex() = delete;
 
@@ -104,11 +97,7 @@ class EdgeIndex final : public Index {
 
   ~EdgeIndex();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief typedef for hash tables
@@ -117,11 +106,7 @@ class EdgeIndex final : public Index {
   typedef triagens::basics::AssocMulti<TRI_edge_header_t, TRI_doc_mptr_t,
                                        uint32_t, true> TRI_EdgeIndexHash_t;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_EDGE_INDEX;
@@ -183,11 +168,7 @@ class EdgeIndex final : public Index {
   triagens::aql::AstNode* specializeCondition(
       triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator
@@ -198,11 +179,7 @@ class EdgeIndex final : public Index {
       triagens::aql::AstNode const*,
       std::vector<triagens::aql::AstNode const*> const&) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the hash table for _from
@@ -227,12 +204,4 @@ class EdgeIndex final : public Index {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

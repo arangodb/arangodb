@@ -28,15 +28,12 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_CONDITION_LOCKER_H
-#define ARANGODB_BASICS_CONDITION_LOCKER_H 1
+#ifndef LIB_BASICS_CONDITION_LOCKER_H
+#define LIB_BASICS_CONDITION_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
@@ -53,9 +50,6 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class ConditionLocker
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -72,11 +66,7 @@ class ConditionLocker {
   ConditionLocker(ConditionLocker const&);
   ConditionLocker& operator=(ConditionLocker const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the condition variable
@@ -102,11 +92,7 @@ class ConditionLocker {
 
   ~ConditionLocker();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief waits for an event to occur
@@ -144,11 +130,7 @@ class ConditionLocker {
 
   void lock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the condition
@@ -183,12 +165,4 @@ class ConditionLocker {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

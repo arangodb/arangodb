@@ -40,9 +40,6 @@
 using namespace std;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   ClusterComm connection options
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global callback for asynchronous REST handler
@@ -53,9 +50,6 @@ void triagens::arango::ClusterCommRestCallback(
   ClusterComm::instance()->asyncAnswer(coordinator, response);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                ClusterComm class
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm constructor
@@ -943,13 +937,7 @@ void ClusterComm::cleanupAllQueues() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                ClusterCommThread
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a ClusterCommThread
@@ -966,9 +954,6 @@ ClusterCommThread::ClusterCommThread()
 
 ClusterCommThread::~ClusterCommThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         ClusterCommThread methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
@@ -1139,9 +1124,6 @@ void ClusterCommThread::run() {
   LOG_DEBUG("stopped ClusterComm thread");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the cluster comm background thread
@@ -1149,12 +1131,4 @@ void ClusterCommThread::run() {
 
 bool ClusterCommThread::init() { return true; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

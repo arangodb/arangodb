@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_COLLECTION_H
-#define ARANGODB_VOC_BASE_COLLECTION_H 1
+#ifndef ARANGOD_VOC_BASE_COLLECTION_H
+#define ARANGOD_VOC_BASE_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/vector.h"
@@ -61,9 +61,6 @@
 /// concrete sub-class @ref TRI_document_collection_t.
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          forwards
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 class TRI_vocbase_col_t;
@@ -74,9 +71,6 @@ class CollectionInfo;
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection name regex
@@ -132,9 +126,6 @@ class CollectionInfo;
 
 #define TRI_DEFAULT_INDEX_BUCKETS 8
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection file structure
@@ -362,9 +353,6 @@ struct TRI_collection_t {
   ~TRI_collection_t() {}
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the full directory name for a collection
@@ -398,9 +386,6 @@ void TRI_DestroyCollection(TRI_collection_t*);
 
 void TRI_FreeCollection(TRI_collection_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
@@ -450,9 +435,6 @@ int TRI_UpdateCollectionInfo(TRI_vocbase_t*, TRI_collection_t*,
 
 int TRI_RenameCollection(TRI_collection_t*, char const*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an index file from the indexFiles vector
@@ -535,12 +517,4 @@ bool TRI_IsAllowedNameCollection(bool, char const*);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

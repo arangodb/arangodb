@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_OPERATION_MODE_H
-#define ARANGODB_REST_OPERATION_MODE_H 1
+#ifndef ARANGOD_REST_OPERATION_MODE_H
+#define ARANGOD_REST_OPERATION_MODE_H 1
 
 #include "Basics/Common.h"
 
@@ -37,13 +37,7 @@
 namespace triagens {
 namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class OperationMode
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server operation modes
@@ -58,11 +52,7 @@ class OperationMode {
     MODE_SERVER
   } server_operation_mode_e;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the server operation mode
@@ -86,12 +76,4 @@ class OperationMode {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

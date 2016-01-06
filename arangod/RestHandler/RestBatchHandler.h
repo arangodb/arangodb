@@ -27,23 +27,17 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_BATCH_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_BATCH_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_BATCH_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class RestBatchHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container for complete multipart message
@@ -82,11 +76,7 @@ struct SearchHelper {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -100,11 +90,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 
   ~RestBatchHandler();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               HttpHandler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -112,11 +98,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 
   HttpHandler::status_t execute();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extract the boundary from the body of a multipart message
@@ -147,12 +129,4 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

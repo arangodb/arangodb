@@ -99,13 +99,7 @@ bool _newLine() {
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ArangoClient
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore sequence used for prompt length calculation (starting point)
@@ -123,9 +117,6 @@ char const* ArangoClient::PROMPT_IGNORE_START = "\001";
 
 char const* ArangoClient::PROMPT_IGNORE_END = "\002";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -178,9 +169,6 @@ ArangoClient::ArangoClient(char const* appName)
 
 ArangoClient::~ArangoClient() { delete _endpointServer; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up a program-specific help message
@@ -945,12 +933,4 @@ double ArangoClient::requestTimeout() const { return _requestTimeout; }
 
 uint32_t ArangoClient::sslProtocol() const { return _sslProtocol; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

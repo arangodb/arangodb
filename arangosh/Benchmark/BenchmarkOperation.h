@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BENCHMARK_BENCHMARK_OPERATION_H
-#define ARANGODB_BENCHMARK_BENCHMARK_OPERATION_H 1
+#ifndef ARANGOSH_BENCHMARK_BENCHMARK_OPERATION_H
+#define ARANGOSH_BENCHMARK_BENCHMARK_OPERATION_H 1
 
 #include "Basics/Common.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -36,9 +36,6 @@
 namespace triagens {
 namespace arangob {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class BenchmarkOperation
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple interface for benchmark operations
@@ -95,12 +92,4 @@ struct BenchmarkOperation {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

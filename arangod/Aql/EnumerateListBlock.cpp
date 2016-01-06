@@ -36,9 +36,6 @@ using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class EnumerateListBlock
-// -----------------------------------------------------------------------------
 
 EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
                                        EnumerateListNode const* en)
@@ -341,8 +338,3 @@ void EnumerateListBlock::throwArrayExpectedException() {
           std::string(" as operand to FOR loop"));
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -28,8 +28,8 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H
+#define LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_RESULT_H 1
 
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
@@ -260,12 +260,4 @@ class SimpleHttpResult {
 }
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

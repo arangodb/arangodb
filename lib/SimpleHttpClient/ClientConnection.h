@@ -27,17 +27,14 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H
+#define LIB_SIMPLE_HTTP_CLIENT_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/socket-utils.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ClientConnection
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace httpclient {
@@ -47,11 +44,7 @@ namespace httpclient {
 ////////////////////////////////////////////////////////////////////////////////
 
 class ClientConnection final : public GeneralClientConnection {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ClientConnection(ClientConnection const&);
   ClientConnection& operator=(ClientConnection const&);
@@ -69,22 +62,14 @@ class ClientConnection final : public GeneralClientConnection {
 
   ~ClientConnection();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the socket is still alive
   ////////////////////////////////////////////////////////////////////////////////
 
   bool checkSocket();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                         protected virtual
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -123,11 +108,7 @@ class ClientConnection final : public GeneralClientConnection {
 
   bool readable() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying socket
@@ -139,12 +120,4 @@ class ClientConnection final : public GeneralClientConnection {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

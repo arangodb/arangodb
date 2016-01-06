@@ -28,8 +28,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_SOCKET_TASK_H
-#define ARANGODB_SCHEDULER_SOCKET_TASK_H 1
+#ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
+#define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
 #include "Basics/Common.h"
 
@@ -45,18 +45,12 @@
 
 #include "Basics/socket-utils.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
 class StringBuffer;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class SocketTask
-// -----------------------------------------------------------------------------
 
 namespace rest {
 
@@ -72,11 +66,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  private:
   static size_t const READ_BLOCK_SIZE = 10000;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task with a given socket
   ////////////////////////////////////////////////////////////////////////////////
@@ -93,11 +83,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  protected:
   ~SocketTask();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// set a request timeout
   ////////////////////////////////////////////////////////////////////////////////
@@ -105,11 +91,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
  public:
   void setKeepAliveTimeout(double);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                         protected virtual
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fills the read buffer
@@ -148,11 +130,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   virtual void handleTimeout() = 0;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets an active write buffer
@@ -166,11 +144,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   bool hasWriteBuffer() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      Task
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -190,11 +164,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   bool handleEvent(EventToken token, EventType) override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief event for keep-alive timeout
@@ -258,11 +228,7 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
   bool _clientClosed;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief current thread identifier
@@ -275,12 +241,4 @@ class SocketTask : virtual public Task, public ConnectionStatisticsAgent {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

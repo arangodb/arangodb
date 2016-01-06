@@ -50,9 +50,6 @@ using namespace triagens::rest;
 using namespace triagens::v8client;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -148,9 +145,6 @@ V8ClientConnection::~V8ClientConnection() {
   delete _connection;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request location rewriter (injects database name)
@@ -360,9 +354,6 @@ v8::Handle<v8::Value> V8ClientConnection::patchData(
                      headerFields);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a request
@@ -620,12 +611,4 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   return scope.Escape<v8::Value>(result);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

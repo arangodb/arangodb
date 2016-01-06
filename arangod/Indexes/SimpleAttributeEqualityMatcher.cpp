@@ -36,21 +36,12 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                              class SimpleAttributeEqualityMatcher
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
     std::vector<std::vector<triagens::basics::AttributeName>> const& attributes)
     : _attributes(attributes), _found() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief match a single of the attributes
@@ -281,9 +272,6 @@ triagens::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
   return node;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the costs of using this index and the number of items
@@ -438,12 +426,4 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

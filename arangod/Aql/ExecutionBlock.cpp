@@ -36,9 +36,6 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class ExecutionBlock
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size value
@@ -46,9 +43,6 @@ using namespace triagens::aql;
 
 size_t const ExecutionBlock::DefaultBatchSize = 1000;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -72,9 +66,6 @@ ExecutionBlock::~ExecutionBlock() {
   _buffer.clear();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of rows in a vector of blocks
@@ -193,9 +184,6 @@ AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
   return result.release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request an AqlItemBlock from the memory manager
@@ -530,8 +518,3 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   return TRI_ERROR_NO_ERROR;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

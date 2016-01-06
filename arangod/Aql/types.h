@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_TYPES_H
-#define ARANGODB_AQL_TYPES_H 1
+#ifndef ARANGOD_AQL_TYPES_H
+#define ARANGOD_AQL_TYPES_H 1
 
 #include "Basics/Common.h"
 
@@ -57,12 +57,4 @@ typedef uint64_t QueryId;
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_REST_SHARD_HANDLER_H
-#define ARANGODB_CLUSTER_REST_SHARD_HANDLER_H 1
+#ifndef ARANGOD_CLUSTER_REST_SHARD_HANDLER_H
+#define ARANGOD_CLUSTER_REST_SHARD_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -40,20 +40,13 @@ class Dispatcher;
 
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class RestShardHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shard control request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestShardHandler : public admin::RestBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -61,11 +54,7 @@ class RestShardHandler : public admin::RestBaseHandler {
 
   RestShardHandler(rest::HttpRequest* request, rest::Dispatcher*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -79,11 +68,7 @@ class RestShardHandler : public admin::RestBaseHandler {
 
   status_t execute() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief dispatcher
@@ -96,12 +81,4 @@ class RestShardHandler : public admin::RestBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

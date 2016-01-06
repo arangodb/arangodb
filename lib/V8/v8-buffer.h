@@ -50,16 +50,13 @@
 /// USE OR OTHER DEALINGS IN THE SOFTWARE.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_V8__BUFFER_H
-#define ARANGODB_V8_V8__BUFFER_H 1
+#ifndef LIB_V8_V8_BUFFER_H
+#define LIB_V8_V8_BUFFER_H 1
 
 #include "Basics/Common.h"
 
 #include "V8/v8-wrapper.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief buffer encoding
@@ -75,9 +72,6 @@ typedef enum TRI_V8_encoding_e {
   BUFFER
 } TRI_V8_encoding_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class V8Wrapper
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief binary buffer
@@ -91,11 +85,7 @@ typedef enum TRI_V8_encoding_e {
 #define TRI_V8_BUFFER_CID (0xF000)
 
 class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           static public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief maximal length
@@ -111,11 +101,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   static bool hasInstance(v8::Isolate* isolate, v8::Handle<v8::Value> val);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             static public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the buffer data for a handle
@@ -189,11 +175,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
     return length(val);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief free callback type
@@ -201,11 +183,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   typedef void (*free_callback_fptr)(char* data, void* hint);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief instance constructor
@@ -252,11 +230,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
  private:
   V8Buffer(v8::Isolate* isolate, v8::Handle<v8::Object> wrapper, size_t length);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief replaces the buffer
@@ -268,11 +242,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   void replace(v8::Isolate* isolate, char* data, size_t length,
                free_callback_fptr callback, void* hint);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief length
@@ -286,11 +256,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
   char* _data;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief free callback
@@ -307,9 +273,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the buffer module
@@ -317,12 +280,4 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
 void TRI_InitV8Buffer(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

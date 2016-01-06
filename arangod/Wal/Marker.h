@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_MARKER_H
-#define ARANGODB_WAL_MARKER_H 1
+#ifndef ARANGOD_WAL_MARKER_H
+#define ARANGOD_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/tri-strings.h"
@@ -45,9 +45,6 @@ namespace wal {
 
 static_assert(sizeof(TRI_df_marker_t) == 24, "invalid base marker size");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                   low level structs, used for on-disk persistence
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wal attribute marker
@@ -283,9 +280,6 @@ struct remove_marker_t : TRI_df_marker_t {
   // char* key
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Marker
-// -----------------------------------------------------------------------------
 
 class Marker {
  protected:
@@ -305,11 +299,7 @@ class Marker {
 
   Marker(TRI_df_marker_type_e, size_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   virtual ~Marker();
 
@@ -365,11 +355,7 @@ class Marker {
 
   void dumpBinary() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief store a null-terminated string inside the marker
@@ -383,11 +369,7 @@ class Marker {
 
   void storeSizedString(size_t, char const*, size_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to marker data
@@ -414,9 +396,6 @@ class Marker {
   TRI_voc_fid_t _fid;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    EnvelopeMarker
-// -----------------------------------------------------------------------------
 
 class EnvelopeMarker : public Marker {
  public:
@@ -425,9 +404,6 @@ class EnvelopeMarker : public Marker {
   ~EnvelopeMarker();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   AttributeMarker
-// -----------------------------------------------------------------------------
 
 class AttributeMarker : public Marker {
  public:
@@ -447,9 +423,6 @@ class AttributeMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       ShapeMarker
-// -----------------------------------------------------------------------------
 
 class ShapeMarker : public Marker {
  public:
@@ -467,9 +440,6 @@ class ShapeMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              CreateDatabaseMarker
-// -----------------------------------------------------------------------------
 
 class CreateDatabaseMarker : public Marker {
  public:
@@ -485,9 +455,6 @@ class CreateDatabaseMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                DropDatabaseMarker
-// -----------------------------------------------------------------------------
 
 class DropDatabaseMarker : public Marker {
  public:
@@ -499,9 +466,6 @@ class DropDatabaseMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            CreateCollectionMarker
-// -----------------------------------------------------------------------------
 
 class CreateCollectionMarker : public Marker {
  public:
@@ -517,9 +481,6 @@ class CreateCollectionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              DropCollectionMarker
-// -----------------------------------------------------------------------------
 
 class DropCollectionMarker : public Marker {
  public:
@@ -531,9 +492,6 @@ class DropCollectionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            RenameCollectionMarker
-// -----------------------------------------------------------------------------
 
 class RenameCollectionMarker : public Marker {
  public:
@@ -549,9 +507,6 @@ class RenameCollectionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            ChangeCollectionMarker
-// -----------------------------------------------------------------------------
 
 class ChangeCollectionMarker : public Marker {
  public:
@@ -567,9 +522,6 @@ class ChangeCollectionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 CreateIndexMarker
-// -----------------------------------------------------------------------------
 
 class CreateIndexMarker : public Marker {
  public:
@@ -586,9 +538,6 @@ class CreateIndexMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   DropIndexMarker
-// -----------------------------------------------------------------------------
 
 class DropIndexMarker : public Marker {
  public:
@@ -600,9 +549,6 @@ class DropIndexMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            BeginTransactionMarker
-// -----------------------------------------------------------------------------
 
 class BeginTransactionMarker : public Marker {
  public:
@@ -614,9 +560,6 @@ class BeginTransactionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           CommitTransactionMarker
-// -----------------------------------------------------------------------------
 
 class CommitTransactionMarker : public Marker {
  public:
@@ -628,9 +571,6 @@ class CommitTransactionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            AbortTransactionMarker
-// -----------------------------------------------------------------------------
 
 class AbortTransactionMarker : public Marker {
  public:
@@ -642,9 +582,6 @@ class AbortTransactionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      BeginRemoteTransactionMarker
-// -----------------------------------------------------------------------------
 
 class BeginRemoteTransactionMarker : public Marker {
  public:
@@ -656,9 +593,6 @@ class BeginRemoteTransactionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     CommitRemoteTransactionMarker
-// -----------------------------------------------------------------------------
 
 class CommitRemoteTransactionMarker : public Marker {
  public:
@@ -670,9 +604,6 @@ class CommitRemoteTransactionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      AbortRemoteTransactionMarker
-// -----------------------------------------------------------------------------
 
 class AbortRemoteTransactionMarker : public Marker {
  public:
@@ -684,9 +615,6 @@ class AbortRemoteTransactionMarker : public Marker {
   void dump() const;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               VPackDocumentMarker
-// -----------------------------------------------------------------------------
 
 class VPackDocumentMarker : public Marker {
  public:
@@ -713,9 +641,6 @@ class VPackDocumentMarker : public Marker {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 VPackRemoveMarker
-// -----------------------------------------------------------------------------
 
 class VPackRemoveMarker : public Marker {
  public:
@@ -741,9 +666,6 @@ class VPackRemoveMarker : public Marker {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    DocumentMarker
-// -----------------------------------------------------------------------------
 
 class DocumentMarker : public Marker {
  public:
@@ -805,9 +727,6 @@ class DocumentMarker : public Marker {
                                size_t, TRI_shaped_json_t const*);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        EdgeMarker
-// -----------------------------------------------------------------------------
 
 class EdgeMarker : public Marker {
  public:
@@ -875,9 +794,6 @@ class EdgeMarker : public Marker {
                            TRI_shaped_json_t const*);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      RemoveMarker
-// -----------------------------------------------------------------------------
 
 class RemoveMarker : public Marker {
  public:
@@ -911,12 +827,4 @@ class RemoveMarker : public Marker {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXPRESSION_H
-#define ARANGODB_AQL_EXPRESSION_H 1
+#ifndef ARANGOD_AQL_EXPRESSION_H
+#define ARANGOD_AQL_EXPRESSION_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
@@ -61,11 +61,7 @@ struct V8Expression;
 class Expression {
   enum ExpressionType : uint32_t { UNPROCESSED, JSON, V8, SIMPLE, ATTRIBUTE };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   Expression(Expression const&) = delete;
   Expression& operator=(Expression const&) = delete;
@@ -89,11 +85,7 @@ class Expression {
 
   ~Expression();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying AST node
   ////////////////////////////////////////////////////////////////////////////////
@@ -279,11 +271,7 @@ class Expression {
 
   void invalidate();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   void setVariable(Variable const* variable, TRI_json_t const* value) {
     _variables.emplace(variable, value);
@@ -468,11 +456,7 @@ class Expression {
       size_t, std::vector<Variable const*> const&,
       std::vector<RegisterId> const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the AST
@@ -562,11 +546,7 @@ class Expression {
 
   std::unordered_map<Variable const*, TRI_json_t const*> _variables;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public static
-  // members
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief "constant" global object for NULL which can be shared by all
@@ -595,8 +575,3 @@ class Expression {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -35,13 +35,7 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class GeoIndex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new geo index, type "geo1"
@@ -100,9 +94,6 @@ GeoIndex2::~GeoIndex2() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 size_t GeoIndex2::memory() const { return GeoIndex_MemoryUsage(_geoIndex); }
 
@@ -293,9 +284,6 @@ GeoCoordinates* GeoIndex2::nearQuery(triagens::arango::Transaction* trx,
   return GeoIndex_NearestCountPoints(_geoIndex, &gc, static_cast<int>(count));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a double value from an object
@@ -461,12 +449,4 @@ bool GeoIndex2::extractDoubleArray(VocShaper* shaper,
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

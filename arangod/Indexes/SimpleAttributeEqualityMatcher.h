@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H
-#define ARANGODB_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H 1
+#ifndef ARANGOD_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H
+#define ARANGOD_INDEXES_SIMPLE_ATTRIBUTE_EQUALITY_MATCHER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AttributeNameParser.h"
@@ -43,25 +43,14 @@ struct Variable;
 namespace arango {
 class Index;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                              class SimpleAttributeEqualityMatcher
-// -----------------------------------------------------------------------------
 
 class SimpleAttributeEqualityMatcher {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   explicit SimpleAttributeEqualityMatcher(
       std::vector<std::vector<triagens::basics::AttributeName>> const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief match a single of the attributes
@@ -111,11 +100,7 @@ class SimpleAttributeEqualityMatcher {
                                         triagens::aql::AstNode*,
                                         triagens::aql::Variable const*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine the costs of using this index and the number of items
@@ -137,11 +122,7 @@ class SimpleAttributeEqualityMatcher {
                        triagens::aql::AstNode const*,
                        triagens::aql::Variable const*, bool);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief array of attributes used for comparisons
@@ -161,12 +142,4 @@ class SimpleAttributeEqualityMatcher {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

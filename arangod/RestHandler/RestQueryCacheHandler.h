@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_QUERY_CACHE_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_QUERY_CACHE_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_QUERY_CACHE_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_QUERY_CACHE_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -36,20 +36,13 @@
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       class RestQueryCacheHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestQueryCacheHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -57,11 +50,7 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
 
   explicit RestQueryCacheHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -75,11 +64,7 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
 
   status_t execute() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the list of properties
@@ -104,12 +89,4 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

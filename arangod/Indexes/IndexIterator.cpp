@@ -34,9 +34,6 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       struct IndexIteratorContext
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context for an index iterator
@@ -91,9 +88,6 @@ int IndexIteratorContext::resolveId(char const* handle, TRI_voc_cid_t& cid,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class IndexIterator
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default destructor. Does not free anything
@@ -113,12 +107,4 @@ TRI_doc_mptr_t* IndexIterator::next() { return nullptr; }
 
 void IndexIterator::reset() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

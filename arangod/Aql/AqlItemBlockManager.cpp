@@ -32,9 +32,6 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the manager
@@ -48,9 +45,6 @@ AqlItemBlockManager::AqlItemBlockManager() : _last(nullptr) {}
 
 AqlItemBlockManager::~AqlItemBlockManager() { delete _last; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a block with the specified size
@@ -84,12 +78,4 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) {
   block = nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

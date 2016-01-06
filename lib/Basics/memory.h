@@ -27,16 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MEMORY_H
-#define ARANGODB_BASICS_C_MEMORY_H 1
+#ifndef LIB_BASICS_MEMORY_H
+#define LIB_BASICS_MEMORY_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memory zone id
@@ -54,9 +51,6 @@ typedef struct TRI_memory_zone_s {
   bool _failable;
 } TRI_memory_zone_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief core memory zone, allocation will never fail
@@ -97,9 +91,6 @@ inline TRI_memory_zone_id_t TRI_MemoryZoneId(TRI_memory_zone_t const* zone) {
   return TRI_UNKNOWN_MEM_ZONE->_zid;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system memory allocation
@@ -205,12 +196,4 @@ void TRI_ShutdownMemory(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

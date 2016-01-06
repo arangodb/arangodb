@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_COLLECTION_GUARD_H
-#define ARANGODB_UTILS_COLLECTION_GUARD_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_GUARD_H
+#define ARANGOD_UTILS_COLLECTION_GUARD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -38,16 +38,9 @@
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CollectionGuard
-// -----------------------------------------------------------------------------
 
 class CollectionGuard {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   CollectionGuard(CollectionGuard const&) = delete;
   CollectionGuard& operator=(CollectionGuard const&) = delete;
@@ -126,11 +119,7 @@ class CollectionGuard {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection pointer
@@ -146,11 +135,7 @@ class CollectionGuard {
     return _originalStatus;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to vocbase
@@ -181,12 +166,4 @@ class CollectionGuard {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

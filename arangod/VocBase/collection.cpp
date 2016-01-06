@@ -51,13 +51,7 @@
 using namespace std;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              COLLECTION MIGRATION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auxilliary struct for shape file iteration
@@ -68,9 +62,6 @@ typedef struct {
   ssize_t* _written;
 } shape_iterator_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback for shape iteration on upgrade
@@ -104,9 +95,6 @@ static bool UpgradeShapeIterator(TRI_df_marker_t const* marker, void* data,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the numeric part from a filename
@@ -822,9 +810,6 @@ static bool IterateFiles(TRI_vector_string_t* vector,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the full directory name for a collection
@@ -1052,9 +1037,6 @@ void TRI_FreeCollection(TRI_collection_t* collection) {
   delete collection;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       class VocbaseCollectionInfo
-// -----------------------------------------------------------------------------
 
 VocbaseCollectionInfo::VocbaseCollectionInfo(CollectionInfo const& other)
     : _version(TRI_COL_VERSION),
@@ -1504,9 +1486,6 @@ void VocbaseCollectionInfo::update(VocbaseCollectionInfo const& other) {
   _waitForSync = other.waitForSync();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return JSON information about the collection from the collection's
@@ -1689,9 +1668,6 @@ int TRI_RenameCollection(TRI_collection_t* collection, char const* name) {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over a collection
@@ -2171,12 +2147,4 @@ bool TRI_IsAllowedNameCollection(bool allowSystem, char const* name) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

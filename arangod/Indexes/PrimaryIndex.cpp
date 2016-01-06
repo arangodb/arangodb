@@ -40,9 +40,6 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 static inline uint64_t HashKey(void* userData, char const* key) {
   return TRI_FnvHashString(key);
@@ -75,13 +72,7 @@ static bool IsEqualElementElement(void* userData, TRI_doc_mptr_t const* left,
              0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class PrimaryIndexIterator
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 TRI_doc_mptr_t* PrimaryIndexIterator::next() {
   while (true) {
@@ -103,13 +94,7 @@ TRI_doc_mptr_t* PrimaryIndexIterator::next() {
 
 void PrimaryIndexIterator::reset() { _position = 0; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class PrimaryIndex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 PrimaryIndex::PrimaryIndex(TRI_document_collection_t* collection)
     : Index(0, collection,
@@ -140,9 +125,6 @@ PrimaryIndex::PrimaryIndex(TRI_json_t const* json)
 
 PrimaryIndex::~PrimaryIndex() { delete _primaryIndex; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of documents from the index
@@ -436,9 +418,6 @@ triagens::aql::AstNode* PrimaryIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
@@ -511,12 +490,4 @@ IndexIterator* PrimaryIndex::createIterator(
   return new PrimaryIndexIterator(trx, this, keys);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

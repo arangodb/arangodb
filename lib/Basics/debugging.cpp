@@ -45,9 +45,6 @@
 #endif
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a global string containing the currently registered failure points
@@ -64,9 +61,6 @@ triagens::basics::ReadWriteLock FailurePointsLock;
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief make a delimited value from a string, so we can unambigiously
@@ -92,9 +86,6 @@ static char* MakeValue(char const* value) {
   return delimited;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cause a segmentation violation
@@ -405,12 +396,4 @@ void TRI_PrintBacktrace() {
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

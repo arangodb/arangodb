@@ -28,8 +28,8 @@
 /// @author Copyright 2004-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HTTP_REQUEST_H
-#define ARANGODB_REST_HTTP_REQUEST_H 1
+#ifndef LIB_REST_HTTP_REQUEST_H
+#define LIB_REST_HTTP_REQUEST_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Dictionary.h"
@@ -42,9 +42,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpRequest
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -62,11 +59,7 @@ class HttpRequest {
   HttpRequest(HttpRequest const&);
   HttpRequest& operator=(HttpRequest const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief http request type
@@ -89,11 +82,7 @@ class HttpRequest {
 
   enum HttpVersion { HTTP_UNKNOWN, HTTP_1_0, HTTP_1_1 };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           static public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief minimum API compatibility
@@ -113,11 +102,7 @@ class HttpRequest {
 
   static std::string const MultiPartContentType;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             static public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief translate the HTTP protocol version
   ////////////////////////////////////////////////////////////////////////////////
@@ -154,11 +139,7 @@ class HttpRequest {
 
   static const std::string& getMultipartContentType();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief http request constructor
@@ -179,11 +160,7 @@ class HttpRequest {
 
   ~HttpRequest();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the protocol
@@ -306,11 +283,7 @@ class HttpRequest {
 
   void setClientTaskId(uint64_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      public prefix/suffix
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the prefix path of the request
@@ -354,11 +327,7 @@ class HttpRequest {
 
   RequestContext* getRequestContext() const { return _requestContext; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public header
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the content length
@@ -398,11 +367,7 @@ class HttpRequest {
 
   std::map<std::string, std::string> headers() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                              public value
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the value of a key
@@ -463,11 +428,7 @@ class HttpRequest {
 
   std::map<std::string, std::string> cookieValues() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               public body
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief gets the body
@@ -511,11 +472,7 @@ class HttpRequest {
 
   TRI_json_t* toJson(char**);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine the header type
@@ -565,11 +522,7 @@ class HttpRequest {
 
   void parseCookies(const char* buffer);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief complete request path, without protocol, host, and parameters
@@ -717,12 +670,4 @@ class HttpRequest {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

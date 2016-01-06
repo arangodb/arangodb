@@ -27,14 +27,11 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_CONVERSIONS_H
-#define ARANGODB_BASICS_C_CONVERSIONS_H 1
+#ifndef LIB_BASICS_CONVERSIONS_H
+#define LIB_BASICS_CONVERSIONS_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                          public functions for string to something
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a single hex to an integer
@@ -90,9 +87,6 @@ uint64_t TRI_UInt64String(char const* str);
 
 uint64_t TRI_UInt64String2(char const* str, size_t length);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             public functions for number to string
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to string from int8, using the specified buffer.
@@ -326,12 +320,4 @@ std::string TRI_StringTimeStamp(double);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

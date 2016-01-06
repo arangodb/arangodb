@@ -36,9 +36,6 @@ using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class SingletonBlock
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, store a copy of the register values coming from
@@ -142,9 +139,6 @@ int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class FilterBlock
-// -----------------------------------------------------------------------------
 
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
     : ExecutionBlock(engine, en), _inReg(ExecutionNode::MaxRegisterId) {
@@ -332,9 +326,6 @@ bool FilterBlock::hasMore() {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class LimitBlock
-// -----------------------------------------------------------------------------
 
 int LimitBlock::initialize() {
   int res = ExecutionBlock::initialize();
@@ -436,9 +427,6 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class ReturnBlock
-// -----------------------------------------------------------------------------
 
 AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   std::unique_ptr<AqlItemBlock> res(
@@ -511,9 +499,6 @@ RegisterId ReturnBlock::returnInheritedResults() {
   return it->second.registerId;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class NoResultsBlock
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor, only call base
@@ -532,8 +517,3 @@ int NoResultsBlock::getOrSkipSome(size_t,  // atLeast
   return TRI_ERROR_NO_ERROR;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

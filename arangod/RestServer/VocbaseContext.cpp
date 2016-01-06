@@ -43,9 +43,6 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sid lock
@@ -68,9 +65,6 @@ typedef std::unordered_map<std::string, std::pair<std::string, double>>
 
 static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               static initializers
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time-to-live for aardvark server sessions
@@ -79,9 +73,6 @@ static std::unordered_map<std::string, DatabaseSessionsType> SidCache;
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 2;  // 2 hours session timeout
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines a sid
@@ -157,13 +148,7 @@ double VocbaseContext::accessSid(std::string const& database,
   return (*it2).second.second;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class VocbaseContext
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -182,9 +167,6 @@ VocbaseContext::VocbaseContext(HttpRequest* request, TRI_server_t* server,
 
 VocbaseContext::~VocbaseContext() { TRI_ReleaseVocBase(_vocbase); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to use special cluster authentication
@@ -398,12 +380,4 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   return HttpResponse::OK;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

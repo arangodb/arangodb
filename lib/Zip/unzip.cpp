@@ -1968,12 +1968,4 @@ extern int ZEXPORT unzSetOffset64(unzFile file, ZPOS64_T pos) {
 extern int ZEXPORT unzSetOffset(unzFile file, uLong pos) {
   return unzSetOffset64(file, pos);
 }
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

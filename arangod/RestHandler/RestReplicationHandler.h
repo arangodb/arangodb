@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_REPLICATION_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -42,9 +42,6 @@ struct TRI_replication_log_state_s;
 struct TRI_transaction_collection_s;
 class TRI_vocbase_col_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            RestReplicationHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -55,11 +52,7 @@ class Transaction;
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -73,11 +66,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   ~RestReplicationHandler();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               HttpHandler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -85,11 +74,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   HttpHandler::status_t execute();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public static
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief comparator to sort collections
@@ -106,11 +91,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   static bool filterCollection(TRI_vocbase_col_t*, void*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
@@ -359,11 +340,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
   void handleCommandApplierDeleteState();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief minimum chunk size
@@ -382,12 +359,4 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

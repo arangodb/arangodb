@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_ARITHMETIC_H
-#define ARANGODB_AQL_ARITHMETIC_H 1
+#ifndef ARANGOD_AQL_ARITHMETIC_H
+#define ARANGOD_AQL_ARITHMETIC_H 1
 
 #include "Basics/Common.h"
 
@@ -82,8 +82,3 @@ bool IsUnsafeDivision(T l, T r) {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

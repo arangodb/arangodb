@@ -27,22 +27,15 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_HEADERS_H
-#define ARANGODB_VOC_BASE_HEADERS_H 1
+#ifndef ARANGOD_VOC_BASE_HEADERS_H
+#define ARANGOD_VOC_BASE_HEADERS_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class TRI_headers_t
-// -----------------------------------------------------------------------------
 
 class TRI_headers_t {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors &
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates the headers
@@ -56,11 +49,7 @@ class TRI_headers_t {
 
   ~TRI_headers_t();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the number of allocated headers
@@ -146,11 +135,7 @@ class TRI_headers_t {
 
   inline int64_t size() const { return _totalSize; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   TRI_doc_mptr_t const* _freelist;  // free headers
 
@@ -165,12 +150,4 @@ class TRI_headers_t {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

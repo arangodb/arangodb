@@ -36,25 +36,15 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           the QueryRegistry class
-// -----------------------------------------------------------------------------
 
 class QueryRegistry {
  public:
-  // -----------------------------------------------------------------------------
-  // --SECTION-- constructors/destructors
-  // -----------------------------------------------------------------------------
-
+  
   QueryRegistry() {}
 
   ~QueryRegistry();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
@@ -105,11 +95,7 @@ class QueryRegistry {
   void expireQueries();
 
  private:
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // members
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief a struct for all information regarding one query in the registry
   ////////////////////////////////////////////////////////////////////////////////
@@ -143,8 +129,3 @@ class QueryRegistry {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_CONDITION_H
-#define ARANGODB_AQL_CONDITION_H 1
+#ifndef ARANGOD_AQL_CONDITION_H
+#define ARANGOD_AQL_CONDITION_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
@@ -45,9 +45,6 @@ struct Index;
 class SortCondition;
 struct Variable;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 enum ConditionPartCompareResult {
   IMPOSSIBLE = 0,
@@ -64,9 +61,6 @@ enum ConditionPartCompareResult {
 
 enum AttributeSideType { ATTRIBUTE_LEFT, ATTRIBUTE_RIGHT };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              struct ConditionPart
-// -----------------------------------------------------------------------------
 
 struct ConditionPart {
   static ConditionPartCompareResult const ResultsTable[3][7][7];
@@ -189,27 +183,16 @@ struct ConditionPart {
   bool isExpanded;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class Condition
-// -----------------------------------------------------------------------------
 
 class Condition {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  private
-  // typedefs
-  // -----------------------------------------------------------------------------
-
+  
  private:
   typedef std::vector<std::pair<size_t, AttributeSideType>> UsagePositionType;
   typedef std::unordered_map<std::string, UsagePositionType> AttributeUsageType;
   typedef std::unordered_map<Variable const*, AttributeUsageType>
       VariableUsageType;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   Condition(Condition const&) = delete;
   Condition& operator=(Condition const&) = delete;
@@ -227,11 +210,7 @@ class Condition {
 
   ~Condition();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the condition root
@@ -327,11 +306,7 @@ class Condition {
                                     std::vector<Index const*>&,
                                     SortCondition const*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sort ORs for the same attribute so they are in ascending value
@@ -418,11 +393,7 @@ class Condition {
                                             std::vector<Index const*>&,
                                             SortCondition const*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the AST, used for memory management
@@ -453,12 +424,4 @@ class Condition {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

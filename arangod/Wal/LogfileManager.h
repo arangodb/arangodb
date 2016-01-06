@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_LOGFILE_MANAGER_H
-#define ARANGODB_WAL_LOGFILE_MANAGER_H 1
+#ifndef ARANGOD_WAL_LOGFILE_MANAGER_H
+#define ARANGOD_WAL_LOGFILE_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -72,9 +72,6 @@ struct LogfileRange {
 
 typedef std::vector<LogfileRange> LogfileRanges;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               LogfileManagerState
-// -----------------------------------------------------------------------------
 
 struct LogfileManagerState {
   TRI_voc_tick_t lastTick;
@@ -83,9 +80,6 @@ struct LogfileManagerState {
   std::string timeString;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class LogfileManager
-// -----------------------------------------------------------------------------
 
 class LogfileManager : public rest::ApplicationFeature {
   friend class AllocatorThread;
@@ -99,11 +93,7 @@ class LogfileManager : public rest::ApplicationFeature {
   LogfileManager(LogfileManager const&) = delete;
   LogfileManager& operator=(LogfileManager const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   LogfileManager(TRI_server_t*, std::string*);
 
@@ -125,11 +115,7 @@ class LogfileManager : public rest::ApplicationFeature {
 
   static void initialize(std::string*, TRI_server_t*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        ApplicationFeature
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -168,11 +154,7 @@ class LogfileManager : public rest::ApplicationFeature {
 
   void stop();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the logfile directory
@@ -611,11 +593,7 @@ class LogfileManager : public rest::ApplicationFeature {
 
   std::tuple<size_t, Logfile::IdType, Logfile::IdType> runningTransactions();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove a logfile in the file system
@@ -754,11 +732,7 @@ class LogfileManager : public rest::ApplicationFeature {
 
   static std::string getTimeString();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief pointer to the server
@@ -1181,12 +1155,4 @@ class LogfileManager : public rest::ApplicationFeature {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

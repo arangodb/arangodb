@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_INDEX_ITERATOR_H
-#define ARANGODB_INDEXES_INDEX_ITERATOR_H 1
+#ifndef ARANGOD_INDEXES_INDEX_ITERATOR_H
+#define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
@@ -38,9 +38,6 @@ namespace triagens {
 namespace arango {
 class CollectionNameResolver;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class IndexIterator
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief context for an index iterator
@@ -87,12 +84,4 @@ class IndexIterator {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

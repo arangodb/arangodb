@@ -213,8 +213,3 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

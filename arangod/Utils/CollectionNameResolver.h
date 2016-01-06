@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_COLLECTION_NAME_RESOLVER_H
-#define ARANGODB_UTILS_COLLECTION_NAME_RESOLVER_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H
+#define ARANGOD_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
@@ -41,16 +41,9 @@
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class CollectionNameResolver
-// -----------------------------------------------------------------------------
 
 class CollectionNameResolver {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the resolver
@@ -65,11 +58,7 @@ class CollectionNameResolver {
 
   ~CollectionNameResolver() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name (local case)
@@ -373,11 +362,7 @@ class CollectionNameResolver {
     buffer.appendText("_unknown");
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
@@ -403,12 +388,4 @@ class CollectionNameResolver {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

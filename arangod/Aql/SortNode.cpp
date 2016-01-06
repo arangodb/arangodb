@@ -35,9 +35,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               methods of SortNode
-// -----------------------------------------------------------------------------
 
 SortNode::SortNode(ExecutionPlan* plan, triagens::basics::Json const& base,
                    SortElementVector const& elements, bool stable)
@@ -205,8 +202,3 @@ double SortNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems * log(nrItems);
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

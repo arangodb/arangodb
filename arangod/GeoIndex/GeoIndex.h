@@ -30,8 +30,8 @@
 /* GeoIndex.h - header file for GeoIndex algorithms  */
 /* Version 2.2  25.11.2015  R. A. Parker             */
 
-#ifndef ARANGODB_GEO_INDEX_GEO_INDEX_H
-#define ARANGODB_GEO_INDEX_GEO_INDEX_H 1
+#ifndef ARANGOD_GEO_INDEX_GEO_INDEX_H
+#define ARANGOD_GEO_INDEX_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
 
@@ -118,12 +118,4 @@ int GeoIndex_INDEXVALID(GeoIndex* gi);
 #endif
 
 /* end of GeoIndex.h  */
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

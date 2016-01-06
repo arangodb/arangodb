@@ -41,9 +41,6 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -58,9 +55,6 @@ RestBatchHandler::RestBatchHandler(HttpRequest* request)
 
 RestBatchHandler::~RestBatchHandler() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_batch_processing
@@ -662,12 +656,4 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

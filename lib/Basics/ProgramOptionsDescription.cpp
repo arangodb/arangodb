@@ -38,9 +38,6 @@
 using namespace std;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -162,9 +159,6 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator=(
   return *this;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 void ProgramOptionsDescription::setName(const string& name) {
   vector<string> n = StringUtils::split(name, ':');
@@ -678,9 +672,6 @@ TRI_json_t* ProgramOptionsDescription::getDefault(
   return json;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes all names
@@ -943,12 +934,4 @@ string ProgramOptionsDescription::check(const string& name, void* value) {
   return check(name);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

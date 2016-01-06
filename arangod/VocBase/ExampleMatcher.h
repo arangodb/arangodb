@@ -27,23 +27,17 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_EXAMPLE_MATCHER_H
-#define ARANGODB_EXAMPLE_MATCHER_H 1
+#ifndef ARANGOD_VOC_BASE_EXAMPLE_MATCHER_H
+#define ARANGOD_VOC_BASE_EXAMPLE_MATCHER_H 1
 
 #include "v8.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/document-collection.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_doc_mptr_t;
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Matching Method
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -103,9 +97,6 @@ class ExampleMatcher {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor

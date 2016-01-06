@@ -28,16 +28,13 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_SHAPER_H
-#define ARANGODB_VOC_BASE_SHAPER_H 1
+#ifndef ARANGOD_VOC_BASE_SHAPER_H
+#define ARANGOD_VOC_BASE_SHAPER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
 #include "VocBase/shaped-json.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       BasicShapes
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static const information about basic shape types
@@ -63,31 +60,20 @@ struct BasicShapes {
   static TRI_shape_t const* ShapeAddresses[7];
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Shaper
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief json shaper
 ////////////////////////////////////////////////////////////////////////////////
 
 class Shaper {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   Shaper(Shaper const&) = delete;
   Shaper& operator=(Shaper const&) = delete;
   Shaper();
   virtual ~Shaper();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief looks up a shape by identifier
@@ -124,12 +110,4 @@ class Shaper {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

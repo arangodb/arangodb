@@ -39,9 +39,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ascending
@@ -65,9 +62,6 @@ static int LidCompareDesc(void const* l, void const* r) {
   return (int)(((int64_t)right->_lid) - ((int64_t)left->_lid));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -76,9 +70,6 @@ static int LidCompareDesc(void const* l, void const* r) {
 RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
     : RestBaseHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -385,12 +376,4 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

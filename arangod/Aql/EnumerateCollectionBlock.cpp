@@ -39,9 +39,6 @@ using namespace triagens::aql;
 
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    class EnumerateCollectionBlock
-// -----------------------------------------------------------------------------
 
 EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
@@ -316,8 +313,3 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   return skipped;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

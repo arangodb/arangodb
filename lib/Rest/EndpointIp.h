@@ -28,8 +28,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ENDPOINT_IP_H
-#define ARANGODB_REST_ENDPOINT_IP_H 1
+#ifndef LIB_REST_ENDPOINT_IP_H
+#define LIB_REST_ENDPOINT_IP_H 1
 
 #include "Basics/Common.h"
 
@@ -38,16 +38,9 @@
 namespace triagens {
 namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        EndpointIp
-// -----------------------------------------------------------------------------
 
 class EndpointIp : public Endpoint {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an endpoint
   ////////////////////////////////////////////////////////////////////////////////
@@ -63,11 +56,7 @@ class EndpointIp : public Endpoint {
  public:
   ~EndpointIp();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief default port number if none specified
@@ -81,11 +70,7 @@ class EndpointIp : public Endpoint {
 
   static const std::string _defaultHost;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connect the socket
@@ -93,11 +78,7 @@ class EndpointIp : public Endpoint {
 
   TRI_socket_t connectSocket(const struct addrinfo*, double, double);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connect the endpoint
@@ -129,11 +110,7 @@ class EndpointIp : public Endpoint {
 
   std::string getHost() const { return _host; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief host name / address (IPv4 or IPv6)
@@ -158,12 +135,4 @@ class EndpointIp : public Endpoint {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

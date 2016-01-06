@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_SERVER_JOB_H
-#define ARANGODB_CLUSTER_SERVER_JOB_H 1
+#ifndef ARANGOD_CLUSTER_SERVER_JOB_H
+#define ARANGOD_CLUSTER_SERVER_JOB_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -38,9 +38,6 @@
 
 struct TRI_server_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class ServerJob
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -56,11 +53,7 @@ class ServerJob : public triagens::rest::Job {
   ServerJob(ServerJob const&) = delete;
   ServerJob& operator=(ServerJob const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new db server job
@@ -75,11 +68,7 @@ class ServerJob : public triagens::rest::Job {
 
   ~ServerJob();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief abandon job
@@ -87,11 +76,7 @@ class ServerJob : public triagens::rest::Job {
 
   void abandon();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                       Job
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the job is detached
@@ -132,22 +117,14 @@ class ServerJob : public triagens::rest::Job {
 
   void handleError(basics::Exception const& ex) override {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief execute job
   ////////////////////////////////////////////////////////////////////////////////
 
   bool execute();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the heartbeat thread
@@ -167,11 +144,7 @@ class ServerJob : public triagens::rest::Job {
 
   ApplicationV8* _applicationV8;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief shutdown in progress
@@ -196,12 +169,4 @@ class ServerJob : public triagens::rest::Job {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

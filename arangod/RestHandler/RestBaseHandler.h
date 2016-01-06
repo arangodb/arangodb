@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_BASE_HANDLER_H
-#define ARANGODB_ADMIN_REST_BASE_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_BASE_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -38,9 +38,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class RestBaseHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace admin {
@@ -50,11 +47,7 @@ namespace admin {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestBaseHandler : public rest::HttpHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -62,11 +55,7 @@ class RestBaseHandler : public rest::HttpHandler {
 
   explicit RestBaseHandler(rest::HttpRequest* request);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -74,11 +63,7 @@ class RestBaseHandler : public rest::HttpHandler {
 
   void handleError(basics::Exception const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief generates a result from JSON
@@ -136,12 +121,4 @@ class RestBaseHandler : public rest::HttpHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

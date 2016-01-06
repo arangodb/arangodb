@@ -28,16 +28,13 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DISPATCHER_DISPATCHER_H
-#define ARANGODB_DISPATCHER_DISPATCHER_H 1
+#ifndef ARANGOD_DISPATCHER_DISPATCHER_H
+#define ARANGOD_DISPATCHER_DISPATCHER_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -46,9 +43,6 @@ class DispatcherThread;
 class Job;
 class Scheduler;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class Dispatcher
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface of a job dispatcher
@@ -58,11 +52,7 @@ class Dispatcher {
   Dispatcher(Dispatcher const&) = delete;
   Dispatcher& operator=(Dispatcher const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           static public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief standard queue
@@ -82,11 +72,7 @@ class Dispatcher {
 
   static const size_t SYSTEM_QUEUE_SIZE = 2;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief queue thread creator
@@ -94,11 +80,7 @@ class Dispatcher {
 
   typedef DispatcherThread* (*newDispatcherThread_fptr)(DispatcherQueue*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -112,11 +94,7 @@ class Dispatcher {
 
   virtual ~Dispatcher();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief adds a new queue
@@ -178,11 +156,7 @@ class Dispatcher {
 
   void setProcessorAffinity(size_t id, const std::vector<size_t>& cores);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief scheduler
@@ -207,6 +181,4 @@ class Dispatcher {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

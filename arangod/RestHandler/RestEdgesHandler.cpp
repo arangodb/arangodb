@@ -38,9 +38,6 @@
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -49,9 +46,6 @@ using namespace triagens::arango;
 RestEdgesHandler::RestEdgesHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -87,9 +81,6 @@ HttpHandler::status_t RestEdgesHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            private helper methods
-// -----------------------------------------------------------------------------
 
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id,
@@ -139,9 +130,6 @@ bool RestEdgesHandler::getEdgesForVertex(
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock API_EDGE_READINOUTBOUND

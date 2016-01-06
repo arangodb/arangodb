@@ -37,33 +37,21 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 struct QueryEntry
-// -----------------------------------------------------------------------------
 
 QueryEntry::QueryEntry(triagens::aql::Query const* query, double started)
     : query(query), started(started) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             struct QueryEntryCopy
-// -----------------------------------------------------------------------------
 
 QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id,
                                std::string const& queryString, double started,
                                double runTime)
     : id(id), queryString(queryString), started(started), runTime(runTime) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class QueryList
-// -----------------------------------------------------------------------------
 
 double const QueryList::DefaultSlowQueryThreshold = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries = 64;
 size_t const QueryList::DefaultMaxQueryStringLength = 4096;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a query list
@@ -96,9 +84,6 @@ QueryList::~QueryList() {
   _slow.clear();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a query
@@ -331,12 +316,4 @@ void QueryList::clearSlow() {
   _slowCount = 0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

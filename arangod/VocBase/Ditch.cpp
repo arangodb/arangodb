@@ -34,13 +34,7 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class Ditch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 Ditch::Ditch(Ditches* ditches, char const* filename, int line)
     : _ditches(ditches),
@@ -51,9 +45,6 @@ Ditch::Ditch(Ditches* ditches, char const* filename, int line)
 
 Ditch::~Ditch() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the associated collection
@@ -63,13 +54,7 @@ TRI_document_collection_t* Ditch::collection() const {
   return _ditches->collection();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class DocumentDitch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 DocumentDitch::DocumentDitch(Ditches* ditches, bool usedByTransaction,
                              char const* filename, int line)
@@ -97,13 +82,7 @@ void DocumentDitch::setUsedByExternal() {
   _ditches->executeProtected(callback);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class ReplicationDitch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ReplicationDitch::ReplicationDitch(Ditches* ditches, char const* filename,
                                    int line)
@@ -111,13 +90,7 @@ ReplicationDitch::ReplicationDitch(Ditches* ditches, char const* filename,
 
 ReplicationDitch::~ReplicationDitch() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CompactionDitch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 CompactionDitch::CompactionDitch(Ditches* ditches, char const* filename,
                                  int line)
@@ -125,13 +98,7 @@ CompactionDitch::CompactionDitch(Ditches* ditches, char const* filename,
 
 CompactionDitch::~CompactionDitch() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class DropDatafileDitch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 DropDatafileDitch::DropDatafileDitch(
     Ditches* ditches, TRI_datafile_t* datafile, void* data,
@@ -144,13 +111,7 @@ DropDatafileDitch::DropDatafileDitch(
 
 DropDatafileDitch::~DropDatafileDitch() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RenameDatafileDitch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 RenameDatafileDitch::RenameDatafileDitch(
     Ditches* ditches, TRI_datafile_t* datafile, void* data,
@@ -163,13 +124,7 @@ RenameDatafileDitch::RenameDatafileDitch(
 
 RenameDatafileDitch::~RenameDatafileDitch() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       class UnloadCollectionDitch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 UnloadCollectionDitch::UnloadCollectionDitch(
     Ditches* ditches, TRI_collection_t* collection, void* data,
@@ -182,13 +137,7 @@ UnloadCollectionDitch::UnloadCollectionDitch(
 
 UnloadCollectionDitch::~UnloadCollectionDitch() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class DropCollectionDitch
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 DropCollectionDitch::DropCollectionDitch(
     Ditches* ditches, TRI_collection_t* collection, void* data,
@@ -201,9 +150,6 @@ DropCollectionDitch::DropCollectionDitch(
 
 DropCollectionDitch::~DropCollectionDitch() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     class Ditches
-// -----------------------------------------------------------------------------
 
 Ditches::Ditches(TRI_document_collection_t* collection)
     : _collection(collection),
@@ -216,9 +162,6 @@ Ditches::Ditches(TRI_document_collection_t* collection)
 
 Ditches::~Ditches() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the ditches - to be called on shutdown only
@@ -571,9 +514,6 @@ DropCollectionDitch* Ditches::createDropCollectionDitch(
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts the ditch into the linked list of ditches
@@ -628,12 +568,4 @@ void Ditches::unlink(Ditch* ditch) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_ITEM_BLOCK_MANAGER_H
-#define ARANGODB_AQL_ITEM_BLOCK_MANAGER_H 1
+#ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
+#define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
@@ -38,16 +38,9 @@ namespace aql {
 
 class AqlItemBlock;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class AqlItemBlockManager
-// -----------------------------------------------------------------------------
 
 class AqlItemBlockManager {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the manager
@@ -61,11 +54,7 @@ class AqlItemBlockManager {
 
   ~AqlItemBlockManager();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief request a block with the specified size
@@ -79,11 +68,7 @@ class AqlItemBlockManager {
 
   void returnBlock(AqlItemBlock*&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief last block handed back to the manager
@@ -97,12 +82,4 @@ class AqlItemBlockManager {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

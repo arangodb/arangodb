@@ -1893,16 +1893,10 @@ void tri_jsp_free(void* ptr, yyscan_t yyscanner) {
 
 #define YYTABLES_NAME "yytables"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 static bool ParseObject(yyscan_t, TRI_json_t*);
 static bool ParseValue(yyscan_t, TRI_json_t*, int);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do not use, only here to silence compiler
@@ -2215,9 +2209,6 @@ static bool ParseValue(yyscan_t scanner, TRI_json_t* result, int c) {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json string
@@ -2356,9 +2347,3 @@ TRI_json_t* TRI_JsonFile(TRI_memory_zone_t* zone, char const* path,
   return value;
 }
 
-// Local Variables:
-// mode: C
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

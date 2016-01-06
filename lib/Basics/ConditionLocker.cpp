@@ -36,9 +36,6 @@
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the condition variable
@@ -83,9 +80,6 @@ ConditionLocker::~ConditionLocker() {
 #endif
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for an event to occur
@@ -125,12 +119,4 @@ void ConditionLocker::unlock() { _conditionVariable->unlock(); }
 
 void ConditionLocker::lock() { _conditionVariable->lock(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

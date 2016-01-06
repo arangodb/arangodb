@@ -27,16 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_SYSTEM__FUNCTIONS_H
-#define ARANGODB_BASICS_C_SYSTEM__FUNCTIONS_H 1
+#ifndef LIB_BASICS_SYSTEM_FUNCTIONS_H
+#define LIB_BASICS_SYSTEM_FUNCTIONS_H 1
 
 #ifndef TRI_WITHIN_COMMON
 #error use <Basics/Common.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief memrchr
@@ -88,12 +85,4 @@ size_t TRI_numberProcessors(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

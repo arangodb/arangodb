@@ -27,16 +27,13 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STATISTICS_STATISTICS_AGENT_H
-#define ARANGODB_STATISTICS_STATISTICS_AGENT_H 1
+#ifndef ARANGOD_STATISTICS_STATISTICS_AGENT_H
+#define ARANGOD_STATISTICS_STATISTICS_AGENT_H 1
 
 #include "Basics/Common.h"
 
 #include "Statistics/statistics.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class StatisticsAgent
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -50,10 +47,7 @@ class StatisticsAgent {
   StatisticsAgent(StatisticsAgent const&) = delete;
   StatisticsAgent& operator=(StatisticsAgent const&) = delete;
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                    constructors and destructors
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new agent
@@ -71,10 +65,7 @@ class StatisticsAgent {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                  public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief acquires a new statistics block
@@ -132,10 +123,7 @@ class StatisticsAgent {
     return 0.0;
   }
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                public variables
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief statistics
@@ -149,10 +137,7 @@ class StatisticsAgent {
 
   double _lastReadStart;
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                  public methods
-  // ---------------------------------------------------------------------------
-
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief replaces a statistics block
@@ -169,9 +154,6 @@ class StatisticsAgent {
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      class RequestStatisticsAgent
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -369,9 +351,6 @@ class RequestStatisticsAgent
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   class ConnectionStatisticsAgent
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -439,6 +418,4 @@ class ConnectionStatisticsAgent
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

@@ -29,9 +29,6 @@
 
 #include "fulltext-result.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a result
@@ -80,12 +77,4 @@ void TRI_FreeResultFulltextIndex(TRI_fulltext_result_t* result) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

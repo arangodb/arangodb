@@ -47,9 +47,6 @@
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -58,9 +55,6 @@ using namespace triagens::rest;
 RestExportHandler::RestExportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _restrictions() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -96,9 +90,6 @@ HttpHandler::status_t RestExportHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief build options for the query as JSON
@@ -582,12 +573,4 @@ void RestExportHandler::deleteCursor() {
   dumper.dump(s);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

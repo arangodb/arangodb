@@ -27,15 +27,12 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_JSON__UTILITIES_H
-#define ARANGODB_BASICS_JSON__UTILITIES_H 1
+#ifndef LIB_BASICS_JSON_UTILITIES_H
+#define LIB_BASICS_JSON_UTILITIES_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two json values
@@ -147,12 +144,4 @@ struct JsonLess {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

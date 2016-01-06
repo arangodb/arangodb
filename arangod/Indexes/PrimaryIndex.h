@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_PRIMARY_INDEX_H
-#define ARANGODB_INDEXES_PRIMARY_INDEX_H 1
+#ifndef ARANGOD_INDEXES_PRIMARY_INDEX_H
+#define ARANGOD_INDEXES_PRIMARY_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
@@ -39,9 +39,6 @@
 
 struct TRI_json_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class PrimaryIndex
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -75,11 +72,7 @@ class PrimaryIndexIterator final : public IndexIterator {
 };
 
 class PrimaryIndex final : public Index {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   PrimaryIndex() = delete;
 
@@ -89,20 +82,12 @@ class PrimaryIndex final : public Index {
 
   ~PrimaryIndex();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  private:
   typedef triagens::basics::AssocUnique<char const, TRI_doc_mptr_t>
       TRI_PrimaryIndex_t;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_PRIMARY_INDEX;
@@ -214,11 +199,7 @@ class PrimaryIndex final : public Index {
   triagens::aql::AstNode* specializeCondition(
       triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the iterator
@@ -229,11 +210,7 @@ class PrimaryIndex final : public Index {
       triagens::aql::AstNode const*,
       std::vector<triagens::aql::AstNode const*> const&) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual index
@@ -246,12 +223,4 @@ class PrimaryIndex final : public Index {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

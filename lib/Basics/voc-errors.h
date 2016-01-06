@@ -1,6 +1,6 @@
 
-#ifndef TRIAGENS_BASICS_VOC_ERRORS_H
-#define TRIAGENS_BASICS_VOC_ERRORS_H 1
+#ifndef LIB_BASICS_VOC_ERRORS_H
+#define LIB_BASICS_VOC_ERRORS_H 1
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Error codes and meanings

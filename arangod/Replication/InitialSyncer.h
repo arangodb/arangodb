@@ -27,16 +27,13 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REPLICATION_INITIAL_SYNCER_H
-#define ARANGODB_REPLICATION_INITIAL_SYNCER_H 1
+#ifndef ARANGOD_REPLICATION_INITIAL_SYNCER_H
+#define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
 #include "Replication/Syncer.h"
 #include "Utils/transactions.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
@@ -51,16 +48,9 @@ class SimpleHttpResult;
 
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     InitialSyncer
-// -----------------------------------------------------------------------------
 
 class InitialSyncer : public Syncer {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                     private
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief apply phases
@@ -74,11 +64,7 @@ class InitialSyncer : public Syncer {
     PHASE_DUMP
   } sync_phase_e;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -94,11 +80,7 @@ class InitialSyncer : public Syncer {
 
   ~InitialSyncer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief run method, performs a full synchronization
@@ -140,11 +122,7 @@ class InitialSyncer : public Syncer {
     return _processedCollections;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set a progress message
@@ -253,11 +231,7 @@ class InitialSyncer : public Syncer {
           std::pair<struct TRI_json_t const*, struct TRI_json_t const*>> const&,
       bool, std::string&, sync_phase_e);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief progress message
@@ -336,12 +310,4 @@ class InitialSyncer : public Syncer {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_FUNCTOR_H
-#define ARANGODB_BASICS_FUNCTOR_H 1
+#ifndef LIB_BASICS_FUNCTOR_H
+#define LIB_BASICS_FUNCTOR_H 1
 
 #include "Basics/Common.h"
 
@@ -286,12 +286,4 @@ typedef Functor<void, NullType, NullType> Command;
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

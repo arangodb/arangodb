@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_LIST_H
-#define ARANGODB_AQL_QUERY_LIST_H 1
+#ifndef ARANGOD_AQL_QUERY_LIST_H
+#define ARANGOD_AQL_QUERY_LIST_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -43,9 +43,6 @@ namespace aql {
 
 class Query;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 struct QueryEntry
-// -----------------------------------------------------------------------------
 
 struct QueryEntry {
   QueryEntry(triagens::aql::Query const*, double);
@@ -54,9 +51,6 @@ struct QueryEntry {
   double const started;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             struct QueryEntryCopy
-// -----------------------------------------------------------------------------
 
 struct QueryEntryCopy {
   QueryEntryCopy(TRI_voc_tick_t, std::string const&, double, double);
@@ -67,16 +61,9 @@ struct QueryEntryCopy {
   double runTime;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class QueryList
-// -----------------------------------------------------------------------------
 
 class QueryList {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a query list
@@ -90,11 +77,7 @@ class QueryList {
 
   ~QueryList();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not queries are tracked
@@ -233,11 +216,7 @@ class QueryList {
 
   void clearSlow();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief r/w lock for the list
@@ -316,12 +295,4 @@ class QueryList {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

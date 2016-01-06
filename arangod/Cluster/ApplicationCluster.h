@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_APPLICATION_CLUSTER_H
-#define ARANGODB_CLUSTER_APPLICATION_CLUSTER_H 1
+#ifndef ARANGOD_CLUSTER_APPLICATION_CLUSTER_H
+#define ARANGOD_CLUSTER_APPLICATION_CLUSTER_H 1
 
 #include "Basics/Common.h"
 
@@ -51,11 +51,7 @@ class HeartbeatThread;
 ////////////////////////////////////////////////////////////////////////////////
 
 class ApplicationCluster : public rest::ApplicationFeature {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ApplicationCluster(ApplicationCluster const&);
   ApplicationCluster& operator=(ApplicationCluster const&);
@@ -74,11 +70,7 @@ class ApplicationCluster : public rest::ApplicationFeature {
 
   ~ApplicationCluster();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief disable the heartbeat (used for testing)
@@ -92,11 +84,7 @@ class ApplicationCluster : public rest::ApplicationFeature {
 
   inline bool enabled() const { return _enableCluster; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        ApplicationFeature
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -134,11 +122,7 @@ class ApplicationCluster : public rest::ApplicationFeature {
 
   void stop();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -440,12 +424,4 @@ class ApplicationCluster : public rest::ApplicationFeature {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

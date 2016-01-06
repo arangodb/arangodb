@@ -25,8 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_TRAVERSAL_NODE_H
-#define ARANGODB_AQL_TRAVERSAL_NODE_H 1
+#ifndef ARANGOD_AQL_TRAVERSAL_NODE_H
+#define ARANGOD_AQL_TRAVERSAL_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/Condition.h"
@@ -36,9 +36,6 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                  struct SimpleTraverserExpression
-// -----------------------------------------------------------------------------
 
 class SimpleTraverserExpression
     : public triagens::arango::traverser::TraverserExpression {
@@ -308,11 +305,7 @@ class TraversalNode : public ExecutionNode {
     return &_expressions;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the database
@@ -413,8 +406,3 @@ class TraversalNode : public ExecutionNode {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

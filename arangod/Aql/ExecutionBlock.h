@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_BLOCK_H
-#define ARANGODB_AQL_EXECUTION_BLOCK_H 1
+#ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
+#define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -39,9 +39,6 @@ class AqlTransaction;
 }
 
 namespace aql {
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          NodePath
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct to hold the member-indexes in the _condition node
@@ -61,16 +58,9 @@ struct NonConstExpression {
 
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    ExecutionBlock
-// -----------------------------------------------------------------------------
 
 class ExecutionBlock {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -84,11 +74,7 @@ class ExecutionBlock {
 
   virtual ~ExecutionBlock();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine the number of rows in a vector of blocks
@@ -187,11 +173,7 @@ class ExecutionBlock {
 
   virtual AqlItemBlock* getSome(size_t atLeast, size_t atMost);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief request an AqlItemBlock from the memory manager
@@ -328,11 +310,7 @@ class ExecutionBlock {
 
   bool _done;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief batch size value
@@ -346,8 +324,3 @@ class ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_TRANSACTION_H
-#define ARANGODB_UTILS_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_TRANSACTION_H
+#define ARANGOD_UTILS_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
@@ -55,9 +55,6 @@
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class Transaction
-// -----------------------------------------------------------------------------
 
 class Transaction {
   using VPackOptions = arangodb::velocypack::Options;
@@ -71,11 +68,7 @@ class Transaction {
   Transaction(Transaction const&) = delete;
   Transaction& operator=(Transaction const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -129,11 +122,7 @@ class Transaction {
     delete _transactionContext;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return database of transaction
@@ -565,11 +554,7 @@ class Transaction {
     return isLocked(trxCollection, type);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the collection
@@ -890,11 +875,7 @@ class Transaction {
     return res;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief register an error for the transaction
@@ -1027,11 +1008,7 @@ class Transaction {
     return TRI_ERROR_NO_ERROR;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief external transaction id. used in replication only
@@ -1087,11 +1064,7 @@ class Transaction {
 
   bool _isReal;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the C transaction struct
@@ -1123,12 +1096,4 @@ class Transaction {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

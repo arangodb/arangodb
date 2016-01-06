@@ -28,8 +28,8 @@
 /// @author Copyright 2005-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_STRING_UTILS_H
-#define ARANGODB_BASICS_STRING_UTILS_H 1
+#ifndef LIB_BASICS_STRING_UTILS_H
+#define LIB_BASICS_STRING_UTILS_H 1
 
 #include "Basics/Common.h"
 
@@ -623,12 +623,4 @@ std::string decodeHex(std::string const& str);
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

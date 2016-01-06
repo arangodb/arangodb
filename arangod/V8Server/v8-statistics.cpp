@@ -85,9 +85,6 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
   list->Set(name, result);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns server statistics
@@ -237,9 +234,6 @@ static void JS_HttpStatistics(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the statistics functions
@@ -278,12 +272,4 @@ void TRI_InitV8Statistics(v8::Isolate* isolate,
       DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

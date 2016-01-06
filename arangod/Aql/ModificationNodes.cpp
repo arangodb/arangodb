@@ -36,9 +36,6 @@ using namespace triagens::aql;
 
 const static bool Optional = true;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ModificationNode
-// -----------------------------------------------------------------------------
 
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    triagens::basics::Json const& base)
@@ -95,9 +92,6 @@ double ModificationNode::estimateCost(size_t& nrItems) const {
   return depCost + incoming;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of RemoveNode
-// -----------------------------------------------------------------------------
 
 RemoveNode::RemoveNode(ExecutionPlan* plan, triagens::basics::Json const& base)
     : ModificationNode(plan, base),
@@ -150,9 +144,6 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of InsertNode
-// -----------------------------------------------------------------------------
 
 InsertNode::InsertNode(ExecutionPlan* plan, triagens::basics::Json const& base)
     : ModificationNode(plan, base),
@@ -205,9 +196,6 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of UpdateNode
-// -----------------------------------------------------------------------------
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, triagens::basics::Json const& base)
     : ModificationNode(plan, base),
@@ -278,9 +266,6 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            methods of ReplaceNode
-// -----------------------------------------------------------------------------
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
                          triagens::basics::Json const& base)
@@ -352,9 +337,6 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             methods of UpsertNode
-// -----------------------------------------------------------------------------
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, triagens::basics::Json const& base)
     : ModificationNode(plan, base),
@@ -420,8 +402,3 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
   return static_cast<ExecutionNode*>(c);
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

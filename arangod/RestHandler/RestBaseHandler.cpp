@@ -44,9 +44,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -54,9 +51,6 @@ using namespace triagens::admin;
 
 RestBaseHandler::RestBaseHandler(HttpRequest* request) : HttpHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -66,9 +60,6 @@ void RestBaseHandler::handleError(Exception const& ex) {
   generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from JSON
@@ -198,12 +189,4 @@ void RestBaseHandler::generateError(HttpResponse::HttpResponseCode code,
 void RestBaseHandler::generateOOMError() {
   generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 }
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

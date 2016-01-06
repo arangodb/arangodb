@@ -33,9 +33,6 @@ using namespace triagens;
 using namespace triagens::rest;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -50,9 +47,6 @@ ApplicationFeature::ApplicationFeature(string const& name)
 
 ApplicationFeature::~ApplicationFeature() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name
@@ -118,12 +112,4 @@ void ApplicationFeature::stop() {}
 
 void ApplicationFeature::disable() { _disabled = true; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,16 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__QUERY_H
-#define ARANGODB_V8SERVER_V8__QUERY_H 1
+#ifndef ARANGOD_V8_SERVER_V8_QUERY_H
+#define ARANGOD_V8_SERVER_V8_QUERY_H 1
 
 #include "Basics/Common.h"
 
 #include "V8/v8-globals.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the query functions
@@ -46,12 +43,4 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -28,12 +28,9 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_MESSAGES_H
-#define ARANGODB_BASICS_C_MESSAGES_H 1
+#ifndef LIB_BASICS_MESSAGES_H
+#define LIB_BASICS_MESSAGES_H 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bye bye message
@@ -70,12 +67,4 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

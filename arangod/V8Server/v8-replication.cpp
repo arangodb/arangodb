@@ -41,9 +41,6 @@ using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       REPLICATION
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication logger

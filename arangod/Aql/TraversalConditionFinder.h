@@ -25,8 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_CONDITION_FINDER_H
-#define ARANGOD_AQL_CONDITION_FINDER 1
+#ifndef ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H
+#define ARANGOD_AQL_TRAVERSAL_CONDITION_FINDER_H 1
 
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -61,8 +61,3 @@ class TraversalConditionFinder : public WalkerWorker<ExecutionNode> {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

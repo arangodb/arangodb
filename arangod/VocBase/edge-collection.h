@@ -27,21 +27,15 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_EDGE__COLLECTION_H
-#define ARANGODB_VOC_BASE_EDGE__COLLECTION_H 1
+#ifndef ARANGOD_VOC_BASE_EDGE_COLLECTION_H
+#define ARANGOD_VOC_BASE_EDGE_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   EDGE COLLECTION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge direction
@@ -102,13 +96,7 @@ struct TRI_edge_index_iterator_t {
   TRI_edge_header_t _edge;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       EDGES INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges
@@ -120,12 +108,4 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection(
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

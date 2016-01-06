@@ -2292,12 +2292,4 @@ size_t GeoIndex_MemoryUsage(void* theIndex) {
 }
 /* end of GeoIndex.c  */
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

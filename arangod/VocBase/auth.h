@@ -27,22 +27,16 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_AUTH_H
-#define ARANGODB_VOC_BASE_AUTH_H 1
+#ifndef ARANGOD_VOC_BASE_AUTH_H
+#define ARANGOD_VOC_BASE_AUTH_H 1
 
 #include "Basics/Common.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief authentication and authorization
@@ -106,9 +100,6 @@ typedef struct TRI_vocbase_auth_cache_s {
   bool _mustChange;
 } TRI_vocbase_auth_cache_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the authentication info
@@ -176,12 +167,4 @@ bool TRI_CheckAuthenticationAuthInfo(TRI_vocbase_t*, char const* hash,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

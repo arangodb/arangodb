@@ -33,9 +33,6 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class Collections
-// -----------------------------------------------------------------------------
 
 Collections::Collections(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase), _collections() {}
@@ -46,9 +43,6 @@ Collections::~Collections() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 Collection* Collections::get(std::string const& name) const {
   auto it = _collections.find(name);
@@ -108,12 +102,4 @@ std::map<std::string, Collection*> const* Collections::collections() const {
   return &_collections;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2013, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_SERVER_STATE_H
-#define ARANGODB_CLUSTER_SERVER_STATE_H 1
+#ifndef ARANGOD_CLUSTER_SERVER_STATE_H
+#define ARANGOD_CLUSTER_SERVER_STATE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -36,16 +36,9 @@
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       ServerState
-// -----------------------------------------------------------------------------
 
 class ServerState {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief an enum describing the roles a server can have
@@ -77,11 +70,7 @@ class ServerState {
     STATE_SHUTDOWN        // used by all roles
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -95,11 +84,7 @@ class ServerState {
 
   ~ServerState();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public static
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the (sole) instance
@@ -131,11 +116,7 @@ class ServerState {
 
   static StateEnum stringToState(std::string const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets the initialized flag
@@ -402,11 +383,7 @@ class ServerState {
 
   bool redetermineRole();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief atomically fetches the server role
@@ -466,11 +443,7 @@ class ServerState {
 
   bool checkCoordinatorState(StateEnum);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the pointer to the singleton instance
@@ -603,12 +576,4 @@ class ServerState {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

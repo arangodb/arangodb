@@ -27,8 +27,8 @@
 /// @author Copyright 2008-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_SOCKET__UTILS_H
-#define ARANGODB_BASICS_C_SOCKET__UTILS_H 1
+#ifndef LIB_BASICS_SOCKET_UTILS_H
+#define LIB_BASICS_SOCKET_UTILS_H 1
 
 #include "Basics/Common.h"
 
@@ -47,9 +47,6 @@
 #include <WS2tcpip.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
@@ -64,9 +61,6 @@ typedef struct TRI_socket_s {
 typedef struct TRI_socket_s { int fileDescriptor; } TRI_socket_t;
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket abstraction for different OSes
@@ -319,22 +313,8 @@ int TRI_InetPton4(char const* src, unsigned char* dst);
 
 int TRI_InetPton6(char const* src, unsigned char* dst);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            MODULE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

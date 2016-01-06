@@ -27,16 +27,13 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_SCRIPT_LOADER_H
-#define ARANGODB_UTILITIES_SCRIPT_LOADER_H 1
+#ifndef LIB_UTILITIES_SCRIPT_LOADER_H
+#define LIB_UTILITIES_SCRIPT_LOADER_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class JSLoader
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -46,11 +43,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class ScriptLoader {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a loader
@@ -58,11 +51,7 @@ class ScriptLoader {
 
   ScriptLoader();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief gets the directory for scripts
@@ -96,11 +85,7 @@ class ScriptLoader {
 
   std::string const& findScript(std::string const& name);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief gets a list of all specified directory parts
@@ -108,11 +93,7 @@ class ScriptLoader {
 
   std::vector<std::string> getDirectoryParts();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief all scripts
@@ -137,12 +118,4 @@ class ScriptLoader {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

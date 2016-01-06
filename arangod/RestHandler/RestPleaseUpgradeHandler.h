@@ -27,16 +27,13 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_PLEASE_UPGRADE_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "HttpServer/HttpHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RestDocumentHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -46,11 +43,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestPleaseUpgradeHandler : public rest::HttpHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -58,11 +51,7 @@ class RestPleaseUpgradeHandler : public rest::HttpHandler {
 
   explicit RestPleaseUpgradeHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -87,12 +76,4 @@ class RestPleaseUpgradeHandler : public rest::HttpHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,16 +27,13 @@
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STATISTICS_STATISTICS_H
-#define ARANGODB_STATISTICS_STATISTICS_H 1
+#ifndef ARANGOD_STATISTICS_STATISTICS_H
+#define ARANGOD_STATISTICS_STATISTICS_H 1
 
 #include "Basics/Common.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/figures.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request statistics
@@ -131,9 +128,6 @@ struct TRI_server_statistics_t {
   double _uptime;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                               public request statistics functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
@@ -159,9 +153,6 @@ void TRI_FillRequestStatistics(
     triagens::basics::StatisticsDistribution& bytesSent,
     triagens::basics::StatisticsDistribution& bytesReceived);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                            public connection statistics functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a new statistics block
@@ -186,9 +177,6 @@ void TRI_FillConnectionStatistics(
     triagens::basics::StatisticsCounter& asyncRequests,
     triagens::basics::StatisticsDistribution& connectionTime);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                public server statistics functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the server statistics
@@ -196,9 +184,6 @@ void TRI_FillConnectionStatistics(
 
 TRI_server_statistics_t TRI_GetServerStatistics();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics enabled flags
@@ -314,9 +299,6 @@ extern triagens::basics::StatisticsDistribution*
 
 extern TRI_server_statistics_t TRI_ServerStatistics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the current wallclock time
@@ -324,9 +306,6 @@ extern TRI_server_statistics_t TRI_ServerStatistics;
 
 double TRI_StatisticsTime(void);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module init function
@@ -342,12 +321,4 @@ void TRI_ShutdownStatistics(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

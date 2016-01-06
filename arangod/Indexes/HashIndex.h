@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_HASH_INDEX_H
-#define ARANGODB_INDEXES_HASH_INDEX_H 1
+#ifndef ARANGOD_INDEXES_HASH_INDEX_H
+#define ARANGOD_INDEXES_HASH_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Basics/AssocMulti.h"
@@ -62,9 +62,6 @@ struct TRI_hash_index_search_value_t {
   struct TRI_shaped_json_s* _values;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class HashIndex
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace aql {
@@ -104,11 +101,7 @@ class HashIndexIterator final : public IndexIterator {
 };
 
 class HashIndex final : public PathBasedIndex {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   HashIndex() = delete;
 
@@ -120,11 +113,7 @@ class HashIndex final : public PathBasedIndex {
 
   ~HashIndex();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   IndexType type() const override final {
     return Index::TRI_IDX_TYPE_HASH_INDEX;
@@ -189,11 +178,7 @@ class HashIndex final : public PathBasedIndex {
   triagens::aql::AstNode* specializeCondition(
       triagens::aql::AstNode*, triagens::aql::Variable const*) const override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   int insertUnique(triagens::arango::Transaction*, struct TRI_doc_mptr_t const*,
                    bool);
@@ -224,11 +209,7 @@ class HashIndex final : public PathBasedIndex {
                        triagens::aql::Variable const* reference,
                        std::unordered_set<size_t>& found) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // classes
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief given an element generates a hash integer
   ////////////////////////////////////////////////////////////////////////////////
@@ -313,11 +294,7 @@ class HashIndex final : public PathBasedIndex {
     }
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the actual hash index (unique type)
@@ -368,12 +345,4 @@ class HashIndex final : public PathBasedIndex {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

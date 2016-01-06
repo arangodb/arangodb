@@ -26,8 +26,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_CLUSTER_METHODS_H
-#define ARANGODB_CLUSTER_CLUSTER_METHODS_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_METHODS_H
+#define ARANGOD_CLUSTER_CLUSTER_METHODS_H 1
 
 #include "Basics/Common.h"
 
@@ -53,9 +53,6 @@ struct TRI_vector_pointer_s;
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace traverser {
 class TraverserExpression;
@@ -260,12 +257,4 @@ int flushWalOnAllDBServers(bool, bool);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

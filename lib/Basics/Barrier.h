@@ -27,8 +27,8 @@
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_BARRIER_H
-#define ARANGODB_BASICS_BARRIER_H 1
+#ifndef LIB_BASICS_BARRIER_H
+#define LIB_BASICS_BARRIER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -36,16 +36,9 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           Barrier
-// -----------------------------------------------------------------------------
 
 class Barrier {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   Barrier(Barrier const&) = delete;
   Barrier& operator=(Barrier const&) = delete;
@@ -54,11 +47,7 @@ class Barrier {
 
   ~Barrier();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief join a single task. reduces the number of waiting tasks and wakes
   /// up the barrier's synchronize() routine
@@ -72,11 +61,7 @@ class Barrier {
 
   void synchronize();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable
@@ -91,16 +76,9 @@ class Barrier {
   size_t _missing;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       BarrierTask
-// -----------------------------------------------------------------------------
 
 class BarrierTask {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   BarrierTask() = delete;
   BarrierTask(BarrierTask const&) = delete;
@@ -114,11 +92,7 @@ class BarrierTask {
 
   ~BarrierTask() { _barrier->join(); }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying barrier
@@ -132,12 +106,4 @@ class BarrierTask {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_SLOTS_H
-#define ARANGODB_WAL_SLOTS_H 1
+#ifndef ARANGOD_WAL_SLOTS_H
+#define ARANGOD_WAL_SLOTS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -42,9 +42,6 @@ namespace wal {
 
 class LogfileManager;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               struct SlotInfoCopy
-// -----------------------------------------------------------------------------
 
 struct SlotInfoCopy {
   explicit SlotInfoCopy(Slot const* slot)
@@ -64,9 +61,6 @@ struct SlotInfoCopy {
   int const errorCode;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   struct SlotInfo
-// -----------------------------------------------------------------------------
 
 struct SlotInfo {
   explicit SlotInfo(int errorCode)
@@ -86,16 +80,9 @@ struct SlotInfo {
   int errorCode;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       class Slots
-// -----------------------------------------------------------------------------
 
 class Slots {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   Slots(Slots const&) = delete;
   Slots& operator=(Slots const&) = delete;
@@ -113,11 +100,7 @@ class Slots {
 
   ~Slots();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get the statistics of the slots
@@ -182,11 +165,7 @@ class Slots {
 
   void getActiveTickRange(Logfile*, TRI_voc_tick_t&, TRI_voc_tick_t&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief close a logfile
   ////////////////////////////////////////////////////////////////////////////////
@@ -224,11 +203,7 @@ class Slots {
 
   int newLogfile(uint32_t, Logfile::StatusType& status);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -319,12 +294,4 @@ class Slots {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

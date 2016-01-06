@@ -29,8 +29,8 @@
 /// @author Copyright 2006-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ASSOC_UNIQUE_H
-#define ARANGODB_BASICS_ASSOC_UNIQUE_H 1
+#ifndef LIB_BASICS_ASSOC_UNIQUE_H
+#define LIB_BASICS_ASSOC_UNIQUE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/gcd.h"
@@ -48,9 +48,6 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                Position object for bucket indexes
-// -----------------------------------------------------------------------------
 
 struct BucketPosition {
   size_t bucketId;
@@ -68,9 +65,6 @@ struct BucketPosition {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       UNIQUE ASSOCIATIVE POINTERS
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief associative array
@@ -111,11 +105,7 @@ class AssocUnique {
 
   std::function<std::string()> _contextCallback;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
   ////////////////////////////////////////////////////////////////////////////////
@@ -351,11 +341,7 @@ class AssocUnique {
     return TRI_ERROR_NO_ERROR;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks if this index is empty
@@ -1056,12 +1042,4 @@ class AssocUnique {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

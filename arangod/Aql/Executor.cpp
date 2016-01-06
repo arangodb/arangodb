@@ -42,9 +42,6 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if code is executed in cluster or not
@@ -477,9 +474,6 @@ size_t const Executor::DefaultLiteralSizeThreshold = 32;
 
 int64_t const Executor::MaxRangeAccessArraySize = 1024 * 1024 * 32;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an executor
@@ -498,9 +492,6 @@ Executor::Executor(int64_t literalSizeThreshold)
 
 Executor::~Executor() { delete _buffer; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates an expression execution object
@@ -617,9 +608,6 @@ Function const* Executor::getFunctionByName(std::string const& name) {
   return &((*it).second);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief traverse the expression and note all (big) array/object literals
@@ -1483,12 +1471,4 @@ triagens::basics::StringBuffer* Executor::initializeBuffer() {
   return _buffer;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -48,15 +48,9 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   HeartbeatThread
-// -----------------------------------------------------------------------------
 
 volatile sig_atomic_t HeartbeatThread::HasRunOnce = 0;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
@@ -93,9 +87,6 @@ HeartbeatThread::HeartbeatThread(
 
 HeartbeatThread::~HeartbeatThread() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop
@@ -405,9 +396,6 @@ void HeartbeatThread::runCoordinator() {
   LOG_TRACE("stopped heartbeat thread");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
@@ -453,9 +441,6 @@ void HeartbeatThread::removeDispatchedJob(bool success) {
   _lastDispatchedJobResult = success;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetch the index id of the value of Sync/Commands/my-id from the
@@ -772,12 +757,4 @@ bool HeartbeatThread::fetchUsers(TRI_vocbase_t* vocbase) {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

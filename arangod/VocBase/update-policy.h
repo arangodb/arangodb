@@ -27,15 +27,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_UPDATE__POLICY_H
-#define ARANGODB_VOC_BASE_UPDATE__POLICY_H 1
+#ifndef ARANGOD_VOC_BASE_UPDATE_POLICY_H
+#define ARANGOD_VOC_BASE_UPDATE_POLICY_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update and delete policy
@@ -120,12 +117,4 @@ class TRI_doc_update_policy_t {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

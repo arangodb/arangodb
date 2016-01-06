@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_COMPACTOR_H
-#define ARANGODB_VOC_BASE_COMPACTOR_H 1
+#ifndef ARANGOD_VOC_BASE_COMPACTOR_H
+#define ARANGOD_VOC_BASE_COMPACTOR_H 1
 
 #include "Basics/Common.h"
 
@@ -36,9 +36,6 @@
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the compaction blockers structure
@@ -98,12 +95,4 @@ void TRI_CompactorVocBase(void*);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

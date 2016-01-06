@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_VOCBASE_H
-#define ARANGODB_VOC_BASE_VOCBASE_H 1
+#ifndef ARANGOD_VOC_BASE_VOCBASE_H
+#define ARANGOD_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/associative.h"
@@ -44,9 +44,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_document_collection_t;
 class TRI_replication_applier_t;
@@ -67,9 +64,6 @@ class CursorRepository;
 
 extern bool IGNORE_DATAFILE_ERRORS;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock the vocbase collection status
@@ -122,9 +116,6 @@ extern bool IGNORE_DATAFILE_ERRORS;
     usleep(1000);                                     \
   }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the _from attribute
@@ -226,9 +217,6 @@ extern bool IGNORE_DATAFILE_ERRORS;
 
 #define TRI_INDEX_HANDLE_SEPARATOR_STR "/"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database state
@@ -418,9 +406,6 @@ class TRI_vocbase_col_t {
   void toVelocyPackIndexes(VPackBuilder&, TRI_voc_tick_t);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free the memory associated with a collection
@@ -650,12 +635,4 @@ void TRI_SetThrowCollectionNotLoadedVocBase(TRI_vocbase_t*, bool);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

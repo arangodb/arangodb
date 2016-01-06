@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STORAGE_OPTIONS_H
-#define ARANGODB_STORAGE_OPTIONS_H 1
+#ifndef ARANGOD_STORAGE_OPTIONS_H
+#define ARANGOD_STORAGE_OPTIONS_H 1
 
 #include "Basics/Common.h"
 
@@ -69,12 +69,4 @@ class StorageOptions {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

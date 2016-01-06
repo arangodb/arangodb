@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
+#define LIB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
 
@@ -39,9 +39,6 @@
 #include "openssl/ssl.h"
 #include "openssl/err.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               SslClientConnection
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace httpclient {
@@ -51,11 +48,7 @@ namespace httpclient {
 ////////////////////////////////////////////////////////////////////////////////
 
 class SslClientConnection final : public GeneralClientConnection {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   SslClientConnection(SslClientConnection const&);
   SslClientConnection& operator=(SslClientConnection const&);
@@ -74,11 +67,7 @@ class SslClientConnection final : public GeneralClientConnection {
 
   ~SslClientConnection();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                         protected virtual
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -117,11 +106,7 @@ class SslClientConnection final : public GeneralClientConnection {
 
   bool readable() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the socket is still workable
@@ -129,11 +114,7 @@ class SslClientConnection final : public GeneralClientConnection {
 
   bool checkSocket();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying socket
@@ -157,12 +138,4 @@ class SslClientConnection final : public GeneralClientConnection {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -41,9 +41,6 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes an edge key
@@ -379,13 +376,7 @@ static bool IsEqualElementEdgeToByKey(void* userData,
   return ((lCid == rCid) && (strcmp(lKey, rKey) == 0));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class EdgeIndexIterator
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 TRI_doc_mptr_t* EdgeIndexIterator::next() {
   while (true) {
@@ -436,9 +427,6 @@ void EdgeIndexIterator::reset() {
   _buffer = nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 EdgeIndex::EdgeIndex(TRI_idx_iid_t iid, TRI_document_collection_t* collection)
     : Index(iid, collection,
@@ -481,9 +469,6 @@ EdgeIndex::~EdgeIndex() {
   delete _edgesFrom;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a selectivity estimate for the index
@@ -774,9 +759,6 @@ triagens::aql::AstNode* EdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the iterator
@@ -834,12 +816,4 @@ IndexIterator* EdgeIndex::createIterator(
   return new EdgeIndexIterator(trx, isFrom ? _edgesFrom : _edgesTo, keys);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

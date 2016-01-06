@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SSL__HELPER_H
-#define ARANGODB_BASICS_SSL__HELPER_H 1
+#ifndef LIB_BASICS_SSL_HELPER_H
+#define LIB_BASICS_SSL_HELPER_H 1
 
 #include "Basics/Common.h"
 
@@ -37,9 +37,6 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SSL protocol methods
@@ -65,9 +62,6 @@ enum protocol_e {
 #define SSL_CONST const
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an SSL context
@@ -91,12 +85,4 @@ std::string lastSSLError();
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

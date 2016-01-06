@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_REMOVER_THREAD_H
-#define ARANGODB_WAL_REMOVER_THREAD_H 1
+#ifndef ARANGOD_WAL_REMOVER_THREAD_H
+#define ARANGOD_WAL_REMOVER_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -40,9 +40,6 @@ namespace wal {
 
 class LogfileManager;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class RemoverThread
-// -----------------------------------------------------------------------------
 
 class RemoverThread : public basics::Thread {
   ////////////////////////////////////////////////////////////////////////////////
@@ -53,11 +50,7 @@ class RemoverThread : public basics::Thread {
   RemoverThread(RemoverThread const&) = delete;
   RemoverThread& operator=(RemoverThread const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the remover thread
@@ -71,11 +64,7 @@ class RemoverThread : public basics::Thread {
 
   ~RemoverThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stops the remover thread
@@ -83,11 +72,7 @@ class RemoverThread : public basics::Thread {
 
   void stop();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -95,11 +80,7 @@ class RemoverThread : public basics::Thread {
 
   void run();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -130,12 +111,4 @@ class RemoverThread : public basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

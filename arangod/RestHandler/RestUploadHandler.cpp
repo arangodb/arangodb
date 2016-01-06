@@ -41,9 +41,6 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -58,9 +55,6 @@ RestUploadHandler::RestUploadHandler(HttpRequest* request)
 
 RestUploadHandler::~RestUploadHandler() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -285,12 +279,4 @@ bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

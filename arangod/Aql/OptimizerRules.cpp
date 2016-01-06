@@ -48,9 +48,6 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using EN = triagens::aql::ExecutionNode;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           rules for the optimizer
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a SORT operation for IN right-hand side operands
@@ -474,9 +471,6 @@ void triagens::aql::removeCollectIntoRule(Optimizer* opt, ExecutionPlan* plan,
   opt->addPlan(plan, rule, modified);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                  helper class for propagateConstantAttributesRule
-// -----------------------------------------------------------------------------
 
 class PropagateConstantAttributesHelper {
  public:
@@ -3551,8 +3545,3 @@ void triagens::aql::mergeFilterIntoTraversalRule(Optimizer* opt,
   opt->addPlan(plan, rule, planAltered);
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

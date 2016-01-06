@@ -28,8 +28,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ATTRIBUTENAMEPARSER_H
-#define ARANGODB_BASICS_ATTRIBUTENAMEPARSER_H 1
+#ifndef LIB_BASICS_ATTRIBUTE_NAME_PARSER_H
+#define LIB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
 
 #include "Common.h"
 #include <iosfwd>
@@ -37,9 +37,6 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              struct AttributeName
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Struct that knows the name of the attribute used to identify its pid
@@ -91,9 +88,6 @@ struct AttributeName {
                          std::vector<AttributeName> const&);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Parse an input string into attribute names and expansion flags
@@ -137,12 +131,4 @@ std::ostream& operator<<(std::ostream&,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,15 +27,12 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ARANGO_SHELL_ARANGO_CLIENT_H
-#define ARANGODB_ARANGO_SHELL_ARANGO_CLIENT_H 1
+#ifndef ARANGOSH_ARANGO_SHELL_ARANGO_CLIENT_H
+#define ARANGOSH_ARANGO_SHELL_ARANGO_CLIENT_H 1
 
 #include "Basics/Common.h"
 #include "Rest/Endpoint.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -47,9 +44,6 @@ namespace rest {
 class Endpoint;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ArangoClient
-// -----------------------------------------------------------------------------
 
 namespace arango {
 
@@ -62,11 +56,7 @@ class ArangoClient {
   ArangoClient(const ArangoClient&);
   ArangoClient operator=(const ArangoClient&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // constants
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief default request timeout
@@ -117,11 +107,7 @@ class ArangoClient {
 
   static char const* PROMPT_IGNORE_END;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -135,11 +121,7 @@ class ArangoClient {
 
   ~ArangoClient();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets up a program-specific help message
@@ -411,11 +393,7 @@ class ArangoClient {
 
   uint32_t sslProtocol() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // Methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief prints a line
@@ -423,11 +401,7 @@ class ArangoClient {
 
   void _printLine(std::string const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief configuration file
@@ -617,12 +591,4 @@ class ArangoClient {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

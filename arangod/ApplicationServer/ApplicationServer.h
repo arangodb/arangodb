@@ -27,17 +27,14 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_SERVER_APPLICATION_SERVER_H
-#define ARANGODB_APPLICATION_SERVER_APPLICATION_SERVER_H 1
+#ifndef ARANGOD_APPLICATION_SERVER_APPLICATION_SERVER_H
+#define ARANGOD_APPLICATION_SERVER_APPLICATION_SERVER_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/ProgramOptions.h"
 #include "Basics/ConditionVariable.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -47,9 +44,6 @@ class ProgramOptionsDescription;
 namespace rest {
 class ApplicationFeature;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class ApplicationServer
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server
@@ -59,11 +53,7 @@ class ApplicationServer {
   ApplicationServer(const ApplicationServer&);
   ApplicationServer& operator=(const ApplicationServer&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -78,11 +68,7 @@ class ApplicationServer {
 
   virtual ~ApplicationServer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief adds a new feature
@@ -188,11 +174,7 @@ class ApplicationServer {
 
   void dropPrivilegesPermanently();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief adds options to description
@@ -200,11 +182,7 @@ class ApplicationServer {
 
   void setupOptions(std::map<std::string, basics::ProgramOptionsDescription>&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks if the parent is still alive
@@ -218,11 +196,7 @@ class ApplicationServer {
 
   bool readConfigurationFile();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief program options
@@ -781,12 +755,4 @@ class ApplicationServer {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

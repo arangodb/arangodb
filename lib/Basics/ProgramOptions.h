@@ -27,17 +27,14 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_PROGRAM_OPTIONS_H
-#define ARANGODB_BASICS_PROGRAM_OPTIONS_H 1
+#ifndef LIB_BASICS_PROGRAM_OPTIONS_H
+#define LIB_BASICS_PROGRAM_OPTIONS_H 1
 
 #include "Basics/Common.h"
 
 #include "Basics/vector.h"
 #include "Basics/ProgramOptionsDescription.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 struct TRI_program_options_s;
@@ -46,9 +43,6 @@ struct TRI_PO_section_s;
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   class ProgramOptionsDescription
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ProgramOptions
@@ -59,11 +53,7 @@ class ProgramOptions {
   ProgramOptions(ProgramOptions const&) = delete;
   ProgramOptions& operator=(ProgramOptions const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -77,11 +67,7 @@ class ProgramOptions {
 
   ~ProgramOptions();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief parse command line
@@ -119,11 +105,7 @@ class ProgramOptions {
 
   static struct TRI_json_t const* getJson();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief generates description for the main section
@@ -146,11 +128,7 @@ class ProgramOptions {
   bool extractValues(ProgramOptionsDescription const&,
                      struct TRI_program_options_s*, std::set<std::string> seen);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief bool values
@@ -211,12 +189,4 @@ class ProgramOptions {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_ENGINE_H
-#define ARANGODB_AQL_EXECUTION_ENGINE_H 1
+#ifndef ARANGOD_AQL_EXECUTION_ENGINE_H
+#define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AqlItemBlock.h"
@@ -42,16 +42,9 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class ExecutionEngine
-// -----------------------------------------------------------------------------
 
 class ExecutionEngine {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the engine
@@ -65,11 +58,7 @@ class ExecutionEngine {
 
   ~ExecutionEngine();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   // @brief create an execution engine from a plan
@@ -220,11 +209,7 @@ class ExecutionEngine {
     return _lockedShards;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief execution statistics for the query
@@ -239,11 +224,7 @@ class ExecutionEngine {
 
   AqlItemBlockManager _itemBlockManager;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief all blocks registered, used for memory management
@@ -293,12 +274,4 @@ class ExecutionEngine {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

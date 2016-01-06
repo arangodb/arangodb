@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ARANGO_COLLECTION_EXPORT_H
-#define ARANGODB_ARANGO_COLLECTION_EXPORT_H 1
+#ifndef ARANGOD_UTILS_COLLECTION_EXPORT_H
+#define ARANGOD_UTILS_COLLECTION_EXPORT_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -43,9 +43,6 @@ namespace arango {
 class CollectionGuard;
 class DocumentDitch;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class CollectionExport
-// -----------------------------------------------------------------------------
 
 class CollectionExport {
   friend class ExportCursor;
@@ -68,19 +65,11 @@ class CollectionExport {
 
   ~CollectionExport();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   void run(uint64_t, size_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   triagens::arango::CollectionGuard* _guard;
   struct TRI_document_collection_t* _document;
@@ -95,12 +84,4 @@ class CollectionExport {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

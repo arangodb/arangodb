@@ -48,9 +48,6 @@ using namespace arangodb;
 using namespace triagens::basics;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          private static variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map of ChunkedTask
@@ -64,13 +61,7 @@ static std::unordered_map<uint64_t, HttpCommTask*> HttpCommTaskMap;
 
 static Mutex HttpCommTaskMapLock;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class HttpServer
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an endpoint server
@@ -97,9 +88,6 @@ int HttpServer::sendChunk(uint64_t taskId, std::string const& data) {
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new general server with dispatcher and job manager
@@ -130,9 +118,6 @@ HttpServer::~HttpServer() {
   stopListening();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a suitable communication task
@@ -143,9 +128,6 @@ HttpCommTask* HttpServer::createCommTask(TRI_socket_t s,
   return new HttpCommTask(this, s, info, _keepAliveTimeout);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add the endpoint list
@@ -356,9 +338,6 @@ bool HttpServer::handleRequest(HttpCommTask* task,
   return res == TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a listen port
@@ -393,6 +372,4 @@ void HttpServer::handleRequestDirectly(HttpCommTask* task,
   task->handleResponse(handler->getResponse());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

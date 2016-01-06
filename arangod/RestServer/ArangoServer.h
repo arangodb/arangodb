@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_ARANGO_SERVER_H
-#define ARANGODB_REST_SERVER_ARANGO_SERVER_H 1
+#ifndef ARANGOD_REST_SERVER_ARANGO_SERVER_H
+#define ARANGOD_REST_SERVER_ARANGO_SERVER_H 1
 
 #include "Basics/Common.h"
 
@@ -44,9 +44,6 @@
 struct TRI_server_t;
 struct TRI_vocbase_defaults_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -68,9 +65,6 @@ namespace arango {
 class ApplicationV8;
 class ApplicationCluster;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ArangoServer
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
@@ -81,11 +75,7 @@ class ArangoServer : public rest::AnyServer {
   ArangoServer(const ArangoServer&);
   ArangoServer& operator=(const ArangoServer&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -99,11 +89,7 @@ class ArangoServer : public rest::AnyServer {
 
   ~ArangoServer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 AnyServer
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -117,11 +103,7 @@ class ArangoServer : public rest::AnyServer {
 
   int startupServer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief run arbitrary checks at startup
@@ -179,11 +161,7 @@ class ArangoServer : public rest::AnyServer {
 
   void defineHandlers(triagens::rest::HttpHandlerFactory* factory);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of command line arguments
@@ -742,6 +720,4 @@ class ArangoServer : public rest::AnyServer {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

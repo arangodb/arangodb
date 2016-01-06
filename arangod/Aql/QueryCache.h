@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_CACHE_H
-#define ARANGODB_AQL_QUERY_CACHE_H 1
+#ifndef ARANGOD_AQL_QUERY_CACHE_H
+#define ARANGOD_AQL_QUERY_CACHE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -44,9 +44,6 @@ struct TRI_vocbase_t;
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cache mode
@@ -54,9 +51,6 @@ namespace aql {
 
 enum QueryCacheMode { CACHE_ALWAYS_OFF, CACHE_ALWAYS_ON, CACHE_ON_DEMAND };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      struct QueryCacheResultEntry
-// -----------------------------------------------------------------------------
 
 struct QueryCacheResultEntry {
   QueryCacheResultEntry() = delete;
@@ -84,11 +78,7 @@ struct QueryCacheResultEntry {
 
   void unuse();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  member
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   uint64_t const _hash;
   char* _queryString;
   size_t const _queryStringLength;
@@ -100,9 +90,6 @@ struct QueryCacheResultEntry {
   std::atomic<uint32_t> _deletionRequested;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                  class QueryCacheResultEntryGuard
-// -----------------------------------------------------------------------------
 
 class QueryCacheResultEntryGuard {
   QueryCacheResultEntryGuard(QueryCacheResultEntryGuard const&) = delete;
@@ -126,16 +113,9 @@ class QueryCacheResultEntryGuard {
   QueryCacheResultEntry* _entry;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct QueryCacheDatabaseEntry
-// -----------------------------------------------------------------------------
 
 struct QueryCacheDatabaseEntry {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   QueryCacheDatabaseEntry(QueryCacheDatabaseEntry const&) = delete;
   QueryCacheDatabaseEntry& operator=(QueryCacheDatabaseEntry const&) = delete;
 
@@ -151,11 +131,7 @@ struct QueryCacheDatabaseEntry {
 
   ~QueryCacheDatabaseEntry();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup a query result in the database-specific cache
   ////////////////////////////////////////////////////////////////////////////////
@@ -188,11 +164,7 @@ struct QueryCacheDatabaseEntry {
 
   void enforceMaxResults(size_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the element can be destroyed, and delete it if yes
   ////////////////////////////////////////////////////////////////////////////////
@@ -211,11 +183,7 @@ struct QueryCacheDatabaseEntry {
 
   void link(QueryCacheResultEntry*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief hash table that maps query hashes to query results
   ////////////////////////////////////////////////////////////////////////////////
@@ -250,16 +218,9 @@ struct QueryCacheDatabaseEntry {
   size_t _numElements;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class QueryCache
-// -----------------------------------------------------------------------------
 
 class QueryCache {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   QueryCache(QueryCache const&) = delete;
   QueryCache& operator=(QueryCache const&) = delete;
@@ -276,11 +237,7 @@ class QueryCache {
 
   ~QueryCache();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the query cache properties
@@ -372,11 +329,7 @@ class QueryCache {
 
   static QueryCache* instance();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief enforce maximum number of results in each database-specific cache
   ////////////////////////////////////////////////////////////////////////////////
@@ -414,11 +367,7 @@ class QueryCache {
 
   void setMode(std::string const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of R/W locks for the query cache
@@ -450,12 +399,4 @@ class QueryCache {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

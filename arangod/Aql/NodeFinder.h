@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_NODE_FINDER_H
-#define ARANGODB_AQL_NODE_FINDER_H 1
+#ifndef ARANGOD_AQL_NODE_FINDER_H
+#define ARANGOD_AQL_NODE_FINDER_H 1
 
 #include "Basics/Common.h"
 #include "Aql/ExecutionNode.h"
@@ -37,9 +37,6 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class NodeFinder
-// -----------------------------------------------------------------------------
 
 template <typename T>
 class NodeFinder final : public WalkerWorker<ExecutionNode> {
@@ -59,9 +56,6 @@ class NodeFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class EndNodeFinder
-// -----------------------------------------------------------------------------
 
 class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
   std::vector<ExecutionNode*>& _out;
@@ -89,12 +83,4 @@ class EndNodeFinder final : public WalkerWorker<ExecutionNode> {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

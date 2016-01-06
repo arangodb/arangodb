@@ -41,9 +41,6 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class ModificationBlock
-// -----------------------------------------------------------------------------
 
 ModificationBlock::ModificationBlock(ExecutionEngine* engine,
                                      ModificationNode const* ep)
@@ -258,9 +255,6 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
   THROW_ARANGO_EXCEPTION(code);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class RemoveBlock
-// -----------------------------------------------------------------------------
 
 RemoveBlock::RemoveBlock(ExecutionEngine* engine, RemoveNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -375,9 +369,6 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
   return result.release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class InsertBlock
-// -----------------------------------------------------------------------------
 
 InsertBlock::InsertBlock(ExecutionEngine* engine, InsertNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -509,9 +500,6 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   return result.release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class UpdateBlock
-// -----------------------------------------------------------------------------
 
 UpdateBlock::UpdateBlock(ExecutionEngine* engine, UpdateNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -700,9 +688,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   return result.release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class UpsertBlock
-// -----------------------------------------------------------------------------
 
 UpsertBlock::UpsertBlock(ExecutionEngine* engine, UpsertNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -952,9 +937,6 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   return result.release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ReplaceBlock
-// -----------------------------------------------------------------------------
 
 ReplaceBlock::ReplaceBlock(ExecutionEngine* engine, ReplaceNode const* ep)
     : ModificationBlock(engine, ep) {}
@@ -1118,8 +1100,3 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   return result.release();
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

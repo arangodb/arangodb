@@ -28,16 +28,13 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H
-#define ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTPS_COMM_TASK_H
+#define ARANGOD_HTTP_SERVER_HTTPS_COMM_TASK_H 1
 
 #include "HttpServer/HttpCommTask.h"
 
 #include <openssl/ssl.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class HttpsCommTask
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -51,11 +48,7 @@ class HttpsCommTask : public HttpCommTask {
   HttpsCommTask(HttpsCommTask const&) = delete;
   HttpsCommTask const& operator=(HttpsCommTask const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                          static private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief read block size
@@ -63,11 +56,7 @@ class HttpsCommTask : public HttpCommTask {
 
   static const size_t READ_BLOCK_SIZE = 10000;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task with a given socket
@@ -84,11 +73,7 @@ class HttpsCommTask : public HttpCommTask {
  protected:
   ~HttpsCommTask();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      Task
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -102,11 +87,7 @@ class HttpsCommTask : public HttpCommTask {
 
   bool handleEvent(EventToken, EventType) override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Socket
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
   ////////////////////////////////////////////////////////////////////////////////
@@ -119,11 +100,7 @@ class HttpsCommTask : public HttpCommTask {
 
   bool handleWrite() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief accepts SSL connection
@@ -149,11 +126,7 @@ class HttpsCommTask : public HttpCommTask {
 
   void shutdownSsl(bool initShutdown);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief accepted done
@@ -208,12 +181,4 @@ class HttpsCommTask : public HttpCommTask {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

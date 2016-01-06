@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_COLLECTION_SCANNER_H
-#define ARANGODB_AQL_COLLECTION_SCANNER_H 1
+#ifndef ARANGOD_AQL_COLLECTION_SCANNER_H
+#define ARANGOD_AQL_COLLECTION_SCANNER_H 1
 
 #include "Basics/Common.h"
 #include "Utils/AqlTransaction.h"
@@ -39,26 +39,15 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          struct CollectionScanner
-// -----------------------------------------------------------------------------
 
 struct CollectionScanner {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   CollectionScanner(triagens::arango::AqlTransaction*,
                     TRI_transaction_collection_t*);
 
   virtual ~CollectionScanner();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   virtual int scan(std::vector<TRI_doc_mptr_copy_t>&, size_t) = 0;
 
   virtual void reset() = 0;
@@ -78,16 +67,9 @@ struct CollectionScanner {
   triagens::basics::BucketPosition position;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct RandomCollectionScanner
-// -----------------------------------------------------------------------------
 
 struct RandomCollectionScanner final : public CollectionScanner {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   RandomCollectionScanner(triagens::arango::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
@@ -101,16 +83,9 @@ struct RandomCollectionScanner final : public CollectionScanner {
   uint64_t step;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct LinearCollectionScanner
-// -----------------------------------------------------------------------------
 
 struct LinearCollectionScanner final : public CollectionScanner {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   LinearCollectionScanner(triagens::arango::AqlTransaction*,
                           TRI_transaction_collection_t*);
 
@@ -125,12 +100,4 @@ struct LinearCollectionScanner final : public CollectionScanner {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

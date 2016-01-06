@@ -28,8 +28,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_SCHEDULER_THREAD_H
-#define ARANGODB_SCHEDULER_SCHEDULER_THREAD_H 1
+#ifndef ARANGOD_SCHEDULER_SCHEDULER_THREAD_H
+#define ARANGOD_SCHEDULER_SCHEDULER_THREAD_H 1
 
 #include "Basics/Common.h"
 
@@ -45,17 +45,11 @@
 
 // #define TRI_USE_SPIN_LOCK_SCHEDULER_THREAD 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
 class Scheduler;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class SchedulerThread
-// -----------------------------------------------------------------------------
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief job scheduler thread
@@ -66,11 +60,7 @@ class SchedulerThread : public basics::Thread, private TaskManager {
   SchedulerThread(SchedulerThread const&);
   SchedulerThread& operator=(SchedulerThread const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -84,11 +74,7 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   ~SchedulerThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks if the scheduler thread is up and running
@@ -132,11 +118,7 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   void signalTask(std::unique_ptr<TaskData>&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -150,11 +132,7 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
   void addStatus(arangodb::velocypack::Builder* b);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                     private
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief what to do with the task
@@ -178,11 +156,7 @@ class SchedulerThread : public basics::Thread, private TaskManager {
     Task* task;
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief underlying scheduler
@@ -261,6 +235,4 @@ class SchedulerThread : public basics::Thread, private TaskManager {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

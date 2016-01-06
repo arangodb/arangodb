@@ -26,8 +26,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SERVER_CONSOLE_THREAD_H
-#define ARANGODB_REST_SERVER_CONSOLE_THREAD_H 1
+#ifndef ARANGOD_REST_SERVER_CONSOLE_THREAD_H
+#define ARANGOD_REST_SERVER_CONSOLE_THREAD_H 1
 
 #include "Basics/Thread.h"
 
@@ -35,9 +35,6 @@
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace arangodb {
 class V8LineEditor;
@@ -51,9 +48,6 @@ class ApplicationServer;
 namespace arango {
 class ApplicationV8;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ConsoleThread
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ConsoleThread
@@ -63,11 +57,7 @@ class ConsoleThread : public basics::Thread {
   ConsoleThread(const ConsoleThread&) = delete;
   ConsoleThread& operator=(const ConsoleThread&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                           static public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the line editor object for use in debugging
@@ -81,11 +71,7 @@ class ConsoleThread : public basics::Thread {
 
   static triagens::basics::Mutex serverConsoleMutex;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -100,22 +86,14 @@ class ConsoleThread : public basics::Thread {
 
   ~ConsoleThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief runs the thread
   ////////////////////////////////////////////////////////////////////////////////
 
   void run() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the console thread is done
@@ -135,11 +113,7 @@ class ConsoleThread : public basics::Thread {
 
   bool isSilent() override { return true; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief inner thread loop
@@ -147,11 +121,7 @@ class ConsoleThread : public basics::Thread {
 
   void inner();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -194,6 +164,4 @@ class ConsoleThread : public basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

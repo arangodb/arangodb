@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_SSL_INTERFACE_H
-#define ARANGODB_REST_SSL_INTERFACE_H 1
+#ifndef LIB_REST_SSL_INTERFACE_H
+#define LIB_REST_SSL_INTERFACE_H 1
 
 #include "Basics/Common.h"
 
@@ -224,12 +224,4 @@ void saltChar(char*& result, size_t length = 8);
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

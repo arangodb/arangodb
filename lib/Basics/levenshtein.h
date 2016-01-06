@@ -27,14 +27,11 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_LEVENSHTEIN_H
-#define ARANGODB_BASICS_LEVENSHTEIN_H 1
+#ifndef LIB_BASICS_LEVENSHTEIN_H
+#define LIB_BASICS_LEVENSHTEIN_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate the levenshtein distance of the two strings
@@ -44,12 +41,4 @@ int TRI_Levenshtein(std::string const&, std::string const&);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

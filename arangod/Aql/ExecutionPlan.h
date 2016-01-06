@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_PLAN_H
-#define ARANGODB_AQL_EXECUTION_PLAN_H 1
+#ifndef ARANGOD_AQL_EXECUTION_PLAN_H
+#define ARANGOD_AQL_EXECUTION_PLAN_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AggregationOptions.h"
@@ -47,15 +47,9 @@ struct AstNode;
 class CalculationNode;
 class ExecutionNode;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class ExecutionPlan
-// -----------------------------------------------------------------------------
 
 class ExecutionPlan {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors / destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the plan
@@ -69,10 +63,7 @@ class ExecutionPlan {
 
   ~ExecutionPlan();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an execution plan from an AST
@@ -327,11 +318,7 @@ class ExecutionPlan {
 
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates a calculation node
@@ -480,10 +467,7 @@ class ExecutionPlan {
 
   ExecutionNode* fromJson(triagens::basics::Json const& Json);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief map from node id to the actual node
@@ -545,12 +529,4 @@ class ExecutionPlan {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

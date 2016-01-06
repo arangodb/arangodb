@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_COLLECTION_H
-#define ARANGODB_AQL_COLLECTION_H 1
+#ifndef ARANGOD_AQL_COLLECTION_H
+#define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
@@ -39,16 +39,9 @@ namespace triagens {
 namespace aql {
 struct Index;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 struct Collection
-// -----------------------------------------------------------------------------
 
 struct Collection {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   Collection& operator=(Collection const&) = delete;
   Collection(Collection const&) = delete;
   Collection() = delete;
@@ -57,11 +50,7 @@ struct Collection {
 
   ~Collection();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the current shard
   ////////////////////////////////////////////////////////////////////////////////
@@ -184,11 +173,7 @@ struct Collection {
 
   void setCollection(TRI_vocbase_col_t* coll) { collection = coll; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fills the index list for the collection
@@ -215,11 +200,7 @@ struct Collection {
 
   void fillIndexesLocal() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   TRI_vocbase_col_t* collection;
 
@@ -230,11 +211,7 @@ struct Collection {
 
   std::string currentShard;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   std::string const name;
   TRI_vocbase_t* vocbase;
@@ -250,12 +227,4 @@ struct Collection {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -29,9 +29,6 @@
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 static bool DeleteCollection(SimpleHttpClient*, const std::string&);
 
@@ -43,13 +40,7 @@ static bool CreateDocument(SimpleHttpClient*, const std::string&,
 static bool CreateIndex(SimpleHttpClient*, const std::string&,
                         const std::string&, const std::string&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              benchmark test cases
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            version retrieval test
-// -----------------------------------------------------------------------------
 
 struct VersionTest : public BenchmarkOperation {
   VersionTest() : BenchmarkOperation() { _url = "/_api/version"; }
@@ -84,9 +75,6 @@ struct VersionTest : public BenchmarkOperation {
   std::string _url;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         document CRUD append test
-// -----------------------------------------------------------------------------
 
 struct DocumentCrudAppendTest : public BenchmarkOperation {
   DocumentCrudAppendTest() : BenchmarkOperation() {}
@@ -179,9 +167,6 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   document CRUD write / read test
-// -----------------------------------------------------------------------------
 
 struct DocumentCrudWriteReadTest : public BenchmarkOperation {
   DocumentCrudWriteReadTest() : BenchmarkOperation() {}
@@ -264,9 +249,6 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       shapes test
-// -----------------------------------------------------------------------------
 
 struct ShapesTest : public BenchmarkOperation {
   ShapesTest() : BenchmarkOperation() {}
@@ -354,9 +336,6 @@ struct ShapesTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                shapes append test
-// -----------------------------------------------------------------------------
 
 struct ShapesAppendTest : public BenchmarkOperation {
   ShapesAppendTest() : BenchmarkOperation() {}
@@ -441,9 +420,6 @@ struct ShapesAppendTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                random shapes test
-// -----------------------------------------------------------------------------
 
 struct RandomShapesTest : public BenchmarkOperation {
   RandomShapesTest() : BenchmarkOperation() {
@@ -539,9 +515,6 @@ struct RandomShapesTest : public BenchmarkOperation {
   uint32_t _randomValue;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                document CRUD test
-// -----------------------------------------------------------------------------
 
 struct DocumentCrudTest : public BenchmarkOperation {
   DocumentCrudTest() : BenchmarkOperation() {}
@@ -636,9 +609,6 @@ struct DocumentCrudTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    edge CRUD test
-// -----------------------------------------------------------------------------
 
 struct EdgeCrudTest : public BenchmarkOperation {
   EdgeCrudTest() : BenchmarkOperation() {}
@@ -741,9 +711,6 @@ struct EdgeCrudTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     skiplist test
-// -----------------------------------------------------------------------------
 
 struct SkiplistTest : public BenchmarkOperation {
   SkiplistTest() : BenchmarkOperation() {}
@@ -828,9 +795,6 @@ struct SkiplistTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         hash test
-// -----------------------------------------------------------------------------
 
 struct HashTest : public BenchmarkOperation {
   HashTest() : BenchmarkOperation() {}
@@ -915,9 +879,6 @@ struct HashTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              document import test
-// -----------------------------------------------------------------------------
 
 struct DocumentImportTest : public BenchmarkOperation {
   DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(0) {
@@ -972,9 +933,6 @@ struct DocumentImportTest : public BenchmarkOperation {
   size_t _length;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            document creation test
-// -----------------------------------------------------------------------------
 
 struct DocumentCreationTest : public BenchmarkOperation {
   DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(0) {
@@ -1036,10 +994,6 @@ struct DocumentCreationTest : public BenchmarkOperation {
   size_t _length;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           collection creation
-// test
-// -----------------------------------------------------------------------------
 
 struct CollectionCreationTest : public BenchmarkOperation {
   CollectionCreationTest() : BenchmarkOperation(), _url() {
@@ -1095,9 +1049,6 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
 atomic<uint64_t> CollectionCreationTest::_counter(0);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  transaction test
-// -----------------------------------------------------------------------------
 
 struct TransactionAqlTest : public BenchmarkOperation {
   TransactionAqlTest() : BenchmarkOperation() {}
@@ -1193,9 +1144,6 @@ struct TransactionAqlTest : public BenchmarkOperation {
   std::string _c3;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  transaction test
-// -----------------------------------------------------------------------------
 
 struct TransactionCountTest : public BenchmarkOperation {
   TransactionCountTest() : BenchmarkOperation() {}
@@ -1247,9 +1195,6 @@ struct TransactionCountTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         transaction deadlock test
-// -----------------------------------------------------------------------------
 
 struct TransactionDeadlockTest : public BenchmarkOperation {
   TransactionDeadlockTest() : BenchmarkOperation() {}
@@ -1320,9 +1265,6 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
   std::string _c2;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  transaction test
-// -----------------------------------------------------------------------------
 
 struct TransactionMultiTest : public BenchmarkOperation {
   TransactionMultiTest() : BenchmarkOperation() {}
@@ -1408,9 +1350,6 @@ struct TransactionMultiTest : public BenchmarkOperation {
   std::string _c2;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  transaction test
-// -----------------------------------------------------------------------------
 
 struct TransactionMultiCollectionTest : public BenchmarkOperation {
   TransactionMultiCollectionTest() : BenchmarkOperation() {}
@@ -1488,9 +1427,6 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
   std::string _c2;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   AQL insert test
-// -----------------------------------------------------------------------------
 
 struct AqlInsertTest : public BenchmarkOperation {
   AqlInsertTest() : BenchmarkOperation() {}
@@ -1546,9 +1482,6 @@ struct AqlInsertTest : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       AQL v8 test
-// -----------------------------------------------------------------------------
 
 struct AqlV8Test : public BenchmarkOperation {
   AqlV8Test() : BenchmarkOperation() {}
@@ -1606,9 +1539,6 @@ struct AqlV8Test : public BenchmarkOperation {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete a collection
@@ -1791,12 +1721,4 @@ static BenchmarkOperation* GetTestCase(const std::string& name) {
   return nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

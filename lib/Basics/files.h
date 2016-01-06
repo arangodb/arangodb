@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_FILES_H
-#define ARANGODB_BASICS_C_FILES_H 1
+#ifndef LIB_BASICS_FILES_H
+#define LIB_BASICS_FILES_H 1
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -38,9 +38,6 @@
 #include "Basics/socket-utils.h"
 #include "Basics/vector.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -359,9 +356,6 @@ char* TRI_GetNullBufferFiles();
 
 size_t TRI_GetNullBufferSizeFiles();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the files subsystem
@@ -377,12 +371,4 @@ void TRI_ShutdownFiles(void);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

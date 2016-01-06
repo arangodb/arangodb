@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_DATABASE_GUARD_H
-#define ARANGODB_UTILS_DATABASE_GUARD_H 1
+#ifndef ARANGOD_UTILS_DATABASE_GUARD_H
+#define ARANGOD_UTILS_DATABASE_GUARD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -39,16 +39,9 @@ struct TRI_vocbase_t;
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class DatabaseGuard
-// -----------------------------------------------------------------------------
 
 class DatabaseGuard {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   DatabaseGuard(DatabaseGuard const&) = delete;
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
@@ -89,11 +82,7 @@ class DatabaseGuard {
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the database pointer
@@ -101,11 +90,7 @@ class DatabaseGuard {
 
   inline TRI_vocbase_t* database() const { return _database; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -124,12 +109,4 @@ class DatabaseGuard {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

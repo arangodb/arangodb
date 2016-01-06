@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8_SERVER_V8_SHAPE_CONV_H
-#define ARANGODB_V8_SERVER_V8_SHAPE_CONV_H 1
+#ifndef ARANGOD_V8_SERVER_V8_SHAPE_CONV_H
+#define ARANGOD_V8_SERVER_V8_SHAPE_CONV_H 1
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
@@ -37,13 +37,7 @@
 
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              CONVERSION FUNCTIONS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a TRI_shaped_json_t into an existing V8 object
@@ -80,12 +74,4 @@ int TRI_FillShapedJsonV8Object(v8::Isolate* isolate,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

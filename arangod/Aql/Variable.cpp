@@ -33,9 +33,6 @@
 using namespace triagens::aql;
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               static initializers
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of $OLD variable
@@ -55,9 +52,6 @@ char const* const Variable::NAME_NEW = "$NEW";
 
 char const* const Variable::NAME_CURRENT = "$CURRENT";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the variable
@@ -77,9 +71,6 @@ Variable::Variable(triagens::basics::Json const& json)
 
 Variable::~Variable() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the variable
@@ -112,12 +103,4 @@ Variable const* Variable::replace(
   return variable;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

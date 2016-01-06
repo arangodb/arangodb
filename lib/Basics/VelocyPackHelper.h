@@ -25,8 +25,8 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_VELOCYPACK_HELPER_H
-#define ARANGODB_BASICS_VELOCYPACK_HELPER_H 1
+#ifndef LIB_BASICS_VELOCY_PACK_HELPER_H
+#define LIB_BASICS_VELOCY_PACK_HELPER_H 1
 
 #include "Basics/JsonHelper.h"
 
@@ -36,16 +36,9 @@
 namespace triagens {
 namespace basics {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class VelocyPackHelper
-// -----------------------------------------------------------------------------
 
 class VelocyPackHelper {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   VelocyPackHelper() = delete;
   ~VelocyPackHelper() = delete;
@@ -117,12 +110,4 @@ class VelocyPackHelper {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

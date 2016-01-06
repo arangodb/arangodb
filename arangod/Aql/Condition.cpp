@@ -153,9 +153,6 @@ ConditionPartCompareResult const ConditionPart::ResultsTable[3][7][7] = {
       OTHER_CONTAINED_IN_SELF, OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              struct ConditionPart
-// -----------------------------------------------------------------------------
 
 ConditionPart::ConditionPart(Variable const* variable,
                              std::string const& attributeName,
@@ -278,13 +275,7 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other) const {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   class Condition
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the condition
@@ -302,9 +293,6 @@ Condition::~Condition() {
   // all nodes belong to the AST
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a condition from JSON
@@ -774,9 +762,6 @@ bool Condition::removeInvalidVariables(
   return isEmpty;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort ORs for the same attribute so they are in ascending value
@@ -1709,12 +1694,4 @@ AstNode* Condition::fixRoot(AstNode* node, int level) {
   return node;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

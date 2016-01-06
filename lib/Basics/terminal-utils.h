@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_TERMINAL__UTILS_H
-#define ARANGODB_BASICS_C_TERMINAL__UTILS_H 1
+#ifndef LIB_BASICS_TERMINAL_UTILS_H
+#define LIB_BASICS_TERMINAL_UTILS_H 1
 
 #include "Basics/Common.h"
 
@@ -36,9 +36,6 @@
 #include <termios.h>
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default value for number of columns of a terminal
@@ -46,9 +43,6 @@
 
 #define TRI_DEFAULT_COLUMNS (80)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the columns width
@@ -64,12 +58,4 @@ void TRI_SetStdinVisibility(bool);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

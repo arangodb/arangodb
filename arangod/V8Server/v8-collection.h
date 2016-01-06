@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__COLLECTION_H
-#define ARANGODB_V8SERVER_V8__COLLECTION_H 1
+#ifndef ARANGOD_V8_SERVER_V8_COLLECTION_H
+#define ARANGOD_V8_SERVER_V8_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "v8-vocbase.h"

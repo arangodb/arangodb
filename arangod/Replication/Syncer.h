@@ -27,8 +27,8 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REPLICATION_SYNCER_H
-#define ARANGODB_REPLICATION_SYNCER_H 1
+#ifndef ARANGOD_REPLICATION_SYNCER_H
+#define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/logging.h"
@@ -38,9 +38,6 @@
 #include "VocBase/transaction.h"
 #include "VocBase/update-policy.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 class TRI_replication_applier_configuration_t;
@@ -63,16 +60,9 @@ class Endpoint;
 namespace arango {
 class Transaction;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Syncer
-// -----------------------------------------------------------------------------
 
 class Syncer {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
@@ -89,11 +79,7 @@ class Syncer {
 
   virtual ~Syncer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sleeps (nanoseconds)
   ////////////////////////////////////////////////////////////////////////////////
@@ -112,11 +98,7 @@ class Syncer {
 
   static std::string rewriteLocation(void*, const std::string&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extract the collection id from JSON
@@ -176,11 +158,7 @@ class Syncer {
 
   int handleStateResponse(struct TRI_json_t const*, std::string&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
@@ -253,12 +231,4 @@ class Syncer {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

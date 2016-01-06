@@ -26,8 +26,8 @@
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__DISPATCHER_H
-#define ARANGODB_V8SERVER_V8__DISPATCHER_H 1
+#ifndef ARANGOD_V8_SERVER_V8_DISPATCHER_H
+#define ARANGOD_V8_SERVER_V8_DISPATCHER_H 1
 
 #include "Basics/Common.h"
 
@@ -35,9 +35,6 @@
 
 #include "VocBase/vocbase.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -50,9 +47,6 @@ class ApplicationV8;
 }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 actions function inside the global variable
@@ -66,12 +60,4 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

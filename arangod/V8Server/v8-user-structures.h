@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__USER_STRUCTURES_H
-#define ARANGODB_V8SERVER_V8__USER_STRUCTURES_H 1
+#ifndef ARANGOD_V8_SERVER_V8_USER_STRUCTURES_H
+#define ARANGOD_V8_SERVER_V8_USER_STRUCTURES_H 1
 
 #include "Basics/Common.h"
 
@@ -36,9 +36,6 @@
 
 struct TRI_vocbase_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the user structures for a database
@@ -60,12 +57,4 @@ void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

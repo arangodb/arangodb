@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_DATAFILE_H
-#define ARANGODB_VOC_BASE_DATAFILE_H 1
+#ifndef ARANGOD_VOC_BASE_DATAFILE_H
+#define ARANGOD_VOC_BASE_DATAFILE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/locks.h"
@@ -90,9 +90,6 @@
 /// @copydetails TRI_CreateDatafile
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief datafile version
@@ -112,9 +109,6 @@
 
 #define TRI_MARKER_MAXIMAL_SIZE (256 * 1024 * 1024)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state of the datafile
@@ -560,9 +554,6 @@ typedef struct TRI_doc_prepare_transaction_marker_s {
   TRI_voc_tid_t _tid;
 } TRI_doc_prepare_transaction_marker_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new datafile
@@ -614,9 +605,6 @@ void TRI_DestroyDatafile(TRI_datafile_t*);
 
 void TRI_FreeDatafile(TRI_datafile_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a marker is a data marker in the WAL
@@ -747,12 +735,4 @@ void TRI_DestroyDatafileScan(TRI_df_scan_t* scan);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

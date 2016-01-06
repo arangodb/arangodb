@@ -32,9 +32,6 @@
 
 using namespace triagens::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a condition variable
@@ -50,9 +47,6 @@ ConditionVariable::ConditionVariable() : _condition() {
 
 ConditionVariable::~ConditionVariable() { TRI_DestroyCondition(&_condition); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locks the condition variable
@@ -92,12 +86,4 @@ void ConditionVariable::broadcast() { TRI_BroadcastCondition(&_condition); }
 
 void ConditionVariable::signal() { TRI_SignalCondition(&_condition); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

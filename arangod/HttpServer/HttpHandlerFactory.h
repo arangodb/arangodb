@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
-#define ARANGODB_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
+#define ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
 
 #include "Basics/Common.h"
 
@@ -36,9 +36,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Rest/HttpResponse.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -47,20 +44,13 @@ class HttpHandler;
 class HttpRequest;
 class HttpResponse;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          class HttpHandlerFactory
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handler factory
 ////////////////////////////////////////////////////////////////////////////////
 
 class HttpHandlerFactory {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief handler
@@ -92,11 +82,7 @@ class HttpHandlerFactory {
 
   typedef bool (*context_fptr)(HttpRequest*, void*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new handler factory
@@ -122,11 +108,7 @@ class HttpHandlerFactory {
 
   virtual ~HttpHandlerFactory();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             static public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets maintenance mode
@@ -134,11 +116,7 @@ class HttpHandlerFactory {
 
   static void setMaintenance(bool);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief authenticates a new request, wrapper method
@@ -188,11 +166,7 @@ class HttpHandlerFactory {
 
   void addNotFoundHandler(create_fptr);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief authentication realm
@@ -255,12 +229,4 @@ class HttpHandlerFactory {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

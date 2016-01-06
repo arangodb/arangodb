@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_SYNC_REGION_H
-#define ARANGODB_WAL_SYNC_REGION_H 1
+#ifndef ARANGOD_WAL_SYNC_REGION_H
+#define ARANGOD_WAL_SYNC_REGION_H 1
 
 #include "Basics/Common.h"
 #include "Wal/Logfile.h"
@@ -68,12 +68,4 @@ struct SyncRegion {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

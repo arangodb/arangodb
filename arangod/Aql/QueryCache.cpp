@@ -39,9 +39,6 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief singleton instance of the query cache
@@ -61,9 +58,6 @@ static size_t MaxResults = 128;  // default value. can be changed later
 
 static std::atomic<triagens::aql::QueryCacheMode> Mode(CACHE_ON_DEMAND);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      struct QueryCacheResultEntry
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cache entry
@@ -131,9 +125,6 @@ void QueryCacheResultEntry::unuse() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct QueryCacheDatabaseEntry
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a database-specific cache
@@ -317,9 +308,6 @@ void QueryCacheDatabaseEntry::enforceMaxResults(size_t value) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the element can be destroyed, and delete it if yes
@@ -380,13 +368,7 @@ void QueryCacheDatabaseEntry::link(QueryCacheResultEntry* e) {
   _tail = e;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class QueryCache
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the query cache
@@ -400,9 +382,6 @@ QueryCache::QueryCache() : _propertiesLock(), _entriesLock(), _entries() {}
 
 QueryCache::~QueryCache() { invalidate(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the query cache properties
@@ -631,9 +610,6 @@ uint64_t QueryCache::hashQueryString(char const* queryString,
 
 QueryCache* QueryCache::instance() { return &Instance; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enforce maximum number of elements in each database-specific cache
@@ -717,12 +693,4 @@ void QueryCache::setMode(std::string const& value) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_VARIABLE_GENERATOR_H
-#define ARANGODB_AQL_VARIABLE_GENERATOR_H 1
+#ifndef ARANGOD_AQL_VARIABLE_GENERATOR_H
+#define ARANGOD_AQL_VARIABLE_GENERATOR_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -38,16 +38,9 @@
 namespace triagens {
 namespace aql {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class VariableGenerator
-// -----------------------------------------------------------------------------
 
 class VariableGenerator {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the generator
@@ -61,11 +54,7 @@ class VariableGenerator {
 
   ~VariableGenerator();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return a map of all variable ids with their names
@@ -127,11 +116,7 @@ class VariableGenerator {
 
   void fromJson(triagens::basics::Json const& jsonAllVariablesList);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the next variable id
@@ -139,11 +124,7 @@ class VariableGenerator {
 
   inline VariableId nextId() { return _id++; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief all variables created
@@ -162,12 +143,4 @@ class VariableGenerator {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -30,13 +30,7 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               the optimizer class
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            static initializations
-// -----------------------------------------------------------------------------
 
 triagens::basics::Mutex Optimizer::SetupLock;
 
@@ -52,9 +46,6 @@ std::map<int, Optimizer::Rule> Optimizer::_rules;
 
 std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
@@ -68,9 +59,6 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief add a plan to the optimizer
@@ -308,9 +296,6 @@ char const* Optimizer::translateRule(int rule) {
   return nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
@@ -584,8 +569,3 @@ void Optimizer::setupRules() {
   }
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

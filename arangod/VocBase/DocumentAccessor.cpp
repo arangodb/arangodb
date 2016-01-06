@@ -33,13 +33,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/VocShaper.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  DocumentAccessor
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 DocumentAccessor::DocumentAccessor(
     triagens::arango::CollectionNameResolver const* resolver,
@@ -73,9 +67,6 @@ DocumentAccessor::DocumentAccessor(VPackSlice const& slice)
 
 DocumentAccessor::~DocumentAccessor() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 bool DocumentAccessor::hasKey(std::string const& attribute) const {
   if (!isObject()) {
@@ -244,9 +235,6 @@ triagens::basics::Json DocumentAccessor::toJson() {
   return triagens::basics::Json(triagens::basics::Json::Null);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 void DocumentAccessor::setToNull() {
   // check if already null

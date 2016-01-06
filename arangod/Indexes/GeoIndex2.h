@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_GEO_INDEX_H
-#define ARANGODB_INDEXES_GEO_INDEX_H 1
+#ifndef ARANGOD_INDEXES_GEO_INDEX2_H
+#define ARANGOD_INDEXES_GEO_INDEX2_H 1
 
 #include "Basics/Common.h"
 #include "GeoIndex/GeoIndex.h"
@@ -39,19 +39,12 @@
 
 class VocShaper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class GeoIndex
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
 
 class GeoIndex2 final : public Index {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   GeoIndex2() = delete;
 
@@ -65,11 +58,7 @@ class GeoIndex2 final : public Index {
 
   ~GeoIndex2();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      public
-  // types
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief geo index variants
@@ -82,11 +71,7 @@ class GeoIndex2 final : public Index {
     INDEX_GEO_COMBINED_LON_LAT
   };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   IndexType type() const override final {
     if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
@@ -137,11 +122,7 @@ class GeoIndex2 final : public Index {
             _longitude == longitude);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extracts a double value from an object
@@ -157,11 +138,7 @@ class GeoIndex2 final : public Index {
   bool extractDoubleArray(VocShaper*, struct TRI_shaped_json_s const*, double*,
                           double*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the attribute paths
@@ -201,12 +178,4 @@ class GeoIndex2 final : public Index {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

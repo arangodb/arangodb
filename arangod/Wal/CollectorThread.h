@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_COLLECTOR_THREAD_H
-#define ARANGODB_WAL_COLLECTOR_THREAD_H 1
+#ifndef ARANGOD_WAL_COLLECTOR_THREAD_H
+#define ARANGOD_WAL_COLLECTOR_THREAD_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -51,9 +51,6 @@ namespace wal {
 class LogfileManager;
 class Logfile;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         struct CollectorOperation
-// -----------------------------------------------------------------------------
 
 struct CollectorOperation {
   CollectorOperation(char const* datafilePosition,
@@ -75,9 +72,6 @@ struct CollectorOperation {
   TRI_voc_fid_t datafileId;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             struct CollectorCache
-// -----------------------------------------------------------------------------
 
 struct CollectorCache {
   CollectorCache(CollectorCache const&) = delete;
@@ -181,9 +175,6 @@ struct CollectorCache {
   TRI_datafile_t* lastDatafile;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CollectorThread
-// -----------------------------------------------------------------------------
 
 class CollectorThread : public basics::Thread {
   ////////////////////////////////////////////////////////////////////////////////
@@ -194,11 +185,7 @@ class CollectorThread : public basics::Thread {
   CollectorThread(CollectorThread const&) = delete;
   CollectorThread& operator=(CollectorThread const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the collector thread
@@ -212,11 +199,7 @@ class CollectorThread : public basics::Thread {
 
   ~CollectorThread();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   public
-  // typedefs
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief typedef key => document marker
@@ -231,11 +214,7 @@ class CollectorThread : public basics::Thread {
 
   typedef std::vector<struct TRI_df_marker_s const*> OperationsType;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for the collector result
@@ -268,11 +247,7 @@ class CollectorThread : public basics::Thread {
 
   bool hasQueuedOperations(TRI_voc_cid_t);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    Thread
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief main loop
@@ -280,11 +255,7 @@ class CollectorThread : public basics::Thread {
 
   void run();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the number of queued operations
@@ -370,11 +341,7 @@ class CollectorThread : public basics::Thread {
   void finishMarker(char const*, char*, struct TRI_document_collection_t*,
                     TRI_voc_tick_t, CollectorCache*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the logfile manager
@@ -448,12 +415,4 @@ class CollectorThread : public basics::Thread {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

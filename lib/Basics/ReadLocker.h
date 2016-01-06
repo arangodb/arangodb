@@ -28,8 +28,8 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_READ_LOCKER_H
-#define ARANGODB_BASICS_READ_LOCKER_H 1
+#ifndef LIB_BASICS_READ_LOCKER_H
+#define LIB_BASICS_READ_LOCKER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
@@ -38,9 +38,6 @@
 #include "Basics/logging.h"
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct locker with file and line information
@@ -74,9 +71,6 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class ReadLocker
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -93,11 +87,7 @@ class ReadLocker {
   ReadLocker(ReadLocker const&);
   ReadLocker& operator=(ReadLocker const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aquires a read-lock
@@ -171,11 +161,7 @@ class ReadLocker {
 #endif
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the read-write lock
@@ -210,12 +196,4 @@ class ReadLocker {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

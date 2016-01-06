@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_INDEX_H
-#define ARANGODB_AQL_INDEX_H 1
+#ifndef ARANGOD_AQL_INDEX_H
+#define ARANGOD_AQL_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
@@ -45,16 +45,9 @@ struct AstNode;
 class SortCondition;
 struct Variable;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      struct Index
-// -----------------------------------------------------------------------------
 
 struct Index {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
@@ -207,11 +200,7 @@ struct Index {
   triagens::aql::AstNode* specializeCondition(
       triagens::aql::AstNode*, triagens::aql::Variable const*) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   TRI_idx_iid_t const id;
   triagens::arango::Index::IndexType type;
@@ -231,12 +220,4 @@ std::ostream& operator<<(std::ostream&, triagens::aql::Index const&);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

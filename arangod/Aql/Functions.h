@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_FUNCTIONS_H
-#define ARANGODB_AQL_FUNCTIONS_H 1
+#ifndef ARANGOD_AQL_FUNCTIONS_H
+#define ARANGOD_AQL_FUNCTIONS_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
@@ -42,9 +42,6 @@ namespace aql {
 
 class Query;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   public typedefs
-// -----------------------------------------------------------------------------
 
 typedef std::function<bool()> ExecutionCondition;
 
@@ -56,11 +53,7 @@ typedef std::function<AqlValue(
     FunctionParameters const&)> FunctionImplementation;
 
 struct Functions {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      AQL functions public
-  // helpers
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called before a query starts
   /// has the chance to set up any thread-local storage
@@ -75,11 +68,7 @@ struct Functions {
 
   static void DestroyThreadContext();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             AQL function
-  // bindings
-  // -----------------------------------------------------------------------------
-
+  
   static AqlValue IsNull(triagens::aql::Query*,
                          triagens::arango::AqlTransaction*,
                          FunctionParameters const&);
@@ -289,12 +278,4 @@ struct Functions {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -40,9 +40,6 @@ struct Collection;
 struct CollectionScanner;
 class ExecutionEngine;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          EnumerateCollectionBlock
-// -----------------------------------------------------------------------------
 
 class EnumerateCollectionBlock : public ExecutionBlock {
  public:
@@ -95,11 +92,7 @@ class EnumerateCollectionBlock : public ExecutionBlock {
 
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief collection
@@ -143,8 +136,3 @@ class EnumerateCollectionBlock : public ExecutionBlock {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

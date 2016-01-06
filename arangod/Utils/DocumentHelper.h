@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_DOCUMENT_HELPER_H
-#define ARANGODB_UTILS_DOCUMENT_HELPER_H 1
+#ifndef ARANGOD_UTILS_DOCUMENT_HELPER_H
+#define ARANGOD_UTILS_DOCUMENT_HELPER_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -39,26 +39,15 @@ struct TRI_json_t;
 namespace triagens {
 namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class DocumentHelper
-// -----------------------------------------------------------------------------
 
 class DocumentHelper {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  private:
   DocumentHelper() = delete;
 
   ~DocumentHelper() = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                             public static
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief assemble a document id from a string and a string
@@ -93,12 +82,4 @@ class DocumentHelper {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

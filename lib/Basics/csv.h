@@ -27,14 +27,11 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_CSV_H
-#define ARANGODB_BASICS_C_CSV_H 1
+#ifndef LIB_BASICS_CSV_H
+#define LIB_BASICS_CSV_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parser states
@@ -89,9 +86,6 @@ typedef struct TRI_csv_parser_s {
   void* _data;
 } TRI_csv_parser_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inits a CSV parser
@@ -109,9 +103,6 @@ void TRI_InitCsvParser(
 
 void TRI_DestroyCsvParser(TRI_csv_parser_t* parser);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the separator
@@ -141,12 +132,4 @@ int TRI_ParseCsvString(TRI_csv_parser_t*, char const*, size_t);
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

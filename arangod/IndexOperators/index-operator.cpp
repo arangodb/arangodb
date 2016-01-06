@@ -30,13 +30,7 @@
 #include "index-operator.h"
 #include "VocBase/VocShaper.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 TRI_relation_index_operator_t::~TRI_relation_index_operator_t() {
   if (_parameters != nullptr) {
@@ -82,12 +76,4 @@ TRI_index_operator_t* TRI_CreateIndexOperator(
   }  // end of switch statement
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

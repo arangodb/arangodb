@@ -27,14 +27,11 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_STATISTICS_FIGURES_H
-#define ARANGODB_STATISTICS_FIGURES_H 1
+#ifndef ARANGOD_STATISTICS_FIGURES_H
+#define ARANGOD_STATISTICS_FIGURES_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace basics {
@@ -107,12 +104,4 @@ struct StatisticsDistribution {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

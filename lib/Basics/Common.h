@@ -27,12 +27,9 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_COMMON_H
-#define ARANGODB_BASICS_COMMON_H 1
+#ifndef LIB_BASICS_COMMON_H
+#define LIB_BASICS_COMMON_H 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             configuration options
-// -----------------------------------------------------------------------------
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/operating-system.h"
@@ -53,9 +50,6 @@
 
 #undef TRI_WITHIN_COMMON
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    C header files
-// -----------------------------------------------------------------------------
 
 #include <assert.h>
 #include <ctype.h>
@@ -125,9 +119,6 @@
 typedef long suseconds_t;
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--           C++ header files that are always present on all systems
-// -----------------------------------------------------------------------------
 
 #include <algorithm>
 #include <map>
@@ -140,9 +131,6 @@ typedef long suseconds_t;
 #include <memory>
 #include <atomic>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            basic triAGENS headers
-// -----------------------------------------------------------------------------
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/voc-errors.h"
@@ -153,18 +141,12 @@ typedef long suseconds_t;
 #include "Basics/structures.h"
 #undef TRI_WITHIN_COMMON
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              basic compiler stuff
-// -----------------------------------------------------------------------------
 
 #define TRI_WITHIN_COMMON 1
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 low level helpers
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementing a uint64_t modulo a number with wraparound
@@ -324,12 +306,4 @@ typedef TRI_seconds_t seconds_t;
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

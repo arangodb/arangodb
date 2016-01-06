@@ -46,8 +46,3 @@ std::atomic<int> triagens::basics::DataProtector::_last(0);
 // TODO: Reactivate this template instantiation once everybody has gcc >= 4.9.2
 // template class triagens::basics::DataProtector<64>;
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -50,9 +50,6 @@ using namespace triagens::aql;
 using JsonHelper = triagens::basics::JsonHelper;
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            static initializations
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quick translation array from an AST node value type to a JSON type
@@ -180,9 +177,6 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
     {static_cast<int>(VALUE_TYPE_DOUBLE), "double"},
     {static_cast<int>(VALUE_TYPE_STRING), "string"}};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           static helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolve an attribute access
@@ -420,9 +414,6 @@ static bool IsEmptyString(char const* p, size_t length) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the node
@@ -807,9 +798,6 @@ AstNode::~AstNode() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all members of a node are equality comparisons
@@ -2609,9 +2597,6 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
   return ret;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
@@ -2657,9 +2642,6 @@ void AstNode::appendValue(triagens::basics::StringBuffer* buffer) const {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       public non-member functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the AstNode to an output stream
@@ -2683,12 +2665,4 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

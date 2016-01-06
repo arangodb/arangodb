@@ -32,13 +32,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           REPLICATION MASTER INFO
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize a master info struct
@@ -81,12 +75,4 @@ void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const* info,
            (unsigned long long)info->_lastLogTick);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

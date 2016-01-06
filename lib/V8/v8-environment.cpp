@@ -200,9 +200,6 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   TRI_V8_RETURN(envarr);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
@@ -229,12 +226,4 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                ft->GetFunction());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

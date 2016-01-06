@@ -27,16 +27,13 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SCHEDULER_APPLICATION_SCHEDULER_H
-#define ARANGODB_SCHEDULER_APPLICATION_SCHEDULER_H 1
+#ifndef ARANGOD_SCHEDULER_APPLICATION_SCHEDULER_H
+#define ARANGOD_SCHEDULER_APPLICATION_SCHEDULER_H 1
 
 #include "Basics/Common.h"
 
 #include "ApplicationServer/ApplicationFeature.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -45,9 +42,6 @@ class Scheduler;
 class SignalTask;
 class Task;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        class ApplicationScheduler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server scheduler implementation
@@ -58,11 +52,7 @@ class ApplicationScheduler : public ApplicationFeature {
   ApplicationScheduler(ApplicationScheduler const&);
   ApplicationScheduler& operator=(ApplicationScheduler const&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -76,11 +66,7 @@ class ApplicationScheduler : public ApplicationFeature {
 
   ~ApplicationScheduler();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief allows a multi scheduler to be build
@@ -118,11 +104,7 @@ class ApplicationScheduler : public ApplicationFeature {
 
   void disableControlCHandler();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        ApplicationFeature
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -160,11 +142,7 @@ class ApplicationScheduler : public ApplicationFeature {
 
   void stop();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief builds the scheduler
@@ -190,11 +168,7 @@ class ApplicationScheduler : public ApplicationFeature {
 
   void adjustFileDescriptors();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief application server
@@ -269,12 +243,4 @@ class ApplicationScheduler : public ApplicationFeature {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

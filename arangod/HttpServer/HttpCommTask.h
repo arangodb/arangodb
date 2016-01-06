@@ -28,8 +28,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_COMM_TASK_H
-#define ARANGODB_HTTP_SERVER_HTTP_COMM_TASK_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTP_COMM_TASK_H
+#define ARANGOD_HTTP_SERVER_HTTP_COMM_TASK_H 1
 
 #include "Scheduler/SocketTask.h"
 
@@ -48,9 +48,6 @@ class HttpResponse;
 class HttpServer;
 class HttpServerJob;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class HttpCommTask
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief http communication
@@ -60,11 +57,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
   HttpCommTask(HttpCommTask const&) = delete;
   HttpCommTask const& operator=(HttpCommTask const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new task
@@ -80,11 +73,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
  protected:
   ~HttpCommTask();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief handles response
@@ -116,11 +105,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void setupDone();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief reads data from the socket
@@ -180,11 +165,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   int32_t getCompatibility() const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                      Task
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -210,11 +191,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void signalTask(TaskData*) override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                SocketTask
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -234,11 +211,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   void handleTimeout() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief connection info
@@ -252,11 +225,7 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
   HttpServer* const _server;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief write buffers
@@ -411,6 +380,4 @@ class HttpCommTask : public SocketTask, public RequestStatisticsAgent {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

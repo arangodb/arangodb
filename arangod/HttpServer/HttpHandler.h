@@ -27,8 +27,8 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_H
-#define ARANGODB_HTTP_SERVER_HTTP_HANDLER_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_H
+#define ARANGOD_HTTP_SERVER_HTTP_HANDLER_H 1
 
 #include "Basics/Common.h"
 
@@ -39,9 +39,6 @@
 #include "Scheduler/events.h"
 #include "Statistics/StatisticsAgent.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -50,9 +47,6 @@ class HttpHandlerFactory;
 class HttpRequest;
 class HttpServer;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract class for http handlers
@@ -62,10 +56,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
   HttpHandler(HttpHandler const&) = delete;
   HttpHandler& operator=(HttpHandler const&) = delete;
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                    constructors and destructors
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new handler
@@ -83,10 +74,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
  protected:
   ~HttpHandler();
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                    public types
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief status of execution
@@ -106,10 +94,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
     status_e _status;
   };
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                          virtual public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns true if a handler is executed directly
@@ -159,10 +144,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   virtual void addResponse(HttpHandler*);
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                  public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the id of the underlying task
@@ -218,10 +200,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   HttpResponse* stealResponse();
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                               protected methods
-  // ---------------------------------------------------------------------------
-
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a new HTTP response
@@ -229,10 +208,7 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
   void createResponse(HttpResponse::HttpResponseCode);
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                             protected variables
-  // ---------------------------------------------------------------------------
-
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handler id
@@ -275,6 +251,4 @@ class HttpHandler : public RequestStatisticsAgent, public arangodb::WorkItem {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

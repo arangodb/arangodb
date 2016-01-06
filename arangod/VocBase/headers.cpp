@@ -32,9 +32,6 @@
 #include "Basics/logging.h"
 #include "VocBase/document-collection.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the size (number of entries) for a block, based on a function
@@ -60,9 +57,6 @@ static inline size_t GetBlockSize(size_t blockNumber) {
   return (size_t)(BLOCK_SIZE_UNIT << 8);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors & destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the headers
@@ -89,9 +83,6 @@ TRI_headers_t::~TRI_headers_t() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moves an existing header to the end of the list
@@ -458,12 +449,4 @@ void TRI_headers_t::adjustTotalSize(int64_t oldSize, int64_t newSize) {
   _totalSize -= (TRI_DF_ALIGN_BLOCK(oldSize) - TRI_DF_ALIGN_BLOCK(newSize));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

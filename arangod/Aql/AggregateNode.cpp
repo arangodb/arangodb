@@ -34,9 +34,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          methods of AggregateNode
-// -----------------------------------------------------------------------------
 
 AggregateNode::AggregateNode(
     ExecutionPlan* plan, triagens::basics::Json const& base,
@@ -285,8 +282,3 @@ double AggregateNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

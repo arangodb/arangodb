@@ -31,9 +31,6 @@
 #include "Basics/json.h"
 #include "VocBase/vocbase.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply default settings
@@ -77,12 +74,4 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_defaults_t::toVelocyPack() const {
   return builder;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -25,8 +25,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_SHAPED_JSON_TRANSFORMER_H
-#define ARANGODB_UTILS_SHAPED_JSON_TRANSFORMER_H 1
+#ifndef ARANGOD_UTILS_SHAPED_JSON_TRANSFORMER_H
+#define ARANGOD_UTILS_SHAPED_JSON_TRANSFORMER_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -55,12 +55,4 @@ triagens::basics::Json TRI_ExpandShapedJson(
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

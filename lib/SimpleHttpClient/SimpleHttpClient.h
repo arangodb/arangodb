@@ -28,8 +28,8 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
-#define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
+#ifndef LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
+#define LIB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
 
 #include "Basics/Common.h"
 
@@ -434,12 +434,4 @@ class SimpleHttpClient {
 }
 
 #endif
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

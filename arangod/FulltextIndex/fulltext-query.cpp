@@ -33,9 +33,6 @@
 #include "Basics/Utf8Helper.h"
 #include "FulltextIndex/fulltext-index.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a word for a fulltext search query
@@ -95,9 +92,6 @@ static char* NormaliseWord(char const* word, size_t wordLength) {
   return copy3;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query
@@ -168,9 +162,6 @@ void TRI_FreeQueryFulltextIndex(TRI_fulltext_query_t* query) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a fulltext query from a query string
@@ -310,12 +301,4 @@ bool TRI_SetQueryFulltextIndex(TRI_fulltext_query_t* query, size_t position,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

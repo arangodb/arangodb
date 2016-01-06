@@ -71,9 +71,6 @@ using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           GENERAL
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Random string generators
@@ -88,9 +85,6 @@ static Random::UniformCharacter JSSaltGenerator(
     "[]:;<>,.?/|");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public classes
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
@@ -116,9 +110,6 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a Javascript error object
@@ -290,9 +281,6 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      JS functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the program options
@@ -3910,9 +3898,6 @@ static void JS_IsIP(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception
@@ -4330,9 +4315,6 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             module initialization
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
@@ -4582,12 +4564,4 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8Env(isolate, context, startupPath, modules);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

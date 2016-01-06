@@ -27,27 +27,20 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_INDEXES_CAP_CONSTRAINT_H
-#define ARANGODB_INDEXES_CAP_CONSTRAINT_H 1
+#ifndef ARANGOD_INDEXES_CAP_CONSTRAINT_H
+#define ARANGOD_INDEXES_CAP_CONSTRAINT_H 1
 
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class CapConstraint
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
 
 class CapConstraint final : public Index {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   CapConstraint() = delete;
 
@@ -56,11 +49,7 @@ class CapConstraint final : public Index {
 
   ~CapConstraint();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of documents in the collection
@@ -105,11 +94,7 @@ class CapConstraint final : public Index {
 
   int initialize(triagens::arango::Transaction*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief apply the cap constraint for the collection
@@ -118,11 +103,7 @@ class CapConstraint final : public Index {
   int apply(triagens::arango::Transaction*, TRI_document_collection_t*,
             struct TRI_transaction_collection_s*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief maximum number of documents in the collection
@@ -136,11 +117,7 @@ class CapConstraint final : public Index {
 
   int64_t const _size;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief minimum size
@@ -153,12 +130,4 @@ class CapConstraint final : public Index {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

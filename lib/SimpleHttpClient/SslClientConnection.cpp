@@ -69,9 +69,6 @@ using namespace triagens::httpclient;
 using namespace triagens::rest;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new client connection
@@ -143,9 +140,6 @@ SslClientConnection::~SslClientConnection() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         protected virtual methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connect
@@ -576,12 +570,4 @@ bool SslClientConnection::checkSocket() {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

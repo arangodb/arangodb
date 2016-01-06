@@ -39,13 +39,7 @@
 
 using namespace triagens::arango;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class CollectionExport
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 CollectionExport::CollectionExport(TRI_vocbase_t* vocbase,
                                    std::string const& name,
@@ -75,9 +69,6 @@ CollectionExport::~CollectionExport() {
   delete _guard;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   // try to acquire the exclusive lock on the compaction
@@ -155,12 +146,4 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

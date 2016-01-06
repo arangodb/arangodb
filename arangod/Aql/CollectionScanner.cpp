@@ -31,13 +31,7 @@
 
 using namespace triagens::aql;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          struct CollectionScanner
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 CollectionScanner::CollectionScanner(
     triagens::arango::AqlTransaction* trx,
@@ -46,13 +40,7 @@ CollectionScanner::CollectionScanner(
 
 CollectionScanner::~CollectionScanner() {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct RandomCollectionScanner
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 RandomCollectionScanner::RandomCollectionScanner(
     triagens::arango::AqlTransaction* trx,
@@ -76,9 +64,6 @@ int RandomCollectionScanner::forward(size_t batchSize, size_t& skipped) {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 void RandomCollectionScanner::reset() {
   initialPosition.reset();
@@ -86,13 +71,7 @@ void RandomCollectionScanner::reset() {
   step = 0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                    struct LinearCollectionScanner
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 LinearCollectionScanner::LinearCollectionScanner(
     triagens::arango::AqlTransaction* trx,
@@ -122,18 +101,7 @@ int LinearCollectionScanner::forward(size_t batchSize, size_t& skipped) {
   TRI_ASSERT(unusedDocs.empty());
   return res;
 }
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 void LinearCollectionScanner::reset() { position.reset(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

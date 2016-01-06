@@ -616,9 +616,6 @@ VocShaper* TRI_document_collection_t::getShaper() const {
 int TRI_AddOperationTransaction(TRI_transaction_t*,
                                 triagens::wal::DocumentOperation&, bool&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 static int FillIndex(triagens::arango::Transaction*, TRI_document_collection_t*,
                      triagens::arango::Index*);
@@ -643,13 +640,7 @@ static int FulltextIndexFromJson(triagens::arango::Transaction*,
                                  TRI_document_collection_t*, TRI_json_t const*,
                                  TRI_idx_iid_t, triagens::arango::Index**);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  HELPER FUNCTIONS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashes a datafile identifier
@@ -927,13 +918,7 @@ static bool RemoveIndexFile(TRI_document_collection_t* collection,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     DOCUMENT CRUD
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an existing header
@@ -954,13 +939,7 @@ static void UpdateHeader(TRI_voc_fid_t fid, TRI_df_marker_t const* m,
   newHeader->setDataPtr(marker);  // ONLY IN OPENITERATOR
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               DOCUMENT COLLECTION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief garbage-collect a collection's indexes
@@ -1275,13 +1254,7 @@ static int CloneMarkerNoLegend(triagens::wal::Marker*& marker,
   return TRI_ERROR_INTERNAL;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     Open iterator
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of operations buffer for the open iterator
@@ -1289,9 +1262,6 @@ static int CloneMarkerNoLegend(triagens::wal::Marker*& marker,
 
 static size_t OpenIteratorBufferSize = 128;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state during opening of a collection
@@ -1322,9 +1292,6 @@ typedef struct open_iterator_operation_s {
   TRI_voc_fid_t _fid;
 } open_iterator_operation_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mark a transaction as failed during opening of a collection
@@ -2071,9 +2038,6 @@ static bool OpenIterator(TRI_df_marker_t const* marker, void* data,
   return (res == TRI_ERROR_NO_ERROR);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 struct OpenIndexIteratorContext {
   triagens::arango::Transaction* trx;
@@ -2309,9 +2273,6 @@ static int IterateMarkersCollection(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
@@ -2447,9 +2408,6 @@ void TRI_FreeDocumentCollection(TRI_document_collection_t* document) {
   delete document;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a datafile description
@@ -3226,13 +3184,7 @@ int TRI_CloseDocumentCollection(TRI_document_collection_t* document,
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           INDEXES
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pid name structure
@@ -3243,9 +3195,6 @@ typedef struct pid_name_s {
   char* _name;
 } pid_name_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts extracts a field list from a json object
@@ -3675,9 +3624,6 @@ static int PathBasedIndexFromJson(
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics for a collection
@@ -3943,13 +3889,7 @@ static int PidNamesByAttributeNames(
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    CAP CONSTRAINT
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a cap constraint to a collection
@@ -4065,9 +4005,6 @@ static int CapConstraintFromJson(triagens::arango::Transaction* trx,
   return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a cap constraint
@@ -4108,13 +4045,7 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection(
   return idx;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         GEO INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a geo index to a collection
@@ -4339,9 +4270,6 @@ static int GeoIndexFromJson(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;  // shut the vc++ up
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, list style
@@ -4461,13 +4389,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection(
   return idx;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        HASH INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a hash index to the collection
@@ -4555,9 +4477,6 @@ static int HashIndexFromJson(triagens::arango::Transaction* trx,
                                 CreateHashIndexDocumentCollection, dst);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index (unique or non-unique)
@@ -4615,13 +4534,7 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection(
   return idx;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    SKIPLIST INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a skiplist index to the collection
@@ -4707,9 +4620,6 @@ static int SkiplistIndexFromJson(triagens::arango::Transaction* trx,
                                 CreateSkiplistIndexDocumentCollection, dst);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index (unique or non-unique)
@@ -4767,13 +4677,7 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection(
   return idx;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    FULLTEXT INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 static triagens::arango::Index* LookupFulltextIndexDocumentCollection(
     TRI_document_collection_t* document, std::string const& attribute,
@@ -4921,9 +4825,6 @@ static int FulltextIndexFromJson(triagens::arango::Transaction* trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a fulltext index (unique or non-unique)
@@ -4967,17 +4868,8 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection(
   return idx;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           SELECT BY EXAMPLE QUERY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
@@ -5040,9 +4932,6 @@ int TRI_RotateJournalDocumentCollection(TRI_document_collection_t* document) {
   return res;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      CRUD methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an element from the document collection
@@ -5869,12 +5758,4 @@ int TRI_document_collection_t::postInsertIndexes(
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

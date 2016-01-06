@@ -27,12 +27,9 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_SHELL__COLORS_H
-#define ARANGODB_BASICS_C_SHELL__COLORS_H 1
+#ifndef LIB_BASICS_SHELL_COLORS_H
+#define LIB_BASICS_SHELL_COLORS_H 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
 
 #ifndef _WIN32
 
@@ -179,12 +176,4 @@
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

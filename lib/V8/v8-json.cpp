@@ -1883,18 +1883,12 @@ void tri_v8_free(void* ptr, yyscan_t yyscanner) {
 
 #define YYTABLES_NAME "yytables"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 static v8::Handle<v8::Value> ParseObject(v8::Isolate* isolate,
                                          yyscan_t scanner);
 static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner,
                                         int c);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses an array
@@ -2154,9 +2148,6 @@ static v8::Handle<v8::Value> ParseValue(v8::Isolate* isolate, yyscan_t scanner,
   return scope.Escape<v8::Value>(v8::Undefined(isolate));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json string
@@ -2201,12 +2192,4 @@ v8::Handle<v8::Value> TRI_FromJsonString(v8::Isolate* isolate, char const* text,
   return scope.Escape<v8::Value>(value);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: C
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\)"
-// End:

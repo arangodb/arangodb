@@ -1,6 +1,6 @@
 
-#ifndef TRIAGENS_VOC_BASE_DOCUMENT_OPERATION_H
-#define TRIAGENS_VOC_BASE_DOCUMENT_OPERATION_H 1
+#ifndef ARANGOD_WAL_DOCUMENT_OPERATION_H
+#define ARANGOD_WAL_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/document-collection.h"
@@ -142,12 +142,4 @@ struct DocumentOperation {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

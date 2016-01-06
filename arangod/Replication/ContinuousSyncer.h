@@ -27,17 +27,14 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REPLICATION_CONTINUOUS_SYNCER_H
-#define ARANGODB_REPLICATION_CONTINUOUS_SYNCER_H 1
+#ifndef ARANGOD_REPLICATION_CONTINUOUS_SYNCER_H
+#define ARANGOD_REPLICATION_CONTINUOUS_SYNCER_H 1
 
 #include "Basics/Common.h"
 #include "Replication/Syncer.h"
 #include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-applier.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_json_t;
 struct TRI_server_t;
@@ -58,16 +55,9 @@ enum RestrictType : uint32_t {
   RESTRICT_EXCLUDE
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ContinuousSyncer
-// -----------------------------------------------------------------------------
 
 class ContinuousSyncer : public Syncer {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -83,11 +73,7 @@ class ContinuousSyncer : public Syncer {
 
   ~ContinuousSyncer();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief run method, performs continuous synchronization
@@ -101,11 +87,7 @@ class ContinuousSyncer : public Syncer {
 
   TRI_replication_applier_t* applier() const { return _applier; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief abort all ongoing transactions
@@ -215,11 +197,7 @@ class ContinuousSyncer : public Syncer {
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
                       bool&, bool&);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief server
@@ -311,12 +289,4 @@ class ContinuousSyncer : public Syncer {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

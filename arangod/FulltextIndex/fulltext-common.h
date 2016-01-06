@@ -27,14 +27,11 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_FULLTEXT_INDEX_FULLTEXT__COMMON_H
-#define ARANGODB_FULLTEXT_INDEX_FULLTEXT__COMMON_H 1
+#ifndef ARANGOD_FULLTEXT_INDEX_FULLTEXT_COMMON_H
+#define ARANGOD_FULLTEXT_INDEX_FULLTEXT_COMMON_H 1
 
 #include "Basics/Common.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public defines
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enable debugging
@@ -42,9 +39,6 @@
 
 #undef TRI_FULLTEXT_DEBUG
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief typedef for the fulltext index
@@ -65,12 +59,4 @@ typedef uint64_t TRI_fulltext_doc_t;
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

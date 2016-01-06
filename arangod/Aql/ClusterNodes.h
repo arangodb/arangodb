@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_CLUSTER_NODES_H
-#define ARANGODB_AQL_CLUSTER_NODES_H 1
+#ifndef ARANGOD_AQL_CLUSTER_NODES_H
+#define ARANGOD_AQL_CLUSTER_NODES_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
@@ -43,9 +43,6 @@ class ExecutionBlock;
 class ExecutionPlan;
 struct Collection;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class RemoteNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RemoteNode
@@ -222,9 +219,6 @@ class RemoteNode : public ExecutionNode {
   bool _isResponsibleForInitCursor;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class ScatterNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ScatterNode
@@ -303,9 +297,6 @@ class ScatterNode : public ExecutionNode {
   Collection const* _collection;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class DistributeNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class DistributeNode
@@ -427,9 +418,6 @@ class DistributeNode : public ExecutionNode {
   bool const _allowKeyConversionToObject;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class GatherNode
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class GatherNode
@@ -554,8 +542,3 @@ class GatherNode : public ExecutionNode {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

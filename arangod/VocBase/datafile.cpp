@@ -46,9 +46,6 @@
 
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the datafile is a physical file (true) or an
@@ -1271,9 +1268,6 @@ static TRI_datafile_t* OpenDatafile(char const* filename, bool ignoreErrors) {
   return datafile;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates either an anonymous or a physical datafile
@@ -1490,9 +1484,6 @@ void TRI_FreeDatafile(TRI_datafile_t* datafile) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name for a marker
@@ -2188,12 +2179,4 @@ void TRI_DestroyDatafileScan(TRI_df_scan_t* scan) {
   TRI_DestroyVector(&scan->_entries);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

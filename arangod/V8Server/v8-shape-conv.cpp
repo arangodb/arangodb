@@ -43,9 +43,6 @@ using namespace triagens::basics;
 
 // #define DEBUG_JSON_SHAPER 1
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
                               TRI_shape_value_t* dst,
@@ -63,9 +60,6 @@ static v8::Handle<v8::Value> JsonShapeData(v8::Isolate* isolate, VocShaper*,
                                            TRI_shape_t const*, char const*,
                                            size_t);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shape cache (caches pointer to last shape)
@@ -76,13 +70,7 @@ typedef struct shape_cache_s {
   TRI_shape_t const* _shape;
 } shape_cache_t;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              CONVERSION FUNCTIONS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a null into TRI_shape_value_t
@@ -1529,12 +1517,4 @@ int TRI_FillShapedJsonV8Object(v8::Isolate* isolate,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

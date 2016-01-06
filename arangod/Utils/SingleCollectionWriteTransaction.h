@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H
-#define ARANGODB_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H
+#define ARANGOD_UTILS_SINGLE_COLLECTION_WRITE_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 #include "Utils/CollectionNameResolver.h"
@@ -43,16 +43,8 @@ namespace arango {
 
 template <uint64_t N>
 class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                            class
-  // SingleCollectionWriteTransaction
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction, using a collection object
@@ -98,11 +90,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
   virtual ~SingleCollectionWriteTransaction() {}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return whether a write in the transaction was synchronous
@@ -313,11 +301,7 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
     return this->removeAll(this->trxCollection(), forceSync);
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of writes the transaction has executed
@@ -332,12 +316,4 @@ class SingleCollectionWriteTransaction : public SingleCollectionTransaction {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

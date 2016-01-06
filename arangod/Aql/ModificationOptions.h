@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_MODIFICATION_OPTIONS_H
-#define ARANGODB_AQL_MODIFICATION_OPTIONS_H 1
+#ifndef ARANGOD_AQL_MODIFICATION_OPTIONS_H
+#define ARANGOD_AQL_MODIFICATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -39,11 +39,7 @@ namespace aql {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ModificationOptions {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor, using default values
   ////////////////////////////////////////////////////////////////////////////////
@@ -60,11 +56,7 @@ struct ModificationOptions {
 
   void toJson(triagens::basics::Json&, TRI_memory_zone_t*) const;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   bool ignoreErrors;
   bool waitForSync;
   bool nullMeansRemove;
@@ -78,8 +70,3 @@ struct ModificationOptions {
 
 #endif
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -29,8 +29,8 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_SERVER_H
-#define ARANGODB_HTTP_SERVER_HTTP_SERVER_H 1
+#ifndef ARANGOD_HTTP_SERVER_HTTP_SERVER_H
+#define ARANGOD_HTTP_SERVER_HTTP_SERVER_H 1
 
 #include "Basics/Mutex.h"
 #include "Basics/SpinLock.h"
@@ -38,9 +38,6 @@
 #include "Rest/ConnectionInfo.h"
 #include "Scheduler/TaskManager.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class HttpServer
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
@@ -62,10 +59,7 @@ class HttpServer : protected TaskManager {
   HttpServer(HttpServer const&) = delete;
   HttpServer const& operator=(HttpServer const&) = delete;
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                           static public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an endpoint server
@@ -73,10 +67,7 @@ class HttpServer : protected TaskManager {
 
   static int sendChunk(uint64_t, const std::string&);
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                    constructors and destructors
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a new general server with dispatcher and job manager
@@ -91,10 +82,7 @@ class HttpServer : protected TaskManager {
 
   virtual ~HttpServer();
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                          virtual public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the protocol
@@ -116,10 +104,7 @@ class HttpServer : protected TaskManager {
 
   virtual HttpCommTask* createCommTask(TRI_socket_t, const ConnectionInfo&);
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                  public methods
-  // ---------------------------------------------------------------------------
-
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the scheduler
@@ -212,10 +197,7 @@ class HttpServer : protected TaskManager {
 
   bool handleRequest(HttpCommTask*, arangodb::WorkItem::uptr<HttpHandler>&);
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                                 protected types
-  // ---------------------------------------------------------------------------
-
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Handler, Job, and Task tuple
@@ -227,10 +209,7 @@ class HttpServer : protected TaskManager {
     HttpServerJob* _job;
   };
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                               protected methods
-  // ---------------------------------------------------------------------------
-
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens a listen port
@@ -250,10 +229,7 @@ class HttpServer : protected TaskManager {
 
   void registerHandler(HttpHandler* handler, HttpCommTask* task);
 
-  // ---------------------------------------------------------------------------
-  // --SECTION--                                             protected variables
-  // ---------------------------------------------------------------------------
-
+  
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the scheduler
@@ -314,6 +290,4 @@ class HttpServer : protected TaskManager {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

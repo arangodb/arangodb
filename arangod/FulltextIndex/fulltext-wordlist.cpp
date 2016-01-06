@@ -29,9 +29,6 @@
 
 #include "fulltext-wordlist.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a wordlist
@@ -77,9 +74,6 @@ void TRI_FreeWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, wordlist);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort a wordlist in place
@@ -97,12 +91,4 @@ void TRI_SortWordlistFulltextIndex(TRI_fulltext_wordlist_t* wordlist) {
             compareSort);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

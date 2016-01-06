@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_FUNCTION_H
-#define ARANGODB_AQL_FUNCTION_H 1
+#ifndef ARANGOD_AQL_FUNCTION_H
+#define ARANGOD_AQL_FUNCTION_H 1
 
 #include "Basics/Common.h"
 #include "Aql/Functions.h"
@@ -39,11 +39,7 @@ namespace aql {
 struct Function {
   enum Conversion { CONVERSION_NONE, CONVERSION_OPTIONAL, CONVERSION_REQUIRED };
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                        constructors /
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
   Function() = delete;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -63,11 +59,7 @@ struct Function {
 
   ~Function();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks if the function has been deprecated
   ////////////////////////////////////////////////////////////////////////////////
@@ -104,11 +96,7 @@ struct Function {
 
   void initializeArguments();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief function name (name used in JavaScript implementation)
   ////////////////////////////////////////////////////////////////////////////////
@@ -204,12 +192,4 @@ struct Function {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

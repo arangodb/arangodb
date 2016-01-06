@@ -62,9 +62,6 @@ using StringBuffer = triagens::basics::StringBuffer;
 #define LEAVE_BLOCK
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class GatherBlock
-// -----------------------------------------------------------------------------
 
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
@@ -514,9 +511,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class BlockWithClients
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -655,9 +649,6 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
   LEAVE_BLOCK
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                class ScatterBlock
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializeCursor
@@ -823,9 +814,6 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   LEAVE_BLOCK
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class DistributeBlock
-// -----------------------------------------------------------------------------
 
 DistributeBlock::DistributeBlock(ExecutionEngine* engine,
                                  DistributeNode const* ep,
@@ -1246,9 +1234,6 @@ std::string DistributeBlock::createKey() const {
   return std::to_string(uid);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class RemoteBlock
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief local helper to throw an exception if a HTTP request went wrong
@@ -1660,8 +1645,3 @@ int64_t RemoteBlock::remaining() {
   LEAVE_BLOCK
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

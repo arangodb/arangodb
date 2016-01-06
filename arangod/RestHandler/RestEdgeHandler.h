@@ -27,16 +27,13 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_EDGE_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_EDGE_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_EDGE_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_EDGE_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "RestHandler/RestDocumentHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   RestEdgeHandler
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
@@ -46,11 +43,7 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestEdgeHandler : public RestDocumentHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -58,11 +51,7 @@ class RestEdgeHandler : public RestDocumentHandler {
 
   explicit RestEdgeHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get collection type
@@ -72,11 +61,7 @@ class RestEdgeHandler : public RestDocumentHandler {
     return TRI_COL_TYPE_EDGE;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   private
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief creates an edge
@@ -97,12 +82,4 @@ class RestEdgeHandler : public RestDocumentHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

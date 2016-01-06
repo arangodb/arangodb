@@ -44,9 +44,6 @@ using namespace triagens::aql;
 
 using VertexId = triagens::arango::traverser::VertexId;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              class TraversalBlock
-// -----------------------------------------------------------------------------
 
 TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
     : ExecutionBlock(engine, ep),
@@ -525,8 +522,3 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
   return atMost;
 }
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|//
-// --SECTION--\\|/// @\\}\\)"
-// End:

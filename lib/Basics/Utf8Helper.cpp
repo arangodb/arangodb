@@ -47,9 +47,6 @@ using namespace std;
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 Utf8Helper::Utf8Helper(std::string const& lang) : _coll(nullptr) {
   setCollatorLanguage(lang);
@@ -772,9 +769,6 @@ bool TRI_get_words(TRI_vector_string_t*& words, char const* text,
       words, text, textLength, minimalWordLength, maximalWordLength, lowerCase);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
@@ -849,9 +843,6 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
   return utf8;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
@@ -1002,12 +993,4 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
   return utf8Dest;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

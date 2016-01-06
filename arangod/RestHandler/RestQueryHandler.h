@@ -27,35 +27,25 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_QUERY_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_QUERY_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_QUERY_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_QUERY_HANDLER_H 1
 
 #include "Basics/Common.h"
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace arango {
 class ApplicationV8;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class RestQueryHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -63,11 +53,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   RestQueryHandler(rest::HttpRequest*, ApplicationV8*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -81,11 +67,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   status_t execute() override;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 protected
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the list of properties
@@ -135,11 +117,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   bool parseQuery();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief application V8
@@ -152,12 +130,4 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -27,8 +27,8 @@
 /// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_ADMIN_LOG_HANDLER_H 1
 
 #include "Basics/Common.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -36,20 +36,13 @@
 namespace triagens {
 namespace admin {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         class RestAdminLogHandler
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief admin log request handler
 ////////////////////////////////////////////////////////////////////////////////
 
 class RestAdminLogHandler : public RestBaseHandler {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
@@ -57,11 +50,7 @@ class RestAdminLogHandler : public RestBaseHandler {
 
   explicit RestAdminLogHandler(rest::HttpRequest*);
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   Handler
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -80,12 +69,4 @@ class RestAdminLogHandler : public RestBaseHandler {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

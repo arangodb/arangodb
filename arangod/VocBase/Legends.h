@@ -27,8 +27,8 @@
 /// @author Copyright 2014-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOCBASE_LEGENDS_H
-#define ARANGODB_VOCBASE_LEGENDS_H 1
+#ifndef ARANGOD_VOC_BASE_LEGENDS_H
+#define ARANGOD_VOC_BASE_LEGENDS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/structures.h"
@@ -293,12 +293,4 @@ class LegendReader : public Shaper {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

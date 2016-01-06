@@ -40,9 +40,6 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -51,9 +48,6 @@ using namespace std;
 RestDebugHelperHandler::RestDebugHelperHandler(HttpRequest* request)
     : RestBaseHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -96,6 +90,4 @@ HttpHandler::status_t RestDebugHelperHandler::execute() {
   return status_t(HANDLER_DONE);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

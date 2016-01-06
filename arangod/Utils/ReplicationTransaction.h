@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_REPLICATION_TRANSACTION_H
-#define ARANGODB_UTILS_REPLICATION_TRANSACTION_H 1
+#ifndef ARANGOD_UTILS_REPLICATION_TRANSACTION_H
+#define ARANGOD_UTILS_REPLICATION_TRANSACTION_H 1
 
 #include "Basics/Common.h"
 
@@ -43,16 +43,8 @@ namespace triagens {
 namespace arango {
 
 class ReplicationTransaction : public Transaction {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      class
-  // ReplicationTransaction
-  // -----------------------------------------------------------------------------
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create the transaction
@@ -72,11 +64,7 @@ class ReplicationTransaction : public Transaction {
 
   ~ReplicationTransaction() { TRI_ReleaseDatabaseServer(_server, vocbase()); }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the remote (external) id of the transaction
@@ -114,11 +102,7 @@ class ReplicationTransaction : public Transaction {
     return trxCollection;
   }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   TRI_server_t* _server;
 
@@ -129,12 +113,4 @@ class ReplicationTransaction : public Transaction {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

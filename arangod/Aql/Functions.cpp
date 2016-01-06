@@ -60,9 +60,6 @@ using VertexId = triagens::arango::traverser::VertexId;
 thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
     nullptr;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear the regex cache in a thread
@@ -650,9 +647,6 @@ static void RequestEdges(triagens::basics::Json const& vertexJson,
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      AQL functions public helpers
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called before a query starts
@@ -668,9 +662,6 @@ void Functions::InitializeThreadContext() {}
 
 void Functions::DestroyThreadContext() { ClearRegexCache(); }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             AQL function bindings
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_NULL
@@ -4675,12 +4666,4 @@ AqlValue Functions::Fulltext(triagens::aql::Query* query,
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

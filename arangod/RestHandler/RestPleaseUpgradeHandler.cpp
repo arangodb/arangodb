@@ -33,9 +33,6 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -44,9 +41,6 @@ using namespace std;
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(HttpRequest* request)
     : HttpHandler(request) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -82,12 +76,4 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute() {
 
 void RestPleaseUpgradeHandler::handleError(const Exception&) {}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

@@ -41,9 +41,6 @@
 using namespace triagens::arango;
 using Json = triagens::basics::Json;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 static size_t sortWeight(triagens::aql::AstNode const* node) {
   switch (node->type) {
@@ -305,13 +302,7 @@ static int FillLookupOperator(TRI_index_operator_t* slOperator,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class SkiplistIterator
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 size_t SkiplistIterator::size() const { return _intervals.size(); }
 
@@ -586,9 +577,6 @@ void SkiplistIterator::findHelper(
   }  // end of switch statement
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Attempts to determine if there is a previous document within an
@@ -711,13 +699,7 @@ TRI_index_element_t* SkiplistIterator::nextIteration() {
   return _cursor->document();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class SkiplistIndex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 TRI_doc_mptr_t* SkiplistIndexIterator::next() {
   while (_iterator == nullptr) {
@@ -755,13 +737,7 @@ void SkiplistIndexIterator::reset() {
   _currentOperator = 0;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               class SkiplistIndex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the skiplist index
@@ -796,9 +772,6 @@ SkiplistIndex::SkiplistIndex(TRI_json_t const* json)
 
 SkiplistIndex::~SkiplistIndex() { delete _skiplistIndex; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 size_t SkiplistIndex::memory() const {
   return _skiplistIndex->memoryUsage() +
@@ -937,9 +910,6 @@ SkiplistIterator* SkiplistIndex::lookup(triagens::arango::Transaction* trx,
   return results.release();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compares a key with an element in a skip list, generic callback
@@ -1707,12 +1677,4 @@ bool SkiplistIndex::isDuplicateOperator(
   return duplicate;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

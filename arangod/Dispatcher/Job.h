@@ -27,25 +27,19 @@
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DISPATCHER_JOB_H
-#define ARANGODB_DISPATCHER_JOB_H 1
+#ifndef ARANGOD_DISPATCHER_JOB_H
+#define ARANGOD_DISPATCHER_JOB_H 1
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Statistics/StatisticsAgent.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 namespace triagens {
 namespace rest {
 class DispatcherQueue;
 class DispatcherThread;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         class Job
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief abstract base class for jobs
@@ -55,11 +49,7 @@ class Job : public RequestStatisticsAgent {
   Job(Job const&) = delete;
   Job& operator=(Job const&) = delete;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructs a job
@@ -73,11 +63,7 @@ class Job : public RequestStatisticsAgent {
 
   virtual ~Job();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief gets the name
@@ -104,11 +90,7 @@ class Job : public RequestStatisticsAgent {
 
   size_t queuePosition() const { return _queuePosition; }
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                            virtual public
-  // methods
-  // -----------------------------------------------------------------------------
-
+  
  public:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the queue name to use
@@ -140,11 +122,7 @@ class Job : public RequestStatisticsAgent {
 
   virtual void handleError(basics::Exception const&) = 0;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                               protected
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief task id
@@ -152,11 +130,7 @@ class Job : public RequestStatisticsAgent {
 
   uint64_t const _jobId;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                 private
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief name of the job
@@ -175,6 +149,4 @@ class Job : public RequestStatisticsAgent {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

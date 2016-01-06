@@ -27,8 +27,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_WAL_RECOVER_STATE_H
-#define ARANGODB_WAL_RECOVER_STATE_H 1
+#ifndef ARANGOD_WAL_RECOVER_STATE_H
+#define ARANGOD_WAL_RECOVER_STATE_H 1
 
 #include "Basics/Common.h"
 #include "Utils/transactions.h"
@@ -51,17 +51,11 @@
 namespace triagens {
 namespace wal {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      RecoverState
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state that is built up when scanning a WAL logfile during recovery
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
 
 struct RecoverState {
   RecoverState(RecoverState const&) = delete;
@@ -79,11 +73,7 @@ struct RecoverState {
 
   ~RecoverState();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // functions
-  // -----------------------------------------------------------------------------
-
+  
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks if there will be a drop marker for the collection
   ////////////////////////////////////////////////////////////////////////////////
@@ -231,11 +221,7 @@ struct RecoverState {
 
   int fillIndexes();
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                  public
-  // variables
-  // -----------------------------------------------------------------------------
-
+  
   TRI_server_t* server;
   std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>
       failedTransactions;
@@ -258,12 +244,4 @@ struct RecoverState {
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

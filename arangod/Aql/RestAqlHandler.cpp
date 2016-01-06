@@ -46,9 +46,6 @@ using namespace triagens::rest;
 using namespace triagens::aql;
 using namespace std;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -66,9 +63,6 @@ RestAqlHandler::RestAqlHandler(triagens::rest::HttpRequest* request,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name
@@ -76,9 +70,6 @@ RestAqlHandler::RestAqlHandler(triagens::rest::HttpRequest* request,
 
 size_t RestAqlHandler::queue() const { return Dispatcher::AQL_QUEUE; }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -668,9 +659,6 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle for useQuery
@@ -895,12 +883,4 @@ TRI_json_t* RestAqlHandler::parseJsonBody() {
   return json;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:

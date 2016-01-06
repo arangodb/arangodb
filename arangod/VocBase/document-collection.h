@@ -28,8 +28,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_DOCUMENT__COLLECTION_H
-#define ARANGODB_VOC_BASE_DOCUMENT__COLLECTION_H 1
+#ifndef ARANGOD_VOC_BASE_DOCUMENT_COLLECTION_H
+#define ARANGOD_VOC_BASE_DOCUMENT_COLLECTION_H 1
 
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
@@ -48,9 +48,6 @@
 
 #include <regex.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
 
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
@@ -76,9 +73,6 @@ class Transaction;
 
 class KeyGenerator;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks the documents and indexes
@@ -122,9 +116,6 @@ class KeyGenerator;
 #define TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(a) \
   a->_lock.unlock()
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief master pointer
@@ -446,9 +437,6 @@ struct TRI_document_collection_t : public TRI_collection_t {
   int postInsertIndexes(triagens::arango::Transaction*, TRI_doc_mptr_t*);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a datafile description
@@ -479,13 +467,7 @@ size_t TRI_DocumentIteratorDocumentCollection(
     triagens::arango::Transaction*, TRI_document_collection_t*, void*,
     bool (*callback)(TRI_doc_mptr_t const*, TRI_document_collection_t*, void*));
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               DOCUMENT COLLECTION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     public macros
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to read lock the journal files and the parameter file
@@ -758,9 +740,6 @@ static inline char const* TRI_EXTRACT_MARKER_KEY(
   return TRI_EXTRACT_MARKER_KEY(marker);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new collection
@@ -784,9 +763,6 @@ void TRI_DestroyDocumentCollection(TRI_document_collection_t*);
 
 void TRI_FreeDocumentCollection(TRI_document_collection_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update statistics for a collection
@@ -866,13 +842,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection(TRI_vocbase_t*,
 
 int TRI_CloseDocumentCollection(TRI_document_collection_t*, bool);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           INDEXES
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves an index
@@ -897,13 +867,7 @@ std::vector<triagens::basics::Json> TRI_IndexesDocumentCollection(
 bool TRI_DropIndexDocumentCollection(TRI_document_collection_t*, TRI_idx_iid_t,
                                      bool);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    CAP CONSTRAINT
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a cap constraint
@@ -920,13 +884,7 @@ triagens::arango::Index* TRI_EnsureCapConstraintDocumentCollection(
     triagens::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
     size_t, int64_t, bool&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         GEO INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a geo index, list style
@@ -962,13 +920,7 @@ triagens::arango::Index* TRI_EnsureGeoIndex2DocumentCollection(
     triagens::arango::Transaction*, TRI_document_collection_t*, TRI_idx_iid_t,
     std::string const&, std::string const&, bool&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        HASH INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a hash index
@@ -989,13 +941,7 @@ triagens::arango::Index* TRI_EnsureHashIndexDocumentCollection(
     triagens::arango::Transaction* trx, TRI_document_collection_t*,
     TRI_idx_iid_t, std::vector<std::string> const&, bool, bool, bool&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    SKIPLIST INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a skiplist index
@@ -1014,13 +960,7 @@ triagens::arango::Index* TRI_EnsureSkiplistIndexDocumentCollection(
     triagens::arango::Transaction* trx, TRI_document_collection_t*,
     TRI_idx_iid_t, std::vector<std::string> const&, bool, bool, bool&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    FULLTEXT INDEX
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a fulltext index
@@ -1039,9 +979,6 @@ triagens::arango::Index* TRI_EnsureFulltextIndexDocumentCollection(
     triagens::arango::Transaction* trx, TRI_document_collection_t*,
     TRI_idx_iid_t, std::string const&, int, bool&);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a select-by-example query
@@ -1093,9 +1030,6 @@ int TRI_DeleteDocumentDocumentCollection(triagens::arango::Transaction*,
 
 int TRI_RotateJournalDocumentCollection(TRI_document_collection_t*);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      CRUD methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads an element from the document collection
@@ -1140,12 +1074,4 @@ int TRI_UpdateShapedJsonDocumentCollection(
 
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|//
-// --SECTION--\\|/// @\\}"
-// End:
