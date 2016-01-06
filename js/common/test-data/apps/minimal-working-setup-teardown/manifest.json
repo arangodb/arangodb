@@ -1,6 +1,9 @@
 {
   "name": "minimal-working-manifest",
   "version": "0.0.0",
+  "engines": {
+    "arangodb": "^2.8.0"
+  },
   "scripts": {
     "setup": "setup.js",
     "teardown": "teardown.js"

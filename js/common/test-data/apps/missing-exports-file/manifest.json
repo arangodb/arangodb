@@ -1,6 +1,9 @@
 {
   "name": "missing-exports-file",
   "version": "0.0.0",
+  "engines": {
+    "arangodb": "^2.8.0"
+  },
   "exports": {
     "nope": "no-such-file.js"
   }

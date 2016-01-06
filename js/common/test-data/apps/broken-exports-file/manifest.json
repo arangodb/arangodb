@@ -1,6 +1,9 @@
 {
   "name": "broken-exports-file",
   "version": "0.0.0",
+  "engines": {
+    "arangodb": "^2.8.0"
+  },
   "exports": {
     "broken": "broken-exports.js"
   }

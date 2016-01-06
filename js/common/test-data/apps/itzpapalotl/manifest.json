@@ -1,6 +1,9 @@
 {
   "name": "itzpapalotl",
   "version": "0.0.6",
+  "engines": {
+    "arangodb": "^2.8.0"
+  },
   "author": "jsteemann",
   "description": "random aztec god service",
 
