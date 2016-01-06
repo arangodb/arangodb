@@ -293,18 +293,16 @@ class FoxxService {
       action: {
         callback(req, res, opts, next) {
           console.infoLines(JSON.stringify(req, null, 2));
+          let handled = true;
+
           try {
-            service.router._dispatch(req, res);
+            handled = service.router._dispatch(req, res);
           } catch (e) {
             let error = e;
             if (!e.statusCode) {
               console.errorLines(e.stack);
               error = new InternalServerError();
               error.cause = e;
-            }
-            if (error._isDefault) {
-              next();
-              return;
             }
             const body = {
               error: true,
@@ -322,6 +320,10 @@ class FoxxService {
             }
             res.contentType = 'application/json';
             res.body = JSON.stringify(body);
+          }
+
+          if (!handled) {
+            next();
           }
         }
       }
