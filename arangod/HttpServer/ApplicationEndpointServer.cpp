@@ -124,9 +124,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer() {
   }
   _servers.clear();
 
-  if (_handlerFactory != nullptr) {
-    delete _handlerFactory;
-  }
+  delete _handlerFactory;
 
   if (_sslContext != nullptr) {
     SSL_CTX_free(_sslContext);
@@ -375,8 +373,8 @@ bool ApplicationEndpointServer::prepare() {
       new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
                              _allowMethodOverride, _setContext, _contextData);
 
-  LOG_INFO("using default API compatibility: %ld",
-           (long int)_defaultApiCompatibility);
+  LOG_DEBUG("using default API compatibility: %ld",
+            (long int)_defaultApiCompatibility);
 
   return true;
 }
