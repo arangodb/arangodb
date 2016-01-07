@@ -411,9 +411,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // coordinator. Note that the main query and engine is not put into
   // this map at all.
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   CoordinatorInstanciator(Query* query, QueryRegistry* queryRegistry)
       : query(query),
@@ -428,9 +425,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines.emplace_back(COORDINATOR, 0, PART_MAIN, 0);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   ~CoordinatorInstanciator() {}
 

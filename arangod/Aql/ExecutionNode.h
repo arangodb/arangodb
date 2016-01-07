@@ -958,9 +958,6 @@ class EnumerateListNode : public ExecutionNode {
   friend class EnumerateListBlock;
   friend class RedundantCalculationsReplacer;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
  public:
   EnumerateListNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
@@ -1157,9 +1154,6 @@ class CalculationNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
                   Variable const* conditionVariable,
@@ -1173,9 +1167,6 @@ class CalculationNode : public ExecutionNode {
     TRI_ASSERT(_outVariable != nullptr);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   CalculationNode(ExecutionPlan* plan, size_t id, Expression* expr,
                   Variable const* outVariable)
@@ -1183,9 +1174,6 @@ class CalculationNode : public ExecutionNode {
 
   CalculationNode(ExecutionPlan*, triagens::basics::Json const& base);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   ~CalculationNode() { delete _expression; }
 
@@ -1332,9 +1320,6 @@ class SubqueryNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class SubqueryBlock;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
  public:
   SubqueryNode(ExecutionPlan*, triagens::basics::Json const& base);

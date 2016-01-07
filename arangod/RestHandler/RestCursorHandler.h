@@ -51,9 +51,6 @@ class Cursor;
 class RestCursorHandler : public RestVocbaseBaseHandler {
   
  public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   RestCursorHandler(rest::HttpRequest*,
                     std::pair<triagens::arango::ApplicationV8*,

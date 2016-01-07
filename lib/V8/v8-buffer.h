@@ -195,9 +195,6 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   static v8::Handle<v8::Object> New(v8::Isolate* isolate,
                                     v8::Handle<v8::String> string);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   static V8Buffer* New(v8::Isolate* isolate, size_t length);
 

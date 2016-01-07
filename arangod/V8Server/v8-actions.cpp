@@ -72,9 +72,6 @@ static ApplicationV8* GlobalV8Dealer = nullptr;
 
 class v8_action_t : public TRI_action_t {
  public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {
     _type = "JAVASCRIPT";

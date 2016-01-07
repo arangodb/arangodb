@@ -36,9 +36,6 @@ using namespace triagens::arango;
 using namespace triagens::rest;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestShardHandler::RestShardHandler(triagens::rest::HttpRequest* request,
                                    Dispatcher* data)

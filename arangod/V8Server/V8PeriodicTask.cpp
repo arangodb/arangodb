@@ -35,9 +35,6 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 V8PeriodicTask::V8PeriodicTask(string const& id, string const& name,
                                TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
@@ -60,9 +57,6 @@ V8PeriodicTask::V8PeriodicTask(string const& id, string const& name,
   TRI_UseVocBase(_vocbase);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 V8PeriodicTask::~V8PeriodicTask() {
   // decrease reference counter for the database used

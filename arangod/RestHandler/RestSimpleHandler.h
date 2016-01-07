@@ -46,9 +46,6 @@ class ApplicationV8;
 class RestSimpleHandler : public RestVocbaseBaseHandler {
   
  public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   RestSimpleHandler(rest::HttpRequest*,
                     std::pair<triagens::arango::ApplicationV8*,

@@ -41,9 +41,6 @@ using namespace triagens::aql;
 using namespace std;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestAqlHandler::RestAqlHandler(triagens::rest::HttpRequest* request,
                                std::pair<ApplicationV8*, QueryRegistry*>* pair)

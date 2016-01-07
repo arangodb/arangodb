@@ -43,9 +43,6 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestImportHandler::RestImportHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request), _onDuplicateAction(DUPLICATE_ERROR) {}

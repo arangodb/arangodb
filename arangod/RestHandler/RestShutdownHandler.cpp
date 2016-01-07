@@ -30,9 +30,6 @@ using namespace triagens::admin;
 using namespace triagens::rest;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestShutdownHandler::RestShutdownHandler(triagens::rest::HttpRequest* request,
                                          void* applicationServer)

@@ -44,9 +44,6 @@ namespace admin {
 class RestJobHandler : public RestBaseHandler {
   
  public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   RestJobHandler(rest::HttpRequest* request,
                  std::pair<rest::Dispatcher*, rest::AsyncJobManager*>*);

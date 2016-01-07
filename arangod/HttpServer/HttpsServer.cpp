@@ -43,9 +43,6 @@ HttpsServer::HttpsServer(Scheduler* scheduler, Dispatcher* dispatcher,
       _verificationMode(SSL_VERIFY_NONE),
       _verificationCallback(0) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 HttpsServer::~HttpsServer() {
   // don't free context here but in dtor of ApplicationEndpointServer

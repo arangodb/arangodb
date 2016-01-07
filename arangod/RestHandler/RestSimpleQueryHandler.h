@@ -43,9 +43,6 @@ class ApplicationV8;
 class RestSimpleQueryHandler : public RestCursorHandler {
   
  public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   RestSimpleQueryHandler(rest::HttpRequest*,
                          std::pair<triagens::arango::ApplicationV8*,

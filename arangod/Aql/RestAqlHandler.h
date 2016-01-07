@@ -47,9 +47,6 @@ namespace aql {
 class RestAqlHandler : public arango::RestVocbaseBaseHandler {
   
  public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   RestAqlHandler(rest::HttpRequest* request,
                  std::pair<arango::ApplicationV8*, QueryRegistry*>* pair);

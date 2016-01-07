@@ -120,9 +120,6 @@ const string RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
 const string RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
     : RestBaseHandler(request),
@@ -130,9 +127,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(HttpRequest* request)
       _vocbase(_context->getVocbase()),
       _nolockHeaderSet(nullptr) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 

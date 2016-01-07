@@ -46,9 +46,6 @@ class HttpsServer : public HttpServer {
   HttpsServer(Scheduler*, Dispatcher*, HttpHandlerFactory*, AsyncJobManager*,
               double keepAliveTimeout, SSL_CTX*);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   ~HttpsServer();
 

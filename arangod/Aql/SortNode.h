@@ -53,9 +53,6 @@ class SortNode : public ExecutionNode {
   friend class SortBlock;
   friend class RedundantCalculationsReplacer;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
  public:
   SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements,

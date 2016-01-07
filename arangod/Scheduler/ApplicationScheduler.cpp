@@ -287,9 +287,6 @@ bool CtrlHandler(DWORD eventType) {
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
     : ApplicationFeature("scheduler"),
@@ -303,9 +300,6 @@ ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
       _descriptorMinimum(1024),
       _disableControlCHandler(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::~ApplicationScheduler() {
   Scheduler::SCHEDULER.release();  // TODO(fc) XXX remove this
