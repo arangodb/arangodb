@@ -154,9 +154,8 @@ static int ExtractDocumentKey(v8::Isolate* isolate, TRI_v8_global_t* v8g,
     v8::Handle<v8::Value> v = obj->Get(_KeyKey);
 
     if (v->IsString()) {
-      // string key
       // keys must not contain any special characters, so it is not necessary
-      // to normalise them first
+      // to normalize them first
       v8::String::Utf8Value str(v);
 
       if (*str == 0) {

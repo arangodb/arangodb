@@ -663,15 +663,15 @@ void ArangoClient::internalPrint(std::string const& str) {
     fprintf(_pager, "%s", str.c_str());
 #endif
     if (_log) {
-      string sanitised = StripBinary(str.c_str());
-      log("%s", sanitised.c_str());
+      string sanitized = StripBinary(str.c_str());
+      log("%s", sanitized.c_str());
     }
   } else {
-    string sanitised = StripBinary(str.c_str());
+    string sanitized = StripBinary(str.c_str());
 
-    if (!sanitised.empty()) {
-      fprintf(_pager, "%s", sanitised.c_str());
-      log("%s", sanitised.c_str());
+    if (!sanitized.empty()) {
+      fprintf(_pager, "%s", sanitized.c_str());
+      log("%s", sanitized.c_str());
     }
   }
 }
@@ -740,11 +740,11 @@ void ArangoClient::printByeBye() {
 
 void ArangoClient::log(const char* format, const char* str) {
   if (_log) {
-    string sanitised = StripBinary(str);
+    string sanitized = StripBinary(str);
 
-    if (!sanitised.empty()) {
+    if (!sanitized.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format, sanitised.c_str());
+      fprintf(_log, format, sanitized.c_str());
     }
   }
 }
@@ -756,11 +756,11 @@ void ArangoClient::log(const char* format, const char* str) {
 void ArangoClient::log(std::string const& format, std::string const& prompt,
                        std::string const& str) {
   if (_log) {
-    string sanitised = StripBinary(str.c_str());
+    string sanitized = StripBinary(str.c_str());
 
-    if (!sanitised.empty()) {
+    if (!sanitized.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format.c_str(), prompt.c_str(), sanitised.c_str());
+      fprintf(_log, format.c_str(), prompt.c_str(), sanitized.c_str());
     }
   }
 }
