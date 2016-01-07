@@ -113,15 +113,15 @@ Edge collections are collections that store edges.
 
 !SUBSECTION Edge Definition
 
-Edge definitions are parts of configuration for `managed grahps`. They describe which edge collections connect which vertex collections.
+Edge definitions are parts of the definition of `named grahps`. They describe which edge collections connect which vertex collections.
 
 !SUBSECTION General Graph
 
-Module maintaining graph setup in the `_graphs` collection - aka `managed graphs`. Configures which edge collections relate to which vertex collections. Ensures graph consistency in modification queries.
+Module maintaining graph setup in the `_graphs` collection - aka `named graphs`. Configures which edge collections relate to which vertex collections. Ensures graph consistency in modification queries.
 
-!SUBSECTION Managed Graphs
+!SUBSECTION Named Graphs
 
-Managed graphs enforce consistency between edge collections and vertex collections, so if you remove a vertex, edges pointing to it will be removed too.
+Named graphs enforce consistency between edge collections and vertex collections, so if you remove a vertex, edges pointing to it will be removed too.
 
 !SUBSECTION Index
 
@@ -174,6 +174,6 @@ index entries with the same lookup value.
 A skiplist is a sorted index type that can be used to find ranges of documents.
 
 
-!SUBSECTION Unamanaged Graphs
+!SUBSECTION Anonymous Graphs
 
-You may use edge collections with vertex collections without the graph management facilities. However, graph consistency is not enforced by these. If you remove vertices, you have to ensure by yourselves edges pointing to this vertex are removed. Unmanaged graphs may not be browsed using graph viewer in the webinterface. This may be faster in some scenarios.
+You may use edge collections with vertex collections without the graph management facilities. However, graph consistency is not enforced by these. If you remove vertices, you have to ensure by yourselves edges pointing to this vertex are removed. Anonymous graphs may not be browsed using graph viewer in the webinterface. This may be faster in some scenarios.
