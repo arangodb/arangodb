@@ -1,247 +1,275 @@
 shell> curl --dump - http://localhost:8529/_api/collection
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"collections"</span> : [ 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"6216135"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_queues"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5757383"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_configuration"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"22206919"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"14145991"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_sessions"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2087367"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_graphs"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2480583"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_cluster_kickstarter_plans"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"252359"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"14866887"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system_users_users"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4577735"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statisticsRaw"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2349511"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2307177"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_routing"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"6347207"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_jobs"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4076649"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statisticsRaw"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"7199175"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_apps"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"13841513"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_sessions"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4970951"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5387369"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_queues"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4469865"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5364167"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4863081"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics15"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"21354951"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2176105"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_modules"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4446663"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"3945577"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_aqlfunctions"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2218439"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_modules"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    } 
-  ], 
-  <span class="hljs-string">"names"</span> : { 
-    <span class="hljs-string">"_queues"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"6216135"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_queues"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_configuration"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5757383"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5256297"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_configuration"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
-    <span class="hljs-string">"animals"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"22206919"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_sessions"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"14145991"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_sessions"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_graphs"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2087367"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_graphs"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_cluster_kickstarter_plans"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2480583"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_cluster_kickstarter_plans"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_users"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"252359"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_system_users_users"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"14866887"</span>, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"14562409"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system_users_users"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
-    <span class="hljs-string">"_statisticsRaw"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4577735"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statisticsRaw"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_routing"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2349511"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_routing"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_jobs"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"6347207"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_jobs"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
-    }, 
-    <span class="hljs-string">"_apps"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"7199175"</span>, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5649513"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_apps"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"15873129"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"testbug_nodeTypes"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2045033"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_graphs"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2438249"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_cluster_kickstarter_plans"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"210025"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"21116009"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5518441"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_jobs"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"15742057"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"testbug_testCollection"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"21967977"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    } 
+  ], 
+  <span class="hljs-string">"names"</span> : { 
+    <span class="hljs-string">"_routing"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2307177"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_routing"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_statisticsRaw"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4076649"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statisticsRaw"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_sessions"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"13841513"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_sessions"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_queues"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5387369"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_queues"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
     <span class="hljs-string">"_statistics"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4970951"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4469865"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     <span class="hljs-string">"_statistics15"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5364167"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4863081"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_statistics15"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
-    <span class="hljs-string">"demo"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"21354951"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
-      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"_modules"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2176105"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_modules"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
     <span class="hljs-string">"_aqlfunctions"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"4446663"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"3945577"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"_aqlfunctions"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     }, 
-    <span class="hljs-string">"_modules"</span> : { 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2218439"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_modules"</span>, 
+    <span class="hljs-string">"_configuration"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5256297"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_configuration"</span>, 
       <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_system_users_users"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"14562409"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system_users_users"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_apps"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5649513"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_apps"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"testbug_nodeTypes"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"15873129"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"testbug_nodeTypes"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_graphs"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2045033"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_graphs"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_cluster_kickstarter_plans"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"2438249"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_cluster_kickstarter_plans"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_users"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"210025"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"demo"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"21116009"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"_jobs"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"5518441"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"_jobs"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"testbug_testCollection"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"15742057"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"testbug_testCollection"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
+    }, 
+    <span class="hljs-string">"animals"</span> : { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"21967977"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
+      <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span> 
     } 

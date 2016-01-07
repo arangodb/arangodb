@@ -1,4 +1,5 @@
-arangosh&gt; stmt.explain({ optimizer: { rules: [ <span class="hljs-string">"-all"</span>, <span class="hljs-string">"+remove-redundant-calculations"</span> ] } });
+arangosh&gt; stmt.explain({ optimizer: {
+........&gt; rules: [ <span class="hljs-string">"-all"</span>, <span class="hljs-string">"+remove-redundant-calculations"</span> ] } });
 { 
   <span class="hljs-string">"plan"</span> : { 
     <span class="hljs-string">"nodes"</span> : [ 
@@ -109,8 +110,9 @@ arangosh&gt; stmt.explain({ optimizer: { rules: [ <span class="hljs-string">"-al
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"stats"</span> : { 
+    <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"rulesExecuted"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">22</span>, 
-    <span class="hljs-string">"plansCreated"</span> : <span class="hljs-number">1</span> 
-  } 
+    <span class="hljs-string">"rulesSkipped"</span> : <span class="hljs-number">24</span> 
+  }, 
+  <span class="hljs-string">"cacheable"</span> : <span class="hljs-literal">true</span> 
 }

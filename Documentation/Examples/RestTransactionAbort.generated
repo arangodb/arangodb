@@ -8,7 +8,7 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transac
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">500</span> Internal Server <span class="hljs-built_in">Error</span>
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"exception"</span> : <span class="hljs-string">"doh!"</span>, 

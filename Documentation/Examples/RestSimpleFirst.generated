@@ -6,24 +6,24 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/f
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/784193991"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"784193991"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"784193991"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/811676777"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"811676777"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"811676777"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"a"</span> : { 
-        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
+        <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span> 
       } 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/784521671"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"784521671"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"784521671"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/812004457"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"812004457"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"812004457"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 

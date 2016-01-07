@@ -1,44 +1,44 @@
-arangosh&gt; db._create(<span class="hljs-string">"test"</span>); 
-[ArangoCollection <span class="hljs-number">1092291992475</span>, <span class="hljs-string">"test"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
-arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">100</span>; ++i) { db.test.save({ value: i }); }
-arangosh&gt; db.test.ensureSkiplist(<span class="hljs-string">"value"</span>);
+arangosh&gt; db._create("test"); 
+[ArangoCollection 498611305, "test" (type document, status loaded)]
+arangosh&gt; for (i = 0; i &lt; 100; ++i) { db.test.save({ value: i }); }
+arangosh&gt; db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/1092311980955"</span>, 
-  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-  <span class="hljs-string">"fields"</span> : [ 
-    <span class="hljs-string">"value"</span> 
+  "id" : "test/518599785", 
+  "type" : "skiplist", 
+  "fields" : [ 
+    "value" 
   ], 
-  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
+  "unique" : false, 
+  "sparse" : false, 
+  "isNewlyCreated" : true, 
+  "code" : 201 
 }
-arangosh&gt; <span class="hljs-keyword">var</span> explain = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/aql/explainer"</span>).explain;
-arangosh&gt; explain(<span class="hljs-string">"FOR i IN test FILTER i.value &gt; 97 SORT i.value RETURN i.value"</span>, {colors:<span class="hljs-literal">false</span>});
+arangosh&gt; var explain = require("@arangodb/aql/explainer").explain;
+arangosh&gt; explain("FOR i IN test FILTER i.value &gt; 97 SORT i.value RETURN i.value", {colors:false});
 Query string:
- FOR i IN test FILTER i.value &gt; <span class="hljs-number">97</span> SORT i.value RETURN i.value
+ FOR i IN test FILTER i.value &gt; 97 SORT i.value RETURN i.value
 
 Execution plan:
  Id   NodeType          Est.   Comment
-  <span class="hljs-number">1</span>   SingletonNode        <span class="hljs-number">1</span>   * ROOT
-  <span class="hljs-number">9</span>   IndexNode           <span class="hljs-number">50</span>     - FOR i IN test   <span class="hljs-comment">/* skiplist index scan */</span>
-  <span class="hljs-number">5</span>   CalculationNode     <span class="hljs-number">50</span>     - LET #<span class="hljs-number">3</span> = i.<span class="hljs-string">`value`</span>   <span class="hljs-comment">/* attribute expression */</span>   <span class="hljs-comment">/* collections used: i : test */</span>
-  <span class="hljs-number">8</span>   ReturnNode          <span class="hljs-number">50</span>     - RETURN #<span class="hljs-number">3</span>
+  1   SingletonNode        1   * ROOT
+  9   IndexNode           50     - FOR i IN test   /* skiplist index scan */
+  5   CalculationNode     50       - LET #3 = i.`value`   /* attribute expression */   /* collections used: i : test */
+  8   ReturnNode          50       - RETURN #3
 
 Indexes used:
  By   Type       Collection   Unique   Sparse   Selectivity   Fields        Ranges
-  <span class="hljs-number">9</span>   skiplist   test         <span class="hljs-literal">false</span>    <span class="hljs-literal">false</span>            n/a   [ <span class="hljs-string">`value`</span> ]   i.<span class="hljs-string">`value`</span> &gt; <span class="hljs-number">97</span>
+  9   skiplist   test         false    false            n/a   [ `value` ]   i.`value` &gt; 97
 
 Optimization rules applied:
  Id   RuleName
-  <span class="hljs-number">1</span>   move-calculations-up
-  <span class="hljs-number">2</span>   move-filters-up
-  <span class="hljs-number">3</span>   remove-redundant-calculations
-  <span class="hljs-number">4</span>   remove-unnecessary-calculations
-  <span class="hljs-number">5</span>   move-calculations-up-<span class="hljs-number">2</span>
-  <span class="hljs-number">6</span>   move-filters-up-<span class="hljs-number">2</span>
-  <span class="hljs-number">7</span>   use-indexes
-  <span class="hljs-number">8</span>   remove-filter-covered-by-index
-  <span class="hljs-number">9</span>   use-index-<span class="hljs-keyword">for</span>-sort
+  1   move-calculations-up
+  2   move-filters-up
+  3   remove-redundant-calculations
+  4   remove-unnecessary-calculations
+  5   move-calculations-up-2
+  6   move-filters-up-2
+  7   use-indexes
+  8   remove-filter-covered-by-index
+  9   use-index-for-sort
 
 

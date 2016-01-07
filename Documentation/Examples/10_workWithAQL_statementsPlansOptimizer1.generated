@@ -1,10 +1,11 @@
-arangosh&gt; stmt.explain({ allPlans: <span class="hljs-literal">true</span> }).plans.map(<span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">plan</span>) </span>{ <span class="hljs-keyword">return</span> formatPlan(plan); });
+arangosh&gt; stmt.explain({ allPlans: <span class="hljs-literal">true</span> }).plans.map(
+........&gt; <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">plan</span>) </span>{ <span class="hljs-keyword">return</span> formatPlan(plan); });
 [ 
   { 
-    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">2.989999505</span>, 
+    <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
     <span class="hljs-string">"nodes"</span> : [ 
       <span class="hljs-string">"SingletonNode"</span>, 
-      <span class="hljs-string">"IndexRangeNode"</span>, 
+      <span class="hljs-string">"IndexNode"</span>, 
       <span class="hljs-string">"ReturnNode"</span> 
     ] 
   } 
