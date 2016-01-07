@@ -31,13 +31,7 @@ var internal = require("internal"); // OK: processCsvFile
 
 var processCsvFile = internal.processCsvFile;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 module "@arangodb/test-helper"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
 
 exports.Helper = {
   process: function (file, processor) {
@@ -100,11 +94,4 @@ exports.Helper = {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
-// End:

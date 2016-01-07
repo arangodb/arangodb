@@ -34,32 +34,12 @@ var console = require("console");
 var actions = require("@arangodb/actions");
 var arangodb = require("@arangodb");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 // var queue = Foxx.queues.create("internal-demo-queue");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_time
-/// @brief Get the current time of the system
-///
-/// @RESTHEADER{GET /_admin/time, Return system time}
-///
-/// @RESTDESCRIPTION
-///
-/// The call returns an object with the attribute *time*. This contains the
-/// current system time as a Unix timestamp with microsecond precision.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Time was returned successfully.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_time
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -72,26 +52,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_sleep
-/// @brief Suspend the execution for a specified duration before returnig
-///
-/// @RESTHEADER{GET /_admin/sleep, Sleep for a specified amount of seconds}
-///
-/// @RESTQUERYPARAMETERS
-///
-/// @RESTURLPARAM{duration,integer,required}
-/// wait `duration` seconds until the reply is sent.
-///
-/// @RESTDESCRIPTION
-///
-/// The call returns an object with the attribute *duration*. This takes
-/// as many seconds as the duration argument says.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Sleep was conducted successfully.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_sleep
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -109,26 +70,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_echo
-/// @brief Send back what was sent in, headers, post body etc.
-///
-/// @RESTHEADER{GET /_admin/echo, Return current request}
-///
-/// @RESTDESCRIPTION
-///
-/// The call returns an object with the following attributes:
-///
-/// - *headers*: object with HTTP headers received
-///
-/// - *requestType*: the HTTP request method (e.g. GET)
-///
-/// - *parameters*: object with query parameters received
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Echo was returned successfully.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_echo
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -144,26 +86,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_long_echo
-/// @brief Send back what was sent in, headers, post body etc.
-///
-/// @RESTHEADER{GET /_admin/long_echo, Return current request and continues}
-///
-/// @RESTDESCRIPTION
-///
-/// The call returns an object with the following attributes:
-///
-/// - *headers*: object with HTTP headers received
-///
-/// - *requestType*: the HTTP request method (e.g. GET)
-///
-/// - *parameters*: object with query parameters received
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Echo was returned successfully.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_long_echo
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -182,40 +105,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_statistics
-/// @brief return the statistics information
-///
-/// @RESTHEADER{GET /_admin/statistics, Read the statistics}
-///
-/// @RESTDESCRIPTION
-///
-/// Returns the statistics information. The returned object contains the
-/// statistics figures grouped together according to the description returned by
-/// *_admin/statistics-description*. For instance, to access a figure *userTime*
-/// from the group *system*, you first select the sub-object describing the
-/// group stored in *system* and in that sub-object the value for *userTime* is
-/// stored in the attribute of the same name.
-///
-/// In case of a distribution, the returned object contains the total count in
-/// *count* and the distribution list in *counts*. The sum (or total) of the
-/// individual values is returned in *sum*.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Statistics were returned successfully.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestAdminStatistics1}
-///     var url = "/_admin/statistics";
-///     var response = logCurlRequest('GET', url);
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_statistics
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -242,49 +132,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_statistics_description
-/// @brief fetch descriptive info of statistics
-///
-/// @RESTHEADER{GET /_admin/statistics-description, Statistics description}
-///
-/// @RESTDESCRIPTION
-///
-/// Returns a description of the statistics returned by */_admin/statistics*.
-/// The returned objects contains an array of statistics groups in the attribute
-/// *groups* and an array of statistics figures in the attribute *figures*.
-///
-/// A statistics group is described by
-///
-/// - *group*: The identifier of the group.
-/// - *name*: The name of the group.
-/// - *description*: A description of the group.
-///
-/// A statistics figure is described by
-///
-/// - *group*: The identifier of the group to which this figure belongs.
-/// - *identifier*: The identifier of the figure. It is unique within the group.
-/// - *name*: The name of the figure.
-/// - *description*: A description of the figure.
-/// - *type*: Either *current*, *accumulated*, or *distribution*.
-/// - *cuts*: The distribution vector.
-/// - *units*: Units in which the figure is measured.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Description was returned successfully.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestAdminStatisticsDescription1}
-///     var url = "/_admin/statistics-description";
-///     var response = logCurlRequest('GET', url);
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_statistics_description
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -612,22 +460,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_post_admin_test
-/// @brief show the available unittests on the server.
-///
-/// @RESTHEADER{POST /_admin/test, Runs tests on server}
-///
-/// @RESTALLBODYPARAM{body,object,required}
-/// A JSON object containing an attribute *tests* which lists the files
-/// containing the test suites.
-///
-/// @RESTDESCRIPTION
-///
-/// Executes the specified tests on the server and returns an object with the
-/// test results. The object has an attribute "error" which states whether
-/// any error occurred. The object also has an attribute "passed" which
-/// indicates which tests passed and which did not.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_post_admin_test
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -670,24 +503,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_post_admin_execute
-/// @brief Execute a script on the server.
-///
-/// @RESTHEADER{POST /_admin/execute, Execute program}
-///
-/// @RESTALLBODYPARAM{body,string,required}
-/// The body to be executed.
-///
-/// @RESTDESCRIPTION
-///
-/// Executes the javascript code in the body on the server as the body
-/// of a function with no arguments. If you have a *return* statement
-/// then the return value you produce will be returned as content type
-/// *application/json*. If the parameter *returnAsJSON* is set to
-/// *true*, the result will be a JSON object describing the return value
-/// directly, otherwise a string produced by JSON.stringify will be
-/// returned.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_post_admin_execute
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -715,11 +531,4 @@ actions.defineHttp({
   }
 });
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|/// @startDocuBlock\\|// --SECTION--\\|/// @\\}"
-// End:

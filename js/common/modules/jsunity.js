@@ -89,9 +89,6 @@ jsUnity.results.end = function (passed, failed, duration) {
   print();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a test with context
@@ -202,16 +199,9 @@ function RunTest (path, outputReply) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.jsUnity = jsUnity;
 exports.run = Run;
 exports.done = Done;
 exports.runTest = RunTest;
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

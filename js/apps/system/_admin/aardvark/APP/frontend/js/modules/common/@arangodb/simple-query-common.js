@@ -38,13 +38,7 @@ var SimpleQueryNear;
 var SimpleQueryWithin;
 var SimpleQueryWithinRectangle;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              GENERAL ARRAY CURSOR
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
@@ -71,9 +65,6 @@ function GeneralArrayCursor (documents, skip, limit, data) {
   this.execute();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an array query
@@ -148,9 +139,6 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all elements of the cursor
@@ -212,13 +200,7 @@ GeneralArrayCursor.prototype.dispose = function() {
   this._extra = null;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      SIMPLE QUERY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query
@@ -233,9 +215,6 @@ function SimpleQuery () {
   this._batchSize = null;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join limits
@@ -280,79 +259,16 @@ SimpleQuery.prototype.clone = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a query
-/// @startDocuBlock queryExecute
-/// `query.execute(batchSize)`
-///
-/// Executes a simple query. If the optional batchSize value is specified,
-/// the server will return at most batchSize values in one roundtrip.
-/// The batchSize cannot be adjusted after the query is first executed.
-///
-/// **Note**: There is no need to explicitly call the execute method if another
-/// means of fetching the query results is chosen. The following two approaches
-/// lead to the same result:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{executeQuery}
-/// ~ db._create("users");
-/// ~ db.users.save({ name: "Gerhard" });
-/// ~ db.users.save({ name: "Helmut" });
-/// ~ db.users.save({ name: "Angela" });
-///   result = db.users.all().toArray();
-///   q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
-/// ~ db._drop("users")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// The following two alternatives both use a batchSize and return the same
-/// result:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{executeQueryBatchSize}
-/// ~ db._create("users");
-/// ~ db.users.save({ name: "Gerhard" });
-/// ~ db.users.save({ name: "Helmut" });
-/// ~ db.users.save({ name: "Angela" });
-///   q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
-///   q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
-/// ~ db._drop("users")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock queryExecute
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.execute = function () {
   throw "cannot execute abstract query";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief limit
-/// @startDocuBlock queryLimit
-/// `query.limit(number)`
-///
-/// Limits a result to the first *number* documents. Specifying a limit of
-/// *0* will return no documents at all. If you do not need a limit, just do
-/// not add the limit operator. The limit must be non-negative.
-///
-/// In general the input to *limit* should be sorted. Otherwise it will be
-/// unclear which documents will be included in the result set.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{queryLimit}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().toArray();
-///   db.five.all().limit(2).toArray();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock queryLimit
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.limit = function (limit) {
@@ -371,34 +287,7 @@ SimpleQuery.prototype.limit = function (limit) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skip
-/// @startDocuBlock querySkip
-/// `query.skip(number)`
-///
-/// Skips the first *number* documents. If *number* is positive, then this
-/// number of documents are skipped before returning the query results.
-///
-/// In general the input to *skip* should be sorted. Otherwise it will be
-/// unclear which documents will be included in the result set.
-///
-/// Note: using negative *skip* values is **deprecated** as of ArangoDB 2.6 and 
-/// will not be supported in future versions of ArangoDB.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{querySkip}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().toArray();
-///   db.five.all().skip(3).toArray();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock querySkip
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.skip = function (skip) {
@@ -456,13 +345,7 @@ SimpleQuery.prototype.toArray = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the batch size
-/// @startDocuBlock cursorGetBatchSize
-/// `cursor.getBatchSize()`
-///
-/// Returns the batch size for queries. If the returned value is undefined, the
-/// server will determine a sensible batch size for any following requests.
-/// @endDocuBlock
+/// @brief was docuBlock cursorGetBatchSize
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.getBatchSize = function () {
@@ -470,13 +353,7 @@ SimpleQuery.prototype.getBatchSize = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the batch size for any following requests
-/// @startDocuBlock cursorSetBatchSize
-/// `cursor.setBatchSize(number)`
-///
-/// Sets the batch size for queries. The batch size determines how many results
-/// are at most transferred from the server to the client in one chunk.
-/// @endDocuBlock
+/// @brief was docuBlock cursorSetBatchSize
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.setBatchSize = function (value) {
@@ -486,56 +363,7 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts the number of documents
-/// @startDocuBlock cursorCount
-/// `cursor.count()`
-///
-/// The *count* operator counts the number of document in the result set and
-/// returns that number. The *count* operator ignores any limits and returns
-/// the total number of documents found.
-///
-/// **Note**: Not all simple queries support counting. In this case *null* is
-/// returned.
-///
-/// `cursor.count(true)`
-///
-/// If the result set was limited by the *limit* operator or documents were
-/// skiped using the *skip* operator, the *count* operator with argument
-/// *true* will use the number of elements in the final result set - after
-/// applying *limit* and *skip*.
-///
-/// **Note**: Not all simple queries support counting. In this case *null* is
-/// returned.
-///
-/// @EXAMPLES
-///
-/// Ignore any limit:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorCount}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().limit(2).count();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Counting any limit or skip:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().limit(2).count(true);
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock cursorCount
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.count = function (applyPagination) {
@@ -549,28 +377,7 @@ SimpleQuery.prototype.count = function (applyPagination) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if the cursor is exhausted
-/// @startDocuBlock cursorHasNext
-/// `cursor.hasNext()`
-///
-/// The *hasNext* operator returns *true*, then the cursor still has
-/// documents. In this case the next document can be accessed using the
-/// *next* operator, which will advance the cursor.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorHasNext}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   var a = db.five.all();
-///   while (a.hasNext()) print(a.next());
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock cursorHasNext
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.hasNext = function () {
@@ -580,29 +387,7 @@ SimpleQuery.prototype.hasNext = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the next result document
-/// @startDocuBlock cursorNext
-/// `cursor.next()`
-///
-/// If the *hasNext* operator returns *true*, then the underlying
-/// cursor of the simple query still has documents.  In this case the
-/// next document can be accessed using the *next* operator, which
-/// will advance the underlying cursor. If you use *next* on an
-/// exhausted cursor, then *undefined* is returned.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{cursorNext}
-/// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
-///   db.five.all().next();
-/// ~ db._drop("five")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock cursorNext
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.next = function () {
@@ -612,14 +397,7 @@ SimpleQuery.prototype.next = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief disposes the result
-/// @startDocuBlock cursorDispose
-/// `cursor.dispose()`
-///
-/// If you are no longer interested in any further results, you should call
-/// *dispose* in order to free any resources associated with the cursor.
-/// After calling *dispose* you can no longer access the cursor.
-/// @endDocuBlock
+/// @brief was docuBlock cursorDispose
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.dispose = function() {
@@ -632,13 +410,7 @@ SimpleQuery.prototype.dispose = function() {
   this._countTotal = null;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  SIMPLE QUERY ALL
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all query
@@ -651,9 +423,6 @@ function SimpleQueryAll (collection) {
 SimpleQueryAll.prototype = new SimpleQuery();
 SimpleQueryAll.prototype.constructor = SimpleQueryAll;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones an all query
@@ -689,13 +458,7 @@ SimpleQueryAll.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                SIMPLE QUERY ARRAY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief array query
@@ -708,9 +471,6 @@ SimpleQueryArray = function (documents) {
 SimpleQueryArray.prototype = new SimpleQuery();
 SimpleQueryArray.prototype.constructor = SimpleQueryArray;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones an all query
@@ -760,13 +520,7 @@ SimpleQueryArray.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  QUERY BY EXAMPLE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by-example
@@ -780,9 +534,6 @@ function SimpleQueryByExample (collection, example) {
 SimpleQueryByExample.prototype = new SimpleQuery();
 SimpleQueryByExample.prototype.constructor = SimpleQueryByExample;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a query-by-example
@@ -820,13 +571,7 @@ SimpleQueryByExample.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                QUERY BY CONDITION
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query-by-condition
@@ -840,9 +585,6 @@ function SimpleQueryByCondition (collection, condition) {
 SimpleQueryByCondition.prototype = new SimpleQuery();
 SimpleQueryByCondition.prototype.constructor = SimpleQueryByCondition;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a query-by-condition
@@ -880,13 +622,7 @@ SimpleQueryByCondition.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       RANGE QUERY
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief range query
@@ -903,9 +639,6 @@ function SimpleQueryRange (collection, attribute, left, right, type) {
 SimpleQueryRange.prototype = new SimpleQuery();
 SimpleQueryRange.prototype.constructor = SimpleQueryRange;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a range query
@@ -945,13 +678,7 @@ SimpleQueryRange.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  SIMPLE QUERY GEO
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief geo index
@@ -962,9 +689,6 @@ function SimpleQueryGeo (collection, index) {
   this._index = index;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a geo index
@@ -982,9 +706,6 @@ SimpleQueryGeo.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for an index
@@ -1010,13 +731,7 @@ SimpleQueryGeo.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
   return new SimpleQueryWithinRectangle(this._collection, lat1, lon1, lat2, lon2, this._index);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 SIMPLE QUERY NEAR
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief near query
@@ -1062,9 +777,6 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
 SimpleQueryNear.prototype = new SimpleQuery();
 SimpleQueryNear.prototype.constructor = SimpleQueryNear;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a near query
@@ -1109,9 +821,6 @@ SimpleQueryNear.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds the distance attribute
@@ -1132,13 +841,7 @@ SimpleQueryNear.prototype.distance = function (attribute) {
   return clone;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               SIMPLE QUERY WITHIN
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief within query
@@ -1183,9 +886,6 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
 SimpleQueryWithin.prototype = new SimpleQuery();
 SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a within query
@@ -1255,13 +955,7 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
   return clone;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      SIMPLE QUERY WITHINRECTANGLE
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief within-rectangle query
@@ -1306,9 +1000,6 @@ SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitu
 SimpleQueryWithinRectangle.prototype = new SimpleQuery();
 SimpleQueryWithinRectangle.prototype.constructor = SimpleQueryWithinRectangle;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a within-rectangle query
@@ -1361,13 +1052,7 @@ SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             SIMPLE QUERY FULLTEXT
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext query
@@ -1409,9 +1094,6 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
 SimpleQueryFulltext.prototype = new SimpleQuery();
 SimpleQueryFulltext.prototype.constructor = SimpleQueryFulltext;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clones a fulltext query
@@ -1453,9 +1135,6 @@ SimpleQueryFulltext.prototype._PRINT = function (context) {
   context.output += text;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.GeneralArrayCursor = GeneralArrayCursor;
 exports.SimpleQueryAll = SimpleQueryAll;
@@ -1469,12 +1148,5 @@ exports.SimpleQueryWithin = SimpleQueryWithin;
 exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });

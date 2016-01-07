@@ -47,13 +47,7 @@ var SimpleQueryWithin = simple.SimpleQueryWithin;
 var SimpleQueryWithinRectangle = simple.SimpleQueryWithinRectangle;
 var SimpleQueryFulltext = simple.SimpleQueryFulltext;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoCollection
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         constants
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is corrupted
@@ -110,9 +104,6 @@ ArangoCollection.TYPE_DOCUMENT = 2;
 
 ArangoCollection.TYPE_EDGE = 3;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
@@ -159,48 +150,9 @@ ArangoCollection.prototype.toString = function () {
   return "[ArangoCollection: " + this._id + "]";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs an all query for a collection
-/// @startDocuBlock collectionAll
-/// `collection.all()`
-///
-/// Fetches all documents from a collection and returns a cursor. You can use
-/// *toArray*, *next*, or *hasNext* to access the result. The result
-/// can be limited using the *skip* and *limit* operator.
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{001_collectionAll}
-/// ~ db._create("five");
-///   db.five.save({ name : "one" });
-///   db.five.save({ name : "two" });
-///   db.five.save({ name : "three" });
-///   db.five.save({ name : "four" });
-///   db.five.save({ name : "five" });
-///   db.five.all().toArray();
-/// ~ db._drop("five");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Use *limit* to restrict the documents:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{002_collectionAllNext}
-/// ~ db._create("five");
-///   db.five.save({ name : "one" });
-///   db.five.save({ name : "two" });
-///   db.five.save({ name : "three" });
-///   db.five.save({ name : "four" });
-///   db.five.save({ name : "five" });
-///   db.five.all().limit(2).toArray();
-/// ~ db._drop("five");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionAll
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.all = function () {
@@ -208,79 +160,7 @@ ArangoCollection.prototype.all = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example for a collection
-/// @startDocuBlock collectionByExample
-/// `collection.byExample(example)`
-///
-/// Fetches all documents from a collection that match the specified
-/// example and returns a cursor.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use
-///
-/// *{ a : { c : 1 } }*
-///
-/// as example, then you will find all documents, such that the attribute
-/// *a* contains a document of the form *{c : 1 }*. For example the document
-///
-/// *{ a : { c : 1 }, b : 1 }*
-///
-/// will match, but the document
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will not.
-///
-/// However, if you use
-///
-/// *{ a.c : 1 }*,
-///
-/// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute *c* of value *1*. Both the following documents
-///
-/// *{ a : { c : 1 }, b : 1 }* and
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will match.
-///
-/// `collection.byExample(path1, value1, ...)`
-///
-/// As alternative you can supply an array of paths and values.
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{003_collectionByExample}
-/// ~ db._create("users");
-///   db.users.save({ name: "Gerhard" });
-///   db.users.save({ name: "Helmut" });
-///   db.users.save({ name: "Angela" });
-///   db.users.all().toArray();
-///   db.users.byExample({ "_id" : "users/20" }).toArray();
-///   db.users.byExample({ "name" : "Gerhard" }).toArray();
-///   db.users.byExample({ "name" : "Helmut", "_id" : "users/15" }).toArray();
-/// ~ db._drop("users");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Use *next* to loop over all documents:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{004_collectionByExampleNext}
-/// ~ db._create("users");
-///   db.users.save({ name: "Gerhard" });
-///   db.users.save({ name: "Helmut" });
-///   db.users.save({ name: "Angela" });
-///   var a = db.users.byExample( {"name" : "Angela" } );
-///   while (a.hasNext()) print(a.next());
-/// ~ db._drop("users");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExample = function (example) {
@@ -306,48 +186,7 @@ ArangoCollection.prototype.byExample = function (example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example using a hash index
-/// @startDocuBLock collectionByExampleHash
-/// `collection.byExampleHash(index, example)`
-///
-/// Selects all documents from the specified hash index that match the
-/// specified example and returns a cursor.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use
-///
-/// *{ a : { c : 1 } }*
-///
-/// as example, then you will find all documents, such that the attribute
-/// *a* contains a document of the form *{c : 1 }*. For example the document
-///
-/// *{ a : { c : 1 }, b : 1 }*
-///
-/// will match, but the document
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will not.
-///
-/// However, if you use
-///
-/// *{ a.c : 1 }*,
-///
-/// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute @LIT{c} of value *1*. Both the following documents
-///
-/// *{ a : { c : 1 }, b : 1 }* and
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will match.
-///
-/// `collection.byExampleHash(index-id, path1, value1, ...)`
-/// @endDocuBlock
+/// @brief was docuBlock collectionByExampleHash
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExampleHash = function (index, example) {
@@ -359,48 +198,7 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a query-by-example using a skiplist index
-/// @startDocuBlock collectionByExampleSkiplist
-/// `collection.byExampleSkiplist(index, example)`
-///
-/// Selects all documents from the specified skiplist index that match the
-/// specified example and returns a cursor.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use
-///
-/// *{ a : { c : 1 } }*
-///
-/// as example, then you will find all documents, such that the attribute
-/// *a* contains a document of the form *{c : 1 }*. For example the document
-///
-/// *{ a : { c : 1 }, b : 1 }*
-///
-/// will match, but the document
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will not.
-///
-/// However, if you use
-///
-/// *{ a.c : 1 }*,
-///
-/// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute @LIT{c} of value *1*. Both the following documents
-///
-/// *{ a : { c : 1 }, b : 1 }*and
-///
-/// *{ a : { c : 1, b : 1 } }*
-///
-/// will match.
-///
-/// `collection.byExampleSkiplist(index, path1, value1, ...)`
-/// @endDocuBlock
+/// @brief was docuBlock collectionByExampleSkiplist
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
@@ -424,49 +222,7 @@ ArangoCollection.prototype.byConditionSkiplist = function (index, condition) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a range query for a collection
-/// @startDocuBlock collectionRange
-/// `collection.range(attribute, left, right)`
-///
-/// Returns all documents from a collection such that the *attribute* is
-/// greater or equal than *left* and strictly less than *right*.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute.
-///
-/// For range queries it is required that a skiplist index is present for the
-/// queried attribute. If no skiplist index is present on the attribute, an
-/// error will be thrown.
-///
-/// Note: the *range* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection within a specific range
-/// is to use an AQL query as follows: 
-///
-///     FOR doc IN @@collection 
-///       FILTER doc.value >= @left && doc.value < @right 
-///       LIMIT @skip, @limit 
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{005_collectionRange}
-/// ~ db._create("old");
-///   db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-///   db.old.save({ age: 15 });
-///   db.old.save({ age: 25 });
-///   db.old.save({ age: 30 });
-///   db.old.range("age", 10, 30).toArray();
-/// ~ db._drop("old")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionRange
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.range = function (name, left, right) {
@@ -474,44 +230,7 @@ ArangoCollection.prototype.range = function (name, left, right) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a closed range query for a collection
-/// @startDocuBlock collectionClosedRange
-/// `collection.closedRange(attribute, left, right)`
-///
-/// Returns all documents of a collection such that the *attribute* is
-/// greater or equal than *left* and less or equal than *right*.
-///
-/// You can use *toArray*, *next*, or *hasNext* to access the
-/// result. The result can be limited using the *skip* and *limit*
-/// operator.
-///
-/// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute.
-///
-/// Note: the *closedRange* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection within a specific range
-/// is to use an AQL query as follows: 
-///
-///     FOR doc IN @@collection 
-///       FILTER doc.value >= @left && doc.value <= @right 
-///       LIMIT @skip, @limit 
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// Use *toArray* to get all documents at once:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{006_collectionClosedRange}
-/// ~ db._create("old");
-///   db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-///   db.old.save({ age: 15 });
-///   db.old.save({ age: 25 });
-///   db.old.save({ age: 30 });
-///   db.old.closedRange("age", 10, 30).toArray();
-/// ~ db._drop("old")
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock collectionClosedRange
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.closedRange = function (name, left, right) {
@@ -519,67 +238,7 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a geo index selection
-/// @startDocuBlock collectionGeo
-/// `collection.geo(location-attribute)`
-///
-/// Looks up a geo index defined on attribute *location_attribute*.
-///
-/// Returns a geo index object if an index was found. The `near` or
-/// `within` operators can then be used to execute a geo-spatial query on
-/// this particular index.
-///
-/// This is useful for collections with multiple defined geo indexes.
-///
-/// `collection.geo(location_attribute, true)`
-///
-/// Looks up a geo index on a compound attribute *location_attribute*.
-///
-/// Returns a geo index object if an index was found. The `near` or
-/// `within` operators can then be used to execute a geo-spatial query on
-/// this particular index.
-///
-/// `collection.geo(latitude_attribute, longitude_attribute)`
-///
-/// Looks up a geo index defined on the two attributes *latitude_attribute*
-/// and *longitude-attribute*.
-///
-/// Returns a geo index object if an index was found. The `near` or
-/// `within` operators can then be used to execute a geo-spatial query on
-/// this particular index.
-///
-/// Note: the *geo* simple query helper function is **deprecated** as of ArangoDB 
-/// 2.6. The function may be removed in future versions of ArangoDB. The preferred
-/// way for running geo queries is to use their AQL equivalents.
-///
-/// @EXAMPLES
-///
-/// Assume you have a location stored as list in the attribute *home*
-/// and a destination stored in the attribute *work*. Then you can use the
-/// `geo` operator to select which geo-spatial attributes (and thus which
-/// index) to use in a `near` query.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{geoIndexSimpleQuery}
-/// ~db._create("complex")
-/// |for (i = -90;  i <= 90;  i += 10) {
-/// |  for (j = -180;  j <= 180;  j += 10) {
-/// |    db.complex.save({ name : "Name/" + i + "/" + j,
-/// |                      home : [ i, j ],
-/// |                      work : [ -i, -j ] });
-/// |  }
-/// |}
-///
-///  db.complex.near(0, 170).limit(5); // xpError(ERROR_QUERY_GEO_INDEX_MISSING)
-///  db.complex.ensureIndex({ type: "geo", fields: [ "home" ] });
-///  db.complex.near(0, 170).limit(5).toArray();
-///  db.complex.geo("work").near(0, 170).limit(5); // xpError(ERROR_QUERY_GEO_INDEX_MISSING)
-///  db.complex.ensureIndex({ type: "geo", fields: [ "work" ] });
-///  db.complex.geo("work").near(0, 170).limit(5).toArray();
-/// ~ db._drop("complex");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// 
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionGeo
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.geo = function(loc, order) {
@@ -645,83 +304,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a near query for a collection
-/// @startDocuBlock collectionNear
-/// `collection.near(latitude, longitude)`
-///
-/// The returned list is sorted according to the distance, with the nearest
-/// document to the coordinate (*latitude*, *longitude*) coming first.
-/// If there are near documents of equal distance, documents are chosen randomly
-/// from this set until the limit is reached. It is possible to change the limit
-/// using the *limit* operator.
-///
-/// In order to use the *near* operator, a geo index must be defined for the
-/// collection. This index also defines which attribute holds the coordinates
-/// for the document.  If you have more then one geo-spatial index, you can use
-/// the *geo* operator to select a particular index.
-///
-/// *Note*: `near` does not support negative skips.
-//     However, you can still use `limit` followed to skip.
-///
-/// `collection.near(latitude, longitude).limit(limit)`
-///
-/// Limits the result to limit documents instead of the default 100.
-///
-/// *Note*: Unlike with multiple explicit limits, `limit` will raise
-/// the implicit default limit imposed by `within`.
-///
-/// `collection.near(latitude, longitude).distance()`
-///
-/// This will add an attribute `distance` to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// `collection.near(latitude, longitude).distance(name)`
-///
-/// This will add an attribute *name* to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// Note: the *near* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection using the near operator is
-/// to use the AQL *NEAR* function in an [AQL query](../Aql/GeoFunctions.md) as follows: 
-///
-///     FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) 
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// To get the nearest two locations:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{007_collectionNear}
-/// ~ db._create("geo");
-///   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
-///   |for (var i = -90;  i <= 90;  i += 10) { 
-///   |   for (var j = -180; j <= 180; j += 10) {
-///   |     db.geo.save({
-///   |        name : "Name/" + i + "/" + j,
-///   |        loc: [ i, j ] });
-///   } }
-///   db.geo.near(0, 0).limit(2).toArray();
-/// ~ db._drop("geo");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// If you need the distance as well, then you can use the `distance`
-/// operator:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{008_collectionNearDistance}
-/// ~ db._create("geo");
-///   db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
-///   |for (var i = -90;  i <= 90;  i += 10) {
-///   |  for (var j = -180; j <= 180; j += 10) {
-///   |     db.geo.save({
-///   |         name : "Name/" + i + "/" + j,
-///   |         loc: [ i, j ] });
-///   } }
-///   db.geo.near(0, 0).distance().limit(2).toArray();
-/// ~ db._drop("geo");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionNear
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.near = function (lat, lon) {
@@ -729,53 +312,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a within query for a collection
-/// @startDocuBlock collectionWithin
-/// `collection.within(latitude, longitude, radius)`
-///
-/// This will find all documents within a given radius around the coordinate
-/// (*latitude*, *longitude*). The returned array is sorted by distance,
-/// beginning with the nearest document.
-///
-/// In order to use the *within* operator, a geo index must be defined for the
-/// collection. This index also defines which attribute holds the coordinates
-/// for the document.  If you have more then one geo-spatial index, you can use
-/// the `geo` operator to select a particular index.
-///
-///
-/// `collection.within(latitude, longitude, radius).distance()`
-///
-/// This will add an attribute `_distance` to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// `collection.within(latitude, longitude, radius).distance(name)`
-///
-/// This will add an attribute *name* to all documents returned, which
-/// contains the distance between the given point and the document in meters.
-///
-/// Note: the *within* simple query function is **deprecated** as of ArangoDB 2.6. 
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for retrieving documents from a collection using the within operator  is
-/// to use the AQL *WITHIN* function in an [AQL query](../Aql/GeoFunctions.md) as follows: 
-///
-///     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// To find all documents within a radius of 2000 km use:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{009_collectionWithin}
-/// ~ db._create("geo");
-/// ~ db.geo.ensureIndex({ type: "geo", fields: [ "loc" ] });
-/// |~ for (var i = -90;  i <= 90;  i += 10) {
-/// |  for (var j = -180; j <= 180; j += 10) {
-///       db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
-///   db.geo.within(0, 0, 2000 * 1000).distance().toArray();
-/// ~ db._drop("geo");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionWithin
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
@@ -791,41 +328,7 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock collectionIterate
-/// @brief iterates over some elements of a collection
-/// `collection.iterate(iterator, options)`
-///
-/// Iterates over some elements of the collection and apply the function
-/// *iterator* to the elements. The function will be called with the
-/// document as first argument and the current number (starting with 0)
-/// as second argument.
-///
-/// *options* must be an object with the following attributes:
-///
-/// - *limit* (optional, default none): use at most *limit* documents.
-///
-/// - *probability* (optional, default all): a number between *0* and
-///   *1*. Documents are chosen with this probability.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{accessViaGeoIndex}
-/// ~db._create("example")
-/// |for (i = -90;  i <= 90;  i += 10) {
-/// |  for (j = -180;  j <= 180;  j += 10) {
-/// |    db.example.save({ name : "Name/" + i + "/" + j,
-/// |                      home : [ i, j ],
-/// |                      work : [ -i, -j ] });
-/// |  }
-/// |}
-///
-///  db.example.ensureIndex({ type: "geo", fields: [ "home" ] });
-///  |items = db.example.getIndexes().map(function(x) { return x.id; });
-///  db.example.index(items[1]);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionIterate
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.iterate = function (iterator, options) {
@@ -899,46 +402,9 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  document methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes documents matching an example
-/// @startDocuBlock documentsCollectionRemoveByExample
-/// `collection.removeByExample(example)`
-///
-/// Removes all documents matching an example.
-///
-/// `collection.removeByExample(document, waitForSync)`
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document deletion operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.removeByExample(document, waitForSync, limit)`
-///
-/// The optional *limit* parameter can be used to restrict the number of
-/// removals to the specified value. If *limit* is specified but less than the
-/// number of documents in the collection, it is undefined which documents are
-/// removed.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
-/// ~ db._create("example");
-/// ~ db.example.save({ Hello : "world" });
-///   db.example.removeByExample( {Hello : "world"} );
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionRemoveByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByExample = function (example, waitForSync, limit) {
@@ -946,44 +412,7 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces documents matching an example
-/// @startDocuBlock documentsCollectionReplaceByExample
-/// `collection.replaceByExample(example, newValue)`
-///
-/// Replaces all documents matching an example with a new document body.
-/// The entire document body of each document matching the *example* will be
-/// replaced with *newValue*. The document meta-attributes such as *_id*,
-/// *_key*, *_from*, *_to* will not be replaced.
-///
-/// `collection.replaceByExample(document, newValue, waitForSync)`
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document replacement operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.replaceByExample(document, newValue, waitForSync, limit)`
-///
-/// The optional *limit* parameter can be used to restrict the number of
-/// replacements to the specified value. If *limit* is specified but less than
-/// the number of documents in the collection, it is undefined which documents are
-/// replaced.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
-/// ~ db._create("example");
-///   db.example.save({ Hello : "world" });
-///   db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionReplaceByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.replaceByExample = function (example, newValue, waitForSync, limit) {
@@ -991,75 +420,11 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief partially updates documents matching an example
-/// @startDocuBlock documentsCollectionUpdateByExample
-/// `collection.updateByExample(example, newValue)`
-///
-/// Partially updates all documents matching an example with a new document body.
-/// Specific attributes in the document body of each document matching the
-/// *example* will be updated with the values from *newValue*.
-/// The document meta-attributes such as *_id*, *_key*, *_from*,
-/// *_to* cannot be updated.
-///
-/// Partial update could also be used to append new fields,
-/// if there were no old field with same name.
-///
-/// `collection.updateByExample(document, newValue, keepNull, waitForSync)`
-///
-/// The optional *keepNull* parameter can be used to modify the behavior when
-/// handling *null* values. Normally, *null* values are stored in the
-/// database. By setting the *keepNull* parameter to *false*, this behavior
-/// can be changed so that all attributes in *data* with *null* values will
-/// be removed from the target document.
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document replacement operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.updateByExample(document, newValue, keepNull, waitForSync, limit)`
-///
-/// The optional *limit* parameter can be used to restrict the number of
-/// updates to the specified value. If *limit* is specified but less than
-/// the number of documents in the collection, it is undefined which documents are
-/// updated.
-///
-/// `collection.updateByExample(document, newValue, options)`
-///
-/// Using this variant, the options for the operation can be passed using
-/// an object with the following sub-attributes:
-/// - *keepNull*
-/// - *waitForSync*
-/// - *limit*
-/// - *mergeObjects*
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
-/// ~ db._create("example");
-///   db.example.save({ Hello : "world", foo : "bar" });
-///   db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
-///   db.example.byExample({ Hello: "foo" }).toArray()
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionUpdateByExample
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
   throw "cannot call abstract updateExample function";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:

@@ -32,13 +32,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var testHelper = require("@arangodb/test-helper").Helper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                collection methods
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              volatile collections
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: volatile collections
@@ -200,9 +194,6 @@ function CollectionVolatileSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -211,9 +202,4 @@ function CollectionVolatileSuite () {
 jsunity.run(CollectionVolatileSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

@@ -35,9 +35,6 @@ var db = arangodb.db;
 var internal = require("internal");
 var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                       throw-collection-not-loaded
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -237,9 +234,6 @@ function ThrowCollectionNotLoadedSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -248,9 +242,4 @@ function ThrowCollectionNotLoadedSuite () {
 jsunity.run(ThrowCollectionNotLoadedSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

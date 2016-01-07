@@ -7539,7 +7539,3 @@ jsunity.run(ahuacatlRangesCombined6TestSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

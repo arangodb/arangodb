@@ -33,9 +33,6 @@ var internal = require("internal");
 var errors = internal.errors;
 var testHelper = require("@arangodb/test-helper").Helper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     basic methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
@@ -892,9 +889,6 @@ function HashIndexSuite() {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -904,7 +898,3 @@ jsunity.run(HashIndexSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

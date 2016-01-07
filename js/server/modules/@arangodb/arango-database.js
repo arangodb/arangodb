@@ -33,13 +33,7 @@ module.isSystem = true;
 
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    ArangoDatabase
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -54,9 +48,6 @@ var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 var ArangoError = require("@arangodb").ArangoError;
 var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a database
@@ -74,9 +65,6 @@ ArangoDatabase.prototype.toString = function(seen, path, names, level) {
   return "[ArangoDatabase \"" + this._name() + "\"]";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   query functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory method to create a new statement
@@ -122,90 +110,18 @@ ArangoDatabase.prototype._explain = function (query, bindVars, options) {
   require("@arangodb/aql/explainer").explain(query);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      transactions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a transaction
-/// @startDocuBlock executeTransaction
-/// `db._executeTransaction(object)`
-///
-/// Executes a server-side transaction, as specified by *object*.
-///
-/// *object* must have the following attributes:
-/// - *collections*: a sub-object that defines which collections will be
-///   used in the transaction. *collections* can have these attributes:
-///   - *read*: a single collection or a list of collections that will be
-///     used in the transaction in read-only mode
-///   - *write*: a single collection or a list of collections that will be
-///     used in the transaction in write or read mode.
-/// - *action*: a Javascript function or a string with Javascript code
-///   containing all the instructions to be executed inside the transaction.
-///   If the code runs through successfully, the transaction will be committed
-///   at the end. If the code throws an exception, the transaction will be
-///   rolled back and all database operations will be rolled back.
-///
-/// Additionally, *object* can have the following optional attributes:
-/// - *waitForSync*: boolean flag indicating whether the transaction
-///   is forced to be synchronous.
-/// - *lockTimeout*: a numeric value that can be used to set a timeout for
-///   waiting on collection locks. If not specified, a default value will be
-///   used. Setting *lockTimeout* to *0* will make ArangoDB not time
-///   out waiting for a lock.
-/// - *params*: optional arguments passed to the function specified in
-///   *action*.
-///
-/// @endDocuBlock
+/// @brief was docuBlock executeTransaction
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._executeTransaction = function (data) {
   return TRANSACTION(data);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              collection functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops a collection
-/// @startDocuBlock collectionDatabaseDrop
-/// `db._drop(collection)`
-///
-/// Drops a *collection* and all its indexes.
-///
-/// `db._drop(collection-identifier)`
-///
-/// Drops a collection identified by *collection-identifier* and all its
-/// indexes. No error is thrown if there is no such collection.
-///
-/// `db._drop(collection-name)`
-///
-/// Drops a collection named *collection-name* and all its indexes. No error
-/// is thrown if there is no such collection.
-///
-/// *Examples*
-///
-/// Drops a collection:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDrop}
-/// ~ db._create("example");
-///   col = db.example;
-///   db._drop(col);
-///   col;
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Drops a collection identified by name:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDropName}
-/// ~ db._create("example");
-///   col = db.example;
-///   db._drop("example");
-///   col;
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionDatabaseDrop
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._drop = function(name) {
@@ -223,50 +139,7 @@ ArangoDatabase.prototype._drop = function(name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief truncates a collection
-/// @startDocuBlock collectionDatabaseTruncate
-/// `db._truncate(collection)`
-///
-/// Truncates a *collection*, removing all documents but keeping all its
-/// indexes.
-///
-/// `db._truncate(collection-identifier)`
-///
-/// Truncates a collection identified by *collection-identified*. No error is
-/// thrown if there is no such collection.
-///
-/// `db._truncate(collection-name)`
-///
-/// Truncates a collection named *collection-name*. No error is thrown if
-/// there is no such collection.
-///
-/// @EXAMPLES
-///
-/// Truncates a collection:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncate}
-/// ~ db._create("example");
-///   col = db.example;
-///   col.save({ "Hello" : "World" });
-///   col.count();
-///   db._truncate(col);
-///   col.count();
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Truncates a collection identified by name:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseTruncateName}
-/// ~ db._create("example");
-///   col = db.example;
-///   col.save({ "Hello" : "World" });
-///   col.count();
-///   db._truncate("example");
-///   col.count();
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionDatabaseTruncate
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._truncate = function(name) {
@@ -283,53 +156,19 @@ ArangoDatabase.prototype._truncate = function(name) {
   collection.truncate();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   index functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index id regex
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an index
-/// @startDocuBlock IndexVerify
-///
-/// So you've created an index, and since its maintainance isn't for free,
-/// you definitely want to know whether your query can utilize it.
-///
-/// You can use explain to verify whether **skiplists** or **hash indexes** are 
-/// used (if you omit `colors: false` you will get nice colors in ArangoShell):
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{IndexVerify}
-/// ~db._create("example");
-/// var explain = require("@arangodb/aql/explainer").explain;
-/// db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
-/// explain("FOR doc IN example FILTER doc.a < 23 RETURN doc", {colors:false});
-/// ~db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock IndexVerify
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an index
-/// @startDocuBlock IndexHandle
-/// `db._index(index-handle)`
-///
-/// Returns the index with *index-handle* or null if no such index exists.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{IndexHandle}
-/// ~db._create("example");
-/// db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
-/// var indexInfo = db.example.getIndexes().map(function(x) { return x.id; });
-/// indexInfo;
-/// db._index(indexInfo[0])
-/// db._index(indexInfo[1])
-/// ~db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock IndexHandle
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._index = function(id) {
@@ -371,29 +210,7 @@ ArangoDatabase.prototype._index = function(id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops an index
-/// @startDocuBlock dropIndex
-/// `db._dropIndex(index)`
-///
-/// Drops the *index*.  If the index does not exist, then *false* is
-/// returned. If the index existed and was dropped, then *true* is
-/// returned.
-///
-/// `db._dropIndex(index-handle)`
-///
-/// Drops the index with *index-handle*.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dropIndex}
-/// ~db._create("example");
-/// db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
-/// var indexInfo = db.example.getIndexes();
-/// indexInfo;
-/// db._dropIndex(indexInfo[0])
-/// db._dropIndex(indexInfo[1].id)
-/// indexInfo = db.example.getIndexes();
-/// ~db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock dropIndex
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._dropIndex = function (id) {
@@ -423,32 +240,13 @@ ArangoDatabase.prototype._dropIndex = function (id) {
   return col.dropIndex(id);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                endpoint functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a list of all endpoints
-/// @startDocuBlock listEndpoints
-/// `db._listEndpoints()`
-///
-/// Returns a list of all endpoints and their mapped databases.
-///
-/// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch
-/// to it using the "db._useDatabase" method.
-/// @endDocuBlock
+/// @brief was docuBlock listEndpoints
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._listEndpoints = function () {
   return internal._listEndpoints();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:

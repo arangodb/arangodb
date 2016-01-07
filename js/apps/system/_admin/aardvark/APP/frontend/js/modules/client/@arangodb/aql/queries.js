@@ -31,9 +31,6 @@ module.define("@arangodb/aql/queries", function(exports, module) {
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 module "@arangodb/aql/queries"
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clears the slow query log
@@ -113,13 +110,5 @@ exports.kill = function (id) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
-// End:
 
 });

@@ -35,9 +35,6 @@ var actions = require("@arangodb/actions");
 var STATISTICS_INTERVAL = require("@arangodb/statistics").STATISTICS_INTERVAL;
 var STATISTICS_HISTORY_INTERVAL = require("@arangodb/statistics").STATISTICS_HISTORY_INTERVAL;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief percentChange
@@ -414,9 +411,6 @@ function computeStatisticsLong (attrs, clusterId) {
 }
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 actions.defineHttp({
   url : "_admin/statistics/short",

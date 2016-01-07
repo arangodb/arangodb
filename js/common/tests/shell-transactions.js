@@ -34,9 +34,6 @@ var internal = require("internal");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                transactions tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -405,9 +402,6 @@ function TransactionsImplicitCollectionsSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -418,7 +412,3 @@ jsunity.run(TransactionsImplicitCollectionsSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

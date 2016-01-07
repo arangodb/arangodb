@@ -34,9 +34,6 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        ShapedJson
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1064,9 +1061,6 @@ function GeoShapedJsonSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -1077,9 +1071,4 @@ jsunity.run(EdgeShapedJsonSuite);
 jsunity.run(GeoShapedJsonSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

@@ -30,13 +30,7 @@
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 module "@arangodb/replication"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 var logger  = { };
 var applier = { };
@@ -158,9 +152,6 @@ applier.properties = function (config) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   other functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
@@ -244,9 +235,6 @@ var serverId = function () {
   return requestResult.serverId;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    module exports
-// -----------------------------------------------------------------------------
 
 exports.logger          = logger;
 exports.applier         = applier;
@@ -255,12 +243,4 @@ exports.syncCollection  = syncCollection;
 exports.getSyncResult   = getSyncResult;
 exports.serverId        = serverId;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
-// End:
 

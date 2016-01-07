@@ -35,9 +35,6 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var wait = require("internal").wait;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        attributes
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attributes
@@ -586,9 +583,6 @@ function AttributesSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -598,7 +592,3 @@ jsunity.run(AttributesSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

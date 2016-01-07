@@ -41,9 +41,6 @@ catch (err) {
   // ignore any errors
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a JSLint test on a file
@@ -111,14 +108,7 @@ function RunCommandLineTests (options) {
   internal.setUnitTestsResult(result);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.runTest = RunTest;
 exports.runCommandLineTests = RunCommandLineTests;
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

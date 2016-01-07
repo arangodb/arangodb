@@ -217,9 +217,6 @@ var testRuleHasEffectButSortsStill2 = function (testParams, testMethodStr, testM
 };
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  sortToIndexRange
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this sort is replaceable by an index.
@@ -284,9 +281,6 @@ var testJoinNonIndexed = function (testParams, testMethodStr, testMethod) {
 };
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      toIndexRange
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test in detail that an index range can be used for an equality filter.
@@ -450,7 +444,3 @@ repgen.generatePerfReportJTL("join", ret);
 
 
 return ret;
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

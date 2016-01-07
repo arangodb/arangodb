@@ -28,9 +28,6 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         Kickstarter functionality
-// -----------------------------------------------------------------------------
 
 var download = require("internal").download;
 var executeExternal = require("internal").executeExternal;
@@ -1001,23 +998,7 @@ upgradeActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Cluster_Kickstarter_Constructor
-///
-/// `new require("@arangodb/cluster").Kickstarter(plan)`
-///
-/// This constructor constructs a kickstarter object. Its first
-/// argument is a cluster plan as for example provided by the planner
-/// (see Cluster Planner Constructor and the general
-/// explanations before this reference). The second argument is
-/// optional and is taken to be "me" if omitted, it is the ID of the
-/// dispatcher this object should consider itself to be. If the plan
-/// contains startup commands for the dispatcher with this ID, these
-/// commands are executed immediately. Otherwise they are handed over
-/// to another responsible dispatcher via a REST call.
-///
-/// The resulting object of this constructors allows to launch,
-/// shutdown, relaunch the cluster described in the plan.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_Cluster_Kickstarter_Constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 function Kickstarter (clusterPlan, myname) {
@@ -1031,29 +1012,7 @@ function Kickstarter (clusterPlan, myname) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Kickstarter_prototype_launch
-///
-/// `Kickstarter.launch()`
-///
-/// This starts up a cluster as described in the plan which was given to
-/// the constructor. To this end, other dispatchers are contacted as
-/// necessary. All startup commands for the local dispatcher are
-/// executed immediately.
-///
-/// The result is an object that contains information about the started
-/// processes, this object is also stored in the Kickstarter object
-/// itself. We do not go into details here about the data structure,
-/// but the most important information are the process IDs of the
-/// started processes. The corresponding
-/// [see shutdown method](../ModulePlanner/README.md#shutdown) needs this 
-/// information to shut down all processes.
-///
-/// Note that all data in the DBservers and all log files and all agency
-/// information in the cluster is deleted by this call. This is because
-/// it is intended to set up a cluster for the first time. See
-/// the [relaunch method](../ModulePlanner/README.md#relaunch)
-/// for restarting a cluster without data loss.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_Kickstarter_prototype_launch
 ////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.launch = function () {
@@ -1131,28 +1090,7 @@ Kickstarter.prototype.launch = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Kickstarter_prototype_relaunch
-///
-/// `Kickstarter.relaunch()`
-///
-/// This starts up a cluster as described in the plan which was given to
-/// the constructor. To this end, other dispatchers are contacted as
-/// necessary. All startup commands for the local dispatcher are
-/// executed immediately.
-///
-/// The result is an object that contains information about the started
-/// processes, this object is also stored in the Kickstarter object
-/// itself. We do not go into details here about the data structure,
-/// but the most important information are the process IDs of the
-/// started processes. The corresponding
-/// [shutdown method ](../ModulePlanner/README.md#shutdown) needs this information to
-/// shut down all processes.
-///
-/// Note that this methods needs that all data in the DBservers and the
-/// agency information in the cluster are already set up properly. See
-/// the [launch method](../ModulePlanner/README.md#launch) for
-/// starting a cluster for the first time.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_Kickstarter_prototype_relaunch
 ////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.relaunch = function (username, password) {
@@ -1237,15 +1175,7 @@ Kickstarter.prototype.relaunch = function (username, password) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Kickstarter_prototype_shutdown
-///
-/// `Kickstarter.shutdown()`
-///
-/// This shuts down a cluster as described in the plan which was given to
-/// the constructor. To this end, other dispatchers are contacted as
-/// necessary. All processes in the cluster are gracefully shut down
-/// in the right order.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_Kickstarter_prototype_shutdown
 ////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.shutdown = function() {
@@ -1321,16 +1251,7 @@ Kickstarter.prototype.shutdown = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Kickstarter_prototype_cleanup
-///
-/// `Kickstarter.cleanup()`
-///
-/// This cleans up all the data and logs of a previously shut down cluster.
-/// To this end, other dispatchers are contacted as necessary.
-/// [Use shutdown](../ModulePlanner/README.md#shutdown) first and
-/// use with caution, since potentially a lot of data is being erased with
-/// this call!
-/// @endDocuBlock
+/// @brief was docuBlock JSF_Kickstarter_prototype_cleanup
 ////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.cleanup = function() {
@@ -1402,15 +1323,7 @@ Kickstarter.prototype.cleanup = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Kickstarter_prototype_isHealthy
-///
-/// `Kickstarter.isHealthy()`
-///
-/// This checks that all processes belonging to a running cluster are
-/// healthy. To this end, other dispatchers are contacted as necessary.
-/// At this stage it is only checked that the processes are still up and
-/// running.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_Kickstarter_prototype_isHealthy
 ////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.isHealthy = function() {
@@ -1495,33 +1408,7 @@ Kickstarter.prototype.isHealthy = function() {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_Kickstarter_prototype_upgrade
-///
-/// `Kickstarter.upgrade(username, passwd)`
-///
-/// This performs an upgrade procedure on a cluster as described in
-/// the plan which was given to the constructor. To this end, other
-/// dispatchers are contacted as necessary. All commands for the local
-/// dispatcher are executed immediately. The basic approach for the
-/// upgrade is as follows: The agency is started first (exactly as
-/// in relaunch), no configuration is sent there (exactly as in the
-/// relaunch action), all servers are first started with the option
-/// "--upgrade" and then normally. In the end, the upgrade-database.js
-/// script is run on one of the coordinators, as in the launch action.
-///
-/// The result is an object that contains information about the started
-/// processes, this object is also stored in the Kickstarter object
-/// itself. We do not go into details here about the data structure,
-/// but the most important information are the process IDs of the
-/// started processes. The corresponding
-/// [shutdown method](../ModulePlanner/README.md#shutdown) needs
-/// this information to shut down all processes.
-///
-/// Note that this methods needs that all data in the DBservers and the
-/// agency information in the cluster are already set up properly. See
-/// the [launch method](../ModulePlanner/README.md#launch) for
-/// starting a cluster for the first time.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_Kickstarter_prototype_upgrade
 ////////////////////////////////////////////////////////////////////////////////
 
 Kickstarter.prototype.upgrade = function (username, password) {
@@ -1606,12 +1493,3 @@ Kickstarter.prototype.upgrade = function (username, password) {
 };
 
 exports.Kickstarter = Kickstarter;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-/// Local Variables:
-/// mode: outline-minor
-/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-/// End:

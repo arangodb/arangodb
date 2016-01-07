@@ -29,9 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           Imports
-// -----------------------------------------------------------------------------
 
 var arangodb = require("@arangodb");
 var ArangoError = arangodb.ArangoError;
@@ -43,9 +40,6 @@ var is = require("@arangodb/is");
 var console = require("console");
 var actions = require("@arangodb/actions");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief excludes certain files
@@ -386,9 +380,6 @@ var validateRoute = function(route) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the exports of an app
@@ -648,19 +639,8 @@ var mountController = function (service, routes, mount, filename) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           Exports
-// -----------------------------------------------------------------------------
 
 exports.exportApp = exportApp;
 exports.routeApp = routeApp;
 exports.__test_transformControllerToRoute = transformControllerToRoute;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-/// Local Variables:
-/// mode: outline-minor
-/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-/// End:

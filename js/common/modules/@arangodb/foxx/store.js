@@ -28,15 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  global variables
-// -----------------------------------------------------------------------------
 
 var checkedFishBowl = false;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           imports
-// -----------------------------------------------------------------------------
 
 const arangodb = require("@arangodb");
 const plainServerVersion = arangodb.plainServerVersion;
@@ -47,9 +41,6 @@ const throwDownloadError = arangodb.throwDownloadError;
 const utils = require("@arangodb/foxx/manager-utils");
 const semver = require('semver');
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the fishbowl repository
@@ -252,9 +243,6 @@ var updateFishbowlFromZip = function(filename) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the search result for FOXX applications
@@ -570,9 +558,6 @@ var info = function (name) {
   arangodb.printf("\n");
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 export public API
-// -----------------------------------------------------------------------------
 
 exports.available = available;
 exports.availableJson = availableJson;
@@ -586,6 +571,4 @@ exports.update = update;
 // Temporary export to avoid breaking the client
 exports.compareVersions = compareVersions;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+

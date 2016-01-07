@@ -38,9 +38,6 @@ var DEFAULT_KEY = "default";
 var API = "_api/structure";
 var checkedIndex = false;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 /*
 THIS MODULE IS UNOFFICIAL AND DEPRECATED
@@ -1191,9 +1188,6 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @start DocuBlock JSF_read_single_document
@@ -1918,11 +1912,4 @@ actions.defineHttp({
   }
 });
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

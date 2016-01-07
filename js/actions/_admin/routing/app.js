@@ -33,25 +33,9 @@ var console = require("console");
 
 var actions = require("@arangodb/actions");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_routing_reloads
-/// @brief Reload the routing table.
-///
-/// @RESTHEADER{POST /_admin/routing/reload, Reloads the routing information}
-///
-/// @RESTDESCRIPTION
-///
-/// Reloads the routing information from the collection *routing*.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Routing information was reloaded successfully.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_routing_reloads
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -78,11 +62,4 @@ actions.defineHttp({
   }
 });
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|/// @startDocuBlock\\|// --SECTION--\\|/// @\\}"
-// End:

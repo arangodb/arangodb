@@ -39,9 +39,6 @@ var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
 var slaveEndpoint = masterEndpoint.replace(/:3(\d+)$/, ':4$1');
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 replication tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -1782,9 +1779,6 @@ function ReplicationSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -1794,7 +1788,3 @@ jsunity.run(ReplicationSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

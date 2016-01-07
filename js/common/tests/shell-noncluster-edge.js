@@ -35,9 +35,6 @@ var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var wait = require("internal").wait;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                collection methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: normal operations
@@ -167,9 +164,6 @@ function CollectionEdgeSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -179,7 +173,3 @@ jsunity.run(CollectionEdgeSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

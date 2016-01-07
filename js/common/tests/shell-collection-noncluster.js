@@ -35,9 +35,6 @@ var testHelper = require("@arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                collection methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: collection
@@ -458,9 +455,6 @@ function CollectionSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -470,7 +464,3 @@ jsunity.run(CollectionSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

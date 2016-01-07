@@ -31,9 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     basic methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
@@ -206,9 +203,6 @@ function UniqueConstraintSuite() {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -218,7 +212,3 @@ jsunity.run(UniqueConstraintSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

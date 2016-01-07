@@ -42,25 +42,9 @@ const metadataSchema = {
   _to: joi.string().optional()
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             Model
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_initializer
-///
-/// `new FoxxModel(data)`
-///
-/// If you initialize a model, you can give it initial *data* as an object.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// instance = new Model({
-///   a: 1
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_initializer
 ////////////////////////////////////////////////////////////////////////////////
 
 function excludeExtraAttributes(attributes, model) {
@@ -76,36 +60,19 @@ function excludeExtraAttributes(attributes, model) {
 function Model(attributes) {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_attributes
-///
-/// `model.attributes`
-///
-/// The *attributes* property is the internal hash containing the model's state.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_attributes
 ////////////////////////////////////////////////////////////////////////////////
 
   this.attributes = {};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_isvalid
-///
-/// `model.isValid`
-///
-/// The *isValid* flag indicates whether the model's state is currently valid.
-/// If the model does not have a schema, it will always be considered valid.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_isvalid
 ////////////////////////////////////////////////////////////////////////////////
 
   this.isValid = true;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_errors
-///
-/// `model.errors`
-///
-/// The *errors* property maps the names of any invalid attributes to their
-/// corresponding validation error.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_errors
 ////////////////////////////////////////////////////////////////////////////////
 
   this.errors = {};
@@ -132,22 +99,7 @@ Model.prototype = Object.create(EventEmitter.prototype);
 _.extend(Model.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_get
-///
-/// `FoxxModel#get(name)`
-///
-/// Get the value of an attribute
-///
-/// @EXAMPLES
-///
-/// ```js
-/// instance = new Model({
-///   a: 1
-/// });
-///
-/// instance.get("a");
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_get
 ////////////////////////////////////////////////////////////////////////////////
 
   get(attributeName) {
@@ -155,25 +107,7 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_set
-///
-/// `FoxxModel#set(name, value)`
-///
-/// Set the value of an attribute or multiple attributes at once
-///
-/// @EXAMPLES
-///
-/// ```js
-/// instance = new Model({
-///   a: 1
-/// });
-///
-/// instance.set("a", 2);
-/// instance.set({
-///   b: 2
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_set
 ////////////////////////////////////////////////////////////////////////////////
 
   set(attributeName, value) {
@@ -212,23 +146,7 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_has
-///
-/// `FoxxModel#has(name)`
-///
-/// Returns true if the attribute is set to a non-null or non-undefined value.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// instance = new Model({
-///   a: 1
-/// });
-///
-/// instance.has("a"); //=> true
-/// instance.has("b"); //=> false
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_has
 ////////////////////////////////////////////////////////////////////////////////
 
   has(attributeName) {
@@ -237,12 +155,7 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_forDB
-///
-/// `FoxxModel#forDB()`
-///
-/// Return a copy of the model which can be saved into ArangoDB
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_forDB
 ////////////////////////////////////////////////////////////////////////////////
 
   forDB() {
@@ -250,12 +163,7 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_forClient
-///
-/// `FoxxModel#forClient()`
-///
-/// Return a copy of the model which you can send to the client.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_forClient
 ////////////////////////////////////////////////////////////////////////////////
 
   forClient() {
@@ -274,25 +182,9 @@ Model.fromClient = function (attributes) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_extend
-///
-/// `FoxxModel#extend(instanceProperties, classProperties)`
-///
-/// Extend the Model prototype to add or overwrite methods.
-/// The first object contains the properties to be defined on the instance,
-/// the second object those to be defined on the prototype.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_model_extend
 ////////////////////////////////////////////////////////////////////////////////
 
 Model.extend = extend;
 
 exports.Model = Model;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-/// Local Variables:
-/// mode: outline-minor
-/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-/// End:

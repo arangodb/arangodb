@@ -2368,11 +2368,4 @@ exports.testFuncs = testFuncs;
 exports.UnitTest = UnitTest;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:

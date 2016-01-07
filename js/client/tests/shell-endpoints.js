@@ -35,9 +35,6 @@ var db = arangodb.db;
 var ERRORS = arangodb.errors;
 var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   endpoints tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -99,9 +96,6 @@ function EndpointsSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -110,9 +104,4 @@ function EndpointsSuite () {
 jsunity.run(EndpointsSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

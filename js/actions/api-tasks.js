@@ -34,72 +34,11 @@ var tasks = require("@arangodb/tasks");
 var API = "_api/tasks";
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_api_tasks
-/// @brief Retrieves  one currently active server task
-///
-/// @RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id}
-/// 
-/// @RESTURLPARAM{id,string,required}
-/// The id of the task to fetch.
-///
-/// @RESTDESCRIPTION
-/// fetches one existing tasks on the server specified by *id*
-///
-/// @RESTRETURNCODE{200}
-/// The requested task
-///
-/// @EXAMPLES
-///
-/// Fetching a single task by its id
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksListOne}
-///     var url = "/_api/tasks/statistics-average-collector";
-///
-///     var response = logCurlRequest('GET', url);
-///
-///     assert(response.code === 200);
-///     logJsonResponse(response);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// trying to fetch a non-existing task
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksListNonExisting}
-///     var url = "/_api/tasks/non-existing-task";
-///
-///     var response = logCurlRequest('GET', url);
-///
-///     assert(response.code === 404);
-///     logJsonResponse(response);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_api_tasks
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_api_tasks_all
-/// @brief Retrieves all currently active server tasks
-///
-/// @RESTHEADER{GET /_api/tasks/, Fetch all tasks or one task}
-/// 
-/// @RESTDESCRIPTION
-/// fetches all existing tasks on the server
-///
-/// @RESTRETURNCODE{200}
-/// The list of tasks
-///
-/// @EXAMPLES
-///
-/// Fetching all tasks
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksListAll}
-///     var url = "/_api/tasks";
-///
-///     var response = logCurlRequest('GET', url);
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_api_tasks_all
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_tasks (req, res) {
@@ -122,115 +61,11 @@ function get_api_tasks (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_post_api_new_tasks
-/// @brief creates a new task
-///
-/// @RESTHEADER{POST /_api/tasks, creates a task}
-///
-/// @RESTBODYPARAM{name,string,required,string}
-/// The name of the task
-///
-/// @RESTBODYPARAM{command,string,required,string}
-/// The JavaScript code to be executed
-///
-/// @RESTBODYPARAM{params,string,required,string}
-/// The parameters to be passed into command
-///
-/// @RESTBODYPARAM{period,integer,optional,int64}
-/// number of seconds between the executions
-///
-/// @RESTBODYPARAM{offset,integer,optional,int64}
-/// Number of seconds initial delay 
-///
-/// @RESTDESCRIPTION
-/// creates a new task with a generated id
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{400}
-/// If the post body is not accurate, a *HTTP 400* is returned.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksCreate}
-///     var url = "/_api/tasks/";
-///
-///     // Note: prints stuff if server is running in non-daemon mode.
-///     var sampleTask = {
-///       name: "SampleTask",
-///       command: "(function(params) { require('internal').print(params); })(params)",
-///       params: { "foo": "bar", "bar": "foo"},
-///       period: 2
-///     }
-///     var response = logCurlRequest('POST', url,
-///                                   sampleTask);
-///
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-///
-///     // Cleanup:
-///     logCurlRequest('DELETE', url + JSON.parse(response.body).id);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_post_api_new_tasks
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_put_api_new_tasks
-/// @brief registers a new task with a pre-defined id
-///
-/// @RESTHEADER{PUT /_api/tasks/{id}, creates a task with id}
-/// 
-/// @RESTURLPARAM{id,string,required}
-/// The id of the task to create
-///
-/// @RESTBODYPARAM{name,string,required,string}
-/// The name of the task
-///
-/// @RESTBODYPARAM{command,string,required,string}
-/// The JavaScript code to be executed
-///
-/// @RESTBODYPARAM{params,string,required,string}
-/// The parameters to be passed into command
-///
-/// @RESTBODYPARAM{period,integer,optional,int64}
-/// number of seconds between the executions
-///
-/// @RESTBODYPARAM{offset,integer,optional,int64}
-/// Number of seconds initial delay 
-///
-/// @RESTDESCRIPTION
-/// registers a new task with the specified id
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{400}
-/// If the task *id* already exists or the rest body is not accurate, *HTTP 400* is returned.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksPutWithId}
-///     var url = "/_api/tasks/";
-///
-///     // Note: prints stuff if server is running in non-daemon mode.
-///     var sampleTask = {
-///       id: "SampleTask",
-///       name: "SampleTask",
-///       command: "(function(params) { require('internal').print(params); })(params)",
-///       params: { "foo": "bar", "bar": "foo"},
-///       period: 2
-///     }
-///     var response = logCurlRequest('PUT', url + 'sampleTask',
-///                                   sampleTask);
-///     assert(response.code === 200);
-///
-///     logJsonResponse(response);
-///
-///     // Cleanup:
-///     curlRequest('DELETE', url + 'sampleTask');
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_put_api_new_tasks
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_task_register (req, res, byId) {
@@ -257,60 +92,7 @@ function post_api_task_register (req, res, byId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_delete_api_tasks
-/// @brief deletes one currently active server task
-///
-/// @RESTHEADER{DELETE /_api/tasks/{id}, deletes the task with id}
-/// 
-/// @RESTURLPARAM{id,string,required}
-/// The id of the task to delete.
-///
-/// @RESTDESCRIPTION
-/// Deletes the task identified by *id* on the server. 
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{404}
-/// If the task *id* is unknown, then an *HTTP 404* is returned.
-///
-/// @EXAMPLES
-///
-/// trying to delete non existing task
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksDeleteFail}
-///     var url = "/_api/tasks/NoTaskWithThatName";
-///
-///     var response = logCurlRequest('DELETE', url);
-///
-///     assert(response.code === 404);
-///
-///     logJsonResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Remove existing Task
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestTasksDelete}
-///     var url = "/_api/tasks/";
-///
-///     var sampleTask = {
-///       id: "SampleTask",
-///       name: "SampleTask",
-///       command: "2+2;",
-///       period: 2
-///     }
-///     // Ensure it's really not there:
-///     curlRequest('DELETE', url + sampleTask.id);
-///     // put in something we may delete:
-///     curlRequest('PUT', url + sampleTask.id,
-///                 sampleTask);
-///
-///     var response = logCurlRequest('DELETE', url + sampleTask.id);
-///
-///     assert(response.code === 200);
-///     logJsonResponse(response);
-///
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_delete_api_tasks
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_task (req, res) {
@@ -361,11 +143,4 @@ actions.defineHttp({
   }
 });
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

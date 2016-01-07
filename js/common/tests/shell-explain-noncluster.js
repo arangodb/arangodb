@@ -35,9 +35,6 @@ var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     explain tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -463,9 +460,6 @@ function ExplainSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -474,7 +468,3 @@ function ExplainSuite () {
 jsunity.run(ExplainSuite);
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

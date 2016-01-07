@@ -43,9 +43,6 @@ var arangodb = require("@arangodb");
 var foxxManager = require("@arangodb/foxx/manager");
 var ErrorStackParser = require("error-stack-parser");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current routing tree
@@ -99,9 +96,6 @@ var RoutingList = {};
 
 var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ];
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                   private functions for callbacks
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function that's returned for non-implemented actions
@@ -504,9 +498,6 @@ function lookupCallback (route, context) {
   return null;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     private functions for routing
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief splits a URL into parts
@@ -1137,9 +1128,6 @@ function buildRouting (dbname) {
   RoutingList[dbname] = flattenRoutingTree(RoutingTree[dbname]);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      public functions for routing
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds the next routing
@@ -1371,47 +1359,9 @@ function startup () {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsDefineHttp
-///
-/// `actions.defineHttp(options)`
-///
-/// Defines a new action. The *options* are as follows:
-///
-/// `options.url`
-///
-/// The URL, which can be used to access the action. This path might contain
-/// slashes. Note that this action will also be called, if a url is given such that
-/// *options.url* is a prefix of the given url and no longer definition
-/// matches.
-///
-/// `options.prefix`
-///
-/// If *false*, then only use the action for exact matches. The default is
-/// *true*.
-///
-/// `options.callback(request, response)`
-///
-/// The request argument contains a description of the request. A request
-/// parameter *foo* is accessible as *request.parametrs.foo*. A request
-/// header *bar* is accessible as *request.headers.bar*. Assume that
-/// the action is defined for the url */foo/bar* and the request url is
-/// */foo/bar/hugo/egon*. Then the suffix parts *[ "hugo", "egon" ]*
-/// are availible in *request.suffix*.
-///
-/// The callback must define fill the *response*.
-///
-/// * *response.responseCode*: the response code
-/// * *response.contentType*: the content type of the response
-/// * *response.body*: the body of the response
-///
-/// You can use the functions *ResultOk* and *ResultError* to easily
-/// generate a response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsDefineHttp
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineHttp (options) {
@@ -1488,12 +1438,7 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsGetErrorMessage
-///
-/// `actions.getErrorMessage(code)`
-///
-/// Returns the error message for an error code.
-/// @endDocuBlock
+/// @brief was docuBlock actionsGetErrorMessage
 ////////////////////////////////////////////////////////////////////////////////
 
 function getErrorMessage (code) {
@@ -1547,18 +1492,7 @@ function getJsonBody (req, res, code) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultError
-///
-/// *actions.resultError(*req*, *res*, *code*, *errorNum*,
-///                          *errorMessage*, *headers*, *keyvals)*
-///
-/// The function generates an error response. The response body is an array
-/// with an attribute *errorMessage* containing the error message
-/// *errorMessage*, *error* containing *true*, *code* containing
-/// *code*, *errorNum* containing *errorNum*, and *errorMessage*
-/// containing the error message *errorMessage*. *keyvals* are mixed
-/// into the result.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultError
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {
@@ -1637,16 +1571,7 @@ function badParameter (req, res, name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultOk
-///
-/// `actions.resultOk(req, res, code, result, headers)`
-///
-/// The function defines a response. *code* is the status code to
-/// return. *result* is the result object, which will be returned as JSON
-/// object in the body. *headers* is an array of headers to returned.
-/// The function adds the attribute *error* with value *false*
-/// and *code* with value *code* to the *result*.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultOk
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultOk (req, res, httpReturnCode, result, headers) {
@@ -1678,12 +1603,7 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultBad
-///
-/// `actions.resultBad(req, res, error-code, msg, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultBad
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
@@ -1693,12 +1613,7 @@ function resultBad (req, res, code, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultNotFound
-///
-/// `actions.resultNotFound(req, res, code, msg, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultNotFound
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotFound (req, res, code, msg, headers) {
@@ -1708,12 +1623,7 @@ function resultNotFound (req, res, code, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultNotImplemented
-///
-/// `actions.resultNotImplemented(req, res, msg, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultNotImplemented
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
@@ -1728,12 +1638,7 @@ function resultNotImplemented (req, res, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultUnsupported
-///
-/// `actions.resultUnsupported(req, res, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultUnsupported
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultUnsupported (req, res, headers) {
@@ -1795,12 +1700,7 @@ function handleRedirect (req, res, options, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultPermanentRedirect
-///
-/// `actions.resultPermanentRedirect(req, res, options, headers)`
-///
-/// The function generates a redirect response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultPermanentRedirect
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, options, headers) {
@@ -1812,12 +1712,7 @@ function resultPermanentRedirect (req, res, options, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultTemporaryRedirect
-///
-/// `actions.resultTemporaryRedirect(req, res, options, headers)`
-///
-/// The function generates a redirect response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultTemporaryRedirect
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, options, headers) {
@@ -1908,12 +1803,7 @@ function resultCursor (req, res, cursor, code, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsCollectionNotFound
-///
-/// `actions.collectionNotFound(req, res, collection, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsCollectionNotFound
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionNotFound (req, res, collection, headers) {
@@ -1933,12 +1823,7 @@ function collectionNotFound (req, res, collection, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsIndexNotFound
-///
-/// `actions.indexNotFound(req, res, collection, index, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
+/// @brief was docuBlock actionsIndexNotFound
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexNotFound (req, res, collection, index, headers) {
@@ -1964,16 +1849,7 @@ function indexNotFound (req, res, collection, index, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultException
-///
-/// `actions.resultException(req, res, err, headers, verbose)`
-///
-/// The function generates an error response. If @FA{verbose} is set to
-/// *true* or not specified (the default), then the error stack trace will
-/// be included in the error message if available. If @FA{verbose} is a string
-/// it will be prepended before the error message and the stacktrace will also
-/// be included.
-/// @endDocuBlock
+/// @brief was docuBlock actionsResultException
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers, verbose) {
@@ -2253,9 +2129,6 @@ function stringifyRequest(req) {
   return req.requestType + " " + req.absoluteUrl();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 // load all actions from the actions directory
 exports.startup                  = startup;
@@ -2350,11 +2223,4 @@ exports.HTTP_NOT_IMPLEMENTED     = 501;
 exports.HTTP_BAD_GATEWAY         = 502;
 exports.HTTP_SERVICE_UNAVAILABLE = 503;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @startDocuBlock\\|/// @\\}"
-// End:

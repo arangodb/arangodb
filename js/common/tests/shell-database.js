@@ -33,9 +33,6 @@ var internal = require("internal");
 var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  database methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: database methods
@@ -664,9 +661,6 @@ function DatabaseSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -676,7 +670,3 @@ jsunity.run(DatabaseSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

@@ -31,13 +31,7 @@
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    ArangoDatabase
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -63,9 +57,6 @@ ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 var ArangoError = require("@arangodb").ArangoError;
 var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index id regex
@@ -234,9 +225,6 @@ ArangoDatabase.prototype.toString = function () {
   return "[object ArangoDatabase \"" + this._name() + "\"]";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              collection functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all collections from the database
@@ -536,9 +524,6 @@ ArangoDatabase.prototype._version = function () {
   return requestResult.version;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                document functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a single document from the collection, identified by its id
@@ -793,9 +778,6 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   query functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory method to create a new statement
@@ -842,9 +824,6 @@ ArangoDatabase.prototype._explain = function (query, bindVars, options) {
   require("@arangodb/aql/explainer").explain(query);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                database functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new database
@@ -946,9 +925,6 @@ ArangoDatabase.prototype._useDatabase = function (name) {
   return true;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         endpoints
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists all endpoints
@@ -966,9 +942,6 @@ ArangoDatabase.prototype._listEndpoints = function () {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      transactions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a transaction
@@ -1019,11 +992,4 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
   return requestResult.result;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:

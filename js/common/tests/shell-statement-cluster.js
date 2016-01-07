@@ -33,9 +33,6 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           statement-related tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -91,9 +88,6 @@ function StatementSuiteNonCluster () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -102,7 +96,3 @@ function StatementSuiteNonCluster () {
 jsunity.run(StatementSuiteNonCluster);
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

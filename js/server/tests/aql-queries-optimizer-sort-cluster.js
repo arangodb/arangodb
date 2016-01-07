@@ -736,7 +736,3 @@ jsunity.run(ahuacatlQueryOptimizerSortTestSuite);
 jsunity.run(sortTestsuite);
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

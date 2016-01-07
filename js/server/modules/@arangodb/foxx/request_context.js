@@ -143,48 +143,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_pathParam
-///
-/// `Route.pathParam(id, options)`
-///
-/// If you defined a route "/foxx/:name", containing a parameter called `name` you can
-/// constrain which format this parameter is allowed to have.
-/// This format is defined using *joi* in the `options` parameter.
-/// Using this function will at first allow you to access this parameter in your
-/// route handler using `req.params(id)`, will reject any request having a paramter
-/// that does not match the *joi* definition and creates a documentation for this
-/// parameter in ArangoDBs WebInterface.
-///
-/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
-///
-/// *Parameter*
-///
-/// * *id*: name of the param.
-/// * *options*: a joi schema or an object with the following properties:
-///  * *type*: a joi schema.
-///  * *description*: documentation description for the parameter.
-///  * *required* (optional): whether the parameter is required. Default: determined by *type*.
-///
-/// *Examples*
-///
-/// ```js
-/// app.get("/foxx/:name", function {
-///   // Do something
-/// }).pathParam("name", joi.string().required().description("Name of the Foxx"));
-/// ```
-///
-/// You can also pass in a configuration object instead:
-///
-/// ```js
-/// app.get("/foxx/:name", function {
-///   // Do something
-/// }).pathParam("name", {
-///   type: joi.string(),
-///   required: true,
-///   description: "Name of the Foxx"
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_pathParam
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam(paramName, attributes) {
@@ -247,57 +206,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_queryParam
-///
-/// `Route.queryParam(id, options)`
-///
-/// Describe a query parameter:
-///
-/// If you defined a route "/foxx", you can allow a query paramter with the
-/// name `id` on it and constrain the format of this parameter by giving it a *joi* type in the `options` parameter.
-/// Using this function will at first allow you to access this parameter in your
-/// route handler using `req.params(id)`, will reject any request having a paramter
-/// that does not match the *joi* definition and creates a documentation for this
-/// parameter in ArangoDBs WebInterface.
-///
-/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
-///
-/// You can also provide a description of this parameter and
-/// whether you can provide the parameter multiple times.
-///
-/// *Parameter*
-///
-/// * *id*: name of the parameter
-/// * *options*: a joi schema or an object with the following properties:
-///  * *type*: a joi schema
-///  * *description*: documentation description for this param.
-///  * *required* (optional): whether the param is required. Default: determined by *type*.
-///  * *allowMultiple* (optional): whether the param can be specified more than once. Default: `false`.
-///
-/// *Examples*
-///
-/// ```js
-/// app.get("/foxx", function {
-///   // Do something
-/// }).queryParam("id",
-///   joi.string()
-///   .required()
-///   .description("Id of the Foxx")
-///   .meta({allowMultiple: false})
-/// });
-/// ```
-///
-/// You can also pass in a configuration object instead:
-///
-/// ```js
-/// app.get("/foxx", function {
-///   // Do something
-/// }).queryParam("id", {
-///   type: joi.string().required().description("Id of the Foxx"),
-///   allowMultiple: false
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_queryParam
 ////////////////////////////////////////////////////////////////////////////////
 
   queryParam(paramName, attributes) {
@@ -368,81 +277,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_bodyParam
-///
-/// `Route.bodyParam(paramName, options)`
-///
-/// Defines that this route expects a JSON body when requested and binds it to
-/// a pseudo parameter with the name `paramName`.
-/// The body can than be read in the the handler using `req.params(paramName)` on the request object.
-/// In the `options` parameter you can define how a valid request body should look like.
-/// This definition can be done in two ways, either using *joi* directly.
-/// Accessing the body in this case will give you a JSON object.
-/// The other way is to use a Foxx *Model*.
-/// Accessing the body in this case will give you an instance of this Model.
-/// For both ways an entry for the body will be added in the Documentation in ArangoDBs WebInterface.
-/// For information about how to annotate your models, see the Model section.
-/// All requests sending a body that does not match the validation given this way
-/// will automatically be rejected.
-///
-/// You can also wrap the definition into an array, in this case this route
-/// expects a body of type array containing arbitrary many valid objects.
-/// Accessing the body parameter will then of course return an array of objects.
-///
-/// Note: The behavior of `bodyParam` changes depending on the `rootElement` option
-/// set in the [manifest](../Develop/Manifest.md). If it is set to `true`, it is
-/// expected that the body is an
-/// object with a key of the same name as the `paramName` argument.
-/// The value of this object is either a single object or in the case of a multi
-/// element an array of objects.
-///
-/// *Parameter*
-///
-///  * *paramName*: name of the body parameter in `req.parameters`.
-///  * *options*: a joi schema or an object with the following properties:
-///   * *description*: the documentation description of the request body.
-///   * *type*: the Foxx model or joi schema to use.
-///   * *allowInvalid* (optional): `true` if validation should be skipped. (Default: `false`)
-///
-/// *Examples*
-///
-/// ```js
-/// app.post("/foxx", function (req, res) {
-///   var foxxBody = req.parameters.foxxBody;
-///   // Do something with foxxBody
-/// }).bodyParam("foxxBody", {
-///   description: "Body of the Foxx",
-///   type: FoxxBodyModel
-/// });
-/// ```
-///
-/// Using a joi schema:
-///
-/// ```js
-/// app.post("/foxx", function (req, res) {
-///   var joiBody = req.parameters.joiBody;
-///   // Do something with the number
-/// }).bodyParam("joiBody", {
-///   type: joi.number().integer().min(5),
-///   description: "A number greater than five",
-///   allowInvalid: false // default
-/// });
-/// ```
-///
-/// Shorthand version:
-///
-/// ```js
-/// app.post("/foxx", function (req, res) {
-///   var joiBody = req.parameters.joiBody;
-///   // Do something with the number
-/// }).bodyParam(
-///   "joiBody",
-///   joi.number().integer().min(5)
-///   .description("A number greater than five")
-///   .meta({allowInvalid: false}) // default
-/// );
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_bodyParam
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam(paramName, attributes) {
@@ -514,40 +349,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_summary
-///
-/// `Route.summary(description)`
-///
-/// Set the summary for this route in the documentation.
-/// Can't be longer than 8192 characters.
-/// This is equal to using JavaDoc style comments right above your function.
-/// If you provide both comment and `summary()` the call to `summary()` wins
-/// and will be used.
-///
-/// *Examples*
-///
-/// Version with comment:
-///
-/// ```js
-/// /** Short description
-///  * 
-///  * Longer description
-///  * with multiple lines
-///  */
-/// app.get("/foxx", function() {
-/// });
-/// ```
-/// 
-/// is identical to:
-///
-/// ```js
-/// app.get("/foxx", function() {
-/// })
-/// .summary("Short description")
-/// .notes(["Longer description", "with multiple lines"]); 
-/// ```
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_summary
 ////////////////////////////////////////////////////////////////////////////////
 
   summary(summary) {
@@ -559,36 +361,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_notes
-///
-/// `Route.notes(...description)`
-///
-/// Set the long description for this route in the documentation
-//
-/// *Examples*
-///
-/// Version with comment:
-///
-/// ```js
-/// /** Short description
-///  * 
-///  * Longer description
-///  * with multiple lines
-///  */
-/// app.get("/foxx", function() {
-/// });
-/// ```
-/// 
-/// is identical to:
-///
-/// ```js
-/// app.get("/foxx", function() {
-/// })
-/// .summary("Short description")
-/// .notes(["Longer description", "with multiple lines"]); 
-/// ```
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_notes
 ////////////////////////////////////////////////////////////////////////////////
 
   notes() {
@@ -598,48 +371,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_errorResponse
-///
-/// `Route.errorResponse(errorClassOrName, code, description, [callback])`
-///
-/// Define a reaction to a thrown error for this route: If your handler throws an error
-/// of the errorClass defined in `errorClassOrName` or the error has an attribute `name` equal to `errorClassOrName`,
-/// it will be caught and the response object will be filled with the given
-/// status code and a JSON with error set to your description as the body.
-///
-/// If you want more control over the returned JSON, you can give an optional fourth
-/// parameter in form of a function. It gets the error as an argument, the return
-/// value will be transformed into JSON and then be used as the body.
-/// The status code will be used as described above. The description will be used for
-/// the documentation.
-///
-/// It also adds documentation for this error response to the generated documentation.
-///
-/// *Examples*
-///
-/// ```js
-/// /* define our own error type, FoxxyError */
-/// var FoxxyError = function (message) {
-///   this.name = "FError";
-///   this.message = "the following FoxxyError occurred: " + message;
-/// };
-/// FoxxyError.prototype = new Error();
-///
-/// app.get("/foxx", function {
-///   /* throws a FoxxyError */
-///   throw new FoxxyError();
-/// }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
-///
-/// app.get("/foxx", function {
-///   throw new FoxxyError("oops!");
-/// }).errorResponse("FError", 303, "This went completely wrong. Sorry!", function (e) {
-///   return {
-///     code: 123,
-///     desc: e.message
-///   };
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_errorResponse
 ////////////////////////////////////////////////////////////////////////////////
   errorResponse(errorClass, code, reason, errorHandler) {
     this.route.action.errorResponses.push({
@@ -653,25 +385,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_onlyIf
-///
-/// `Route.onlyIf(check)`
-///
-/// This functionality is used to secure a route by applying a checking function
-/// on the request beforehand, for example the check authorization.
-/// It expects `check` to be a function that takes the request object as first parameter.
-/// This function is executed before the actual handler is invoked.
-/// If `check` throws an error the actual handler will not be invoked.
-/// Remember to provide an `errorResponse` on the route as well to define the behavior in this case.
-///
-/// *Examples*
-///
-/// ```js
-/// app.get("/foxx", function {
-///   // Do something
-/// }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_onlyIf
 ////////////////////////////////////////////////////////////////////////////////
   onlyIf(check) {
     this.route.action.checks.push({
@@ -681,24 +395,7 @@ class RequestContext {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
-///
-/// `FoxxController#onlyIfAuthenticated(code, reason)`
-///
-/// Please activate sessions for this app if you want to use this function.
-/// Or activate authentication (deprecated).
-/// If the user is logged in, it will do nothing. Otherwise it will respond with
-/// the status code and the reason you provided (the route handler won't be called).
-/// This will also add the according documentation for this route.
-///
-/// *Examples*
-///
-/// ```js
-/// app.get("/foxx", function {
-///   // Do something
-/// }).onlyIfAuthenticated(401, "You need to be authenticated");
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 ////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated(code, reason) {
     var check;
@@ -743,133 +440,26 @@ _.extend(RequestContextBuffer.prototype, {
 _.each([
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContextBuffer_pathParam
-///
-/// `Controller.allRoutes.pathParam(id, options)`
-///
-/// This is equal to invoking `Route.pathParam` on all routes bound to this controller.
-///
-/// *Examples*
-///
-/// ```js
-/// app.allRoutes.pathParam("id", joi.string().required().description("Id of the Foxx"));
-///
-/// app.get("/foxx/:id", function {
-///   // Secured by pathParam
-/// });
-/// ```
-///
-/// You can also pass in a configuration object instead:
-///
-/// ```js
-/// app.allRoutes.pathParam("id", {
-///   type: joi.string(),
-///   required: true,
-///   description: "Id of the Foxx"
-/// });
-///
-/// app.get("/foxx/:id", function {
-///   // Secured by pathParam
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContextBuffer_pathParam
 ////////////////////////////////////////////////////////////////////////////////
   'pathParam',
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContextBuffer_queryParam
-///
-/// `Controller.allRoutes.queryParam(id, options)`
-///
-/// This is equal to invoking `Route.queryParam` on all routes bound to this controller.
-///
-/// *Examples*
-///
-/// ```js
-/// app.allroutes.queryParam("id",
-///   joi.string()
-///   .required()
-///   .description("Id of the Foxx")
-///   .meta({allowMultiple: false})
-/// });
-///
-/// app.get("/foxx", function {
-///   // Do something
-/// });
-/// ```
-///
-/// You can also pass in a configuration object instead:
-///
-/// ```js
-/// app.allroutes.queryParam("id", {
-///   type: joi.string().required().description("Id of the Foxx"),
-///   allowMultiple: false
-/// });
-///
-/// app.get("/foxx", function {
-///   // Do something
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContextBuffer_queryParam
 ////////////////////////////////////////////////////////////////////////////////
   'queryParam',
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
-///
-/// `Controller.allRoutes.errorResponse(errorClass, code, description)`
-///
-/// This is equal to invoking `Route.errorResponse` on all routes bound to this controller.
-///
-/// *Examples*
-///
-/// ```js
-/// app.allRoutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
-///
-/// app.get("/foxx", function {
-///   // Do something
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContextBuffer_errorResponse
 ////////////////////////////////////////////////////////////////////////////////
   'errorResponse',
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIf
-///
-/// `Controller.allRoutes.onlyIf(code, reason)`
-///
-/// This is equal to invoking `Route.onlyIf` on all routes bound to this controller.
-///
-/// *Examples*
-///
-/// ```js
-/// app.allRoutes.onlyIf(myPersonalCheck);
-///
-/// app.get("/foxx", function {
-///   // Do something
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContextBuffer_onlyIf
 ////////////////////////////////////////////////////////////////////////////////
   'onlyIf',
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
-///
-/// `Controller.allRoutes.onlyIfAuthenticated(code, description)`
-///
-/// This is equal to invoking `Route.onlyIfAuthenticated` on all routes bound to this controller.
-///
-/// *Examples*
-///
-/// ```js
-/// app.allRoutes.onlyIfAuthenticated(401, "You need to be authenticated");
-///
-/// app.get("/foxx", function {
-///   // Do something
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 ////////////////////////////////////////////////////////////////////////////////
   'onlyIfAuthenticated'
 ], function (functionName) {
@@ -887,12 +477,3 @@ RequestContext.Buffer = RequestContextBuffer;
 module.exports = exports = RequestContext;
 exports.RequestContext = RequestContext;
 exports.RequestContextBuffer = RequestContextBuffer;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-/// Local Variables:
-/// mode: outline-minor
-/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-/// End:

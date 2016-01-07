@@ -33,9 +33,6 @@ var internal = require("internal");
 var ShapedJson = internal.ShapedJson;
 var printYaml = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         AQL test helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a single row result
@@ -472,9 +469,6 @@ function removeClusterNodes (nodeTypes) {
   });
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    module exports
-// -----------------------------------------------------------------------------
 
 exports.isEqual                            = isEqual;
 exports.getParseResults                    = getParseResults;
@@ -494,11 +488,4 @@ exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules         = removeAlwaysOnClusterRules;
 exports.removeClusterNodes                 = removeClusterNodes;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:

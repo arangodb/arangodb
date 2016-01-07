@@ -32,26 +32,9 @@ var actions = require("@arangodb/actions");
 
 var targetDatabaseVersion = require("@arangodb/database-version").CURRENT_VERSION;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_database_version
-/// @brief returns the version of the database.
-///
-/// @RESTHEADER{GET /_admin/database/target-version, Return the required version of the database}
-///
-/// @RESTDESCRIPTION
-///
-/// Returns the database-version that this server requires.
-/// The version is returned in the *version* attribute of the result.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// Is returned in all cases.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_database_version
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -63,11 +46,4 @@ actions.defineHttp({
   }
 });
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|/// @startDocuBlock\\|// --SECTION--\\|/// @\\}"
-// End:

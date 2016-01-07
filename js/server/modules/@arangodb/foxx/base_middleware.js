@@ -51,33 +51,7 @@ function BaseMiddleware() {
     requestFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_cookie
-///
-/// `request.cookie(name, cfg)`
-///
-/// Read a cookie from the request. Optionally the cookie's signature can be verified.
-///
-/// *Parameter*
-///
-/// * *name*: the name of the cookie to read from the request.
-/// * *cfg* (optional): an object with any of the following properties:
-///   * *signed* (optional): an object with any of the following properties:
-///   * *secret*: a secret string that was used to sign the cookie.
-///   * *algorithm*: hashing algorithm that was used to sign the cookie. Default: *"sha256"*.
-///
-/// If *signed* is a string, it will be used as the *secret* instead.
-///
-/// If a *secret* is provided, a second cookie with the name *name + ".sig"* will
-/// be read and its value will be verified as the cookie value's signature.
-///
-/// If the cookie is not set or its signature is invalid, "undefined" will be returned instead.
-///
-/// @EXAMPLES
-///
-/// ```
-/// var sid = request.cookie("sid", {signed: "keyboardcat"});
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_request_cookie
 ////////////////////////////////////////////////////////////////////////////////
 
       cookie: function (name, cfg) {
@@ -101,13 +75,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_body
-///
-/// `request.body()`
-///
-/// Get the JSON parsed body of the request. If you need the raw version, please
-/// refer to the *rawBody* function.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_request_body
 ////////////////////////////////////////////////////////////////////////////////
 
       body: function () {
@@ -116,15 +84,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBody
-///
-/// `request.rawBody()`
-///
-/// The raw request body, not parsed. The body is returned as a UTF-8 string.
-/// Note that this can only be used sensibly if the request body contains
-/// valid UTF-8. If the request body is known to contain non-UTF-8 data, the
-/// request body can be accessed by using `request.rawBodyBuffer`.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_request_rawBody
 ////////////////////////////////////////////////////////////////////////////////
 
       rawBody: function () {
@@ -132,12 +92,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBodyBuffer
-///
-/// `request.rawBodyBuffer()`
-///
-/// The raw request body, returned as a Buffer object.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_request_rawBodyBuffer
 ////////////////////////////////////////////////////////////////////////////////
 
       rawBodyBuffer: function () {
@@ -145,16 +100,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_requestParts
-///
-/// `request.requestParts()`
-///
-/// Returns an array containing the individual parts of a multi-part request.
-/// Each part contains a `headers` attribute with all headers of the part,
-/// and a `data` attribute with the content of the part in a Buffer object.
-/// If the request is not a multi-part request, this function will throw an
-/// error.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_request_requestParts
 ////////////////////////////////////////////////////////////////////////////////
 
       requestParts: function () {
@@ -162,18 +108,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_request_params
-///
-/// `request.params(key)`
-///
-/// Get the parameters of the request. This process is two-fold:
-///
-/// * If you have defined an URL like */test/:id* and the user requested
-///   */test/1*, the call *params("id")* will return *1*.
-/// * If you have defined an URL like */test* and the user gives a query
-///   component, the query parameters will also be returned.  So for example if
-///   the user requested */test?a=2*, the call *params("a")* will return *2*.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_request_params
 ////////////////////////////////////////////////////////////////////////////////
 
       params: function (key) {
@@ -187,37 +122,7 @@ function BaseMiddleware() {
     responseFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_response_cookie
-///
-/// `response.cookie(name, value, cfg)`
-///
-/// Add a cookie to the response. Optionally the cookie can be signed.
-///
-/// *Parameter*
-///
-/// * *name*: the name of the cookie to add to the response.
-/// * *value*: the value of the cookie to add to the response.
-/// * *cfg* (optional): an object with any of the following properties:
-///   * *ttl* (optional): the number of seconds until this cookie expires.
-///   * *path* (optional): the cookie path.
-///   * *domain* (optional): the cookie domain.
-///   * *secure* (optional): mark the cookie as safe transport (HTTPS) only.
-///   * *httpOnly* (optional): mark the cookie as HTTP(S) only.
-///   * *signed* (optional): an object with any of the following properties:
-///     * *secret*: a secret string to sign the cookie with.
-///     * *algorithm*: hashing algorithm to sign the cookie with. Default: *"sha256"*.
-///
-/// If *signed* is a string, it will be used as the *secret* instead.
-///
-/// If a *secret* is provided, a second cookie with the name *name + ".sig"* will
-/// be added to the response, containing the cookie's HMAC signature.
-///
-/// @EXAMPLES
-///
-/// ```
-/// response.cookie("sid", "abcdef", {signed: "keyboardcat"});
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_response_cookie
 ////////////////////////////////////////////////////////////////////////////////
 
       cookie: function (name, value, cfg) {
@@ -236,18 +141,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_response_status
-///
-/// `response.status(code)`
-///
-/// Set the status *code* of your response, for example:
-///
-/// @EXAMPLES
-///
-/// ```
-/// response.status(404);
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_response_status
 ////////////////////////////////////////////////////////////////////////////////
 
       status: function (code) {
@@ -255,28 +149,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_response_set
-///
-/// `response.set(key, value)`
-///
-/// Set a header attribute, for example:
-///
-/// @EXAMPLES
-///
-/// ```js
-/// response.set("Content-Length", 123);
-/// response.set("Content-Type", "text/plain");
-/// ```
-///
-/// or alternatively:
-///
-/// ```js
-/// response.set({
-///   "Content-Length": "123",
-///   "Content-Type": "text/plain"
-/// });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_response_set
 ////////////////////////////////////////////////////////////////////////////////
 
       set: function (key, value) {
@@ -299,19 +172,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_response_json
-///
-/// `response.json(object)`
-///
-/// Set the content type to JSON and the body to the JSON encoded *object*
-/// you provided.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// response.json({'born': 'December 12, 1915'});
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_response_json
 ////////////////////////////////////////////////////////////////////////////////
 
       json: function (obj) {
@@ -320,23 +181,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_response_send
-///
-/// `response.send(value)`
-///
-/// Sets the response body to the specified *value*. If *value* is a Buffer
-/// object, the content type will be set to `application/octet-stream` if not
-/// yet set. If *value* is a string, the content type will be set to `text/html`
-/// if not yet set. If *value* is an object, it will be treated as in `res.json`.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// response.send({"born": "December 12, 1915"});
-/// response.send(new Buffer("some binary data"));
-/// response.send("<html><head><title>Hello World</title></head><body></body></html>");
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_response_send
 ////////////////////////////////////////////////////////////////////////////////
 
       send: function (obj) {
@@ -363,28 +208,7 @@ function BaseMiddleware() {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_response_sendFile
-///
-/// `response.sendFile(filename, options)`
-///
-/// Sets the content of the specified file as the response body. The filename
-/// must be absolute. If no content type is yet set for the response, the
-/// response's content type will be determined automatically based
-/// on the filename extension. If no content type is known for the extension,
-/// the content type will default to `application/octet-stream`.
-///
-/// The `options` array can be used to control the behavior of sendFile.
-/// Currently only the following option exists:
-/// - `lastModified`: if set to true, the last modification date and time
-///   of the file will be returned in the `Last-Modified` HTTP header
-///
-/// @EXAMPLES
-///
-/// ```js
-/// response.sendFile('/tmp/results.json');
-/// response.sendFile(applicationContext.fileName('image.png'), { lastModified: true });
-/// ```
-/// @endDocuBlock
+/// @brief was docuBlock JSF_foxx_BaseMiddleware_response_sendFile
 ////////////////////////////////////////////////////////////////////////////////
 
       sendFile: function (filename, options) {
@@ -464,11 +288,3 @@ function BaseMiddleware() {
 
 exports.BaseMiddleware = BaseMiddleware;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-/// Local Variables:
-/// mode: outline-minor
-/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-/// End:

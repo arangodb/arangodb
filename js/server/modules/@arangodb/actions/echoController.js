@@ -41,11 +41,4 @@ exports['do'] = function (req, res, options, next) {
   res.body = JSON.stringify( { "request" : req, "options" : options });
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:

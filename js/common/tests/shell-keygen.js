@@ -34,9 +34,6 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         traditional key generator
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: traditional key gen
@@ -162,9 +159,6 @@ function TraditionalSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -174,7 +168,3 @@ jsunity.run(TraditionalSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
