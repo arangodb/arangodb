@@ -574,6 +574,26 @@ AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST collect node, AGGREGATE
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCollectAggregate(AstNode const* list, AstNode const* aggregations, 
+                                AstNode const* options) {
+  AstNode* node = createNode(NODE_TYPE_COLLECT_AGGREGATE);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+
+  node->addMember(options);
+  node->addMember(list);
+  node->addMember(aggregations);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST sort node
 ////////////////////////////////////////////////////////////////////////////////
 

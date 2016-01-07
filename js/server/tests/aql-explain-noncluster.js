@@ -258,7 +258,7 @@ function explainSuite () {
       assertTrue(node.stable);
       
       node = nodes[7];
-      assertEqual("AggregateNode", node.type);
+      assertEqual("CollectNode", node.type);
       assertEqual([ 9 ], node.dependencies);
       assertEqual(7, node.id);
       assertEqual(1, node.aggregates.length);

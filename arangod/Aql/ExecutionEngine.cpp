@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionEngine.h"
-#include "Aql/AggregateBlock.h"
-#include "Aql/AggregateNode.h"
-#include "Aql/AggregationOptions.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
+#include "Aql/CollectBlock.h"
+#include "Aql/CollectNode.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionBlock.h"
@@ -87,22 +87,22 @@ static ExecutionBlock* CreateBlock(
     case ExecutionNode::SORT: {
       return new SortBlock(engine, static_cast<SortNode const*>(en));
     }
-    case ExecutionNode::AGGREGATE: {
+    case ExecutionNode::COLLECT: {
       auto aggregationMethod =
-          static_cast<AggregateNode const*>(en)->aggregationMethod();
+          static_cast<CollectNode const*>(en)->aggregationMethod();
 
       if (aggregationMethod ==
-          AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH) {
-        return new HashedAggregateBlock(engine,
-                                        static_cast<AggregateNode const*>(en));
-      } else if (aggregationMethod == AggregationOptions::AggregationMethod::
-                                          AGGREGATION_METHOD_SORTED) {
-        return new SortedAggregateBlock(engine,
-                                        static_cast<AggregateNode const*>(en));
+          CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
+        return new HashedCollectBlock(engine,
+                                        static_cast<CollectNode const*>(en));
+      } else if (aggregationMethod == CollectOptions::CollectMethod::
+                                          COLLECT_METHOD_SORTED) {
+        return new SortedCollectBlock(engine,
+                                        static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "cannot instantiate AggregateBlock with "
+                                     "cannot instantiate CollectBlock with "
                                      "undetermined aggregation method");
     }
     case ExecutionNode::SUBQUERY: {

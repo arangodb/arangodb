@@ -21,8 +21,8 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AGGREGATION_OPTIONS_H
-#define ARANGOD_AQL_AGGREGATION_OPTIONS_H 1
+#ifndef ARANGOD_AQL_COLLECT_OPTIONS_H
+#define ARANGOD_AQL_COLLECT_OPTIONS_H 1
 
 #include "Basics/Common.h"
 #include "Basics/JsonHelper.h"
@@ -31,19 +31,19 @@ namespace triagens {
 namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AggregationOptions
+/// @brief CollectOptions
 ////////////////////////////////////////////////////////////////////////////////
 
-struct AggregationOptions {
+struct CollectOptions {
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief selected aggregation method
   ////////////////////////////////////////////////////////////////////////////////
 
-  enum AggregationMethod {
-    AGGREGATION_METHOD_UNDEFINED,
-    AGGREGATION_METHOD_HASH,
-    AGGREGATION_METHOD_SORTED
+  enum CollectMethod {
+    COLLECT_METHOD_UNDEFINED,
+    COLLECT_METHOD_HASH,
+    COLLECT_METHOD_SORTED
   };
 
   
@@ -51,13 +51,13 @@ struct AggregationOptions {
   /// @brief constructor, using default values
   ////////////////////////////////////////////////////////////////////////////////
 
-  AggregationOptions() : method(AGGREGATION_METHOD_UNDEFINED) {}
+  CollectOptions() : method(COLLECT_METHOD_UNDEFINED) {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor, using JSON
   ////////////////////////////////////////////////////////////////////////////////
 
-  AggregationOptions(triagens::basics::Json const&);
+  CollectOptions(triagens::basics::Json const&);
 
   
   ////////////////////////////////////////////////////////////////////////////////
@@ -76,17 +76,17 @@ struct AggregationOptions {
   /// @brief get the aggregation method from a string
   ////////////////////////////////////////////////////////////////////////////////
 
-  static AggregationMethod methodFromString(std::string const&);
+  static CollectMethod methodFromString(std::string const&);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief stringify the aggregation method
   ////////////////////////////////////////////////////////////////////////////////
 
   static std::string methodToString(
-      AggregationOptions::AggregationMethod method);
+      CollectOptions::CollectMethod method);
 
   
-  AggregationMethod method;
+  CollectMethod method;
 };
 
 }  // namespace triagens::aql

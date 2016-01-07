@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AggregateNode.h"
+#include "CollectNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
@@ -31,17 +31,17 @@ using namespace triagens::basics;
 using namespace triagens::aql;
 
 
-AggregateNode::AggregateNode(
+CollectNode::CollectNode(
     ExecutionPlan* plan, triagens::basics::Json const& base,
     Variable const* expressionVariable, Variable const* outVariable,
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<std::pair<Variable const*, Variable const*>> const&
-        aggregateVariables,
+        collectVariables,
     bool count, bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
-      _aggregateVariables(aggregateVariables),
+      _collectVariables(collectVariables),
       _expressionVariable(expressionVariable),
       _outVariable(outVariable),
       _keepVariables(keepVariables),
@@ -51,10 +51,10 @@ AggregateNode::AggregateNode(
       _specialized(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for AggregateNode
+/// @brief toJson, for CollectNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void AggregateNode::toJsonHelper(triagens::basics::Json& nodes,
+void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
                                  TRI_memory_zone_t* zone, bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(
       nodes, zone, verbose));  // call base class method
@@ -64,9 +64,9 @@ void AggregateNode::toJsonHelper(triagens::basics::Json& nodes,
   }
 
   triagens::basics::Json values(triagens::basics::Json::Array,
-                                _aggregateVariables.size());
+                                _collectVariables.size());
 
-  for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end();
+  for (auto it = _collectVariables.begin(); it != _collectVariables.end();
        ++it) {
     triagens::basics::Json variable(triagens::basics::Json::Object);
     variable("outVariable", (*it).first->toJson())("inVariable",
@@ -110,11 +110,11 @@ void AggregateNode::toJsonHelper(triagens::basics::Json& nodes,
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* AggregateNode::clone(ExecutionPlan* plan, bool withDependencies,
+ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto outVariable = _outVariable;
   auto expressionVariable = _expressionVariable;
-  auto aggregateVariables = _aggregateVariables;
+  auto collectVariables = _collectVariables;
 
   if (withProperties) {
     if (expressionVariable != nullptr) {
@@ -127,16 +127,16 @@ ExecutionNode* AggregateNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
 
     // need to re-create all variables
-    aggregateVariables.clear();
+    collectVariables.clear();
 
-    for (auto& it : _aggregateVariables) {
+    for (auto& it : _collectVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.first);
       auto in = plan->getAst()->variables()->createVariable(it.second);
-      aggregateVariables.emplace_back(std::make_pair(out, in));
+      collectVariables.emplace_back(std::make_pair(out, in));
     }
   }
 
-  auto c = new AggregateNode(plan, _id, _options, aggregateVariables,
+  auto c = new CollectNode(plan, _id, _options, collectVariables,
                              expressionVariable, outVariable, _keepVariables,
                              _variableMap, _count, _isDistinctCommand);
 
@@ -174,7 +174,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
                en->getType() == ExecutionNode::INDEX ||
                en->getType() == ExecutionNode::ENUMERATE_LIST ||
                en->getType() == ExecutionNode::TRAVERSAL ||
-               en->getType() == ExecutionNode::AGGREGATE) {
+               en->getType() == ExecutionNode::COLLECT) {
       depth += 1;
     }
     // Now depth is set correct for this node.
@@ -193,7 +193,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
 /// @brief getVariablesUsedHere, returning a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Variable const*> AggregateNode::getVariablesUsedHere() const {
+std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
   std::unordered_set<Variable const*> v;
   // actual work is done by that method
   getVariablesUsedHere(v);
@@ -211,9 +211,9 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere() const {
 /// @brief getVariablesUsedHere, modifying the set in-place
 ////////////////////////////////////////////////////////////////////////////////
 
-void AggregateNode::getVariablesUsedHere(
+void CollectNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
-  for (auto const& p : _aggregateVariables) {
+  for (auto const& p : _collectVariables) {
     vars.emplace(p.second);
   }
 
@@ -226,7 +226,7 @@ void AggregateNode::getVariablesUsedHere(
       // Here we have to find all user defined variables in this query
       // amongst our dependencies:
       UserVarFinder finder(1);
-      auto myselfAsNonConst = const_cast<AggregateNode*>(this);
+      auto myselfAsNonConst = const_cast<CollectNode*>(this);
       myselfAsNonConst->walk(&finder);
       if (finder.depth == 1) {
         // we are top level, let's run again with mindepth = 0
@@ -251,7 +251,7 @@ void AggregateNode::getVariablesUsedHere(
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
 
-double AggregateNode::estimateCost(size_t& nrItems) const {
+double CollectNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
 
   // As in the FilterNode case, we are pessimistic here by not reducing the
@@ -259,10 +259,10 @@ double AggregateNode::estimateCost(size_t& nrItems) const {
   // as there are input items. In any case, we have to look at all incoming
   // items, and in particular in the COLLECT ... INTO ... case, we have
   // to actually hand on all data anyway, albeit not as separate items.
-  // Nevertheless, the optimizer does not do much with AggregateNodes
+  // Nevertheless, the optimizer does not do much with CollectNodes
   // and thus this potential overestimation does not really matter.
 
-  if (_count && _aggregateVariables.empty()) {
+  if (_count && _collectVariables.empty()) {
     // we are known to only produce a single output row
     nrItems = 1;
   } else {

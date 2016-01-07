@@ -21,11 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AGGREGATE_NODE_H
-#define ARANGOD_AQL_AGGREGATE_NODE_H 1
+#ifndef ARANGOD_AQL_COLLECT_NODE_H
+#define ARANGOD_AQL_COLLECT_NODE_H 1
 
 #include "Basics/Common.h"
-#include "Aql/AggregationOptions.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
@@ -41,15 +41,15 @@ class RedundantCalculationsReplacer;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class AggregateNode
+/// @brief class CollectNode
 ////////////////////////////////////////////////////////////////////////////////
 
-class AggregateNode : public ExecutionNode {
+class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SortedAggregateBlock;
-  friend class HashedAggregateBlock;
+  friend class HashedCollectBlock;
   friend class RedundantCalculationsReplacer;
+  friend class SortedCollectBlock;
 
  public:
   ////////////////////////////////////////////////////////////////////////////////
@@ -57,17 +57,17 @@ class AggregateNode : public ExecutionNode {
   ////////////////////////////////////////////////////////////////////////////////
 
  public:
-  AggregateNode(
-      ExecutionPlan* plan, size_t id, AggregationOptions const& options,
+  CollectNode(
+      ExecutionPlan* plan, size_t id, CollectOptions const& options,
       std::vector<std::pair<Variable const*, Variable const*>> const&
-          aggregateVariables,
+          collectVariables,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<Variable const*> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,
       bool count, bool isDistinctCommand)
       : ExecutionNode(plan, id),
         _options(options),
-        _aggregateVariables(aggregateVariables),
+        _collectVariables(collectVariables),
         _expressionVariable(expressionVariable),
         _outVariable(outVariable),
         _keepVariables(keepVariables),
@@ -79,20 +79,20 @@ class AggregateNode : public ExecutionNode {
     TRI_ASSERT(!_count || _outVariable != nullptr);
   }
 
-  AggregateNode(
+  CollectNode(
       ExecutionPlan*, triagens::basics::Json const& base,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<Variable const*> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,
       std::vector<std::pair<Variable const*, Variable const*>> const&
-          aggregateVariables,
+          collectVariables,
       bool count, bool isDistinctCommand);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the type of the node
   ////////////////////////////////////////////////////////////////////////////////
 
-  NodeType getType() const override final { return AGGREGATE; }
+  NodeType getType() const override final { return COLLECT; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the node requires an additional post SORT
@@ -116,7 +116,7 @@ class AggregateNode : public ExecutionNode {
   /// @brief return the aggregation method
   ////////////////////////////////////////////////////////////////////////////////
 
-  AggregationOptions::AggregationMethod aggregationMethod() const {
+  CollectOptions::CollectMethod aggregationMethod() const {
     return _options.method;
   }
 
@@ -124,7 +124,7 @@ class AggregateNode : public ExecutionNode {
   /// @brief set the aggregation method
   ////////////////////////////////////////////////////////////////////////////////
 
-  void aggregationMethod(AggregationOptions::AggregationMethod method) {
+  void aggregationMethod(CollectOptions::CollectMethod method) {
     _options.method = method;
   }
 
@@ -132,13 +132,13 @@ class AggregateNode : public ExecutionNode {
   /// @brief getOptions
   ////////////////////////////////////////////////////////////////////////////////
 
-  AggregationOptions const& getOptions() const { return _options; }
+  CollectOptions const& getOptions() const { return _options; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief getOptions
   ////////////////////////////////////////////////////////////////////////////////
 
-  AggregationOptions& getOptions() { return _options; }
+  CollectOptions& getOptions() { return _options; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief export to JSON
@@ -219,8 +219,8 @@ class AggregateNode : public ExecutionNode {
   ////////////////////////////////////////////////////////////////////////////////
 
   std::vector<std::pair<Variable const*, Variable const*>> const&
-  aggregateVariables() const {
-    return _aggregateVariables;
+  collectVariables() const {
+    return _collectVariables;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -243,10 +243,10 @@ class AggregateNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> v;
     size_t const n =
-        _aggregateVariables.size() + (_outVariable == nullptr ? 0 : 1);
+        _collectVariables.size() + (_outVariable == nullptr ? 0 : 1);
     v.reserve(n);
 
-    for (auto const& p : _aggregateVariables) {
+    for (auto const& p : _collectVariables) {
       v.emplace_back(p.first);
     }
     if (_outVariable != nullptr) {
@@ -261,13 +261,13 @@ class AggregateNode : public ExecutionNode {
   /// @brief options for the aggregation
   ////////////////////////////////////////////////////////////////////////////////
 
-  AggregationOptions _options;
+  CollectOptions _options;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input/output variables for the aggregation (out, in)
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::pair<Variable const*, Variable const*>> _aggregateVariables;
+  std::vector<std::pair<Variable const*, Variable const*>> _collectVariables;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input expression variable (might be null)

@@ -794,6 +794,7 @@ function processQuery (query, explain) {
       case "FilterNode":
         return keyword("FILTER") + " " + variableName(node.inVariable);
       case "AggregateNode":
+      case "CollectNode":
         return keyword("COLLECT") + " " + node.aggregates.map(function(node) {
           return variableName(node.outVariable) + " = " + variableName(node.inVariable);
         }).join(", ") + 

@@ -392,7 +392,7 @@ void Optimizer::setupRules() {
                true);
 #endif
 
-  // determine the "right" type of AggregateNode and
+  // determine the "right" type of CollectNode and
   // add a sort node for each COLLECT (may be removed later)
   // this rule cannot be turned off (otherwise, the query result might be
   // wrong!)

@@ -93,7 +93,7 @@ class Optimizer {
 
     pass1 = 100,
 
-    // determine the "right" type of AggregateNode and
+    // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1 = 105,
 

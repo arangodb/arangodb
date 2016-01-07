@@ -93,6 +93,10 @@ namespace triagens {
   return T_DISTINCT;
 }
 
+(?i:AGGREGATE) {
+  return T_AGGREGATE;
+}
+
 (?i:ASC) {
   return T_ASC;
 }

@@ -23,10 +23,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionNode.h"
-#include "Aql/AggregateNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
+#include "Aql/CollectNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
@@ -64,7 +64,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(SUBQUERY), "SubqueryNode"},
     {static_cast<int>(FILTER), "FilterNode"},
     {static_cast<int>(SORT), "SortNode"},
-    {static_cast<int>(AGGREGATE), "AggregateNode"},
+    {static_cast<int>(COLLECT), "CollectNode"},
     {static_cast<int>(RETURN), "ReturnNode"},
     {static_cast<int>(REMOVE), "RemoveNode"},
     {static_cast<int>(INSERT), "InsertNode"},
@@ -159,7 +159,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
       getSortElements(elements, plan, oneNode, "SortNode");
       return new SortNode(plan, oneNode, elements, stable);
     }
-    case AGGREGATE: {
+    case COLLECT: {
       Variable* expressionVariable =
           varFromJson(plan->getAst(), oneNode, "expressionVariable", Optional);
       Variable* outVariable =
@@ -186,9 +186,9 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
 
       size_t const len = jsonAggregates.size();
       std::vector<std::pair<Variable const*, Variable const*>>
-          aggregateVariables;
+          collectVariables;
 
-      aggregateVariables.reserve(len);
+      collectVariables.reserve(len);
       for (size_t i = 0; i < len; i++) {
         triagens::basics::Json oneJsonAggregate =
             jsonAggregates.at(static_cast<int>(i));
@@ -197,16 +197,16 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         Variable* inVar =
             varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-        aggregateVariables.emplace_back(std::make_pair(outVar, inVar));
+        collectVariables.emplace_back(std::make_pair(outVar, inVar));
       }
 
       bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
       bool isDistinctCommand = JsonHelper::checkAndGetBooleanValue(
           oneNode.json(), "isDistinctCommand");
 
-      auto node = new AggregateNode(
+      auto node = new CollectNode(
           plan, oneNode, expressionVariable, outVariable, keepVariables,
-          plan->getAst()->variables()->variables(false), aggregateVariables,
+          plan->getAst()->variables()->variables(false), collectVariables,
           count, isDistinctCommand);
 
       // specialize the node if required
@@ -924,7 +924,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
 
-    case ExecutionNode::AGGREGATE: {
+    case ExecutionNode::COLLECT: {
       depth++;
       nrRegsHere.emplace_back(0);
       // create a copy of the last value here
@@ -933,8 +933,8 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<AggregateNode const*>(en);
-      for (auto const& p : ep->_aggregateVariables) {
+      auto ep = static_cast<CollectNode const*>(en);
+      for (auto const& p : ep->_collectVariables) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
         // for which we need to create a register in the current

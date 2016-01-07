@@ -23,9 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
-#include "Aql/AggregateNode.h"
-#include "Aql/AggregationOptions.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/CollectNode.h"
 #include "Aql/ConditionFinder.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
@@ -440,10 +440,10 @@ void triagens::aql::removeUnnecessaryFiltersRule(Optimizer* opt,
 void triagens::aql::removeCollectIntoRule(Optimizer* opt, ExecutionPlan* plan,
                                           Optimizer::Rule const* rule) {
   bool modified = false;
-  std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::AGGREGATE, true));
+  std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
 
   for (auto const& n : nodes) {
-    auto collectNode = static_cast<AggregateNode*>(n);
+    auto collectNode = static_cast<CollectNode*>(n);
     TRI_ASSERT(collectNode != nullptr);
 
     auto outVariable = collectNode->outVariable();
@@ -774,13 +774,13 @@ void triagens::aql::removeSortRandRule(Optimizer* opt, ExecutionPlan* plan,
 
       switch (current->getType()) {
         case EN::SORT:
-        case EN::AGGREGATE:
+        case EN::COLLECT:
         case EN::FILTER:
         case EN::SUBQUERY:
         case EN::ENUMERATE_LIST:
         case EN::TRAVERSAL:
         case EN::INDEX: {
-          // if we found another SortNode, an AggregateNode, FilterNode, a
+          // if we found another SortNode, an CollectNode, FilterNode, a
           // SubqueryNode,
           // an EnumerateListNode, a TraversalNode or an IndexNode
           // this means we cannot apply our optimization
@@ -965,7 +965,7 @@ void triagens::aql::moveCalculationsDownRule(Optimizer* opt,
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_LIST ||
-                 currentType == EN::TRAVERSAL || currentType == EN::AGGREGATE ||
+                 currentType == EN::TRAVERSAL || currentType == EN::COLLECT ||
                  currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
         shouldMove = false;
@@ -1108,29 +1108,29 @@ void triagens::aql::fuseCalculationsRule(Optimizer* opt, ExecutionPlan* plan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the "right" type of AggregateNode and
+/// @brief determine the "right" type of CollectNode and
 /// add a sort node for each COLLECT (note: the sort may be removed later)
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
 ////////////////////////////////////////////////////////////////////////////////
 
 void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
                                           Optimizer::Rule const* rule) {
-  std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::AGGREGATE, true));
+  std::vector<ExecutionNode*> nodes(plan->findNodesOfType(EN::COLLECT, true));
   bool modified = false;
 
   for (auto const& n : nodes) {
-    auto collectNode = static_cast<AggregateNode*>(n);
+    auto collectNode = static_cast<CollectNode*>(n);
 
     if (collectNode->isSpecialized()) {
       // already specialized this node
       continue;
     }
 
-    auto const& aggregateVariables = collectNode->aggregateVariables();
+    auto const& collectVariables = collectNode->collectVariables();
 
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation =
-        (!aggregateVariables.empty() &&
+        (!collectVariables.empty() &&
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseHashMethod());
 
@@ -1140,21 +1140,21 @@ void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 
       // use the cloned COLLECT node
       auto newCollectNode =
-          static_cast<AggregateNode*>(newPlan->getNodeById(collectNode->id()));
+          static_cast<CollectNode*>(newPlan->getNodeById(collectNode->id()));
       TRI_ASSERT(newCollectNode != nullptr);
 
-      // specialize the AggregateNode so it will become a HashAggregateBlock
+      // specialize the CollectNode so it will become a HashedCollectBlock
       // later
-      // additionally, add a SortNode BEHIND the AggregateNode (to sort the
+      // additionally, add a SortNode BEHIND the CollectNode (to sort the
       // final result)
       newCollectNode->aggregationMethod(
-          AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH);
+          CollectOptions::CollectMethod::COLLECT_METHOD_HASH);
       newCollectNode->specialized();
 
       if (!collectNode->isDistinctCommand()) {
         // add the post-SORT
         std::vector<std::pair<Variable const*, bool>> sortElements;
-        for (auto const& v : newCollectNode->aggregateVariables()) {
+        for (auto const& v : newCollectNode->collectVariables()) {
           sortElements.emplace_back(std::make_pair(v.first, true));
         }
 
@@ -1187,15 +1187,15 @@ void triagens::aql::specializeCollectRule(Optimizer* opt, ExecutionPlan* plan,
 
     // finally, adjust the original plan and create a sorted version of COLLECT
 
-    // specialize the AggregateNode so it will become a SortedAggregateBlock
+    // specialize the CollectNode so it will become a SortedCollectBlock
     // later
     collectNode->aggregationMethod(
-        AggregationOptions::AggregationMethod::AGGREGATION_METHOD_SORTED);
+        CollectOptions::CollectMethod::COLLECT_METHOD_SORTED);
 
-    // insert a SortNode IN FRONT OF the AggregateNode
-    if (!aggregateVariables.empty()) {
+    // insert a SortNode IN FRONT OF the CollectNode
+    if (!collectVariables.empty()) {
       std::vector<std::pair<Variable const*, bool>> sortElements;
-      for (auto const& v : aggregateVariables) {
+      for (auto const& v : collectVariables) {
         sortElements.emplace_back(std::make_pair(v.second, true));
       }
 
@@ -1412,9 +1412,9 @@ class triagens::aql::RedundantCalculationsReplacer final
         break;
       }
 
-      case EN::AGGREGATE: {
-        auto node = static_cast<AggregateNode*>(en);
-        for (auto& variable : node->_aggregateVariables) {
+      case EN::COLLECT: {
+        auto node = static_cast<CollectNode*>(en);
+        for (auto& variable : node->_collectVariables) {
           variable.second = Variable::replace(variable.second, _replacements);
         }
         break;
@@ -1541,8 +1541,8 @@ void triagens::aql::removeRedundantCalculationsRule(
         }
       }
 
-      if (current->getType() == EN::AGGREGATE) {
-        if (static_cast<AggregateNode*>(current)->hasOutVariable()) {
+      if (current->getType() == EN::COLLECT) {
+        if (static_cast<CollectNode*>(current)->hasOutVariable()) {
           // COLLECT ... INTO is evil (tm): it needs to keep all already defined
           // variables
           // we need to abort optimization here
@@ -1891,7 +1891,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       }
 
       case EN::SINGLETON:
-      case EN::AGGREGATE:
+      case EN::COLLECT:
       case EN::INSERT:
       case EN::REMOVE:
       case EN::REPLACE:
@@ -2568,7 +2568,7 @@ void triagens::aql::distributeFilternCalcToClusterRule(
           continue;
         }
 
-        case EN::AGGREGATE:
+        case EN::COLLECT:
         case EN::SUBQUERY:
         case EN::RETURN:
         case EN::NORESULTS:
@@ -2663,7 +2663,7 @@ void triagens::aql::distributeSortToClusterRule(Optimizer* opt,
       switch (inspectNode->getType()) {
         case EN::ENUMERATE_LIST:
         case EN::SINGLETON:
-        case EN::AGGREGATE:
+        case EN::COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -2937,7 +2937,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       case EN::SINGLETON:
       case EN::ENUMERATE_LIST:
       case EN::SUBQUERY:
-      case EN::AGGREGATE:
+      case EN::COLLECT:
       case EN::INSERT:
       case EN::REPLACE:
       case EN::UPDATE:

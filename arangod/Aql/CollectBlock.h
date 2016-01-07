@@ -21,11 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_AGGREGATE_BLOCK_H
-#define ARANGOD_AQL_AGGREGATE_BLOCK_H 1
+#ifndef ARANGOD_AQL_COLLECT_BLOCK_H
+#define ARANGOD_AQL_COLLECT_BLOCK_H 1
 
 #include "Basics/Common.h"
-#include "Aql/AggregateNode.h"
+#include "Aql/CollectNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 
@@ -43,7 +43,7 @@ class ExecutionEngine;
 /// @brief details about the current group
 ///////////////////////////////////////////////////////////////////////////////
 
-struct AggregatorGroup {
+struct CollectGroup {
   std::vector<AqlValue> groupValues;
   std::vector<TRI_document_collection_t const*> collections;
 
@@ -54,11 +54,11 @@ struct AggregatorGroup {
   bool rowsAreValid;
   bool const count;
 
-  AggregatorGroup() = delete;
+  CollectGroup() = delete;
 
-  explicit AggregatorGroup(bool);
+  explicit CollectGroup(bool);
 
-  ~AggregatorGroup();
+  ~CollectGroup();
 
   void initialize(size_t capacity);
   void reset();
@@ -77,11 +77,11 @@ struct AggregatorGroup {
 };
 
 
-class SortedAggregateBlock : public ExecutionBlock {
+class SortedCollectBlock : public ExecutionBlock {
  public:
-  SortedAggregateBlock(ExecutionEngine*, AggregateNode const*);
+  SortedCollectBlock(ExecutionEngine*, CollectNode const*);
 
-  ~SortedAggregateBlock();
+  ~SortedCollectBlock();
 
   int initialize() override;
 
@@ -106,7 +106,7 @@ class SortedAggregateBlock : public ExecutionBlock {
   /// @brief details about the current group
   ////////////////////////////////////////////////////////////////////////////////
 
-  AggregatorGroup _currentGroup;
+  CollectGroup _currentGroup;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the optional register that contains the input expression values for
@@ -132,11 +132,11 @@ class SortedAggregateBlock : public ExecutionBlock {
 };
 
 
-class HashedAggregateBlock : public ExecutionBlock {
+class HashedCollectBlock : public ExecutionBlock {
  public:
-  HashedAggregateBlock(ExecutionEngine*, AggregateNode const*);
+  HashedCollectBlock(ExecutionEngine*, CollectNode const*);
 
-  ~HashedAggregateBlock();
+  ~HashedCollectBlock();
 
   int initialize() override;
 

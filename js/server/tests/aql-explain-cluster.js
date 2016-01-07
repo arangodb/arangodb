@@ -282,7 +282,7 @@ function explainSuite () {
       prev = node.id;
       
       node = nodes[n++];
-      assertEqual("AggregateNode", node.type);
+      assertEqual("CollectNode", node.type);
       assertEqual([ prev ], node.dependencies);
       assertEqual(1, node.aggregates.length);
       assertEqual("a", node.aggregates[0].inVariable.name);
