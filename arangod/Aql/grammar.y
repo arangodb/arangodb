@@ -406,6 +406,7 @@ collect_statement:
         // start a new scope
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
 
+        // register group variables
         size_t const n = $2->numMembers();
         for (size_t i = 0; i < n; ++i) {
           auto member = $2->getMember(i);
@@ -434,7 +435,7 @@ collect_statement:
         // start a new scope
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
 
-        // register all used variables
+        // register all group variables
         size_t n = $1->numMembers();
         for (size_t i = 0; i < n; ++i) {
           auto member = $1->getMember(i);
@@ -445,6 +446,8 @@ collect_statement:
             scopes->addVariable(v);
           }
         }
+
+        // register aggregate variables too
         n = $2->numMembers();
         for (size_t i = 0; i < n; ++i) {
           auto member = $2->getMember(i);

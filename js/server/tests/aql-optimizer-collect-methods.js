@@ -128,7 +128,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.aggregationOptions.method);
+            assertEqual("hash", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -168,7 +168,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.aggregationOptions.method);
+            assertEqual("hash", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -206,7 +206,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.aggregationOptions.method);
+            assertEqual("sorted", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -243,7 +243,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.aggregationOptions.method);
+            assertEqual("hash", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -284,7 +284,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.aggregationOptions.method);
+            assertEqual("sorted", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -319,7 +319,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.aggregationOptions.method);
+            assertEqual("sorted", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;

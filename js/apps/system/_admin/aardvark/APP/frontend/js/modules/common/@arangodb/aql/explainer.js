@@ -794,8 +794,7 @@ function processQuery (query, explain) {
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression) + "   " + annotation("/* " + node.expressionType + " expression */");
       case "FilterNode":
         return keyword("FILTER") + " " + variableName(node.inVariable);
-      case "AggregateNode":
-      case "CollectNode":
+      case "AggregateNode": /* old-style COLLECT node */
         return keyword("COLLECT") + " " + node.aggregates.map(function(node) {
           return variableName(node.outVariable) + " = " + variableName(node.inVariable);
         }).join(", ") + 
@@ -803,6 +802,14 @@ function processQuery (query, explain) {
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
                  "   " + annotation("/* " + node.aggregationOptions.method + "*/");
+      case "CollectNode":
+        return keyword("COLLECT") + " " + node.groups.map(function(node) {
+          return variableName(node.outVariable) + " = " + variableName(node.inVariable);
+        }).join(", ") + 
+                 (node.count ? " " + keyword("WITH COUNT") : "") + 
+                 (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
+                 (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
+                 "   " + annotation("/* " + node.collectOptions.method + "*/");
       case "SortNode":
         return keyword("SORT") + " " + node.elements.map(function(node) {
           return variableName(node.inVariable) + " " + keyword(node.ascending ? "ASC" : "DESC"); 

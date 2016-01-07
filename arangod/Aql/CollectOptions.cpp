@@ -33,10 +33,9 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 CollectOptions::CollectOptions(Json const& json) {
-  Json obj = json.get("aggregationOptions");
+  Json obj = json.get("collectOptions");
 
-  method =
-      methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
+  method = methodFromString(JsonHelper::getStringValue(obj.json(), "method", ""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,11 +56,8 @@ bool CollectOptions::canUseHashMethod() const {
 
 void CollectOptions::toJson(triagens::basics::Json& json,
                                 TRI_memory_zone_t* zone) const {
-  Json options;
-
-  options = Json(Json::Object, 1)("method", Json(methodToString(method)));
-
-  json("aggregationOptions", options);
+  Json options = Json(Json::Object, 1)("method", Json(methodToString(method)));
+  json("collectOptions", options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

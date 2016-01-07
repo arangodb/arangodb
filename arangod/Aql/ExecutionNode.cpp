@@ -165,10 +165,16 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
       Variable* outVariable =
           varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
+      triagens::basics::Json jsonGroups = oneNode.get("groups");
+      if (!jsonGroups.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                       "invalid groups definition");
+      }
+      
       triagens::basics::Json jsonAggregates = oneNode.get("aggregates");
       if (!jsonAggregates.isArray()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                       "missing node type in valueTypeNames");
+                                       "invalid aggregates definition");
       }
 
       std::vector<Variable const*> keepVariables;
@@ -184,20 +190,38 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
         }
       }
 
-      size_t const len = jsonAggregates.size();
       std::vector<std::pair<Variable const*, Variable const*>>
-          collectVariables;
+        groupVariables;
+      {
+        size_t const len = jsonGroups.size();
+        groupVariables.reserve(len);
+        for (size_t i = 0; i < len; i++) {
+          triagens::basics::Json oneJsonGroup =
+              jsonGroups.at(static_cast<int>(i));
+          Variable* outVar =
+              varFromJson(plan->getAst(), oneJsonGroup, "outVariable");
+          Variable* inVar =
+              varFromJson(plan->getAst(), oneJsonGroup, "inVariable");
 
-      collectVariables.reserve(len);
-      for (size_t i = 0; i < len; i++) {
-        triagens::basics::Json oneJsonAggregate =
-            jsonAggregates.at(static_cast<int>(i));
-        Variable* outVar =
-            varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
-        Variable* inVar =
-            varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
+          groupVariables.emplace_back(std::make_pair(outVar, inVar));
+        }
+      }
+      
+      std::vector<std::pair<Variable const*, Variable const*>>
+        aggregateVariables;
+      {
+        size_t const len = jsonAggregates.size();
+        aggregateVariables.reserve(len);
+        for (size_t i = 0; i < len; i++) {
+          triagens::basics::Json oneJsonAggregate =
+              jsonAggregates.at(static_cast<int>(i));
+          Variable* outVar =
+              varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
+          Variable* inVar =
+              varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
-        collectVariables.emplace_back(std::make_pair(outVar, inVar));
+          aggregateVariables.emplace_back(std::make_pair(outVar, inVar));
+        }
       }
 
       bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
@@ -206,8 +230,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory(
 
       auto node = new CollectNode(
           plan, oneNode, expressionVariable, outVariable, keepVariables,
-          plan->getAst()->variables()->variables(false), collectVariables,
-          count, isDistinctCommand);
+          plan->getAst()->variables()->variables(false), groupVariables,
+          aggregateVariables, count, isDistinctCommand);
 
       // specialize the node if required
       bool specialized =
@@ -934,7 +958,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<CollectNode const*>(en);
-      for (auto const& p : ep->_collectVariables) {
+      for (auto const& p : ep->_groupVariables) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
         // for which we need to create a register in the current

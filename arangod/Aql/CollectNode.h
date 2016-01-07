@@ -61,13 +61,16 @@ class CollectNode : public ExecutionNode {
       ExecutionPlan* plan, size_t id, CollectOptions const& options,
       std::vector<std::pair<Variable const*, Variable const*>> const&
           collectVariables,
+      std::vector<std::pair<Variable const*, Variable const*>> const&
+          aggregateVariables,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<Variable const*> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,
       bool count, bool isDistinctCommand)
       : ExecutionNode(plan, id),
         _options(options),
-        _collectVariables(collectVariables),
+        _groupVariables(collectVariables),
+        _aggregateVariables(aggregateVariables),
         _expressionVariable(expressionVariable),
         _outVariable(outVariable),
         _keepVariables(keepVariables),
@@ -86,6 +89,8 @@ class CollectNode : public ExecutionNode {
       std::unordered_map<VariableId, std::string const> const& variableMap,
       std::vector<std::pair<Variable const*, Variable const*>> const&
           collectVariables,
+      std::vector<std::pair<Variable const*, Variable const*>> const&
+          aggregateVariables,
       bool count, bool isDistinctCommand);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +225,7 @@ class CollectNode : public ExecutionNode {
 
   std::vector<std::pair<Variable const*, Variable const*>> const&
   collectVariables() const {
-    return _collectVariables;
+    return _groupVariables;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -243,10 +248,10 @@ class CollectNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final {
     std::vector<Variable const*> v;
     size_t const n =
-        _collectVariables.size() + (_outVariable == nullptr ? 0 : 1);
+        _groupVariables.size() + (_outVariable == nullptr ? 0 : 1);
     v.reserve(n);
 
-    for (auto const& p : _collectVariables) {
+    for (auto const& p : _groupVariables) {
       v.emplace_back(p.first);
     }
     if (_outVariable != nullptr) {
@@ -264,10 +269,16 @@ class CollectNode : public ExecutionNode {
   CollectOptions _options;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief input/output variables for the aggregation (out, in)
+  /// @brief input/output variables for the collection (out, in)
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::pair<Variable const*, Variable const*>> _collectVariables;
+  std::vector<std::pair<Variable const*, Variable const*>> _groupVariables;
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief input/output variables for the aggregation (out, in)
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  std::vector<std::pair<Variable const*, Variable const*>> _aggregateVariables;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief input expression variable (might be null)

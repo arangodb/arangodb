@@ -1414,7 +1414,7 @@ class triagens::aql::RedundantCalculationsReplacer final
 
       case EN::COLLECT: {
         auto node = static_cast<CollectNode*>(en);
-        for (auto& variable : node->_collectVariables) {
+        for (auto& variable : node->_groupVariables) {
           variable.second = Variable::replace(variable.second, _replacements);
         }
         break;

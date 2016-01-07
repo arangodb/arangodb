@@ -284,9 +284,9 @@ function explainSuite () {
       node = nodes[n++];
       assertEqual("CollectNode", node.type);
       assertEqual([ prev ], node.dependencies);
-      assertEqual(1, node.aggregates.length);
-      assertEqual("a", node.aggregates[0].inVariable.name);
-      assertEqual("x", node.aggregates[0].outVariable.name);
+      assertEqual(1, node.groups.length);
+      assertEqual("a", node.groups[0].inVariable.name);
+      assertEqual("x", node.groups[0].outVariable.name);
       assertEqual("g", node.outVariable.name);
       prev = node.id;
       

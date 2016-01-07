@@ -132,7 +132,7 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
       _expressionRegister(ExecutionNode::MaxRegisterId),
       _groupRegister(ExecutionNode::MaxRegisterId),
       _variableNames() {
-  for (auto const& p : en->_collectVariables) {
+  for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
     auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
@@ -462,7 +462,7 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
     : ExecutionBlock(engine, en),
       _aggregateRegisters(),
       _groupRegister(ExecutionNode::MaxRegisterId) {
-  for (auto const& p : en->_collectVariables) {
+  for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
     auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);

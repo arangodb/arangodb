@@ -37,11 +37,14 @@ CollectNode::CollectNode(
     std::vector<Variable const*> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<std::pair<Variable const*, Variable const*>> const&
-        collectVariables,
+        groupVariables,
+    std::vector<std::pair<Variable const*, Variable const*>> const&
+        aggregateVariables,
     bool count, bool isDistinctCommand)
     : ExecutionNode(plan, base),
       _options(base),
-      _collectVariables(collectVariables),
+      _groupVariables(groupVariables),
+      _aggregateVariables(aggregateVariables),
       _expressionVariable(expressionVariable),
       _outVariable(outVariable),
       _keepVariables(keepVariables),
@@ -63,17 +66,31 @@ void CollectNode::toJsonHelper(triagens::basics::Json& nodes,
     return;
   }
 
-  triagens::basics::Json values(triagens::basics::Json::Array,
-                                _collectVariables.size());
+  {
+    triagens::basics::Json values(triagens::basics::Json::Array,
+                                  _groupVariables.size());
 
-  for (auto it = _collectVariables.begin(); it != _collectVariables.end();
-       ++it) {
-    triagens::basics::Json variable(triagens::basics::Json::Object);
-    variable("outVariable", (*it).first->toJson())("inVariable",
-                                                   (*it).second->toJson());
-    values(variable);
+    for (auto const& groupVariable : _groupVariables) {
+      triagens::basics::Json variable(triagens::basics::Json::Object);
+      variable("outVariable", groupVariable.first->toJson())("inVariable",
+                                                   groupVariable.second->toJson());
+      values(variable);
+    }
+    json("groups", values);
   }
-  json("aggregates", values);
+  
+  {
+    triagens::basics::Json values(triagens::basics::Json::Array,
+                                  _aggregateVariables.size());
+
+    for (auto const& aggregateVariable : _aggregateVariables) {
+      triagens::basics::Json variable(triagens::basics::Json::Object);
+      variable("outVariable", aggregateVariable.first->toJson())("inVariable",
+                                                     aggregateVariable.second->toJson());
+      values(variable);
+    }
+    json("aggregates", values);
+  }
 
   // expression variable might be empty
   if (_expressionVariable != nullptr) {
@@ -114,7 +131,8 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   auto outVariable = _outVariable;
   auto expressionVariable = _expressionVariable;
-  auto collectVariables = _collectVariables;
+  auto groupVariables = _groupVariables;
+  auto aggregateVariables = _aggregateVariables;
 
   if (withProperties) {
     if (expressionVariable != nullptr) {
@@ -127,16 +145,24 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
 
     // need to re-create all variables
-    collectVariables.clear();
+    groupVariables.clear();
 
-    for (auto& it : _collectVariables) {
+    for (auto& it : _groupVariables) {
       auto out = plan->getAst()->variables()->createVariable(it.first);
       auto in = plan->getAst()->variables()->createVariable(it.second);
-      collectVariables.emplace_back(std::make_pair(out, in));
+      groupVariables.emplace_back(std::make_pair(out, in));
+    }
+    
+    aggregateVariables.clear();
+
+    for (auto& it : _aggregateVariables) {
+      auto out = plan->getAst()->variables()->createVariable(it.first);
+      auto in = plan->getAst()->variables()->createVariable(it.second);
+      aggregateVariables.emplace_back(std::make_pair(out, in));
     }
   }
 
-  auto c = new CollectNode(plan, _id, _options, collectVariables,
+  auto c = new CollectNode(plan, _id, _options, groupVariables, aggregateVariables,
                              expressionVariable, outVariable, _keepVariables,
                              _variableMap, _count, _isDistinctCommand);
 
@@ -213,7 +239,7 @@ std::vector<Variable const*> CollectNode::getVariablesUsedHere() const {
 
 void CollectNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
-  for (auto const& p : _collectVariables) {
+  for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }
 
@@ -262,7 +288,7 @@ double CollectNode::estimateCost(size_t& nrItems) const {
   // Nevertheless, the optimizer does not do much with CollectNodes
   // and thus this potential overestimation does not really matter.
 
-  if (_count && _collectVariables.empty()) {
+  if (_count && _groupVariables.empty()) {
     // we are known to only produce a single output row
     nrItems = 1;
   } else {
