@@ -342,7 +342,7 @@ def generateArangoshOutput(testName):
         expectError = 'undefined'
         m = expectErrorRE.match(l[0])
         if m:
-            expectError = "'" + m.group(1) + "'"
+            expectError = "'" + m.group(1).strip().strip('\\n') + "'"
             l[0] = l[0][0:l[0].find('//')].rstrip(' ')
 
         m = loopDetectRE.match(l[0])
