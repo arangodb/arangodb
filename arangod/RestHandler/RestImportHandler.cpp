@@ -399,8 +399,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///
 /// @RESTQUERYPARAM{createCollectionType,string,optional}
 /// If this parameter has a value of `document` or `edge`, it will determine
-/// the type of collection that is going to be created when the
-/// `createCollection`
+/// the type of collection that is going to be created when the `createCollection`
 /// option is set to `true`. The default value is `document`.
 ///
 /// @RESTQUERYPARAM{overwrite,boolean,optional}
@@ -418,20 +417,19 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 /// - *error*: this will not import the current document because of the unique
 ///   key constraint violation. This is the default setting.
 ///
-/// - *update*: this will update an existing document in the database with the
+/// - *update*: this will update an existing document in the database with the 
 ///   data specified in the request. Attributes of the existing document that
 ///   are not present in the request will be preseved.
 ///
 /// - *replace*: this will replace an existing document in the database with the
-///   data specified in the request.
+///   data specified in the request. 
 ///
 /// - *ignore*: this will not update an existing document and simply ignore the
 ///   error caused by a unique key constraint violation.
 ///
 /// Note that that *update*, *replace* and *ignore* will only work when the
 /// import document in the request contains the *_key* attribute. *update* and
-/// *replace* may also fail because of secondary unique key constraint
-/// violations.
+/// *replace* may also fail because of secondary unique key constraint violations.
 ///
 /// @RESTQUERYPARAM{complete,boolean,optional}
 /// If set to `true` or `yes`, it will make the whole import fail if any error
@@ -516,8 +514,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///       { name: { detailed: "detailed name", short: "short name" } }
 ///     ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&type=list", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -571,8 +568,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///       { name: { detailed: "detailed name", short: "short name" } }
 ///     ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&type=auto", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=auto", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -599,8 +595,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///       { id: "55932", count: 4334 },
 ///     ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&createCollection=true&type=list", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true&type=list", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -627,8 +622,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///                '{"_from": "products/332", "_to": "products/abc", ' + 
 ///                '  "name": "other name" }';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&type=documents", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -652,8 +646,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///
 ///     var body = [ { name: "some name" } ];
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&type=list&details=true", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list&details=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body);
@@ -700,8 +693,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n' +
 ///                '{ "_key": "abc", "value1": "bar", "value2": "baz" }';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&type=documents&complete=true", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents&complete=true", body);
 ///
 ///     assert(response.code === 409);
 ///
@@ -717,8 +709,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///
 ///     var body = '{ "name": "test" }';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&type=documents", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
 ///
 ///     assert(response.code === 404);
 ///
@@ -735,8 +726,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///
 ///     var body = '{ }';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&type=list", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", body);
 ///
 ///     assert(response.code === 400);
 ///
@@ -993,8 +983,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///
 /// @RESTQUERYPARAM{createCollectionType,string,optional}
 /// If this parameter has a value of `document` or `edge`, it will determine
-/// the type of collection that is going to be created when the
-/// `createCollection`
+/// the type of collection that is going to be created when the `createCollection`
 /// option is set to `true`. The default value is `document`.
 ///
 /// @RESTQUERYPARAM{overwrite,boolean,optional}
@@ -1096,8 +1085,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///
 /// @EXAMPLES
 ///
-/// Importing two documents, with attributes `_key`, `value1` and `value2` each.
-/// One
+/// Importing two documents, with attributes `_key`, `value1` and `value2` each. One
 /// line in the import data is empty
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestImportCsvExample}
@@ -1109,8 +1097,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///                '[ "abc", 25, "test" ]\n\n' + 
 ///                '[ "foo", "bar", "baz" ]';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" +
-///     cn, body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
@@ -1134,8 +1121,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///                '[ "foo", "bar" ]\n' + 
 ///                '[534.55, true ]';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&createCollection=true", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&createCollection=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
@@ -1160,8 +1146,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///                '[ "products/123","products/234", "some name" ]\n' +
 ///                '[ "products/332", "products/abc", "other name" ]';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" +
-///     cn, body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
@@ -1183,8 +1168,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///
 ///     var body = '[ "name" ]\n[ "some name" ]\n[ "other name" ]';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&details=true", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
@@ -1207,8 +1191,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///                '[ "abc", 25, "test" ]\n' +
 ///                '["abc", "bar", "baz" ]';
 ///
-///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
-///     + "&details=true", body);
+///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&details=true", body);
 ///
 ///     assert(response.code === 201);
 ///     var r = JSON.parse(response.body)
@@ -1231,8 +1214,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///                '[ "abc", 25, "test" ]\n' + 
 ///                '["abc", "bar", "baz" ]';
 ///
-///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn +
-///     "&complete=true", body);
+///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn + "&complete=true", body);
 ///
 ///     assert(response.code === 409);
 ///
@@ -1250,8 +1232,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///                '[ "abc", 25, "test" ]\n' + 
 ///                '["foo", "bar", "baz" ]';
 ///
-///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn,
-///     body);
+///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn, body);
 ///
 ///     assert(response.code === 404);
 ///
@@ -1267,8 +1248,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///
 ///     var body = '{ "_key": "foo", "value1": "bar" }';
 ///
-///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn,
-///     body);
+///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn, body);
 ///
 ///     assert(response.code === 400);
 ///

@@ -168,9 +168,7 @@ HttpHandler::status_t RestJobHandler::execute() {
 /// @EXAMPLE_ARANGOSH_RUN{JSF_job_fetch_result_04}
 ///   var url = "/_api/collection";
 ///   var headers = {'x-arango-async' : 'store'};
-///   var response = logCurlRequest('PUT', url, {"name":
-///     " this name is invalid"},
-///     headers);
+///   var response = logCurlRequest('PUT', url, {"name":" this name is invalid "}, headers);
 ///
 ///   assert(response.code === 202);
 ///   logRawResponse(response);
@@ -254,8 +252,7 @@ void RestJobHandler::putJob() {
 ///   var url = "/_api/cursor";
 ///   var headers = {'x-arango-async' : 'store'};
 ///   var postData = {"query":
-///      "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) " +
-///      "FILTER i == 5 && j == 5 RETURN 42"}
+///      "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 && j == 5 RETURN 42"}
 ///
 ///   var response = logCurlRequest('POST', url, postData, headers);
 ///   assert(response.code === 202);
@@ -575,12 +572,10 @@ void RestJobHandler::getJobByType(std::string const& type) {
 ///
 /// @RESTURLPARAM{type,string,required}
 /// The type of jobs to delete. type can be:
-/// * *all*: Deletes all jobs results. Currently executing or queued async
+/// * *all*: Deletes all jobs results. Currently executing or queued async 
 ///   jobs will not be stopped by this call.
-/// * *expired*: Deletes expired results. To determine the expiration status of
-/// a
-///   result, pass the stamp query parameter. stamp needs to be a UNIX
-///   timestamp,
+/// * *expired*: Deletes expired results. To determine the expiration status of a 
+///   result, pass the stamp query parameter. stamp needs to be a UNIX timestamp, 
 ///   and all async job results created at a lower timestamp will be deleted.
 /// * *an actual job-id*: In this case, the call will remove the result of the
 ///   specified async job. If the job is currently executing or queued, it will

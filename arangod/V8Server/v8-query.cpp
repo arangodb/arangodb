@@ -1820,20 +1820,17 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
 /// @startDocuBlock collectionFulltext
 /// `collection.fulltext(attribute, query)`
 ///
-/// The *fulltext* simple query functions performs a fulltext search on the
-/// specified
+/// The *fulltext* simple query functions performs a fulltext search on the specified
 /// *attribute* and the specified *query*.
 ///
 /// Details about the fulltext query syntax can be found below.
 ///
-/// Note: the *fulltext* simple query function is **deprecated** as of ArangoDB
-/// 2.6.
+/// Note: the *fulltext* simple query function is **deprecated** as of ArangoDB 2.6. 
 /// The function may be removed in future versions of ArangoDB. The preferred
-/// way for executing fulltext queries is to use an AQL query using the
-/// *FULLTEXT*
+/// way for executing fulltext queries is to use an AQL query using the *FULLTEXT*
 /// [AQL function](../Aql/FulltextFunctions.md) as follows:
 ///
-///     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit)
+///     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit) 
 ///       RETURN doc
 ///
 /// @EXAMPLES
@@ -2187,9 +2184,8 @@ static void JS_WithinQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 ///
 /// Looks up the documents in the specified collection using the array of keys
 /// provided. All documents for which a matching key was specified in the *keys*
-/// array and that exist in the collection will be returned.
-/// Keys for which no document can be found in the underlying collection are
-/// ignored,
+/// array and that exist in the collection will be returned. 
+/// Keys for which no document can be found in the underlying collection are ignored, 
 /// and no exception will be thrown for them.
 ///
 /// @EXAMPLES

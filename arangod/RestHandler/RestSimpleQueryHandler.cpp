@@ -92,8 +92,7 @@ HttpHandler::status_t RestSimpleQueryHandler::execute() {
 /// - *limit*: The maximal amount of documents to return. The *skip*
 ///   is applied before the *limit* restriction. (optional)
 ///
-/// Returns a cursor containing the result, see [Http
-/// Cursor](../HttpAqlQueryCursor/README.md) for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///

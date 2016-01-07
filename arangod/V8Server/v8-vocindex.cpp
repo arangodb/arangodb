@@ -1160,8 +1160,7 @@ static void CreateCollectionCoordinator(
 ///
 /// **sparse** can be *true* or *false*.
 ///
-/// For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and
-/// *geo*
+/// For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and *geo*
 /// are [sparse](WhichIndex.md) by definition.
 ///
 /// **unique** can be *true* or *false* and is supported by *hash* or *skiplist*
@@ -1678,8 +1677,7 @@ static void CreateVocBase(const v8::FunctionCallbackInfo<v8::Value>& args,
 ///   target shard for documents. Documents are sent to shards based on the
 ///   values they have in their shard key attributes. The values of all shard
 ///   key attributes in a document are hashed, and the hash value is used to
-///   determine the target shard. Note that values of shard key attributes
-///   cannot
+///   determine the target shard. Note that values of shard key attributes cannot
 ///   be changed once set.
 ///   This option is meaningless in a single server setup.
 ///
@@ -1699,9 +1697,8 @@ static void CreateVocBase(const v8::FunctionCallbackInfo<v8::Value>& args,
 ///
 /// `db._create(collection-name, properties, type)`
 ///
-/// Specifies the optional *type* of the collection, it can either be *document*
-/// or *edge*. On default it is document. Instead of giving a type you can also
-/// use
+/// Specifies the optional *type* of the collection, it can either be *document* 
+/// or *edge*. On default it is document. Instead of giving a type you can also use 
 /// *db._createEdgeCollection* or *db._createDocumentCollection*.
 ///
 /// @EXAMPLES
@@ -1785,7 +1782,7 @@ static void JS_CreateDocumentCollectionVocbase(
 ///
 /// * *waitForSync* (optional, default *false*): If *true* creating
 ///   a document will only return after the data was synced to disk.
-/// * *journalSize* (optional, default is
+/// * *journalSize* (optional, default is 
 ///   "configuration parameter"):  The maximal size of
 ///   a journal or datafile.  Note that this also limits the maximal
 ///   size of a single object and must be at least 1MB.

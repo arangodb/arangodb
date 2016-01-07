@@ -110,8 +110,7 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
 ///
-/// **Note**: this flag is not supported in a cluster. Using it will result in
-/// an
+/// **Note**: this flag is not supported in a cluster. Using it will result in an
 /// error.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
@@ -140,8 +139,7 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 /// Optionally, the query parameter *waitForSync* can be used to force
 /// synchronization of the document creation operation to disk even in case that
 /// the *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* query parameter can be used to force synchronization of
-/// just
+/// the *waitForSync* query parameter can be used to force synchronization of just
 /// this specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to *false*,
 /// then the collection's default *waitForSync* behavior is applied. The
@@ -995,8 +993,7 @@ bool RestDocumentHandler::checkDocument() {
 /// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
-/// Completely updates (i.e. replaces) the document identified by
-/// *document-handle*.
+/// Completely updates (i.e. replaces) the document identified by *document-handle*.
 /// If the document exists and can be updated, then a *HTTP 201* is returned
 /// and the "ETag" header field contains the new revision of the document.
 ///
@@ -1020,9 +1017,8 @@ bool RestDocumentHandler::checkDocument() {
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated document, *_key* contains the key which
-/// uniquely identifies a document in a given collection, and the attribute
-/// *_rev*
+/// *document-handle* of the updated document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
 /// If the document does not exist, then a *HTTP 404* is returned and the
@@ -1030,8 +1026,7 @@ bool RestDocumentHandler::checkDocument() {
 ///
 /// There are two ways for specifying the targeted document revision id for
 /// conditional replacements (i.e. replacements that will only be executed if
-/// the revision id found in the database matches the document revision id
-/// specified
+/// the revision id found in the database matches the document revision id specified
 /// in the request):
 /// - specifying the target revision in the *rev* URL query parameter
 /// - specifying the target revision in the *if-match* HTTP header
@@ -1040,31 +1035,26 @@ bool RestDocumentHandler::checkDocument() {
 /// Specifying a target revision is optional, however, if done, only one of the
 /// described mechanisms must be used (either the *rev* query parameter or the
 /// *if-match* HTTP header).
-/// Regardless which mechanism is used, the parameter needs to contain the
-/// target
+/// Regardless which mechanism is used, the parameter needs to contain the target
 /// document revision id as returned in the *_rev* attribute of a document or
 /// by an HTTP *etag* header.
 ///
-/// For example, to conditionally replace a document based on a specific
-/// revision
+/// For example, to conditionally replace a document based on a specific revision
 /// id, you can use the following request:
 ///
 ///
 /// `PUT /_api/document/document-handle?rev=etag`
 ///
 ///
-/// If a target revision id is provided in the request (e.g. via the *etag*
-/// value
+/// If a target revision id is provided in the request (e.g. via the *etag* value
 /// in the *rev* URL query parameter above), ArangoDB will check that
 /// the revision id of the document found in the database is equal to the target
-/// revision id provided in the request. If there is a mismatch between the
-/// revision
+/// revision id provided in the request. If there is a mismatch between the revision
 /// id, then by default a *HTTP 412* conflict is returned and no replacement is
 /// performed.
 ///
 ///
-/// The conditional update behavior can be overridden with the *policy* URL
-/// query parameter:
+/// The conditional update behavior can be overridden with the *policy* URL query parameter:
 ///
 ///
 /// `PUT /_api/document/document-handle?policy=policy`
@@ -1075,8 +1065,7 @@ bool RestDocumentHandler::checkDocument() {
 /// revision id specified in the request.
 ///
 /// If *policy* is set to *last*, then the replacement will succeed, even if the
-/// revision id found in the database does not match the target revision id
-/// specified
+/// revision id found in the database does not match the target revision id specified
 /// in the request. You can use the *last* *policy* to force replacements.
 ///
 /// @RESTRETURNCODES
@@ -1153,8 +1142,7 @@ bool RestDocumentHandler::checkDocument() {
 ///     var url = "/_api/document/" + document._id;
 ///     var headers = {"If-Match":  "\"" + document2._rev + "\""};
 ///
-///     var response = logCurlRequest('PUT', url, '{"other":"content"}',
-///     headers);
+///     var response = logCurlRequest('PUT', url, '{"other":"content"}', headers);
 ///
 ///     assert(response.code === 412);
 ///
@@ -1273,9 +1261,8 @@ bool RestDocumentHandler::replaceDocument() { return modifyDocument(false); }
 ///
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
-/// *document-handle* of the updated document, *_key* contains the key which
-/// uniquely identifies a document in a given collection, and the attribute
-/// *_rev*
+/// *document-handle* of the updated document, *_key* contains the key which 
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
 /// If the document does not exist, then a *HTTP 404* is returned and the
@@ -1327,15 +1314,13 @@ bool RestDocumentHandler::replaceDocument() { return modifyDocument(false); }
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
-///     var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1,
-///     "two": 2, "three": 3, "empty": null } });
+///     var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1, "two": 2, "three": 3, "empty": null } });
 ///     assert(response2.code === 202);
 ///     logJsonResponse(response2);
 ///     var response3 = logCurlRequest("GET", url);
 ///     assert(response3.code === 200);
 ///     logJsonResponse(response3);
-///     var response4 = logCurlRequest("PATCH", url + "?keepNull=false", {
-///     "hello": null, "numbers": { "four": 4 } });
+///     var response4 = logCurlRequest("PATCH", url + "?keepNull=false", { "hello": null, "numbers": { "four": 4 } });
 ///     assert(response4.code === 202);
 ///     logJsonResponse(response4);
 ///     var response5 = logCurlRequest("GET", url);
@@ -1351,24 +1336,21 @@ bool RestDocumentHandler::replaceDocument() { return modifyDocument(false); }
 ///     db._drop(cn);
 ///     db._create(cn);
 ///
-///     var document =
-///     db.products.save({"inhabitants":{"china":1366980000,"india":1263590000,"usa":319220000}});
+///     var document = db.products.save({"inhabitants":{"china":1366980000,"india":1263590000,"usa":319220000}});
 ///     var url = "/_api/document/" + document._id;
 ///
 ///     var response = logCurlRequest("GET", url);
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 ///
-///     var response = logCurlRequest("PATCH", url + "?mergeObjects=true", {
-///     "inhabitants": {"indonesia":252164800,"brazil":203553000 }});
+///     var response = logCurlRequest("PATCH", url + "?mergeObjects=true", { "inhabitants": {"indonesia":252164800,"brazil":203553000 }});
 ///     assert(response.code === 202);
 ///
 ///     var response2 = logCurlRequest("GET", url);
 ///     assert(response2.code === 200);
 ///     logJsonResponse(response2);
 ///
-///     var response3 = logCurlRequest("PATCH", url + "?mergeObjects=false", {
-///     "inhabitants": { "pakistan":188346000 }});
+///     var response3 = logCurlRequest("PATCH", url + "?mergeObjects=false", { "inhabitants": { "pakistan":188346000 }});
 ///     assert(response3.code === 202);
 ///     logJsonResponse(response3);
 ///
@@ -1715,8 +1697,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision. The attribute *_id* contains the known
 /// *document-handle* of the removed document, *_key* contains the key which
-/// uniquely identifies a document in a given collection, and the attribute
-/// *_rev*
+/// uniquely identifies a document in a given collection, and the attribute *_rev*
 /// contains the new document revision.
 ///
 /// If the *waitForSync* parameter is not specified or set to

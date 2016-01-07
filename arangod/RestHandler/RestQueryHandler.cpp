@@ -115,8 +115,7 @@ HttpHandler::status_t RestQueryHandler::execute() {
 /// @startDocuBlock GetApiQueryProperties
 /// @brief returns the configuration for the AQL query tracking
 ///
-/// @RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL
-/// query tracking}
+/// @RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL query tracking}
 ///
 /// @RESTDESCRIPTION
 /// Returns the current query tracking configuration. The configuration is a
@@ -126,9 +125,8 @@ HttpHandler::status_t RestQueryHandler::execute() {
 ///   *false*, neither queries nor slow queries will be tracked.
 ///
 /// - *trackSlowQueries*: if set to *true*, then slow queries will be tracked
-///   in the list of slow queries if their runtime exceeds the value set in
-///   *slowQueryThreshold*. In order for slow queries to be tracked, the
-///   *enabled*
+///   in the list of slow queries if their runtime exceeds the value set in 
+///   *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
 ///   property must also be set to *true*.
 ///
 /// - *maxSlowQueries*: the maximum number of slow queries to keep in the list
@@ -141,8 +139,7 @@ HttpHandler::status_t RestQueryHandler::execute() {
 ///   The value for *slowQueryThreshold* is specified in seconds.
 ///
 /// - *maxQueryStringLength*: the maximum query string length to keep in the
-///   list of queries. Query strings can have arbitrary lengths, and this
-///   property
+///   list of queries. Query strings can have arbitrary lengths, and this property
 ///   can be used to save memory in case very long query strings are used. The
 ///   value is specified in bytes.
 ///
@@ -194,12 +191,10 @@ bool RestQueryHandler::readQueryProperties() {
 /// @startDocuBlock GetApiQueryCurrent
 /// @brief returns a list of currently running AQL queries
 ///
-/// @RESTHEADER{GET /_api/query/current, Returns the currently running AQL
-/// queries}
+/// @RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
 ///
 /// @RESTDESCRIPTION
-/// Returns an array containing the AQL queries currently running in the
-/// selected
+/// Returns an array containing the AQL queries currently running in the selected
 /// database. Each query is a JSON object with the following attributes:
 ///
 /// - *id*: the query's id
@@ -377,8 +372,7 @@ bool RestQueryHandler::deleteQuerySlow() {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// The server will respond with *HTTP 200* when the query was still running
-/// when
+/// The server will respond with *HTTP 200* when the query was still running when
 /// the kill request was executed and the query's kill flag was set.
 ///
 /// @RESTRETURNCODE{400}
@@ -437,8 +431,7 @@ bool RestQueryHandler::deleteQuery() {
 /// @startDocuBlock PutApiQueryProperties
 /// @brief changes the configuration for the AQL query tracking
 ///
-/// @RESTHEADER{PUT /_api/query/properties, Changes the properties for the AQL
-/// query tracking}
+/// @RESTHEADER{PUT /_api/query/properties, Changes the properties for the AQL query tracking}
 ///
 /// @RESTBODYPARAM{enabled,boolean,required,}
 /// If set to *true*, then queries will be tracked. If set to
@@ -600,8 +593,7 @@ bool RestQueryHandler::replaceProperties() {
 ///
 ///     @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
 ///     var url = "/_api/query";
-///     var body = '{ "query" : ' + 
-///      '"FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
+///     var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -614,8 +606,7 @@ bool RestQueryHandler::replaceProperties() {
 ///
 ///     @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
 ///     var url = "/_api/query";
-///     var body = '{ "query" :' +
-///      ' "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
+///     var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///

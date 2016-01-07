@@ -2053,11 +2053,10 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
 /// `collection.figures()`
 ///
 /// Returns an object containing statistics about the collection.
-/// **Note** : Retrieving the figures will always load the collection into
+/// **Note** : Retrieving the figures will always load the collection into 
 /// memory.
 ///
-/// * *alive.count*: The number of currently active documents in all datafiles
-/// and
+/// * *alive.count*: The number of currently active documents in all datafiles and
 ///   journals of the collection. Documents that are contained in the
 ///   write-ahead log only are not reported in this figure.
 /// * *alive.size*: The total size in bytes used by all active documents of the
@@ -2082,24 +2081,21 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
 ///   deprecated and kept for compatibility reasons only. The value will always
 ///   be 0 since ArangoDB 2.0 and higher.
 /// * *shapefiles.fileSize*: The total filesize of the shape files. This
-///   value is deprecated and kept for compatibility reasons only. The value
-///   will
+///   value is deprecated and kept for compatibility reasons only. The value will
 ///   always be 0 in ArangoDB 2.0 and higher.
 /// * *shapes.count*: The total number of shapes used in the collection.
-///   This includes shapes that are not in use anymore. Shapes that are
-///   contained
+///   This includes shapes that are not in use anymore. Shapes that are contained
 ///   in the write-ahead log only are not reported in this figure.
 /// * *shapes.size*: The total size of all shapes (in bytes). This includes
 ///   shapes that are not in use anymore. Shapes that are contained in the
 ///   write-ahead log only are not reported in this figure.
 /// * *attributes.count*: The total number of attributes used in the
-///   collection. Note: the value includes data of attributes that are not in
-///   use
+///   collection. Note: the value includes data of attributes that are not in use
 ///   anymore. Attributes that are contained in the write-ahead log only are
 ///   not reported in this figure.
 /// * *attributes.size*: The total size of the attribute data (in bytes).
 ///   Note: the value includes data of attributes that are not in use anymore.
-///   Attributes that are contained in the write-ahead log only are not
+///   Attributes that are contained in the write-ahead log only are not 
 ///   reported in this figure.
 /// * *indexes.count*: The total number of indexes defined for the
 ///   collection, including the pre-defined indexes (e.g. primary index).
@@ -2114,24 +2110,19 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
 ///   that JavaScript code currently holds. This information can be used for
 ///   debugging compaction and unload issues.
 /// * *waitingFor*: An optional string value that contains information about
-///   which object type is at the head of the collection's cleanup queue. This
+///   which object type is at the head of the collection's cleanup queue. This 
 ///   information can be used for debugging compaction and unload issues.
-/// * *compactionStatus.time*: The point in time the compaction for the
-/// collection
+/// * *compactionStatus.time*: The point in time the compaction for the collection
 ///   was last executed. This information can be used for debugging compaction
 ///   issues.
-/// * *compactionStatus.message*: The action that was performed when the
-/// compaction
-///   was last run for the collection. This information can be used for
-///   debugging
+/// * *compactionStatus.message*: The action that was performed when the compaction
+///   was last run for the collection. This information can be used for debugging
 ///   compaction issues.
 ///
 /// **Note**: collection data that are stored in the write-ahead log only are
-/// not reported in the results. When the write-ahead log is collected,
-/// documents
-/// might be added to journals and datafiles of the collection, which may modify
-/// the figures of the collection. Also note that `waitingFor` and
-/// `compactionStatus`
+/// not reported in the results. When the write-ahead log is collected, documents
+/// might be added to journals and datafiles of the collection, which may modify 
+/// the figures of the collection. Also note that `waitingFor` and `compactionStatus` 
 /// may be empty when called on a coordinator in a cluster.
 ///
 /// Additionally, the filesizes of collection and index parameter JSON files are
@@ -2144,8 +2135,8 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
 ///
 /// That means that the figures reported do not reflect the actual disk
 /// usage of the collection with 100% accuracy. The actual disk usage of
-/// a collection is normally slightly higher than the sum of the reported
-/// *fileSize* values. Still the sum of the *fileSize* values can still be
+/// a collection is normally slightly higher than the sum of the reported 
+/// *fileSize* values. Still the sum of the *fileSize* values can still be 
 /// used as a lower bound approximation of the disk usage.
 ///
 /// @EXAMPLES
@@ -2964,8 +2955,7 @@ static void JS_RenameVocbaseCol(
 /// document is overwritten.
 ///
 /// `collection.replace(document, data, true, waitForSync)` or
-/// `collection.replace(document, data, overwrite: true, waitForSync: true or
-/// false)`
+/// `collection.replace(document, data, overwrite: true, waitForSync: true or false)`
 ///
 /// The optional *waitForSync* parameter can be used to force
 /// synchronization of the document replacement operation to disk even in case
@@ -3158,8 +3148,7 @@ static void JS_RotateVocbaseCol(
 /// @startDocuBlock documentsCollectionUpdate
 /// `collection.update(document, data, overwrite, keepNull, waitForSync)` or
 /// `collection.update(document, data,
-/// overwrite: true or false, keepNull: true or false, waitForSync: true or
-/// false)`
+/// overwrite: true or false, keepNull: true or false, waitForSync: true or false)`
 ///
 /// Updates an existing *document*. The *document* must be a document in
 /// the current collection. This document is then patched with the
@@ -4414,8 +4403,7 @@ static void JS_CompletionsVocbase(
 /// deleted.
 ///
 /// `db._remove(document, true, waitForSync)` or
-/// `db._remove(document, {overwrite: true or false, waitForSync: true or
-/// false})`
+/// `db._remove(document, {overwrite: true or false, waitForSync: true or false})`
 ///
 /// The optional *waitForSync* parameter can be used to force synchronization
 /// of the document deletion operation to disk even in case that the

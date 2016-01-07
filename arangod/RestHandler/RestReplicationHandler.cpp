@@ -419,8 +419,7 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
 /// @startDocuBlock JSF_get_api_replication_logger_return_state
 /// @brief returns the state of the replication logger
 ///
-/// @RESTHEADER{GET /_api/replication/logger-state, Return replication logger
-/// state}
+/// @RESTHEADER{GET /_api/replication/logger-state, Return replication logger state}
 ///
 /// @RESTDESCRIPTION
 /// Returns the current state of the server's replication logger. The state will
@@ -439,10 +438,8 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
 ///   - *lastLogTick*: the tick value of the latest tick the logger has logged.
 ///     This value can be used for incremental fetching of log data.
 ///
-///   - *totalEvents*: total number of events logged since the server was
-///   started.
-///     The value is not reset between multiple stops and re-starts of the
-///     logger.
+///   - *totalEvents*: total number of events logged since the server was started.
+///     The value is not reset between multiple stops and re-starts of the logger.
 ///
 ///   - *time*: the current date and time on the logger server
 ///
@@ -452,18 +449,14 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
 ///
 ///   - *serverId*: the logger server's id
 ///
-/// - *clients*: returns the last fetch status by replication clients connected
-/// to
-///   the logger. Each client is returned as a JSON object with the following
-///   attributes:
+/// - *clients*: returns the last fetch status by replication clients connected to
+///   the logger. Each client is returned as a JSON object with the following attributes:
 ///
 ///   - *serverId*: server id of client
 ///
-///   - *lastServedTick*: last tick value served to this client via the
-///   *logger-follow* API
+///   - *lastServedTick*: last tick value served to this client via the *logger-follow* API
 ///
-///   - *time*: date and time when this client last called the *logger-follow*
-///   API
+///   - *time*: date and time when this client last called the *logger-follow* API
 ///
 /// @RESTRETURNCODES
 ///
@@ -555,8 +548,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
 /// @startDocuBlock JSF_get_api_replication_logger_tick_ranges
 /// @brief returns the tick value ranges available in the logfiles
 ///
-/// @RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges
-/// available in the WAL logfiles}
+/// @RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the WAL logfiles}
 ///
 /// @RESTDESCRIPTION
 /// Returns the currently available ranges of tick values for all currently
@@ -639,8 +631,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 /// @startDocuBlock JSF_get_api_replication_logger_first_tick
 /// @brief Return the first available tick value from the server
 ///
-/// @RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first
-/// available tick value}
+/// @RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value}
 ///
 /// @RESTDESCRIPTION
 /// Returns the first available tick value that can be served from the server's
@@ -798,8 +789,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 /// @startDocuBlock JSF_delete_batch_replication
 /// @brief handle a dump batch command
 ///
-/// @RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump
-/// batch}
+/// @RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch}
 ///
 /// **Note**: These calls are uninteresting to users.
 ///
@@ -1019,43 +1009,33 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 /// state as the logger server.
 ///
 /// Clients can call this method repeatedly to incrementally fetch all changes
-/// from the logger server. In this case, they should provide the *from* value
-/// so
+/// from the logger server. In this case, they should provide the *from* value so
 /// they will only get returned the log events since their last fetch.
 ///
-/// When the *from* query parameter is not used, the logger server will return
-/// log
+/// When the *from* query parameter is not used, the logger server will return log
 /// entries starting at the beginning of its replication log. When the *from*
 /// parameter is used, the logger server will only return log entries which have
-/// higher tick values than the specified *from* value (note: the log entry with
-/// a
+/// higher tick values than the specified *from* value (note: the log entry with a
 /// tick value equal to *from* will be excluded). Use the *from* value when
 /// incrementally fetching log data.
 ///
-/// The *to* query parameter can be used to optionally restrict the upper bound
-/// of
-/// the result to a certain tick value. If used, the result will contain only
-/// log events
-/// with tick values up to (including) *to*. In incremental fetching, there is
-/// no
+/// The *to* query parameter can be used to optionally restrict the upper bound of
+/// the result to a certain tick value. If used, the result will contain only log events
+/// with tick values up to (including) *to*. In incremental fetching, there is no
 /// need to use the *to* parameter. It only makes sense in special situations,
 /// when only parts of the change log are required.
 ///
-/// The *chunkSize* query parameter can be used to control the size of the
-/// result.
+/// The *chunkSize* query parameter can be used to control the size of the result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one log entry into the result and return it.
-/// Therefore, the *chunkSize* value will only be consulted after a log entry
-/// has
+/// Therefore, the *chunkSize* value will only be consulted after a log entry has
 /// been written into the result. If the result size is then bigger than
 /// *chunkSize*, the server will respond with as many log entries as there are
-/// in the response already. If the result size is still smaller than
-/// *chunkSize*,
+/// in the response already. If the result size is still smaller than *chunkSize*,
 /// the server will try to return more data if there's more data left to return.
 ///
-/// If *chunkSize* is not specified, some server-side default value will be
-/// used.
+/// If *chunkSize* is not specified, some server-side default value will be used.
 ///
 /// The *Content-Type* of the result is *application/x-arango-dump*. This is an
 /// easy-to-process format, with all log events going onto separate lines in the
@@ -1080,40 +1060,32 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 ///
 /// - *data*: the original document data
 ///
-/// A more detailed description of the individual replication event types and
-/// their
+/// A more detailed description of the individual replication event types and their
 /// data structures can be found in @ref RefManualReplicationEventTypes.
 ///
 /// The response will also contain the following HTTP headers:
 ///
-/// - *x-arango-replication-active*: whether or not the logger is active.
-/// Clients
+/// - *x-arango-replication-active*: whether or not the logger is active. Clients
 ///   can use this flag as an indication for their polling frequency. If the
-///   logger is not active and there are no more replication events available,
-///   it
+///   logger is not active and there are no more replication events available, it
 ///   might be sensible for a client to abort, or to go to sleep for a long time
 ///   and try again later to check whether the logger has been activated.
 ///
 /// - *x-arango-replication-lastincluded*: the tick value of the last included
 ///   value in the result. In incremental log fetching, this value can be used
-///   as the *from* value for the following request. **Note** that if the result
-///   is
-///   empty, the value will be *0*. This value should not be used as *from*
-///   value
+///   as the *from* value for the following request. **Note** that if the result is
+///   empty, the value will be *0*. This value should not be used as *from* value
 ///   by clients in the next request (otherwise the server would return the log
 ///   events from the start of the log again).
 ///
 /// - *x-arango-replication-lasttick*: the last tick value the logger server has
 ///   logged (not necessarily included in the result). By comparing the the last
-///   tick and last included tick values, clients have an approximate indication
-///   of
+///   tick and last included tick values, clients have an approximate indication of
 ///   how many events there are still left to fetch.
 ///
 /// - *x-arango-replication-checkmore*: whether or not there already exists more
-///   log data which the client could fetch immediately. If there is more log
-///   data
-///   available, the client could call *logger-follow* again with an adjusted
-///   *from*
+///   log data which the client could fetch immediately. If there is more log data
+///   available, the client could call *logger-follow* again with an adjusted *from*
 ///   value to fetch remaining log entries until there are no more.
 ///
 ///   If there isn't any more log data to fetch, the client might decide to go
@@ -1125,8 +1097,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 ///
 /// @RESTRETURNCODE{200}
 /// is returned if the request was executed successfully, and there are log
-/// events available for the requested range. The response body will not be
-/// empty
+/// events available for the requested range. The response body will not be empty
 /// in this case.
 ///
 /// @RESTRETURNCODE{204}
@@ -1172,8 +1143,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 ///
 ///     db._create("products");
 ///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
-///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" :
-///     5100 });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
 ///     db.products.remove("p1");
 ///     db.products.update("p2", { "name" : "broken hovercraft" });
 ///     db.products.drop();
@@ -1197,15 +1167,13 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
 ///
 ///     db._create("products");
 ///     db.products.save({ "_key": "p1", "name" : "flux compensator" });
-///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" :
-///     5100 });
+///     db.products.save({ "_key": "p2", "name" : "hybrid hovercraft", "hp" : 5100 });
 ///     db.products.remove("p1");
 ///     db.products.update("p2", { "name" : "broken hovercraft" });
 ///     db.products.drop();
 ///
 ///     require("internal").wait(1);
-///     var url = "/_api/replication/logger-follow?from=" + lastTick +
-///     "&chunkSize=400";
+///     var url = "/_api/replication/logger-follow?from=" + lastTick + "&chunkSize=400";
 ///     var response = logCurlRequest('GET', url);
 ///
 ///     assert(response.code === 200);
@@ -1439,8 +1407,7 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 /// @startDocuBlock JSF_put_api_replication_inventory
 /// @brief Returns an overview of collections and their indexes
 ///
-/// @RESTHEADER{GET /_api/replication/inventory, Return inventory of collections
-/// and indexes}
+/// @RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1449,84 +1416,62 @@ void RestReplicationHandler::handleCommandDetermineOpenTransactions() {
 ///
 /// @RESTDESCRIPTION
 /// Returns the array of collections and indexes available on the server. This
-/// array can be used by replication clients to initiate an initial sync with
-/// the
+/// array can be used by replication clients to initiate an initial sync with the
 /// server.
 ///
-/// The response will contain a JSON object with the *collection* and *state*
-/// and
+/// The response will contain a JSON object with the *collection* and *state* and
 /// *tick* attributes.
 ///
 /// *collections* is a array of collections with the following sub-attributes:
 ///
 /// - *parameters*: the collection properties
 ///
-/// - *indexes*: a array of the indexes of a the collection. Primary indexes and
-/// edges indexes
+/// - *indexes*: a array of the indexes of a the collection. Primary indexes and edges indexes
 ///    are not included in this array.
 ///
-/// The *state* attribute contains the current state of the replication logger.
-/// It
+/// The *state* attribute contains the current state of the replication logger. It
 /// contains the following sub-attributes:
 ///
-/// - *running*: whether or not the replication logger is currently active.
-/// Note:
+/// - *running*: whether or not the replication logger is currently active. Note:
 ///   since ArangoDB 2.2, the value will always be *true*
 ///
-/// - *lastLogTick*: the value of the last tick the replication logger has
-/// written
+/// - *lastLogTick*: the value of the last tick the replication logger has written
 ///
 /// - *time*: the current time on the server
 ///
-/// Replication clients should note the *lastLogTick* value returned. They can
-/// then
-/// fetch collections' data using the dump method up to the value of
-/// lastLogTick, and
+/// Replication clients should note the *lastLogTick* value returned. They can then
+/// fetch collections' data using the dump method up to the value of lastLogTick, and
 /// query the continuous replication log for log events after this tick value.
 ///
 /// To create a full copy of the collections on the server, a replication client
 /// can execute these steps:
 ///
-/// - call the */inventory* API method. This returns the *lastLogTick* value and
-/// the
+/// - call the */inventory* API method. This returns the *lastLogTick* value and the
 ///   array of collections and indexes from the server.
 ///
-/// - for each collection returned by */inventory*, create the collection
-/// locally and
-///   call */dump* to stream the collection data to the client, up to the value
-///   of
+/// - for each collection returned by */inventory*, create the collection locally and
+///   call */dump* to stream the collection data to the client, up to the value of
 ///   *lastLogTick*.
-///   After that, the client can create the indexes on the collections as they
-///   were
+///   After that, the client can create the indexes on the collections as they were
 ///   reported by */inventory*.
 ///
-/// If the clients wants to continuously stream replication log events from the
-/// logger
+/// If the clients wants to continuously stream replication log events from the logger
 /// server, the following additional steps need to be carried out:
 ///
-/// - the client should call */logger-follow* initially to fetch the first batch
-/// of
-///   replication events that were logged after the client's call to
-///   */inventory*.
+/// - the client should call */logger-follow* initially to fetch the first batch of
+///   replication events that were logged after the client's call to */inventory*.
 ///
-///   The call to */logger-follow* should use a *from* parameter with the value
-///   of the
-///   *lastLogTick* as reported by */inventory*. The call to */logger-follow*
-///   will return the
-///   *x-arango-replication-lastincluded* which will contain the last tick value
-///   included
+///   The call to */logger-follow* should use a *from* parameter with the value of the
+///   *lastLogTick* as reported by */inventory*. The call to */logger-follow* will return the
+///   *x-arango-replication-lastincluded* which will contain the last tick value included
 ///   in the response.
 ///
-/// - the client can then continuously call */logger-follow* to incrementally
-/// fetch new
+/// - the client can then continuously call */logger-follow* to incrementally fetch new
 ///   replication events that occurred after the last transfer.
 ///
-///   Calls should use a *from* parameter with the value of the
-///   *x-arango-replication-lastincluded*
-///   header of the previous response. If there are no more replication events,
-///   the
-///   response will be empty and clients can go to sleep for a while and try
-///   again
+///   Calls should use a *from* parameter with the value of the *x-arango-replication-lastincluded*
+///   header of the previous response. If there are no more replication events, the
+///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
 /// **Note**: on a coordinator, this request must have the query parameter
@@ -1640,8 +1585,7 @@ void RestReplicationHandler::handleCommandInventory() {
 /// @startDocuBlock JSF_get_api_replication_cluster_inventory
 /// @brief returs an overview of collections and indexes in a cluster
 ///
-/// @RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory
-/// of collections and indexes}
+/// @RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -3463,8 +3407,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 /// Produce an error when dumped edges refer to now-unknown collections.
 ///
 /// @RESTQUERYPARAM{ticks,boolean,optional}
-/// Whether or not to include tick values in the dump. The default value is
-/// *true*.
+/// Whether or not to include tick values in the dump. The default value is *true*.
 ///
 /// @RESTQUERYPARAM{flush,boolean,optional}
 /// Whether or not to flush the WAL before dumping. The default value is *true*.
@@ -3472,33 +3415,26 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
 ///
-/// When the *from* query parameter is not used, collection events are returned
-/// from
-/// the beginning. When the *from* parameter is used, the result will only
-/// contain
-/// collection entries which have higher tick values than the specified *from*
-/// value
+/// When the *from* query parameter is not used, collection events are returned from
+/// the beginning. When the *from* parameter is used, the result will only contain
+/// collection entries which have higher tick values than the specified *from* value
 /// (note: the log entry with a tick value equal to *from* will be excluded).
 ///
-/// The *to* query parameter can be used to optionally restrict the upper bound
-/// of
+/// The *to* query parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will only contain
 /// collection entries with tick values up to (including) *to*.
 ///
-/// The *chunkSize* query parameter can be used to control the size of the
-/// result.
+/// The *chunkSize* query parameter can be used to control the size of the result.
 /// It must be specified in bytes. The *chunkSize* value will only be honored
 /// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one entry into the result and return it.
 /// Therefore, the *chunkSize* value will only be consulted after an entry has
 /// been written into the result. If the result size is then bigger than
 /// *chunkSize*, the server will respond with as many entries as there are
-/// in the response already. If the result size is still smaller than
-/// *chunkSize*,
+/// in the response already. If the result size is still smaller than *chunkSize*,
 /// the server will try to return more data if there's more data left to return.
 ///
-/// If *chunkSize* is not specified, some server-side default value will be
-/// used.
+/// If *chunkSize* is not specified, some server-side default value will be used.
 ///
 /// The *Content-Type* of the result is *application/x-arango-dump*. This is an
 /// easy-to-process format, with all entries going onto separate lines in the
@@ -3508,8 +3444,7 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 ///
 /// - *tick*: the operation's tick attribute
 ///
-/// - *key*: the key of the document/edge or the key used in the deletion
-/// operation
+/// - *key*: the key of the document/edge or the key used in the deletion operation
 ///
 /// - *rev*: the revision id of the document/edge or the deletion operation
 ///
@@ -3524,20 +3459,16 @@ void RestReplicationHandler::handleCommandRemoveKeys() {
 ///
 ///   - 2302: document/edge deletion
 ///
-/// **Note**: there will be no distinction between inserts and updates when
-/// calling this method.
+/// **Note**: there will be no distinction between inserts and updates when calling this method.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the request was executed successfully and data was returned.
-/// The header
-/// `x-arango-replication-lastincluded` is set to the tick of the last document
-/// returned.
+/// is returned if the request was executed successfully and data was returned. The header
+/// `x-arango-replication-lastincluded` is set to the tick of the last document returned.
 ///
 /// @RESTRETURNCODE{204}
-/// is returned if the request was executed successfully, but there was no
-/// content available.
+/// is returned if the request was executed successfully, but there was no content available.
 /// The header `x-arango-replication-lastincluded` is `0` in this case.
 ///
 /// @RESTRETURNCODE{400}
@@ -3760,8 +3691,7 @@ void RestReplicationHandler::handleCommandDump() {
 /// @startDocuBlock JSF_put_api_replication_makeSlave
 /// @brief Changes role to slave
 ///
-/// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave
-/// of another}
+/// @RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}
 /// the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -3815,18 +3745,15 @@ void RestReplicationHandler::handleCommandDump() {
 ///
 /// @RESTBODYPARAM{autoResyncRetries,integer,optional,int64}
 /// number of resynchronization retries that will be performed in a row when
-/// automatic resynchronization is enabled and kicks in. Setting this to *0*
-/// will
+/// automatic resynchronization is enabled and kicks in. Setting this to *0* will
 /// effectively disable *autoResync*. Setting it to some other value will limit
-/// the number of retries that are performed. This helps preventing endless
-/// retries
+/// the number of retries that are performed. This helps preventing endless retries
 /// in case resynchronizations always fail.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
 /// wait for a response from the master when fetching initial collection data.
-/// This wait time can be used to control after what time the initial
-/// synchronization
+/// This wait time can be used to control after what time the initial synchronization
 /// will give up waiting for a response and fail. This value is relevant even
 /// for continuous replication when *autoResync* is set to *true* because this
 /// may re-start the initial synchronization when the master cannot provide
@@ -3849,8 +3776,7 @@ void RestReplicationHandler::handleCommandDump() {
 /// @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the applier will intentionally idle
 /// before fetching more log data from the master in case the master has
-/// already sent all its log data and there have been previous log fetch
-/// attempts
+/// already sent all its log data and there have been previous log fetch attempts
 /// that resulted in no more log data. This wait time can be used to control the
 /// maximum frequency with which the replication applier sends HTTP log fetch
 /// requests to the master in case there is no write activity on the master for
@@ -3863,8 +3789,7 @@ void RestReplicationHandler::handleCommandDump() {
 /// at start of its continuous replication if the start tick from the dump phase
 /// is still present on the master. If not, then there would be data loss. If
 /// *requireFromPresent* is *true*, the replication applier will abort with an
-/// appropriate error message. If set to *false*, then the replication applier
-/// will
+/// appropriate error message. If set to *false*, then the replication applier will
 /// still start, and ignore the data loss.
 ///
 /// @RESTBODYPARAM{verbose,boolean,optional,}
@@ -3874,15 +3799,13 @@ void RestReplicationHandler::handleCommandDump() {
 /// problems only.
 ///
 /// @RESTDESCRIPTION
-/// Starts a full data synchronization from a remote endpoint into the local
-/// ArangoDB
+/// Starts a full data synchronization from a remote endpoint into the local ArangoDB
 /// database and afterwards starts the continuous replication.
 /// The operation works on a per-database level.
 ///
 /// All local database data will be removed prior to the synchronization.
 ///
-/// In case of success, the body of the response is a JSON object with the
-/// following
+/// In case of success, the body of the response is a JSON object with the following
 /// attributes:
 ///
 /// - *state*: a JSON object with the following sub-attributes:
@@ -3896,8 +3819,7 @@ void RestReplicationHandler::handleCommandDump() {
 ///     replication log the applier has processed.
 ///
 ///     Regularly, the last applied and last processed tick values should be
-///     identical. For transactional operations, the replication applier will
-///     first
+///     identical. For transactional operations, the replication applier will first
 ///     process incoming log events before applying them, so the processed tick
 ///     value might be higher than the applied tick value. This will be the case
 ///     until the applier encounters the *transaction commit* log event for the
@@ -3908,22 +3830,18 @@ void RestReplicationHandler::handleCommandDump() {
 ///
 ///   - *time*: the time on the applier server.
 ///
-///   - *totalRequests*: the total number of requests the applier has made to
-///   the
+///   - *totalRequests*: the total number of requests the applier has made to the
 ///     endpoint.
 ///
-///   - *totalFailedConnects*: the total number of failed connection attempts
-///   the
+///   - *totalFailedConnects*: the total number of failed connection attempts the
 ///     applier has made.
 ///
 ///   - *totalEvents*: the total number of log events the applier has processed.
 ///
-///   - *totalOperationsExcluded*: the total number of log events excluded
-///   because
+///   - *totalOperationsExcluded*: the total number of log events excluded because
 ///     of *restrictCollections*.
 ///
-///   - *progress*: a JSON object with details about the replication applier
-///   progress.
+///   - *progress*: a JSON object with details about the replication applier progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
 ///     - *message*: a textual description of the progress
@@ -3932,10 +3850,8 @@ void RestReplicationHandler::handleCommandDump() {
 ///
 ///     - *failedConnects*: the current number of failed connection attempts
 ///
-///   - *lastError*: a JSON object with details about the last error that
-///   happened on
-///     the applier. It contains the following sub-attributes if there was an
-///     error:
+///   - *lastError*: a JSON object with details about the last error that happened on
+///     the applier. It contains the following sub-attributes if there was an error:
 ///
 ///     - *errorNum*: a numerical error code
 ///
@@ -3954,8 +3870,7 @@ void RestReplicationHandler::handleCommandDump() {
 /// - *endpoint*: the endpoint the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
-/// - *database*: the name of the database the applier is connected to (if
-/// applier is
+/// - *database*: the name of the database the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
 /// WARNING: calling this method will sychronize data from the collections found
@@ -3965,8 +3880,7 @@ void RestReplicationHandler::handleCommandDump() {
 /// Use with caution!
 ///
 /// Please also keep in mind that this command may take a long time to complete
-/// and return. This is because it will first do a full data synchronization
-/// with
+/// and return. This is because it will first do a full data synchronization with
 /// the master, which will take time roughly proportional to the amount of data.
 ///
 /// **Note**: this method is not supported on a coordinator in a cluster.
@@ -4170,8 +4084,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 /// @startDocuBlock JSF_put_api_replication_synchronize
 /// @brief start a replication
 ///
-/// @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote
-/// endpoint}
+/// @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}
 /// the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -4204,16 +4117,14 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 ///
 /// @RESTBODYPARAM{restrictCollections,array,optional,string}
 /// an optional array of collections for use with
-/// *restrictType*. If *restrictType* is *include*, only the specified
-/// collections
+/// *restrictType*. If *restrictType* is *include*, only the specified collections
 /// will be sychronised. If *restrictType* is *exclude*, all but the specified
 /// collections will be synchronized.
 ///
 /// @RESTBODYPARAM{initialSyncMaxWaitTime,integer,optional,int64}
 /// the maximum wait time (in seconds) that the initial synchronization will
 /// wait for a response from the master when fetching initial collection data.
-/// This wait time can be used to control after what time the initial
-/// synchronization
+/// This wait time can be used to control after what time the initial synchronization
 /// will give up waiting for a response and fail.
 /// This value will be ignored if set to *0*.
 ///
@@ -4221,35 +4132,24 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 /// Starts a full data synchronization from a remote endpoint into the local
 /// ArangoDB database.
 ///
-/// The *sync* method can be used by replication clients to connect an ArangoDB
-/// database
-/// to a remote endpoint, fetch the remote list of collections and indexes, and
-/// collection
-/// data. It will thus create a local backup of the state of data at the remote
-/// ArangoDB
+/// The *sync* method can be used by replication clients to connect an ArangoDB database
+/// to a remote endpoint, fetch the remote list of collections and indexes, and collection
+/// data. It will thus create a local backup of the state of data at the remote ArangoDB
 /// database. *sync* works on a per-database level.
 ///
-/// *sync* will first fetch the list of collections and indexes from the remote
-/// endpoint.
-/// It does so by calling the *inventory* API of the remote database. It will
-/// then purge
-/// data in the local ArangoDB database, and after start will transfer
-/// collection data
-/// from the remote database to the local ArangoDB database. It will extract
-/// data from the
-/// remote database by calling the remote database's *dump* API until all data
-/// are fetched.
+/// *sync* will first fetch the list of collections and indexes from the remote endpoint.
+/// It does so by calling the *inventory* API of the remote database. It will then purge
+/// data in the local ArangoDB database, and after start will transfer collection data
+/// from the remote database to the local ArangoDB database. It will extract data from the
+/// remote database by calling the remote database's *dump* API until all data are fetched.
 ///
-/// In case of success, the body of the response is a JSON object with the
-/// following
+/// In case of success, the body of the response is a JSON object with the following
 /// attributes:
 ///
-/// - *collections*: an array of collections that were transferred from the
-/// endpoint
+/// - *collections*: an array of collections that were transferred from the endpoint
 ///
 /// - *lastLogTick*: the last log tick on the endpoint at the time the transfer
-///   was started. Use this value as the *from* value when starting the
-///   continuous
+///   was started. Use this value as the *from* value when starting the continuous
 ///   synchronization later.
 ///
 /// WARNING: calling this method will sychronize data from the collections found
@@ -4452,8 +4352,7 @@ void RestReplicationHandler::handleCommandServerId() {
 /// @startDocuBlock JSF_put_api_replication_applier
 /// @brief fetch the current replication configuration
 ///
-/// @RESTHEADER{GET /_api/replication/applier-config, Return configuration of
-/// replication applier}
+/// @RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier}
 ///
 /// @RESTDESCRIPTION
 /// Returns the configuration of the replication applier.
@@ -4461,13 +4360,11 @@ void RestReplicationHandler::handleCommandServerId() {
 /// The body of the response is a JSON object with the configuration. The
 /// following attributes may be present in the configuration:
 ///
-/// - *endpoint*: the logger server to connect to (e.g.
-/// "tcp://192.168.173.13:8529").
+/// - *endpoint*: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
 ///
 /// - *database*: the name of the database to connect to (e.g. "_system").
 ///
-/// - *username*: an optional ArangoDB username to use when connecting to the
-/// endpoint.
+/// - *username*: an optional ArangoDB username to use when connecting to the endpoint.
 ///
 /// - *password*: the password to use when connecting to the endpoint.
 ///
@@ -4475,12 +4372,10 @@ void RestReplicationHandler::handleCommandServerId() {
 ///   will make in a row. If the applier cannot establish a connection to the
 ///   endpoint in this number of attempts, it will stop itself.
 ///
-/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to
-/// the
+/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to the
 ///   endpoint. This value is used for each connection attempt.
 ///
-/// - *requestTimeout*: the timeout (in seconds) for individual requests to the
-/// endpoint.
+/// - *requestTimeout*: the timeout (in seconds) for individual requests to the endpoint.
 ///
 /// - *chunkSize*: the requested maximum size for log transfer packets that
 ///   is used when the endpoint is contacted.
@@ -4491,8 +4386,7 @@ void RestReplicationHandler::handleCommandServerId() {
 /// - *adaptivePolling*: whether or not the replication applier will use
 ///   adaptive polling.
 ///
-/// - *includeSystem*: whether or not system collection operations will be
-/// applied
+/// - *includeSystem*: whether or not system collection operations will be applied
 ///
 /// - *autoResync*: whether or not the slave should perform a full automatic
 ///   resynchronization with the master in case the master cannot serve log data
@@ -4500,23 +4394,16 @@ void RestReplicationHandler::handleCommandServerId() {
 ///   value
 ///   can be found.
 ///
-/// - *autoResyncRetries*: number of resynchronization retries that will be
-/// performed
-///   in a row when automatic resynchronization is enabled and kicks in. Setting
-///   this
-///   to *0* will effectively disable *autoResync*. Setting it to some other
-///   value
-///   will limit the number of retries that are performed. This helps preventing
-///   endless
+/// - *autoResyncRetries*: number of resynchronization retries that will be performed
+///   in a row when automatic resynchronization is enabled and kicks in. Setting this
+///   to *0* will effectively disable *autoResync*. Setting it to some other value
+///   will limit the number of retries that are performed. This helps preventing endless
 ///   retries in case resynchronizations always fail.
 ///
-/// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the
-/// initial
-///   synchronization will wait for a response from the master when fetching
-///   initial
+/// - *initialSyncMaxWaitTime*: the maximum wait time (in seconds) that the initial
+///   synchronization will wait for a response from the master when fetching initial
 ///   collection data.
-///   This wait time can be used to control after what time the initial
-///   synchronization
+///   This wait time can be used to control after what time the initial synchronization
 ///   will give up waiting for a response and fail. This value is relevant even
 ///   for continuous replication when *autoResync* is set to *true* because this
 ///   may re-start the initial synchronization when the master cannot provide
@@ -4528,50 +4415,38 @@ void RestReplicationHandler::handleCommandServerId() {
 ///   connection problems.
 ///   This value will be ignored if set to *0*.
 ///
-/// - *idleMinWaitTime*: the minimum wait time (in seconds) that the applier
-/// will
+/// - *idleMinWaitTime*: the minimum wait time (in seconds) that the applier will
 ///   intentionally idle before fetching more log data from the master in case
 ///   the master has already sent all its log data. This wait time can be used
 ///   to control the frequency with which the replication applier sends HTTP log
-///   fetch requests to the master in case there is no write activity on the
-///   master.
+///   fetch requests to the master in case there is no write activity on the master.
 ///   This value will be ignored if set to *0*.
 ///
-/// - *idleMaxWaitTime*: the maximum wait time (in seconds) that the applier
-/// will
-///   intentionally idle before fetching more log data from the master in case
-///   the
+/// - *idleMaxWaitTime*: the maximum wait time (in seconds) that the applier will
+///   intentionally idle before fetching more log data from the master in case the
 ///   master has already sent all its log data and there have been previous log
-///   fetch attempts that resulted in no more log data. This wait time can be
-///   used
-///   to control the maximum frequency with which the replication applier sends
-///   HTTP
+///   fetch attempts that resulted in no more log data. This wait time can be used
+///   to control the maximum frequency with which the replication applier sends HTTP
 ///   log fetch requests to the master in case there is no write activity on the
-///   master for longer periods. This configuration value will only be used if
-///   the
+///   master for longer periods. This configuration value will only be used if the
 ///   option *adaptivePolling* is set to *true*.
 ///   This value will be ignored if set to *0*.
 ///
-/// - *requireFromPresent*: if set to *true*, then the replication applier will
-/// check
-///   at start whether the start tick from which it starts or resumes
-///   replication is
+/// - *requireFromPresent*: if set to *true*, then the replication applier will check
+///   at start whether the start tick from which it starts or resumes replication is
 ///   still present on the master. If not, then there would be data loss. If
 ///   *requireFromPresent* is *true*, the replication applier will abort with an
-///   appropriate error message. If set to *false*, then the replication applier
-///   will
+///   appropriate error message. If set to *false*, then the replication applier will
 ///   still start, and ignore the data loss.
 ///
-/// - *verbose*: if set to *true*, then a log line will be emitted for all
-/// operations
+/// - *verbose*: if set to *true*, then a log line will be emitted for all operations
 ///   performed by the replication applier. This should be used for debugging
 ///   replication
 ///   problems only.
 ///
 /// - *restrictType*: the configuration for *restrictCollections*
 ///
-/// - *restrictCollections*: the optional array of collections to include or
-/// exclude,
+/// - *restrictCollections*: the optional array of collections to include or exclude,
 ///   based on the setting of *restrictType*
 ///
 /// @RESTRETURNCODES
@@ -4620,16 +4495,13 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 /// @startDocuBlock JSF_put_api_replication_applier_adjust
 /// @brief set configuration values of an applier
 ///
-/// @RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of
-/// replication applier}
+/// @RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier}
 ///
 /// @RESTBODYPARAM{endpoint,string,required,string}
-/// the logger server to connect to (e.g. "tcp://192.168.173.13:8529"). The
-/// endpoint must be specified.
+/// the logger server to connect to (e.g. "tcp://192.168.173.13:8529"). The endpoint must be specified.
 ///
 /// @RESTBODYPARAM{database,string,required,string}
-/// the name of the database on the endpoint. If not specified, defaults to the
-/// current local database name.
+/// the name of the database on the endpoint. If not specified, defaults to the current local database name.
 ///
 /// @RESTBODYPARAM{username,string,optional,string}
 /// an optional ArangoDB username to use when connecting to the endpoint.
@@ -4714,10 +4586,9 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 /// This value will be ignored if set to *0*.
 ///
 /// @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
-/// the maximum wait time (in seconds) that the applier will intentionally idle
-/// before fetching more log data from the master in case the master has
-/// already sent all its log data and there have been previous log fetch
-/// attempts
+/// the maximum wait time (in seconds) that the applier will intentionally idle 
+/// before fetching more log data from the master in case the master has 
+/// already sent all its log data and there have been previous log fetch attempts
 /// that resulted in no more log data. This wait time can be used to control the
 /// maximum frequency with which the replication applier sends HTTP log fetch
 /// requests to the master in case there is no write activity on the master for
@@ -4727,23 +4598,19 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 ///
 /// @RESTBODYPARAM{requireFromPresent,boolean,required,}
 /// if set to *true*, then the replication applier will check
-/// at start whether the start tick from which it starts or resumes replication
-/// is
-/// still present on the master. If not, then there would be data loss. If
+/// at start whether the start tick from which it starts or resumes replication is
+/// still present on the master. If not, then there would be data loss. If 
 /// *requireFromPresent* is *true*, the replication applier will abort with an
-/// appropriate error message. If set to *false*, then the replication applier
-/// will
+/// appropriate error message. If set to *false*, then the replication applier will
 /// still start, and ignore the data loss.
 ///
 /// @RESTBODYPARAM{verbose,boolean,required,}
-/// if set to *true*, then a log line will be emitted for all operations
-/// performed by the replication applier. This should be used for debugging
-/// replication
+/// if set to *true*, then a log line will be emitted for all operations 
+/// performed by the replication applier. This should be used for debugging replication
 /// problems only.
 ///
 /// @RESTBODYPARAM{restrictType,string,required,string}
-/// the configuration for *restrictCollections*; Has to be either *include* or
-/// *exclude*
+/// the configuration for *restrictCollections*; Has to be either *include* or *exclude*
 ///
 /// @RESTBODYPARAM{restrictCollections,array,optional,string}
 /// the array of collections to include or exclude,
@@ -4755,8 +4622,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 /// will be saved immediately but only become active with the next start of the
 /// applier.
 ///
-/// In case of success, the body of the response is a JSON object with the
-/// updated
+/// In case of success, the body of the response is a JSON object with the updated
 /// configuration.
 ///
 /// @RESTRETURNCODES
@@ -4943,8 +4809,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{from,string,optional}
-/// The remote *lastLogTick* value from which to start applying. If not
-/// specified,
+/// The remote *lastLogTick* value from which to start applying. If not specified,
 /// the last saved tick from the previous applier run is used. If there is no
 /// previous applier state saved, the applier will start at the beginning of the
 /// logger server's log.
@@ -5089,8 +4954,7 @@ void RestReplicationHandler::handleCommandApplierStop() {
 /// @startDocuBlock JSF_get_api_replication_applier_state
 /// @brief output the current status of the replication
 ///
-/// @RESTHEADER{GET /_api/replication/applier-state, State of the replication
-/// applier}
+/// @RESTHEADER{GET /_api/replication/applier-state, State of the replication applier}
 ///
 /// @RESTDESCRIPTION
 /// Returns the state of the replication applier, regardless of whether the
@@ -5109,8 +4973,7 @@ void RestReplicationHandler::handleCommandApplierStop() {
 ///     replication log the applier has processed.
 ///
 ///     Regularly, the last applied and last processed tick values should be
-///     identical. For transactional operations, the replication applier will
-///     first
+///     identical. For transactional operations, the replication applier will first
 ///     process incoming log events before applying them, so the processed tick
 ///     value might be higher than the applied tick value. This will be the case
 ///     until the applier encounters the *transaction commit* log event for the
@@ -5121,22 +4984,18 @@ void RestReplicationHandler::handleCommandApplierStop() {
 ///
 ///   - *time*: the time on the applier server.
 ///
-///   - *totalRequests*: the total number of requests the applier has made to
-///   the
+///   - *totalRequests*: the total number of requests the applier has made to the
 ///     endpoint.
 ///
-///   - *totalFailedConnects*: the total number of failed connection attempts
-///   the
+///   - *totalFailedConnects*: the total number of failed connection attempts the
 ///     applier has made.
 ///
 ///   - *totalEvents*: the total number of log events the applier has processed.
 ///
-///   - *totalOperationsExcluded*: the total number of log events excluded
-///   because
+///   - *totalOperationsExcluded*: the total number of log events excluded because
 ///     of *restrictCollections*.
 ///
-///   - *progress*: a JSON object with details about the replication applier
-///   progress.
+///   - *progress*: a JSON object with details about the replication applier progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
 ///     - *message*: a textual description of the progress
@@ -5145,10 +5004,8 @@ void RestReplicationHandler::handleCommandApplierStop() {
 ///
 ///     - *failedConnects*: the current number of failed connection attempts
 ///
-///   - *lastError*: a JSON object with details about the last error that
-///   happened on
-///     the applier. It contains the following sub-attributes if there was an
-///     error:
+///   - *lastError*: a JSON object with details about the last error that happened on
+///     the applier. It contains the following sub-attributes if there was an error:
 ///
 ///     - *errorNum*: a numerical error code
 ///
@@ -5167,8 +5024,7 @@ void RestReplicationHandler::handleCommandApplierStop() {
 /// - *endpoint*: the endpoint the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
-/// - *database*: the name of the database the applier is connected to (if
-/// applier is
+/// - *database*: the name of the database the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
 /// @RESTRETURNCODES

@@ -85,8 +85,7 @@ HttpHandler::status_t RestQueryCacheHandler::execute() {
 /// @startDocuBlock DeleteApiQueryCache
 /// @brief clears the AQL query cache
 ///
-/// @RESTHEADER{DELETE /_api/query-cache, Clears any results in the AQL query
-/// cache}
+/// @RESTHEADER{DELETE /_api/query-cache, Clears any results in the AQL query cache}
 ///
 /// @RESTDESCRIPTION
 /// clears the query cache
@@ -122,19 +121,16 @@ bool RestQueryCacheHandler::clearCache() {
 /// @startDocuBlock GetApiQueryCacheProperties
 /// @brief returns the global configuration for the AQL query cache
 ///
-/// @RESTHEADER{GET /_api/query-cache/properties, Returns the global properties
-/// for the AQL query cache}
+/// @RESTHEADER{GET /_api/query-cache/properties, Returns the global properties for the AQL query cache}
 ///
 /// @RESTDESCRIPTION
 /// Returns the global AQL query cache configuration. The configuration is a
 /// JSON object with the following properties:
-///
-/// - *mode*: the mode the AQL query cache operates in. The mode is one of the
-/// following
+/// 
+/// - *mode*: the mode the AQL query cache operates in. The mode is one of the following
 ///   values: *off*, *on* or *demand*.
 ///
-/// - *maxResults*: the maximum number of query results that will be stored per
-/// database-specific
+/// - *maxResults*: the maximum number of query results that will be stored per database-specific
 ///   cache.
 ///
 /// @RESTRETURNCODES
@@ -173,8 +169,7 @@ bool RestQueryCacheHandler::readProperties() {
 /// @startDocuBlock PutApiQueryCacheProperties
 /// @brief changes the configuration for the AQL query cache
 ///
-/// @RESTHEADER{PUT /_api/query-cache/properties, Globally adjusts the AQL query
-/// result cache properties}
+/// @RESTHEADER{PUT /_api/query-cache/properties, Globally adjusts the AQL query result cache properties}
 ///
 /// @RESTDESCRIPTION
 /// After the properties have been changed, the current set of properties will
@@ -183,17 +178,14 @@ bool RestQueryCacheHandler::readProperties() {
 /// Note: changing the properties may invalidate all results in the cache.
 /// The global properties for AQL query cache.
 /// The properties need to be passed in the attribute *properties* in the body
-/// of the HTTP request. *properties* needs to be a JSON object with the
-/// following
+/// of the HTTP request. *properties* needs to be a JSON object with the following
 /// properties:
 ///
 /// @RESTBODYPARAM{mode,string,required,string}
-///  the mode the AQL query cache should operate in. Possible values are *off*,
-///  *on* or *demand*.
+///  the mode the AQL query cache should operate in. Possible values are *off*, *on* or *demand*.
 ///
 /// @RESTBODYPARAM{maxResults,integer,required,int64}
-/// the maximum number of query results that will be stored per
-/// database-specific cache.
+/// the maximum number of query results that will be stored per database-specific cache.
 ///
 ///
 /// @RESTRETURNCODES

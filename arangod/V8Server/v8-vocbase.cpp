@@ -3099,8 +3099,7 @@ static void JS_IsSystemDatabase(
 /// Changing the database might be disallowed in some contexts, for example
 /// server-side actions (including Foxx).
 ///
-/// When performing this command from arangosh, the current credentials
-/// (username
+/// When performing this command from arangosh, the current credentials (username
 /// and password) will be re-used. These credentials might not be valid to
 /// connect to the database specified by *name*. Additionally, the database
 /// only be accessed from certain endpoints only. In this case, switching the
@@ -3446,8 +3445,7 @@ static void CreateDatabaseCoordinator(
 /// object can contain the following attributes:
 ///
 /// * *username*: the user name as a string. This attribute is mandatory.
-/// * *passwd*: the user password as a string. If not specified, then it
-/// defaults
+/// * *passwd*: the user password as a string. If not specified, then it defaults
 ///   to the empty string.
 /// * *active*: a boolean flag indicating whether the user account should be
 ///   active or not. The default value is *true*.
@@ -3459,9 +3457,8 @@ static void CreateDatabaseCoordinator(
 /// with an empty string password. This ensures that the new database will be
 /// accessible via HTTP after it is created.
 ///
-/// You can create users in a database if no initial user is specified. Switch
-/// into the new database (username and password must be identical to the
-/// current
+/// You can create users in a database if no initial user is specified. Switch 
+/// into the new database (username and password must be identical to the current
 /// session) and add or modify users with the following commands.
 ///
 /// ```js
@@ -3472,8 +3469,7 @@ static void CreateDatabaseCoordinator(
 /// Alternatively, you can specify user data directly. For example:
 ///
 /// ```js
-///   db._createDatabase("newDB", [], [{ username: "newUser", passwd: "123456",
-///   active: true}])
+///   db._createDatabase("newDB", [], [{ username: "newUser", passwd: "123456", active: true}])
 /// ```
 ///
 /// Those methods can only be used from within the *_system* database.

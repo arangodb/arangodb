@@ -1385,8 +1385,7 @@ static void JS_MakeAbsolute(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// lexically sorted order. Throws an exception if the directory cannot be
 /// traversed (or path is not a directory).
 ///
-/// **Note**: this means that list("x") of a directory containing "a" and "b"
-/// would
+/// **Note**: this means that list("x") of a directory containing "a" and "b" would
 /// return ["a", "b"], not ["x/a", "x/b"].
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -2034,8 +2033,7 @@ static void JS_MarkNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `fs.mtime(filename)`
 ///
 /// Returns the last modification date of the specified file. The date is
-/// returned as a Unix timestamp (number of seconds elapsed since January 1
-/// 1970).
+/// returned as a Unix timestamp (number of seconds elapsed since January 1 1970).
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

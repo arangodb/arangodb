@@ -100,8 +100,7 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 /// Restricts the result to at most *size* log entries.
 ///
 /// @RESTQUERYPARAM{offset,number,optional}
-/// Starts to return log entries skipping the first *offset* log entries.
-/// *offset*
+/// Starts to return log entries skipping the first *offset* log entries. *offset*
 /// and *size* can be used for pagination.
 ///
 /// @RESTQUERYPARAM{search,string,optional}
@@ -113,8 +112,7 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 /// imposes a chronological order. The default value is *asc*.
 ///
 /// @RESTDESCRIPTION
-/// Returns fatal, error, warning or info log messages from the server's global
-/// log.
+/// Returns fatal, error, warning or info log messages from the server's global log.
 /// The result is a JSON object with the following attributes:
 ///
 /// - *lid*: a list of log entry identifiers. Each log message is uniquely
@@ -123,8 +121,7 @@ bool RestAdminLogHandler::isDirect() const { return true; }
 ///
 /// - *level*: a list of the log-levels for all log entries.
 ///
-/// - *timestamp*: a list of the timestamps as seconds since 1970-01-01 for all
-/// log
+/// - *timestamp*: a list of the timestamps as seconds since 1970-01-01 for all log
 ///   entries.
 ///
 /// - *text* a list of the texts of all log entries

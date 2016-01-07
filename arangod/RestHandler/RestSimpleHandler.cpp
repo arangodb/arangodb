@@ -186,16 +186,14 @@ bool RestSimpleHandler::wasCanceled() {
 ///
 /// The body of the response contains a JSON object with information how many
 /// documents were removed (and how many were not). The *removed* attribute will
-/// contain the number of actually removed documents. The *ignored* attribute
-/// will contain the number of keys in the request for which no matching
-/// document
+/// contain the number of actually removed documents. The *ignored* attribute 
+/// will contain the number of keys in the request for which no matching document
 /// could be found.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the operation was carried out successfully. The number of
-/// removed
+/// is returned if the operation was carried out successfully. The number of removed
 /// documents may still be 0 in this case if none of the specified document keys
 /// were found in the collection.
 ///
@@ -204,8 +202,7 @@ bool RestSimpleHandler::wasCanceled() {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{405}
-/// is returned if the operation was called with a different HTTP METHOD than
-/// PUT.
+/// is returned if the operation was called with a different HTTP METHOD than PUT.
 ///
 /// @EXAMPLES
 ///
@@ -408,8 +405,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{405}
-/// is returned if the operation was called with a different HTTP METHOD than
-/// PUT.
+/// is returned if the operation was called with a different HTTP METHOD than PUT.
 ///
 /// @EXAMPLES
 ///
