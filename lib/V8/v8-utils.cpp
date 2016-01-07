@@ -1037,13 +1037,7 @@ static void JS_Execute(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a file of any type or directory exists
-/// @startDocuBlock JS_Exists
-/// `fs.exists(path)`
-///
-/// Returns true if a file (of any type) or a directory exists at a given
-/// path. If the file is a broken symbolic link, returns false.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Exists
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Exists(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1070,12 +1064,7 @@ static void JS_Exists(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets file permissions of specified files (non windows only)
-/// @startDocuBlock JS_Chmod
-/// `fs.exists(path)`
-///
-/// Returns true on success.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Chmod
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChMod(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1131,12 +1120,7 @@ static void JS_ChMod(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the size of a file
-/// @startDocuBlock JS_Size
-/// `fs.size(path)`
-///
-/// Returns the size of the file specified by *path*.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Size
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_SizeFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1184,13 +1168,7 @@ static void JS_Getline(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the temporary directory
-/// @startDocuBlock JS_GetTempPath
-/// `fs.getTempPath()`
-///
-/// Returns the absolute path of the temporary directory
-///
-/// @endDocuBlock
+/// @brief was docuBlock JS_GetTempPath
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetTempPath(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1215,16 +1193,7 @@ static void JS_GetTempPath(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the name for a (new) temporary file
-/// @startDocuBlock JS_GetTempFile
-/// `fs.getTempFile(directory, createFile)`
-///
-/// Returns the name for a new temporary file in directory *directory*.
-/// If *createFile* is *true*, an empty file will be created so no other
-/// process can create a file of the same name.
-///
-/// **Note**: The directory *directory* must exist.
-/// @endDocuBlock
+/// @brief was docuBlock JS_GetTempFile
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_GetTempFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1265,12 +1234,7 @@ static void JS_GetTempFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests if path is a directory
-/// @startDocuBlock JS_IsDirectory
-/// `fs.isDirectory(path)`
-///
-/// Returns true if the *path* points to a directory.
-/// @endDocuBlock
+/// @brief was docuBlock JS_IsDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1298,12 +1262,7 @@ static void JS_IsDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests if path is a file
-/// @startDocuBlock JS_IsFile
-/// `fs.isFile(path)`
-///
-/// Returns true if the *path* points to a file.
-/// @endDocuBlock
+/// @brief was docuBlock JS_IsFile
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1331,13 +1290,7 @@ static void JS_IsFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief makes a given path absolute
-/// @startDocuBlock JS_MakeAbsolute
-/// `fs.makeAbsolute(path)`
-///
-/// Returns the given string if it is an absolute path, otherwise an
-/// absolute path to the same location is returned.
-/// @endDocuBlock
+/// @brief was docuBlock JS_MakeAbsolute
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeAbsolute(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1377,17 +1330,7 @@ static void JS_MakeAbsolute(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the directory listing
-/// @startDocuBlock JS_List
-/// `fs.list(path)`
-///
-/// The functions returns the names of all the files in a directory, in
-/// lexically sorted order. Throws an exception if the directory cannot be
-/// traversed (or path is not a directory).
-///
-/// **Note**: this means that list("x") of a directory containing "a" and "b" would
-/// return ["a", "b"], not ["x/a", "x/b"].
-/// @endDocuBlock
+/// @brief was docuBlock JS_List
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_List(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1421,16 +1364,7 @@ static void JS_List(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the directory tree
-/// @startDocuBlock JS_ListTree
-/// `fs.listTree(path)`
-///
-/// The function returns an array that starts with the given path, and all of
-/// the paths relative to the given path, discovered by a depth first traversal
-/// of every directory in any visited directory, reporting but not traversing
-/// symbolic links to directories. The first path is always *""*, the path
-/// relative to itself.
-/// @endDocuBlock
+/// @brief was docuBlock JS_ListTree
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ListTree(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1467,12 +1401,7 @@ static void JS_ListTree(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a directory
-/// @startDocuBlock JS_MakeDirectory
-/// `fs.makeDirectory(path)`
-///
-/// Creates the directory specified by *path*.
-/// @endDocuBlock
+/// @brief was docuBlock JS_MakeDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1504,12 +1433,7 @@ static void JS_MakeDirectory(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a directory
-/// @startDocuBlock JS_MakeDirectoryRecursive
-/// `fs.makeDirectoryRecursive(path)`
-///
-/// Creates the directory hierarchy specified by *path*.
-/// @endDocuBlock
+/// @brief was docuBlock JS_MakeDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MakeDirectoryRecursive(
@@ -1542,16 +1466,7 @@ static void JS_MakeDirectoryRecursive(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unzips a file
-/// @startDocuBlock JS_Unzip
-/// `fs.unzipFile(filename, outpath, skipPaths, overwrite, password)`
-///
-/// Unzips the zip file specified by *filename* into the path specified by
-/// *outpath*. Overwrites any existing target files if *overwrite* is set
-/// to *true*.
-///
-/// Returns *true* if the file was unzipped successfully.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Unzip
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnzipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1597,19 +1512,7 @@ static void JS_UnzipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief zips a file
-/// @startDocuBlock JS_Zip
-/// `fs.zipFile(filename, chdir, files, password)`
-///
-/// Stores the files specified by *files* in the zip file *filename*. If
-/// the file *filename* already exists, an error is thrown. The list of input
-/// files *files* must be given as a list of absolute filenames. If *chdir* is
-/// not empty, the *chdir* prefix will be stripped from the filename in the
-/// zip file, so when it is unzipped filenames will be relative.
-/// Specifying a password is optional.
-///
-/// Returns *true* if the file was zipped successfully.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Zip
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ZipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2028,13 +1931,7 @@ static void JS_MarkNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the last modification time of a file
-/// @startDocuBlock JS_MTime
-/// `fs.mtime(filename)`
-///
-/// Returns the last modification date of the specified file. The date is
-/// returned as a Unix timestamp (number of seconds elapsed since January 1 1970).
-/// @endDocuBlock
+/// @brief was docuBlock JS_MTime
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MTime(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2060,15 +1957,7 @@ static void JS_MTime(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a file
-/// @startDocuBlock JS_MoveFile
-/// `fs.move(source, destination)`
-///
-/// Moves *source* to destination. Failure to move the file, or
-/// specifying a directory for destination when source is a file will throw an
-/// exception. Likewise, specifying a directory as source and destination will
-/// fail.
-/// @endDocuBlock
+/// @brief was docuBlock JS_MoveFile
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_MoveFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2115,16 +2004,7 @@ static void JS_MoveFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a directory structure
-/// @startDocuBlock JS_CopyDirectoryRecursive
-/// `fs.copyRecursive(source, destination)`
-///
-/// Copies *source* to *destination*.
-/// Exceptions will be thrown on:
-///  - Failure to copy the file
-///  - specifying a directory for destination when source is a file
-///  - specifying a directory as source and destination
-/// @endDocuBlock
+/// @brief was docuBlock JS_CopyDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CopyRecursive(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2178,15 +2058,7 @@ static void JS_CopyRecursive(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies a file into a target file
-/// @startDocuBlock JS_CopyFile
-/// `fs.copyFile(source, destination)`
-///
-/// Copies *source* to destination. If Destination is a directory, a file
-/// of the same name will be created in that directory, else the copy will get
-/// the
-/// specified filename.
-/// @endDocuBlock
+/// @brief was docuBlock JS_CopyFile
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CopyFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2394,13 +2266,7 @@ static void JS_Rand(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads in a file
-/// @startDocuBlock JS_Read
-/// `fs.read(filename)`
-///
-/// Reads in a file and returns the content as string. Please note that the
-/// file content must be encoded in UTF-8.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Read
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2436,12 +2302,7 @@ static void JS_Read(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads in a file
-/// @startDocuBlock JS_ReadBuffer
-/// `fs.readBuffer(filename)`
-///
-/// Reads in a file and returns its content in a Buffer object.
-/// @endDocuBlock
+/// @brief was docuBlock JS_ReadBuffer
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReadBuffer(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2474,13 +2335,7 @@ static void JS_ReadBuffer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief reads in a file as base64
-/// @startDocuBlock JS_Read64
-/// `fs.read64(filename)`
-///
-/// Reads in a file and returns the content as string. The file content is
-/// Base64 encoded.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Read64
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Read64(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2511,13 +2366,7 @@ static void JS_Read64(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief writes to a file
-///
-/// @startDocuBlock JS_Save
-/// `fs.write(filename, content)`
-///
-/// Writes the content into a file. Content can be a string or a Buffer object.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Save
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Save(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2576,14 +2425,7 @@ static void JS_Save(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a file
-/// @startDocuBlock JS_Remove
-/// `fs.remove(filename)`
-///
-/// Removes the file *filename* at the given path. Throws an exception if the
-/// path corresponds to anything that is not a file or a symbolic link. If
-/// "path" refers to a symbolic link, removes the symbolic link.
-/// @endDocuBlock
+/// @brief was docuBlock JS_Remove
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Remove(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2612,14 +2454,7 @@ static void JS_Remove(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an empty directory
-/// @startDocuBlock JS_RemoveDirectory
-/// `fs.removeDirectory(path)`
-///
-/// Removes a directory if it is empty. Throws an exception if the path is not
-/// an empty directory.
-///
-/// @endDocuBlock
+/// @brief was docuBlock JS_RemoveDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveDirectory(
@@ -2656,13 +2491,7 @@ static void JS_RemoveDirectory(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a directory
-/// @startDocuBlock JS_RemoveDirectoryRecursive
-/// `fs.removeDirectoryRecursive(path)`
-///
-/// Removes a directory with all subelements. Throws an exception if the path
-/// is not a directory.
-/// @endDocuBlock
+/// @brief was docuBlock JS_RemoveDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveRecursiveDirectory(

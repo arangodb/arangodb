@@ -392,64 +392,11 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief retrieves the configuration of the write-ahead log
-/// @startDocuBlock walPropertiesGet
-/// `internal.wal.properties()`
-///
-/// Retrieves the configuration of the write-ahead log. The result is a JSON
-/// array with the following attributes:
-/// - *allowOversizeEntries*: whether or not operations that are bigger than a
-///   single logfile can be executed and stored
-/// - *logfileSize*: the size of each write-ahead logfile
-/// - *historicLogfiles*: the maximum number of historic logfiles to keep
-/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
-///   allocates in the background
-/// - *syncInterval*: the interval for automatic synchronization of not-yet
-///   synchronized write-ahead log data (in milliseconds)
-/// - *throttleWait*: the maximum wait time that operations will wait before
-///   they get aborted if case of write-throttling (in milliseconds)
-/// - *throttleWhenPending*: the number of unprocessed garbage-collection
-///   operations that, when reached, will activate write-throttling. A value of
-///   *0* means that write-throttling will not be triggered.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesGet}
-///   require("internal").wal.properties();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock walPropertiesGet
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief configures the write-ahead log
-/// @startDocuBlock walPropertiesSet
-/// `internal.wal.properties(properties)`
-///
-/// Configures the behavior of the write-ahead log. *properties* must be a JSON
-/// JSON object with the following attributes:
-/// - *allowOversizeEntries*: whether or not operations that are bigger than a
-///   single logfile can be executed and stored
-/// - *logfileSize*: the size of each write-ahead logfile
-/// - *historicLogfiles*: the maximum number of historic logfiles to keep
-/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
-///   allocates in the background
-/// - *throttleWait*: the maximum wait time that operations will wait before
-///   they get aborted if case of write-throttling (in milliseconds)
-/// - *throttleWhenPending*: the number of unprocessed garbage-collection
-///   operations that, when reached, will activate write-throttling. A value of
-///   *0* means that write-throttling will not be triggered.
-///
-/// Specifying any of the above attributes is optional. Not specified attributes
-/// will be ignored and the configuration for them will not be modified.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesSet}
-/// | require("internal").wal.properties({ 
-/// |    allowOverSizeEntries: true,
-///     logfileSize: 32 * 1024 * 1024 });
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock walPropertiesSet
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -523,32 +470,7 @@ static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the currently open WAL logfile
-/// @startDocuBlock walFlush
-/// `internal.wal.flush(waitForSync, waitForCollector)`
-///
-/// Flushes the write-ahead log. By flushing the currently active write-ahead
-/// logfile, the data in it can be transferred to collection journals and
-/// datafiles. This is useful to ensure that all data for a collection is
-/// present in the collection journals and datafiles, for example, when dumping
-/// the data of a collection.
-///
-/// The *waitForSync* option determines whether or not the operation should
-/// block until the not-yet synchronized data in the write-ahead log was
-/// synchronized to disk.
-///
-/// The *waitForCollector* operation can be used to specify that the operation
-/// should block until the data in the flushed log has been collected by the
-/// write-ahead log garbage collector. Note that setting this option to *true*
-/// might block for a long time if there are long-running transactions and
-/// the write-ahead log garbage collector cannot finish garbage collection.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{WalFlush}
-///   require("internal").wal.flush();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock walFlush
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FlushWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2772,23 +2694,7 @@ static v8::Handle<v8::Object> WrapVocBase(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects a collection from the vocbase
-/// @startDocuBlock collectionDatabaseCollectionName
-/// `db.collection-name`
-///
-/// Returns the collection with the given *collection-name*. If no such
-/// collection exists, create a collection named *collection-name* with the
-/// default properties.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
-/// ~ db._create("example");
-///   db.example;
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionDatabaseCollectionName
 ////////////////////////////////////////////////////////////////////////////////
 
 static void MapGetVocBase(v8::Local<v8::String> const name,
@@ -2955,19 +2861,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the server version string
-/// @startDocuBlock databaseVersion
-/// `db._version()`
-///
-/// Returns the server version string. Note that this is not the version of the
-/// database.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
-///   require("internal").db._version();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databaseVersion
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2978,18 +2872,7 @@ static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the path to database files
-/// @startDocuBlock databasePath
-/// `db._path()`
-///
-/// Returns the filesystem path of the current database as a string.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbPath}
-///   require("internal").db._path();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databasePath
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3006,18 +2889,7 @@ static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database id
-/// @startDocuBlock databaseId
-/// `db._id()`
-///
-/// Returns the id of the current database as a string.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbId}
-///   require("internal").db._id();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databaseId
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3034,18 +2906,7 @@ static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database name
-/// @startDocuBlock databaseName
-/// `db._name()`
-///
-/// Returns the name of the current database as a string.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbName}
-///   require("internal").db._name();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databaseName
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3062,16 +2923,7 @@ static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database type
-/// @startDocuBlock databaseIsSystem
-/// `db._isSystem()`
-///
-/// Returns whether the currently used database is the *_system* database.
-/// The system database has some special privileges and properties, for example,
-/// database management operations such as create or drop can only be executed
-/// from within this database. Additionally, the *_system* database itself
-/// cannot be dropped.
-/// @endDocuBlock
+/// @brief was docuBlock databaseIsSystem
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsSystemDatabase(
@@ -3089,24 +2941,7 @@ static void JS_IsSystemDatabase(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief change the current database
-/// @startDocuBlock databaseUseDatabase
-/// `db._useDatabase(name)`
-///
-/// Changes the current database to the database specified by *name*. Note
-/// that the database specified by *name* must already exist.
-///
-/// Changing the database might be disallowed in some contexts, for example
-/// server-side actions (including Foxx).
-///
-/// When performing this command from arangosh, the current credentials (username
-/// and password) will be re-used. These credentials might not be valid to
-/// connect to the database specified by *name*. Additionally, the database
-/// only be accessed from certain endpoints only. In this case, switching the
-/// database might not work, and the connection / session should be closed and
-/// restarted with different username and password credentials and/or
-/// endpoint data.
-/// @endDocuBlock
+/// @brief was docuBlock databaseUseDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UseDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3237,13 +3072,7 @@ static void ListDatabasesCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the list of all existing databases
-/// @startDocuBlock databaseListDatabase
-/// `db._listDatabases()`
-///
-/// Returns the list of all databases. This method can only be used from within
-/// the *_system* database.
-/// @endDocuBlock
+/// @brief was docuBlock databaseListDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ListDatabases(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3424,56 +3253,7 @@ static void CreateDatabaseCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new database
-/// @startDocuBlock databaseCreateDatabase
-/// `db._createDatabase(name, options, users)`
-///
-/// Creates a new database with the name specified by *name*.
-/// There are restrictions for database names
-/// (see [DatabaseNames](../NamingConventions/DatabaseNames.md)).
-///
-/// Note that even if the database is created successfully, there will be no
-/// change into the current database to the new database. Changing the current
-/// database must explicitly be requested by using the
-/// *db._useDatabase* method.
-///
-/// The *options* attribute currently has no meaning and is reserved for
-/// future use.
-///
-/// The optional *users* attribute can be used to create initial users for
-/// the new database. If specified, it must be a list of user objects. Each user
-/// object can contain the following attributes:
-///
-/// * *username*: the user name as a string. This attribute is mandatory.
-/// * *passwd*: the user password as a string. If not specified, then it defaults
-///   to the empty string.
-/// * *active*: a boolean flag indicating whether the user account should be
-///   active or not. The default value is *true*.
-/// * *extra*: an optional JSON object with extra user information. The data
-///   contained in *extra* will be stored for the user but not be interpreted
-///   further by ArangoDB.
-///
-/// If no initial users are specified, a default user *root* will be created
-/// with an empty string password. This ensures that the new database will be
-/// accessible via HTTP after it is created.
-///
-/// You can create users in a database if no initial user is specified. Switch 
-/// into the new database (username and password must be identical to the current
-/// session) and add or modify users with the following commands.
-///
-/// ```js
-///   require("@arangodb/users").save(username, password, true);
-///   require("@arangodb/users").update(username, password, true);
-///   require("@arangodb/users").remove(username);
-/// ```
-/// Alternatively, you can specify user data directly. For example:
-///
-/// ```js
-///   db._createDatabase("newDB", [], [{ username: "newUser", passwd: "123456", active: true}])
-/// ```
-///
-/// Those methods can only be used from within the *_system* database.
-/// @endDocuBlock
+/// @brief was docuBlock databaseCreateDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3670,19 +3450,7 @@ static void DropDatabaseCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drop an existing database
-/// @startDocuBlock databaseDropDatabase
-/// `db._dropDatabase(name)`
-///
-/// Drops the database specified by *name*. The database specified by
-/// *name* must exist.
-///
-/// **Note**: Dropping databases is only possible from within the *_system*
-/// database. The *_system* database itself cannot be dropped.
-///
-/// Databases are dropped asynchronously, and will be physically removed if
-/// all clients have disconnected and references have been garbage-collected.
-/// @endDocuBlock
+/// @brief was docuBlock databaseDropDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
