@@ -538,9 +538,11 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///     db._create(cn);
 ///     db._flushCache();
 ///
-///     var body = '{ "_key": "abc", "value1": 25, "value2": "test", "allowed":
-///     true }\n{ "_key": "foo", "name": "baz" }\n\n{ "name": { "detailed":
-///     "detailed name", "short": "short name" } }\n';
+///     var body = '{ "_key": "abc", "value1": 25, "value2": "test",' +
+///                '"allowed": true }\n' + 
+///                '{ "_key": "foo", "name": "baz" }\n\n' + 
+///                '{ "name": {' +
+///                ' "detailed": "detailed name", "short": "short name" } }\n';
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
 ///     + "&type=documents", body);
 ///
@@ -621,8 +623,9 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///     db._create("products");
 ///     db._flushCache();
 ///
-///     var body = '{ "_from": "products/123", "_to": "products/234" }\n{
-///     "_from": "products/332", "_to": "products/abc", "name": "other name" }';
+///     var body = '{ "_from": "products/123", "_to": "products/234" }\n' + 
+///                '{"_from": "products/332", "_to": "products/abc", ' + 
+///                '  "name": "other name" }';
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
 ///     + "&type=documents", body);
@@ -670,8 +673,8 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///     db._create(cn);
 ///     db._flushCache();
 ///
-///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n{ "_key":
-///     "abc", "value1": "bar", "value2": "baz" }';
+///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n' + 
+///                '{ "_key": "abc", "value1": "bar", "value2": "baz" }';
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
 ///     + "&type=documents&details=true", body);
@@ -694,8 +697,8 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 ///     db._create(cn);
 ///     db._flushCache();
 ///
-///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n{ "_key":
-///     "abc", "value1": "bar", "value2": "baz" }';
+///     var body = '{ "_key": "abc", "value1": 25, "value2": "test" }\n' +
+///                '{ "_key": "abc", "value1": "bar", "value2": "baz" }';
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
 ///     + "&type=documents&complete=true", body);
@@ -1102,8 +1105,9 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///     db._drop(cn);
 ///     db._create(cn);
 ///
-///     var body = '[ "_key", "value1", "value2" ]\n[ "abc", 25, "test" ]\n\n[
-///     "foo", "bar", "baz" ]';
+///     var body = '[ "_key", "value1", "value2" ]\n' + 
+///                '[ "abc", 25, "test" ]\n\n' + 
+///                '[ "foo", "bar", "baz" ]';
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" +
 ///     cn, body);
@@ -1125,8 +1129,10 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///     db._drop(cn);
 ///     db._create(cn);
 ///
-///     var body = '[ "value1", "value2" ]\n[ 1234, null ]\n[ "foo", "bar" ]\n[
-///     534.55, true ]';
+///     var body = '[ "value1", "value2" ]\n' + 
+///                '[ 1234, null ]\n' + 
+///                '[ "foo", "bar" ]\n' + 
+///                '[534.55, true ]';
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
 ///     + "&createCollection=true", body);
@@ -1150,9 +1156,9 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///     db._drop("products");
 ///     db._create("products");
 ///
-///     var body = '[ "_from", "_to", "name" ]\n[ "products/123",
-///     "products/234", "some name" ]\n[ "products/332", "products/abc", "other
-///     name" ]';
+///     var body = '[ "_from", "_to", "name" ]\n' + 
+///                '[ "products/123","products/234", "some name" ]\n' +
+///                '[ "products/332", "products/abc", "other name" ]';
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" +
 ///     cn, body);
@@ -1197,8 +1203,9 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///     db._drop(cn);
 ///     db._create(cn);
 ///
-///     var body = '[ "_key", "value1", "value2" ]\n[ "abc", 25, "test" ]\n[
-///     "abc", "bar", "baz" ]';
+///     var body = '[ "_key", "value1", "value2" ]\n' + 
+///                '[ "abc", 25, "test" ]\n' +
+///                '["abc", "bar", "baz" ]';
 ///
 ///     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn
 ///     + "&details=true", body);
@@ -1220,8 +1227,9 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///     db._drop(cn);
 ///     db._create(cn);
 ///
-///     var body = '[ "_key", "value1", "value2" ]\n[ "abc", 25, "test" ]\n[
-///     "abc", "bar", "baz" ]';
+///     var body = '[ "_key", "value1", "value2" ]\n' +
+///                '[ "abc", 25, "test" ]\n' + 
+///                '["abc", "bar", "baz" ]';
 ///
 ///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn +
 ///     "&complete=true", body);
@@ -1238,8 +1246,9 @@ bool RestImportHandler::createFromJson(string const& type) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///
-///     var body = '[ "_key", "value1", "value2" ]\n[ "abc", 25, "test" ]\n[
-///     "foo", "bar", "baz" ]';
+///     var body = '[ "_key", "value1", "value2" ]\n' + 
+///                '[ "abc", 25, "test" ]\n' + 
+///                '["foo", "bar", "baz" ]';
 ///
 ///     var response = logCurlRequest('POST', "/_api/import?collection=" + cn,
 ///     body);

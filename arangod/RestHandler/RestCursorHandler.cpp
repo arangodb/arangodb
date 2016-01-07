@@ -613,8 +613,8 @@ triagens::basics::Json RestCursorHandler::buildExtra(
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorOptimizerRules}
 ///     var url = "/_api/cursor";
 ///     var body = {
-///       query: "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 RETURN
-///       i",
+///       query: "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a + b == 3 " + 
+///              "   RETURN i",
 ///       count: true,
 ///       options: {
 ///         maxPlans: 1,

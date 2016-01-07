@@ -168,8 +168,9 @@ HttpHandler::status_t RestJobHandler::execute() {
 /// @EXAMPLE_ARANGOSH_RUN{JSF_job_fetch_result_04}
 ///   var url = "/_api/collection";
 ///   var headers = {'x-arango-async' : 'store'};
-///   var response = logCurlRequest('PUT', url, {"name":" this name is invalid
-///   "}, headers);
+///   var response = logCurlRequest('PUT', url, {"name":
+///     " this name is invalid"},
+///     headers);
 ///
 ///   assert(response.code === 202);
 ///   logRawResponse(response);
@@ -253,8 +254,8 @@ void RestJobHandler::putJob() {
 ///   var url = "/_api/cursor";
 ///   var headers = {'x-arango-async' : 'store'};
 ///   var postData = {"query":
-///      "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) FILTER i == 5 && j ==
-///      5 RETURN 42"}
+///      "FOR i IN 1..10 FOR j IN 1..10 LET x = sleep(1.0) " +
+///      "FILTER i == 5 && j == 5 RETURN 42"}
 ///
 ///   var response = logCurlRequest('POST', url, postData, headers);
 ///   assert(response.code === 202);

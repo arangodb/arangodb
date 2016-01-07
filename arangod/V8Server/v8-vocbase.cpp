@@ -445,8 +445,9 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesSet}
-///   require("internal").wal.properties({ allowOverSizeEntries: true,
-///   logfileSize: 32 * 1024 * 1024 });
+/// | require("internal").wal.properties({ 
+/// |    allowOverSizeEntries: true,
+///     logfileSize: 32 * 1024 * 1024 });
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

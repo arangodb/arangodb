@@ -1856,8 +1856,8 @@ static void RemoveVocbaseVPack(
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
 /// ~ db._create("example");
 /// ~ var myid = db.example.insert({_key: "2873916"});
-///   db.example.document("example/4472917"); //
-///   xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+/// | db.example.document("example/4472917");
+/// ~     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3233,13 +3233,13 @@ static void JS_RotateVocbaseCol(
 /// ~ db._create("example");
 /// ~ var myid = db.example.insert({_key: "19988371"});
 ///   db.example.insert({"a" : 1});
-///   db.example.update("example/19988371", { "b" : null, "c" : null, "d" : 3
-///   });
+/// |db.example.update("example/19988371",
+///                    { "b" : null, "c" : null, "d" : 3 });
 ///   db.example.document("example/19988371");
 ///   db.example.update("example/19988371", { "a" : null }, false, false);
 ///   db.example.document("example/19988371");
-///   db.example.update("example/19988371", { "b" : null, "c": null, "d" : null
-///   }, false, false);
+/// | db.example.update("example/19988371",
+///                     { "b" : null, "c": null, "d" : null }, false, false);
 ///   db.example.document("example/19988371");
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -3249,13 +3249,14 @@ static void JS_RotateVocbaseCol(
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleArray}
 /// ~ db._create("example");
 /// ~ var myid = db.example.insert({_key: "20774803"});
-///   db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : {
-///   }});
-///   db.example.update("example/20774803", {"a" : { "four" : 4 }, "b" : { "b1"
-///   : 1 }});
+/// |  db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 },
+///                       "b" : { }});
+/// | db.example.update("example/20774803", {"a" : { "four" : 4 },
+///                                          "b" : { "b1" : 1 }});
 ///   db.example.document("example/20774803");
-///   db.example.update("example/20774803", { "a" : { "one" : null }, "b" : null
-///   }, false, false);
+/// | db.example.update("example/20774803", { "a" : { "one" : null },
+/// |                                         "b" : null },
+///                     false, false);
 ///   db.example.document("example/20774803");
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -4462,8 +4463,8 @@ static void JS_CompletionsVocbase(
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveSignature}
 /// ~ db._create("example");
 ///   db.example.insert({ a:  1 } );
-///   db.example.remove("example/11265325374", {overwrite: true, waitForSync:
-///   false})
+/// | db.example.remove("example/11265325374",
+///        { overwrite: true, waitForSync: false})
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
