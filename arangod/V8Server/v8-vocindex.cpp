@@ -1409,8 +1409,8 @@ static void GetIndexesCoordinator(
 /// ~db._create("test");
 /// ~db.test.ensureUniqueSkiplist("skiplistAttribute");
 /// ~db.test.ensureUniqueSkiplist("skiplistUniqueAttribute");
-/// ~db.test.ensureHashIndex("hashListAttribute",
-/// "hashListSecondAttribute.subAttribute");
+/// |~db.test.ensureHashIndex("hashListAttribute",
+///                           "hashListSecondAttribute.subAttribute");
 /// db.test.getIndexes();
 /// ~db._drop("test");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1717,8 +1717,8 @@ static void CreateVocBase(const v8::FunctionCallbackInfo<v8::Value>& args,
 /// With properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateProperties}
-///   c = db._create("users", { waitForSync : true, journalSize : 1024 * 1204
-///   });
+///   |c = db._create("users", { waitForSync : true,
+///            journalSize : 1024 * 1204});
 ///   c.properties();
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1726,8 +1726,8 @@ static void CreateVocBase(const v8::FunctionCallbackInfo<v8::Value>& args,
 /// With a key generator:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateKey}
-///   db._create("users", { keyOptions: { type: "autoincrement", offset: 10,
-///   increment: 5 } });
+/// | db._create("users",
+///      { keyOptions: { type: "autoincrement", offset: 10, increment: 5 } });
 ///   db.users.save({ name: "user 1" });
 ///   db.users.save({ name: "user 2" });
 ///   db.users.save({ name: "user 3" });
@@ -1739,8 +1739,8 @@ static void CreateVocBase(const v8::FunctionCallbackInfo<v8::Value>& args,
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateSpecialKey}
 ///   db._create("users", { keyOptions: { allowUserKeys: false } });
 ///   db.users.save({ name: "user 1" });
-///   db.users.save({ name: "user 2", _key: "myuser" }); //
-///   xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
+/// | db.users.save({ name: "user 2", _key: "myuser" });
+/// ~    // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
 ///   db.users.save({ name: "user 3" });
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT

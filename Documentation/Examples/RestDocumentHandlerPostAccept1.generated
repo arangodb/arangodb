@@ -3,13 +3,13 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/documen
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
-etag: <span class="hljs-string">"707647943"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">707647943</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+etag: <span class="hljs-string">"734737513"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">734737513</span>
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/707647943"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"707647943"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"707647943"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/734737513"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"734737513"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"734737513"</span> 
 }

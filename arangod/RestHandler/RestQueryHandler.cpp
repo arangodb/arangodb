@@ -600,8 +600,8 @@ bool RestQueryHandler::replaceProperties() {
 ///
 ///     @EXAMPLE_ARANGOSH_RUN{RestQueryValid}
 ///     var url = "/_api/query";
-///     var body = '{ "query" : "FOR p IN products FILTER p.name == @name LIMIT
-///     2 RETURN p.n" }';
+///     var body = '{ "query" : ' + 
+///      '"FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -614,8 +614,8 @@ bool RestQueryHandler::replaceProperties() {
 ///
 ///     @EXAMPLE_ARANGOSH_RUN{RestQueryInvalid}
 ///     var url = "/_api/query";
-///     var body = '{ "query" : "FOR p IN products FILTER p.name = @name LIMIT 2
-///     RETURN p.n" }';
+///     var body = '{ "query" :' +
+///      ' "FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n" }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///

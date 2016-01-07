@@ -7,22 +7,34 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR e IN GRAPH_VERTICES("</spa
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Berlin"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Berlin"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1799281095"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1880896617"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"population"</span> : <span class="hljs-number">3000000</span> 
+    <span class="hljs-string">"population"</span> : <span class="hljs-number">3000000</span>, 
+    <span class="hljs-string">"loc"</span> : [ 
+      <span class="hljs-number">52.5167</span>, 
+      <span class="hljs-number">13.3833</span> 
+    ] 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1799477703"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1881093225"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
+    <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
+    <span class="hljs-string">"loc"</span> : [ 
+      <span class="hljs-number">50.9364</span>, 
+      <span class="hljs-number">6.9528</span> 
+    ] 
   }, 
   { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Hamburg"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Hamburg"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1799674311"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"1881289833"</span>, 
     <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span> 
+    <span class="hljs-string">"population"</span> : <span class="hljs-number">1000000</span>, 
+    <span class="hljs-string">"loc"</span> : [ 
+      <span class="hljs-number">53.5653</span>, 
+      <span class="hljs-number">10.0014</span> 
+    ] 
   } 
 ]

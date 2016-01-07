@@ -1537,8 +1537,8 @@ static void JS_ChecksumCollection(
 /// ~ var myGraph = {};
 ///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
 ///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
-///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows"
-///   });
+/// | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+///                                   { label : "knows"});
 ///   db._document(myGraph.e1);
 ///   db.relation.edges(myGraph.e1._id);
 /// ~ db._drop("relation");
@@ -1573,8 +1573,8 @@ static void JS_EdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// ~ var myGraph = {};
 ///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
 ///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
-///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows"
-///   });
+/// | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+///                                   { label : "knows"});
 ///   db._document(myGraph.e1);
 ///   db.relation.inEdges(myGraph.v1._id);
 ///   db.relation.inEdges(myGraph.v2._id);
@@ -1611,8 +1611,8 @@ static void JS_InEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// ~ var myGraph = {};
 ///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
 ///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
-///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows"
-///   });
+/// | myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2,
+///                                   { label : "knows"});
 ///   db._document(myGraph.e1);
 ///   db.relation.outEdges(myGraph.v1._id);
 ///   db.relation.outEdges(myGraph.v2._id);
@@ -1842,10 +1842,10 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
 /// ~ db._drop("emails");
 /// ~ db._create("emails");
 ///   db.emails.ensureFulltextIndex("content");
-///   db.emails.save({ content: "Hello Alice, how are you doing? Regards, Bob"
-///   });
-///   db.emails.save({ content: "Hello Charlie, do Alice and Bob know about it?"
-///   });
+/// | db.emails.save({ content:
+///                    "Hello Alice, how are you doing? Regards, Bob"});
+/// | db.emails.save({ content:
+///                    "Hello Charlie, do Alice and Bob know about it?"});
 ///   db.emails.save({ content: "I think they don't know. Regards, Eve" });
 ///   db.emails.fulltext("content", "charlie,|eve").toArray();
 /// ~ db._drop("emails");

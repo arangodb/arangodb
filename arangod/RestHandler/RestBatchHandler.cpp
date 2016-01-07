@@ -133,17 +133,26 @@ RestBatchHandler::~RestBatchHandler() {}
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
 ///     var parts = [
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       myId1\r\n\r\nGET /_api/version HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       myId2\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       someId\r\n\r\nPOST /_api/collection/products HTTP/1.1\r\n\r\n{
-///       \"name\": \"products\" }\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       nextId\r\n\r\nGET /_api/collection/products/figures HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       otherId\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n"
+///       "Content-Type: application/x-arango-batchpart\r\n" +
+///       "Content-Id: myId1\r\n\r\n" + 
+///       "GET /_api/version HTTP/1.1\r\n",
+///
+///       "Content-Type: application/x-arango-batchpart\r\n" + 
+///       "Content-Id: myId2\r\n\r\n" + 
+///       "DELETE /_api/collection/products HTTP/1.1\r\n",
+///
+///       "Content-Type: application/x-arango-batchpart\r\n" + 
+///       "Content-Id: someId\r\n\r\n" + 
+///       "POST /_api/collection/products HTTP/1.1\r\n\r\n" + 
+///       "{\"name\": \"products\" }\r\n",
+///
+///       "Content-Type: application/x-arango-batchpart\r\n" + 
+///       "Content-Id: nextId\r\n\r\n" + 
+///       "GET /_api/collection/products/figures HTTP/1.1\r\n",
+///
+///       "Content-Type: application/x-arango-batchpart\r\n" + 
+///       "Content-Id: otherId\r\n\r\n" + 
+///       "DELETE /_api/collection/products HTTP/1.1\r\n"
 ///     ];
 ///     var boundary = "SomeBoundaryValue";
 ///     var headers = { "Content-Type" : "multipart/form-data; boundary=" +
@@ -164,10 +173,10 @@ RestBatchHandler::~RestBatchHandler() {}
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
 ///     var parts = [
-///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE
-///       /_api/collection/notexisting1 HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE
-///       /_api/collection/notexisting2 HTTP/1.1\r\n"
+///       "Content-Type: application/x-arango-batchpart\r\n\r\n" + 
+///          "DELETE /_api/collection/notexisting1 HTTP/1.1\r\n",
+///       "Content-Type: application/x-arango-batchpart\r\n\r\n" + 
+///          "DELETE _api/collection/notexisting2 HTTP/1.1\r\n"
 ///     ];
 ///     var boundary = "SomeBoundaryValue";
 ///     var body = "--" + boundary + "\r\n" +

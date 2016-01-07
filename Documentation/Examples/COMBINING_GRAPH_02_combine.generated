@@ -19,7 +19,7 @@ arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN
         <span class="hljs-number">4.84</span> 
       ], 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25061935"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"522466409"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span> 
     } 
   }, 
@@ -29,11 +29,11 @@ arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN
       <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span>, 
       <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">48.8567</span>, 
+        <span class="hljs-number">48.856700000000004</span>, 
         <span class="hljs-number">2.3508</span> 
       ], 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25258543"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"522663017"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span> 
     } 
   }, 
@@ -43,11 +43,11 @@ arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN
       <span class="hljs-string">"isCapital"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"population"</span> : <span class="hljs-number">4000000</span>, 
       <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">48.8567</span>, 
+        <span class="hljs-number">48.856700000000004</span>, 
         <span class="hljs-number">2.3508</span> 
       ], 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Paris"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25258543"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"522663017"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Paris"</span> 
     } 
   }, 
@@ -61,7 +61,7 @@ arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN
         <span class="hljs-number">4.84</span> 
       ], 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"25061935"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"522466409"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Lyon"</span> 
     } 
   }, 
@@ -75,7 +75,7 @@ arangosh&gt; db._query(<span class="hljs-string">`FOR startCity IN
         <span class="hljs-number">6.9528</span> 
       ], 
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"24341039"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"521745513"</span>, 
       <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span> 
     } 
   } 

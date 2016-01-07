@@ -4,7 +4,7 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collecti
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"result"</span> : <span class="hljs-literal">true</span>, 
