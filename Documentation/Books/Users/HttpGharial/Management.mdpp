@@ -1,18 +1,9 @@
-
 !CHAPTER Manage your graphs
 
-The graph module provides functions dealing with graph structures.
-Examples will explain the API on the [social graph](../Graphs/README.md#the-social-graph):
+The [graph module](../Graphs/README.md) provides functions dealing with graph structures.
+Examples will explain the REST API on the [social graph](../Graphs/README.md#the-social-graph):
 
 ![Social Example Graph](../Graphs/social_graph.png)
-
-!SUBSECTION First Steps with Graphs
-
-A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
-collections*. A vertex can be a document of a *document collection* or of an edge
-collection (so edges can be used as vertices). Which collections are used within
-a graph is defined via *edge definitions*. A graph can contain more than one edge
-definition, at least one is needed.
 
 @startDocuBlock JSF_general_graph_list_http_examples
 @startDocuBlock JSF_general_graph_create_http_examples
