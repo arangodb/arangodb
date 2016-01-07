@@ -2607,7 +2607,7 @@ static void JS_PropertiesVocbaseCol(
     result->Set(TRI_V8_ASCII_STRING("numberOfShards"),
                 v8::Number::New(isolate, (*c).numberOfShards()));
     auto keyOpts = info.keyOptions();
-    if (keyOpts->size() > 0) {
+    if (keyOpts != nullptr && keyOpts->size() > 0) {
       TRI_GET_GLOBAL_STRING(KeyOptionsKey);
       VPackSlice const slice(keyOpts->data());
       result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, slice)->ToObject());

@@ -45,6 +45,7 @@
 
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
+
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::httpclient;
@@ -149,6 +150,12 @@ static bool ClusterMode = false;
 static int LastErrorCode = TRI_ERROR_NO_ERROR;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief default number of shards
+////////////////////////////////////////////////////////////////////////////////
+
+static int DefaultNumberOfShards = 1;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -157,7 +164,6 @@ static struct {
   uint64_t _totalCollections;
   uint64_t _totalRead;
 } Stats;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the program options
@@ -175,6 +181,7 @@ static void ParseProgramOptions(int argc, char* argv[]) {
       "import-data", &ImportData, "import data into collection")(
       "recycle-ids", &RecycleIds,
       "recycle collection and revision ids from dump")(
+      "default-number-of-shards", &DefaultNumberOfShards, "default value for numberOfShards if not specified")(
       "force", &Force,
       "continue restore even in the face of some server-side errors")(
       "create-collection", &ImportStructure, "create collection structure")(
@@ -419,13 +426,22 @@ static bool GetArangoIsCluster() {
 /// @brief send the request to re-create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreCollection(VPackSlice const& slice, string& errorMsg) {
-  std::string const url =
+static int SendRestoreCollection(VPackSlice const& slice, std::string const& name, std::string& errorMsg) {
+  std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
       string(Overwrite ? "true" : "false") + "&recycleIds=" +
       string(RecycleIds ? "true" : "false") + "&force=" +
       string(Force ? "true" : "false");
+        
+  if (ClusterMode && 
+      ! slice.hasKey(std::vector<std::string>({ "parameters", "shards" })) && 
+      ! slice.hasKey(std::vector<std::string>({ "parameters", "numberOfShards" }))) {
+    // no "shards" and no "numberOfShards" attribute present. now assume
+    // default value from --default-number-of-shards
+    std::cerr << "# no sharding information specified for collection '" << name << "', using default number of shards " << DefaultNumberOfShards << std::endl;
+    url += "&numberOfShards=" + std::to_string(DefaultNumberOfShards);
+  }
 
   std::string const body = slice.toJson();
 
@@ -672,7 +688,8 @@ static int ProcessInputDirectory(std::string& errorMsg) {
                  << "'..." << endl;
           }
         }
-        int res = SendRestoreCollection(collection, errorMsg);
+
+        int res = SendRestoreCollection(collection, cname, errorMsg);
 
         if (res != TRI_ERROR_NO_ERROR) {
           if (Force) {

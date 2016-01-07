@@ -1911,12 +1911,18 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   if (found) {
     force = StringUtils::boolean(value);
   }
+  
+  uint64_t numberOfShards = 0;
+  value = _request->value("numberOfShards", found);
+  if (found) {
+    numberOfShards = StringUtils::uint64(value);
+  }
 
   string errorMsg;
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
-                                              force, errorMsg);
+                                              force, numberOfShards, errorMsg);
   } else {
     res =
         processRestoreCollection(slice, overwrite, recycleIds, force, errorMsg);
@@ -2111,10 +2117,9 @@ int RestReplicationHandler::processRestoreCollection(
 /// @brief restores the structure of a collection, coordinator case
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
 int RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    std::string& errorMsg) {
+    uint64_t numberOfShards, std::string& errorMsg) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -2183,12 +2188,20 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // now re-create the collection
   // dig out number of shards:
-  uint64_t numberOfShards = 1;
   VPackSlice const shards = parameters.get("shards");
   if (shards.isObject()) {
     numberOfShards = static_cast<uint64_t>(shards.length());
   }
-  // We take one shard if "shards" was not given
+  else {
+    // "shards" not specified
+    // now check if numberOfShards property was given
+    if (numberOfShards == 0) {
+      // We take one shard if no value was given
+      numberOfShards = 1;
+    }
+  }
+
+  TRI_ASSERT(numberOfShards > 0);
 
   try {
     TRI_voc_tick_t newIdTick = ci->uniqid(1);
@@ -2275,7 +2288,6 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
         VPackCollection::merge(parameters, sliceToMerge, false);
     VPackSlice const merged = mergedBuilder.slice();
 
-    std::cout << "GOT MERGED VALUE: " << merged.toJson() << "\n";
     int res = ci->createCollectionCoordinator(dbName, newId, numberOfShards,
                                               merged, errorMsg, 0.0);
     if (res != TRI_ERROR_NO_ERROR) {
