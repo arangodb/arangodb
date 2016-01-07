@@ -935,14 +935,6 @@ static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// The @FN{any} method returns a random document from the collection.  It
 /// returns
 /// @LIT{null} if the collection is empty.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arangod> db.example.any()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World"
-/// }
-/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AnyQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
