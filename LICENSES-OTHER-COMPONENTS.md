@@ -239,6 +239,11 @@
 * GITHUB: https://github.com/jshttp/statuses
 * License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
 
+#### type-is
+
+* GITHUB: https://github.com/jshttp/type-is
+* License: [MIT License](https://github.com/jshttp/type-is/blob/master/LICENSE)
+
 #### vary
 
 * GITHUB: https://github.com/jshttp/vary
