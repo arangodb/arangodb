@@ -15,11 +15,14 @@
     "lodash": "3.10.1",
     "marked": "0.3.5",
     "media-typer": "0.3.0",
+    "mime-types": "2.1.9",
     "minimatch": "3.0.0",
     "mocha": "2.3.4",
     "qs": "5.2.0",
+    "range-parser": "1.0.3",
     "semver": "5.1.0",
     "sinon": "1.17.2",
-    "statuses": "1.2.1"
+    "statuses": "1.2.1",
+    "vary": "1.1.0"
   }
 }

@@ -191,6 +191,11 @@
 * GITHUB: https://github.com/jshttp/media-typer
 * License: [MIT License](https://github.com/jshttp/media-typer/blob/master/LICENSE)
 
+#### mime-types
+
+* GITHUB: https://github.com/jshttp/mime-types
+* License: [MIT License](https://github.com/jshttp/mime-types/blob/master/LICENSE)
+
 #### minimatch
 
 * GITHUB: https://github.com/isaacs/minimatch
@@ -212,6 +217,11 @@
 * GITHUB: https://github.com/hapijs/qs
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
 
+#### range-parser
+
+* GITHUB: https://github.com/jshttp/range-parser
+* License: [MIT License](https://github.com/jshttp/range-parser/blob/master/LICENSE)
+
 #### Sinon.JS
 
 * Project Home: http://sinonjs.org
@@ -228,6 +238,11 @@
 
 * GITHUB: https://github.com/jshttp/statuses
 * License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
+
+#### vary
+
+* GITHUB: https://github.com/jshttp/vary
+* License: [MIT License](https://github.com/jshttp/vary/blob/master/LICENSE)
 
 ### Frontend libraries
 
