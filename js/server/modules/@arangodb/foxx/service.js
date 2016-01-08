@@ -231,7 +231,6 @@ class FoxxService {
       console.debug(
         `Running ${data.mount} in 2.x compatibility mode (requested version ${range} pre-dates 3.0.0)`
       );
-      this.main[$_MODULE_CONTEXT].applicationContext = this.main.context;
       this.main.context.foxxFilename = this.main.context.fileName;
     }
   }
@@ -440,6 +439,10 @@ class FoxxService {
       Object.keys(options.context).forEach(function (key) {
         module[$_MODULE_CONTEXT][key] = options.context[key];
       });
+    }
+
+    if (this.legacy) {
+      module[$_MODULE_CONTEXT].applicationContext = module.context;
     }
 
     module.load(filename);
