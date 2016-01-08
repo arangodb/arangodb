@@ -180,6 +180,12 @@
 * GITHUB: https://github.com/atesgoral/jsunity
 * License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
 
+#### lodash
+
+* Project Home: https://lodash.com
+* GITHUB: https://github.com/lodash/lodash
+* License: [MIT License](https://github.com/lodash/lodash/blob/master/LICENSE)
+
 #### media-typer
 
 * GITHUB: https://github.com/jshttp/media-typer
