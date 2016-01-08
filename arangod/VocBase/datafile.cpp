@@ -1906,14 +1906,12 @@ bool TRI_CloseDatafile(TRI_datafile_t* datafile) {
       return false;
     }
 
-    else {
-      datafile->close(datafile);
-      datafile->_data = 0;
-      datafile->_next = 0;
-      datafile->_fd = -1;
+    datafile->close(datafile);
+    datafile->_data = nullptr;
+    datafile->_next = nullptr;
+    datafile->_fd = -1;
 
-      return true;
-    }
+    return true;
   } else if (datafile->_state == TRI_DF_STATE_CLOSED) {
     LOG_WARNING("closing an already closed datafile '%s'",
                 datafile->getName(datafile));
