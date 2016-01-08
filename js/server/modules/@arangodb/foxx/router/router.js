@@ -285,7 +285,8 @@ function applyPathParams(route) {
   - 405: did find a match but it doesn't accept the HTTP method
 */
 function resolve(router, req) {
-  const ignoreRequestBody = doesMethodIgnoreRequestBody(req.method);
+  const method = req.requestType;
+  const ignoreRequestBody = doesMethodIgnoreRequestBody(method);
   let error;
 
   for (const route of router._traverse(req.suffix)) {
@@ -298,7 +299,7 @@ function resolve(router, req) {
       continue;
     }
 
-    if (endpoint._methods.indexOf(req.method) === -1) {
+    if (endpoint._methods.indexOf(method) === -1) {
       error = httpError(405);
       error.methods = endpoint._methods;
       continue;
