@@ -122,6 +122,11 @@
 * GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
 
+#### content-disposition
+
+* GITHUB: https://github.com/jshttp/content-disposition
+* License: [MIT License](https://github.com/jshttp/content-disposition/blob/master/LICENSE)
+
 #### expect.js
 
 * GITHUB: https://github.com/Automattic/expect.js
@@ -175,6 +180,12 @@
 * GITHUB: https://github.com/atesgoral/jsunity
 * License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
 
+#### lodash
+
+* Project Home: https://lodash.com
+* GITHUB: https://github.com/lodash/lodash
+* License: [MIT License](https://github.com/lodash/lodash/blob/master/LICENSE)
+
 #### media-typer
 
 * GITHUB: https://github.com/jshttp/media-typer
@@ -209,17 +220,21 @@
 
 #### stacktrace.js
 
-* Project Home: 
+* Project Home: https://www.stacktracejs.com
 * GITHUB: https://github.com/stacktracejs/stacktrace.js
 * License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
 
-#### underscore
+#### statuses
 
-* Project Home: http://underscorejs.org
-* GITHUB: https://github.com/jashkenas/underscore
-* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
+* GITHUB: https://github.com/jshttp/statuses
+* License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
 
 ### Frontend libraries
+
+#### Animate.css
+
+* https://github.com/daneden/animate.css
+* [MIT License](https://github.com/daneden/animate.css) under "License"
 
 #### Backbone.js
 
@@ -288,7 +303,7 @@
 * GITHUB: https://github.com/jeresig/jquery.hotkeys
 * License: Dual License [MIT License](https://github.com/jeresig/jquery.hotkeys/blob/master/jquery.hotkeys.js)
 
-#### jQuery Snippet 
+#### jQuery Snippet
 
 * Archived Project Home: https://web.archive.org/web/20150908173503/http://www.steamdev.com/snippet/
 * License: [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "Notes, section 5"
@@ -324,6 +339,11 @@
 * GITHUB: https://github.com/novus/nvd3
 * License: [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
 
+#### Noty
+
+* https://github.com/needim/noty/
+* [MIT License](https://github.com/needim/noty) under "License"
+
 #### select2
 
 * GITHUB: https://github.com/select2/select2
@@ -335,12 +355,8 @@
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
 
-#### Noty
+#### underscore
 
-* https://github.com/needim/noty/
-* [MIT License](https://github.com/needim/noty) under "License"
-
-#### Animate.css
-
-* https://github.com/daneden/animate.css
-* [MIT License](https://github.com/daneden/animate.css) under "License"
+* Project Home: http://underscorejs.org
+* GITHUB: https://github.com/jashkenas/underscore
+* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
