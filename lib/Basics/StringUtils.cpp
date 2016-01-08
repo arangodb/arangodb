@@ -1699,7 +1699,12 @@ int64_t int64(std::string const& str) {
 #ifdef TRI_HAVE_STRTOLL
   return strtoll(str.c_str(), 0, 10);
 #else
-  return stoll(str, 0, 10);
+  try {
+    return stoll(str, 0, 10);
+  }
+  catch (...) {
+    return 0;
+  }
 #endif
 #endif
 #endif
@@ -1729,7 +1734,12 @@ int64_t int64(char const* value, size_t size) {
 #ifdef TRI_HAVE_STRTOLL
   return strtoll(value, 0, 10);
 #else
-  return stoll(std::string(value, size), 0, 10);
+  try {
+    return stoll(std::string(value, size), 0, 10);
+  }
+  catch (...) {
+    return 0;
+  }
 #endif
 #endif
 #endif
@@ -1747,7 +1757,12 @@ uint64_t uint64(std::string const& str) {
 #ifdef TRI_HAVE_STRTOULL
   return strtoull(str.c_str(), 0, 10);
 #else
-  return stoull(str, 0, 10);
+  try {
+    return stoull(str, 0, 10);
+  }
+  catch (...) {
+    return 0;
+  }
 #endif
 #endif
 #endif
@@ -1777,7 +1792,12 @@ uint64_t uint64(char const* value, size_t size) {
 #ifdef TRI_HAVE_STRTOULL
   return strtoull(value, 0, 10);
 #else
-  return stoull(std::string(value, size), 0, 10);
+  try {
+    return stoull(std::string(value, size), 0, 10);
+  }
+  catch (...) {
+    return 0;
+  }
 #endif
 #endif
 #endif
