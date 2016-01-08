@@ -220,7 +220,7 @@
 
 #### stacktrace.js
 
-* Project Home: 
+* Project Home: https://www.stacktracejs.com
 * GITHUB: https://github.com/stacktracejs/stacktrace.js
 * License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
 
