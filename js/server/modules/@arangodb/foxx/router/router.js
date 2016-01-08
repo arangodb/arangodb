@@ -41,7 +41,7 @@ const validation = require('@arangodb/foxx/router/validation');
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
 
-function methodIgnoresRequestBody(method) {
+function doesMethodIgnoreRequestBody(method) {
   return ['GET', 'HEAD', 'DELETE', 'CONNECT', 'TRACE'].indexOf(method) !== -1;
 }
 
@@ -133,7 +133,7 @@ module.exports = class Router extends SwaggerContext {
     return route;
   }
 
-  _buildRouteTree() {
+  _buildTree() {
     const root = new Map();
     this._tree = root;
 
@@ -178,22 +178,22 @@ module.exports = class Router extends SwaggerContext {
       }
       node.get($_ROUTES).push(route);
       if (route.router) {
-        route.router._buildRouteTree();
+        route.router._buildTree();
       }
     }
   }
 
-  * _resolve(suffix) {
+  * _traverse(suffix) {
     let result = [{router: this, path: [], suffix: suffix}];
-    for (let route of resolveRoutes(this._tree, result, suffix, [])) {
+    for (let route of traverse(this._tree, result, suffix, [])) {
       yield route;
     }
   }
 
   _dispatch(rawReq, rawRes) {
-    let stack = findMatchingStack(rawReq, this);
+    let route = resolve(this, rawReq);
 
-    if (!stack) {
+    if (!route) {
       return false;
     }
 
@@ -208,7 +208,7 @@ module.exports = class Router extends SwaggerContext {
         throw err;
       }
 
-      const item = stack.shift();
+      const item = route.shift();
 
       if (item.router) {
         pathParams = _.extend(pathParams, item.pathParams);
@@ -250,8 +250,8 @@ module.exports = class Router extends SwaggerContext {
   }
 };
 
-function applyPathParams(stack) {
-  for (const item of stack) {
+function applyPathParams(route) {
+  for (const item of route) {
     try {
       let context = item.middleware || item.endpoint || item.router;
       let params = parsePathParams(
@@ -259,45 +259,41 @@ function applyPathParams(stack) {
         context._pathTokens,
         item.path
       );
-      if (item.router) {
-        item.pathParams = validation.validateParams(
-          union(context._pathParams, context.router._pathParams),
-          params
-        );
-      } else {
-        item.pathParams = validation.validateParams(
-          context._pathParams,
-          params
-        );
-      }
+      item.pathParams = validation.validateParams(
+        (
+          item.router
+          ? union(context._pathParams, context.router._pathParams)
+          : context._pathParams
+        ),
+        params
+      );
     } catch (e) {
       if (item.router || item.endpoint) {
-        return false;
+        throw e;
       }
     }
   }
-
-  return true;
 }
 
 /*
-  Determines the matching stack for the given HTTP request and router.
+  Determines the matching route for the given HTTP request and router.
 
   Throws an HttpError exception on failure:
 
-  - 404: stacks is empty or does not contain any stacks that match
+  - 404: routes is empty or does not contain any routes that match
     the actual path params
   - 405: did find a match but it doesn't accept the HTTP method
 */
-function findMatchingStack(req, router) {
-  const ignoreRequestBody = methodIgnoresRequestBody(req.method);
+function resolve(router, req) {
+  const ignoreRequestBody = doesMethodIgnoreRequestBody(req.method);
   let error;
 
-  for (const stack of router._resolve(req.suffix)) {
-    const endpoint = stack[stack.length - 1];
+  for (const route of router._traverse(req.suffix)) {
+    const endpoint = route[route.length - 1];
 
-    const doesPathMatch = applyPathParams(stack);
-    if (!doesPathMatch) {
+    try {
+      applyPathParams(route);
+    } catch (e) {
       error = error || httpError(404);
       continue;
     }
@@ -308,7 +304,7 @@ function findMatchingStack(req, router) {
       continue;
     }
 
-    for (const item of stack) {
+    for (const item of route) {
       const context = (
         item.router
         ? (item.router.router || item.router)
@@ -338,7 +334,7 @@ function findMatchingStack(req, router) {
       }
     }
 
-    return stack;
+    return route;
   }
 
   if (error) {
@@ -346,7 +342,7 @@ function findMatchingStack(req, router) {
   }
 }
 
-function* resolveRoutes(node, result, suffix, path) {
+function* traverse(node, result, suffix, path) {
   let wildcardNode = node.get(tokenize.WILDCARD);
   let nodeMiddleware = [];
 
@@ -371,7 +367,7 @@ function* resolveRoutes(node, result, suffix, path) {
     let suffix2 = suffix.slice(1);
     for (let childNode of [node.get(part), node.get(tokenize.PARAM)]) {
       if (childNode) {
-        for (let route of resolveRoutes(childNode, result, suffix2, path2)) {
+        for (let route of traverse(childNode, result, suffix2, path2)) {
           yield route;
         }
       }
@@ -386,7 +382,7 @@ function* resolveRoutes(node, result, suffix, path) {
         {router: endpoint, path: path, suffix: suffix}
       );
       let path2 = [];
-      for (let route of resolveRoutes(childNode, result2, suffix, path2)) {
+      for (let route of traverse(childNode, result2, suffix, path2)) {
         yield route;
       }
     } else {

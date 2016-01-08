@@ -94,9 +94,9 @@ describe('Router', function () {
     childRouter2 = createRouter();
     prepareRouter(router, childRouter1, childRouter2);
   });
-  describe('_buildRouteTree', function () {
+  describe('_buildTree', function () {
     it('creates the correct tree', function () {
-      router._buildRouteTree();
+      router._buildTree();
       const tree = router._tree;
       expect(tree.size).toBe(3);
       expect(tree.get($_TERMINAL).size).toBe(1);
@@ -164,13 +164,13 @@ describe('Router', function () {
 
     });
   });
-  describe('_resolve', function () {
+  describe('_traverse', function () {
     beforeEach(function () {
-      router._buildRouteTree();
+      router._buildTree();
     });
     it('finds all routes for /', function () {
       const matches = [];
-      for (const route of router._resolve([])) {
+      for (const route of router._traverse([])) {
         matches.push(route);
       }
       expect(matches.length).toBe(3);
@@ -215,7 +215,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello', function () {
       const matches = [];
-      for (const route of router._resolve(['hello'])) {
+      for (const route of router._traverse(['hello'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(2);
@@ -247,7 +247,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello/world', function () {
       const matches = [];
-      for (const route of router._resolve(['hello', 'world'])) {
+      for (const route of router._traverse(['hello', 'world'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(5);
@@ -319,7 +319,7 @@ describe('Router', function () {
     });
     it('finds all routes for /hello/mlady', function () {
       const matches = [];
-      for (const route of router._resolve(['hello', 'mlady'])) {
+      for (const route of router._traverse(['hello', 'mlady'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(2);
@@ -352,7 +352,7 @@ describe('Router', function () {
     });
     it('finds all routes for /potato/salad', function () {
       const matches = [];
-      for (const route of router._resolve(['potato', 'salad'])) {
+      for (const route of router._traverse(['potato', 'salad'])) {
         matches.push(route);
       }
       expect(matches.length).toBe(3);
