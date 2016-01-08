@@ -314,7 +314,7 @@ int main(int argc, char* argv[]) {
                                  BaseClient.password());
 
       // must stay here in order to establish the connection
-      std::string const versionString = client.getServerVersion();
+      client.getServerVersion();
 
       if (!connection->isConnected()) {
         cerr << "Could not connect to endpoint '" << BaseClient.endpointString()

@@ -128,7 +128,7 @@ class AsyncJobManager {
   
  public:
 
-  AsyncJobManager(callback_fptr);
+  explicit AsyncJobManager(callback_fptr);
 
 
   ~AsyncJobManager();

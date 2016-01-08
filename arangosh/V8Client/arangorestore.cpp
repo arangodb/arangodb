@@ -669,9 +669,6 @@ static int ProcessInputDirectory(std::string& errorMsg) {
       std::string const cname =
           triagens::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
-      std::string const cid =
-          triagens::basics::VelocyPackHelper::getStringValue(parameters, "cid",
-                                                             "");
       int type = triagens::basics::VelocyPackHelper::getNumericValue<int>(
           parameters, "type", 2);
 

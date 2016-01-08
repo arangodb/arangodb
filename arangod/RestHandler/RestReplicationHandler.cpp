@@ -1532,9 +1532,6 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       uint64_t const id = ci->uniqid(1 + numberOfShards);
       toMerge.add("shards", VPackValue(VPackValueType::Object));
       for (uint64_t i = 0; i < numberOfShards; ++i) {
-        // determine responsible server
-        std::string serverId = dbServers[i % dbServers.size()];
-
         // shard id
         toMerge.add(
             VPackValue(std::string("s" + StringUtils::itoa(id + 1 + i))));
