@@ -287,7 +287,7 @@ class FoxxService {
 
   buildRoutes() {
     let service = this;
-    this.router._buildRouteTree();
+    this.router._buildTree();
     this.routes.routes.push({
       url: {match: '/*'},
       action: {
