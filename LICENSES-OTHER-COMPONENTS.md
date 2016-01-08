@@ -213,6 +213,11 @@
 * GITHUB: https://github.com/stacktracejs/stacktrace.js
 * License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
 
+#### statuses
+
+* GITHUB: https://github.com/jshttp/statuses
+* License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
+
 #### underscore
 
 * Project Home: http://underscorejs.org
