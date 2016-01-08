@@ -122,6 +122,11 @@
 * GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
 
+#### content-disposition
+
+* GITHUB: https://github.com/jshttp/content-disposition
+* License: [MIT License](https://github.com/jshttp/content-disposition/blob/master/LICENSE)
+
 #### expect.js
 
 * GITHUB: https://github.com/Automattic/expect.js
