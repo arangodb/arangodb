@@ -249,6 +249,12 @@
 * GITHUB: https://github.com/jshttp/vary
 * License: [MIT License](https://github.com/jshttp/vary/blob/master/LICENSE)
 
+#### underscore
+
+* Project Home: http://underscorejs.org
+* GITHUB: https://github.com/jashkenas/underscore
+* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
+
 ### Frontend libraries
 
 #### Animate.css
@@ -374,9 +380,3 @@
 * Project Home: http://swagger.io
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
-
-#### underscore
-
-* Project Home: http://underscorejs.org
-* GITHUB: https://github.com/jashkenas/underscore
-* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)

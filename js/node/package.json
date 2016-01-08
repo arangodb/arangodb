@@ -24,6 +24,7 @@
     "sinon": "1.17.2",
     "statuses": "1.2.1",
     "type-is": "1.6.10",
+    "underscore": "1.8.3",
     "vary": "1.1.0"
   }
 }
