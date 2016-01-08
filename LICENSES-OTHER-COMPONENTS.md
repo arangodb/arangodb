@@ -229,12 +229,6 @@
 * GITHUB: https://github.com/jshttp/statuses
 * License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
 
-#### underscore
-
-* Project Home: http://underscorejs.org
-* GITHUB: https://github.com/jashkenas/underscore
-* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
-
 ### Frontend libraries
 
 #### Backbone.js
@@ -350,6 +344,12 @@
 * Project Home: http://swagger.io
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
+
+#### underscore
+
+* Project Home: http://underscorejs.org
+* GITHUB: https://github.com/jashkenas/underscore
+* License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
 
 #### Noty
 
