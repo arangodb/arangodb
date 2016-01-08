@@ -59,7 +59,7 @@ class HttpServer : protected TaskManager {
   /// @brief destroys an endpoint server
   //////////////////////////////////////////////////////////////////////////////
 
-  static int sendChunk(uint64_t, const std::string&);
+  static int sendChunk(uint64_t, std::string const&);
 
   
  public:

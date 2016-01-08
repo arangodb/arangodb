@@ -325,7 +325,7 @@ class Transaction {
   /// @brief finish a transaction (commit or abort), based on the previous state
   ////////////////////////////////////////////////////////////////////////////////
 
-  int finish(const int errorNum) {
+  int finish(int errorNum) {
     int res;
 
     if (errorNum == TRI_ERROR_NO_ERROR) {

@@ -277,15 +277,15 @@ class V8Completer : public Completer {
   /// {@inheritDoc}
   ////////////////////////////////////////////////////////////////////////////////
 
-  vector<string> alternatives(char const* text) override final {
-    vector<string> result;
+  std::vector<std::string> alternatives(char const* text) override final {
+    std::vector<std::string> result;
 
     // locate global object or sub-object
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Handle<v8::Object> current = context->Global();
-    string path;
+    std::string path;
     char* prefix;
 
     if (*text != '\0') {
@@ -361,8 +361,8 @@ class V8Completer : public Completer {
           char const* s = *str;
 
           if (s != nullptr && *s) {
-            string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
-            string name = path + s + suffix;
+            std::string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+            std::string name = path + s + suffix;
 
             if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
               result.emplace_back(name);

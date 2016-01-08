@@ -147,7 +147,7 @@ typedef struct unz_file_info_s {
 } unz_file_info;
 
 extern int ZEXPORT unzStringFileNameCompare
-OF((const char* fileName1, const char* fileName2, int iCaseSensitivity));
+OF((char const* fileName1, char const* fileName2, int iCaseSensitivity));
 /*
    Compare two filename (fileName1,fileName2).
    If iCaseSenisivity = 1, comparision is case sensitivity (like strcmp)
@@ -157,7 +157,7 @@ OF((const char* fileName1, const char* fileName2, int iCaseSensitivity));
     (like 1 on Unix, 2 on Windows)
 */
 
-extern unzFile ZEXPORT unzOpen OF((const char* path));
+extern unzFile ZEXPORT unzOpen OF((char const* path));
 extern unzFile ZEXPORT unzOpen64 OF((const void* path));
 /*
   Open a Zip file. path contain the full pathname (by example,
@@ -176,7 +176,7 @@ extern unzFile ZEXPORT unzOpen64 OF((const void* path));
 */
 
 extern unzFile ZEXPORT unzOpen2
-OF((const char* path, zlib_filefunc_def* pzlib_filefunc_def));
+OF((char const* path, zlib_filefunc_def* pzlib_filefunc_def));
 /*
    Open a Zip file, like unzOpen, but provide a set of file low level API
       for read/write the zip file (see ioapi.h)
@@ -232,7 +232,7 @@ extern int ZEXPORT unzGoToNextFile OF((unzFile file));
 */
 
 extern int ZEXPORT unzLocateFile
-OF((unzFile file, const char* szFileName, int iCaseSensitivity));
+OF((unzFile file, char const* szFileName, int iCaseSensitivity));
 /*
   Try locate the file szFileName in the zipfile.
   For the iCaseSensitivity signification, see unzStringFileNameCompare
@@ -306,7 +306,7 @@ extern int ZEXPORT unzOpenCurrentFile OF((unzFile file));
 */
 
 extern int ZEXPORT unzOpenCurrentFilePassword
-OF((unzFile file, const char* password));
+OF((unzFile file, char const* password));
 /*
   Open for reading data the current file in the zipfile.
   password is a crypting password
@@ -325,7 +325,7 @@ OF((unzFile file, int* method, int* level, int raw));
 */
 
 extern int ZEXPORT unzOpenCurrentFile3
-OF((unzFile file, int* method, int* level, int raw, const char* password));
+OF((unzFile file, int* method, int* level, int raw, char const* password));
 /*
   Same than unzOpenCurrentFile, but open for read raw the file (not uncompress)
     if raw==1

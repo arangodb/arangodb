@@ -242,7 +242,7 @@ bool RestQueryHandler::deleteQuerySlow() {
 /// @brief was docuBlock DeleteApiQueryKill
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestQueryHandler::deleteQuery(const string& name) {
+bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
   auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
   TRI_ASSERT(queryList != nullptr);
@@ -399,7 +399,7 @@ bool RestQueryHandler::parseQuery() {
   };
 
   try {
-    const string&& queryString =
+    std::string const&& queryString =
         VelocyPackHelper::checkAndGetStringValue(body, "query");
 
     Query query(_applicationV8, true, _vocbase, queryString.c_str(),

@@ -219,7 +219,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   factory->addPrefixHandler(
       "/_api/job",
       RestHandlerCreator<triagens::admin::RestJobHandler>::createData<
-          pair<Dispatcher*, AsyncJobManager*>*>,
+          std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
   factory->addHandler(
@@ -236,7 +236,7 @@ void ArangoServer::defineHandlers(HttpHandlerFactory* factory) {
   factory->addPrefixHandler(
       "/_admin/job",
       RestHandlerCreator<triagens::admin::RestJobHandler>::createData<
-          pair<Dispatcher*, AsyncJobManager*>*>,
+          std::pair<Dispatcher*, AsyncJobManager*>*>,
       _pairForJobHandler);
 
   factory->addHandler(
@@ -436,7 +436,7 @@ void ArangoServer::buildApplicationServer() {
       new ApplicationServer("arangod", "[<options>] <database-directory>",
                             rest::Version::getDetailed());
 
-  string conf = TRI_BinaryName(_argv[0]) + ".conf";
+  std::string conf = TRI_BinaryName(_argv[0]) + ".conf";
 
   _applicationServer->setSystemConfigFile(conf);
 
@@ -493,8 +493,8 @@ void ArangoServer::buildApplicationServer() {
   // MRuby engine (this has been removed from arangod in version 2.2)
   // .............................................................................
 
-  string ignoreOpt;
-  map<string, ProgramOptionsDescription> additional;
+  std::string ignoreOpt;
+  std::map<std::string, ProgramOptionsDescription> additional;
 
   additional["Hidden Options"](
       "ruby.gc-interval", &ignoreOpt,
@@ -694,7 +694,7 @@ void ArangoServer::buildApplicationServer() {
   // set language name
   // .............................................................................
 
-  string languageName;
+  std::string languageName;
 
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
     char const* ICU_env = getenv("ICU_DATA");
@@ -704,7 +704,7 @@ void ArangoServer::buildApplicationServer() {
 
   if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
     languageName =
-        string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
+        std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
                Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
   } else {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
@@ -742,7 +742,7 @@ void ArangoServer::buildApplicationServer() {
   // set directories and scripts
   // .............................................................................
 
-  vector<string> arguments = _applicationServer->programArguments();
+  std::vector<std::string> arguments = _applicationServer->programArguments();
 
   if (1 < arguments.size()) {
     LOG_FATAL_AND_EXIT("expected at most one database directory, got %d",
@@ -830,12 +830,12 @@ void ArangoServer::buildApplicationServer() {
 
     // make the pid filename absolute
     int err = 0;
-    string currentDir = FileUtils::currentDirectory(&err);
+    std::string currentDir = FileUtils::currentDirectory(&err);
     char* absoluteFile =
         TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
 
     if (absoluteFile != nullptr) {
-      _pidFile = string(absoluteFile);
+      _pidFile = std::string(absoluteFile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
 
       LOG_DEBUG("using absolute pid file '%s'", _pidFile.c_str());
@@ -1172,8 +1172,8 @@ int ArangoServer::startupServer() {
       TRI_ASSERT(ns <= n);
       TRI_ASSERT(nd <= n);
 
-      vector<size_t> ps;
-      vector<size_t> pd;
+      std::vector<size_t> ps;
+      std::vector<size_t> pd;
 
       for (size_t i = 0; i < ns; ++i) {
         ps.push_back(i);

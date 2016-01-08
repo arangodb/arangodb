@@ -884,7 +884,7 @@ static void FreeExternal(TRI_external_t* ext) {
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess(const char* executable, const char** arguments,
+void TRI_CreateExternalProcess(char const* executable, char const** arguments,
                                size_t n, bool usePipes,
                                TRI_external_id_t* pid) {
   // create the external structure

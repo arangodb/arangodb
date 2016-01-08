@@ -48,8 +48,8 @@ class EndpointUnixDomain final : public Endpoint {
   /// @brief creates an endpoint
   ////////////////////////////////////////////////////////////////////////////////
 
-  EndpointUnixDomain(const EndpointType, const std::string&, int,
-                     const std::string&);
+  EndpointUnixDomain(const EndpointType, std::string const&, int,
+                     std::string const&);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an endpoint

@@ -569,7 +569,7 @@ static void MapGetNamedShapedJson(
     // convert the JavaScript string to a string
     // we take the fast path here and don't normalize the string
     v8::String::Utf8Value const str(name);
-    string const key(*str, (size_t)str.length());
+    std::string const key(*str, (size_t)str.length());
 
     if (key.empty()) {
       TRI_V8_RETURN(v8::Handle<v8::Value>());
@@ -762,7 +762,7 @@ static void PropertyQueryShapedJson(
     }
 
     // convert the JavaScript string to a string
-    string const&& key = TRI_ObjectToString(name);
+    std::string const&& key = TRI_ObjectToString(name);
 
     if (key.empty()) {
       TRI_V8_RETURN(v8::Handle<v8::Integer>());

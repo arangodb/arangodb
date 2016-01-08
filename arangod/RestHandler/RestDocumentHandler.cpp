@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
-
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
@@ -93,7 +92,7 @@ HttpHandler::status_t RestDocumentHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument() {
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (!suffix.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -189,13 +188,13 @@ bool RestDocumentHandler::createDocument() {
 
 bool RestDocumentHandler::createDocumentCoordinator(
     char const* collection, bool waitForSync, VPackSlice const& document) {
-  string const& dbname = _request->databaseName();
-  string const collname(collection);
+  std::string const& dbname = _request->databaseName();
+  std::string const collname(collection);
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers =
+  std::map<std::string, std::string> headers =
       triagens::arango::getForwardableRequestHeaders(_request);
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   int res = triagens::arango::createDocumentOnCoordinator(
       dbname, collname, waitForSync, document, headers, responseCode,
@@ -221,7 +220,7 @@ bool RestDocumentHandler::createDocumentCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readDocument() {
-  const size_t len = _request->suffix().size();
+  size_t const len = _request->suffix().size();
 
   switch (len) {
     case 0:
@@ -248,11 +247,11 @@ bool RestDocumentHandler::readDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument(bool generateBody) {
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   // split the document reference
-  string const& collection = suffix[0];
-  string const& key = suffix[1];
+  std::string const& collection = suffix[0];
+  std::string const& key = suffix[1];
 
   // check for an etag
   bool isValidRevision;
@@ -293,7 +292,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   TRI_voc_cid_t const cid = trx.cid();
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
-  string collectionName = collection;
+  std::string collectionName = collection;
   if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
@@ -353,16 +352,16 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::getDocumentCoordinator(string const& collname,
-                                                 string const& key,
+bool RestDocumentHandler::getDocumentCoordinator(std::string const& collname,
+                                                 std::string const& key,
                                                  bool generateBody) {
-  string const& dbname = _request->databaseName();
+  std::string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           triagens::arango::getForwardableRequestHeaders(_request)));
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   TRI_voc_rid_t rev = 0;
   bool found;
@@ -489,13 +488,13 @@ bool RestDocumentHandler::readAllDocuments() {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::getAllDocumentsCoordinator(string const& collname,
-                                                     string const& returnType) {
-  string const& dbname = _request->databaseName();
+bool RestDocumentHandler::getAllDocumentsCoordinator(std::string const& collname,
+                                                     std::string const& returnType) {
+  std::string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  string contentType;
-  string resultBody;
+  std::string contentType;
+  std::string resultBody;
 
   int error = triagens::arango::getAllDocumentsOnCoordinator(
       dbname, collname, returnType, responseCode, contentType, resultBody);
@@ -516,7 +515,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator(string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument() {
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -544,10 +543,10 @@ bool RestDocumentHandler::updateDocument() { return modifyDocument(true); }
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::modifyDocument(bool isPatch) {
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
-    string msg("expecting ");
+    std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(" /_api/document/<document-handle>");
 
@@ -556,8 +555,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // split the document reference
-  string const& collection = suffix[0];
-  string const& key = suffix[1];
+  std::string const& collection = suffix[0];
+  std::string const& key = suffix[1];
 
   bool parseSuccess = true;
   VPackOptions options;
@@ -614,7 +613,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   TRI_voc_cid_t const cid = trx.cid();
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
-  string collectionName = collection;
+  std::string collectionName = collection;
   if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
@@ -624,7 +623,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   TRI_ASSERT(document != nullptr);
   auto shaper = document->getShaper();  // PROTECTED by trx here
 
-  string const&& cidString = StringUtils::itoa(document->_info.planId());
+  std::string const&& cidString = StringUtils::itoa(document->_info.planId());
 
   if (trx.orderDitch(trx.trxCollection()) == nullptr) {
     generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
@@ -800,16 +799,16 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::modifyDocumentCoordinator(
-    string const& collname, string const& key, TRI_voc_rid_t const rev,
+    std::string const& collname, std::string const& key, TRI_voc_rid_t const rev,
     TRI_doc_update_policy_e policy, bool waitForSync, bool isPatch,
     VPackSlice const& document) {
-  string const& dbname = _request->databaseName();
+  std::string const& dbname = _request->databaseName();
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           triagens::arango::getForwardableRequestHeaders(_request)));
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   bool keepNull = true;
   if (!strcmp(_request->value("keepNull"), "false")) {
@@ -842,7 +841,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument() {
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 2) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -851,8 +850,8 @@ bool RestDocumentHandler::deleteDocument() {
   }
 
   // split the document reference
-  string const& collection = suffix[0];
-  string const& key = suffix[1];
+  std::string const& collection = suffix[0];
+  std::string const& key = suffix[1];
 
   // extract the revision
   bool isValidRevision;
@@ -895,7 +894,7 @@ bool RestDocumentHandler::deleteDocument() {
   TRI_voc_cid_t const cid = trx.cid();
   // If we are a DBserver, we want to use the cluster-wide collection
   // name for error reporting:
-  string collectionName = collection;
+  std::string collectionName = collection;
   if (ServerState::instance()->isDBServer()) {
     collectionName = trx.resolver()->getCollectionName(cid);
   }
@@ -929,15 +928,15 @@ bool RestDocumentHandler::deleteDocument() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocumentCoordinator(
-    string const& collname, string const& key, TRI_voc_rid_t const rev,
+    std::string const& collname, std::string const& key, TRI_voc_rid_t const rev,
     TRI_doc_update_policy_e policy, bool waitForSync) {
-  string const& dbname = _request->databaseName();
+  std::string const& dbname = _request->databaseName();
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>(
           triagens::arango::getForwardableRequestHeaders(_request)));
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   int error = triagens::arango::deleteDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, headers, responseCode,

@@ -111,13 +111,13 @@ TRI_vocbase_col_t* CoordinatorCollection(TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EqualCollection(CollectionNameResolver const* resolver,
-                     string const& collectionName,
+                     std::string const& collectionName,
                      TRI_vocbase_col_t const* collection) {
   if (collectionName == StringUtils::itoa(collection->_cid)) {
     return true;
   }
 
-  if (collectionName == string(collection->_name)) {
+  if (collectionName == std::string(collection->_name)) {
     return true;
   }
 
@@ -145,7 +145,7 @@ static inline v8::Handle<v8::Value> V8CollectionId(v8::Isolate* isolate,
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t)cid, (char*)&buffer);
 
-  return TRI_V8_PAIR_STRING((const char*)buffer, (int)len);
+  return TRI_V8_PAIR_STRING((char const*)buffer, (int)len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -39,13 +39,13 @@ using namespace triagens::basics;
 
 
 
-CustomWorkStack::CustomWorkStack(const char* type, const char* text,
+CustomWorkStack::CustomWorkStack(char const* type, char const* text,
                                  size_t length) {
   WorkMonitor::pushCustom(type, text, length);
 }
 
 
-CustomWorkStack::CustomWorkStack(const char* type, uint64_t id) {
+CustomWorkStack::CustomWorkStack(char const* type, uint64_t id) {
   WorkMonitor::pushCustom(type, id);
 }
 
@@ -300,7 +300,7 @@ void WorkMonitor::popThread(Thread* thread) {
 /// @brief pushes a custom task
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushCustom(const char* type, const char* text,
+void WorkMonitor::pushCustom(char const* type, char const* text,
                              size_t length) {
   TRI_ASSERT(type != nullptr);
   TRI_ASSERT(text != nullptr);
@@ -322,7 +322,7 @@ void WorkMonitor::pushCustom(const char* type, const char* text,
 /// @brief pushes a custom task
 ////////////////////////////////////////////////////////////////////////////////
 
-void WorkMonitor::pushCustom(const char* type, uint64_t id) {
+void WorkMonitor::pushCustom(char const* type, uint64_t id) {
   TRI_ASSERT(type != nullptr);
 
   WorkDescription* desc = createWorkDescription(WorkType::CUSTOM);

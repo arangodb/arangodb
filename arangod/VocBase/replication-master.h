@@ -48,7 +48,7 @@ typedef struct TRI_replication_master_info_s {
 /// @brief initialize a master info struct
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitMasterInfoReplication(TRI_replication_master_info_t*, const char*);
+void TRI_InitMasterInfoReplication(TRI_replication_master_info_t*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a master info struct
@@ -61,7 +61,7 @@ void TRI_DestroyMasterInfoReplication(TRI_replication_master_info_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LogMasterInfoReplication(TRI_replication_master_info_t const*,
-                                  const char*);
+                                  char const*);
 
 #endif
 

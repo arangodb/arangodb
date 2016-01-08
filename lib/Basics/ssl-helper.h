@@ -67,7 +67,7 @@ SSL_CTX* sslContext(protocol_e, std::string const& keyfile);
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string protocolName(const protocol_e protocol);
+std::string protocolName(protocol_e protocol);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get last SSL error

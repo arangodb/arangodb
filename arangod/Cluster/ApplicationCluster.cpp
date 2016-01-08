@@ -174,7 +174,7 @@ bool ApplicationCluster::prepare() {
   }
 
   for (size_t i = 0; i < _agencyEndpoints.size(); ++i) {
-    const std::string unified =
+    std::string const unified =
         triagens::rest::Endpoint::getUnifiedForm(_agencyEndpoints[i]);
 
     if (unified.empty()) {
@@ -222,7 +222,7 @@ bool ApplicationCluster::prepare() {
   ClusterComm::instance()->enableConnectionErrorLogging(false);
 
   // perform an initial connect to the agency
-  const std::string endpoints = AgencyComm::getEndpointsString();
+  std::string const endpoints = AgencyComm::getEndpointsString();
 
   if (!AgencyComm::tryConnect()) {
     LOG_FATAL_AND_EXIT("Could not connect to agency endpoints (%s)",
@@ -284,7 +284,7 @@ bool ApplicationCluster::start() {
     return true;
   }
 
-  const std::string endpoints = AgencyComm::getEndpointsString();
+  std::string const endpoints = AgencyComm::getEndpointsString();
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
@@ -297,7 +297,7 @@ bool ApplicationCluster::start() {
   }
 
   // now we can validate --cluster.my-address
-  const std::string unified =
+  std::string const unified =
       triagens::rest::Endpoint::getUnifiedForm(_myAddress);
 
   if (unified.empty()) {
@@ -312,7 +312,7 @@ bool ApplicationCluster::start() {
   AgencyComm comm;
   comm.sendServerState(0.0);
 
-  const std::string version = comm.getVersion();
+  std::string const version = comm.getVersion();
 
   ServerState::instance()->setInitialized();
 

@@ -65,13 +65,13 @@ static uint64_t ChunkSize = 1024 * 1024 * 16;
 /// @brief quote character(s)
 ////////////////////////////////////////////////////////////////////////////////
 
-static string Quote = "\"";
+static std::string Quote = "\"";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief separator
 ////////////////////////////////////////////////////////////////////////////////
 
-static string Separator = ",";
+static std::string Separator = ",";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not backslashes can be used to escape quotes
@@ -83,19 +83,19 @@ static bool UseBackslash = false;
 /// @brief file-name
 ////////////////////////////////////////////////////////////////////////////////
 
-static string FileName = "";
+static std::string FileName = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection-name
 ////////////////////////////////////////////////////////////////////////////////
 
-static string CollectionName = "";
+static std::string CollectionName = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief import type
 ////////////////////////////////////////////////////////////////////////////////
 
-static string TypeImport = "json";
+static std::string TypeImport = "json";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create collection if necessary
@@ -107,7 +107,7 @@ static bool CreateCollection = false;
 /// @brief collection type if collection is to be created
 ////////////////////////////////////////////////////////////////////////////////
 
-static string CreateCollectionType = "document";
+static std::string CreateCollectionType = "document";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to overwrite existing data in a collection
@@ -164,7 +164,7 @@ static void ParseProgramOptions(int argc, char* argv[]) {
   BaseClient.setupGeneral(description);
   BaseClient.setupServer(description);
 
-  vector<string> arguments;
+  std::vector<std::string> arguments;
   description.arguments(&arguments);
 
   ProgramOptions options;
@@ -209,7 +209,7 @@ static void LocalEntryFunction() {
   }
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (const char*)(&maxOpenFiles));
+                          (char const*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
@@ -243,7 +243,7 @@ static void LocalExitFunction(int exitCode, void* data) {}
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-static string RewriteLocation(void* data, const std::string& location) {
+static std::string RewriteLocation(void* data, std::string const& location) {
   if (location.substr(0, 5) == "/_db/") {
     // location already contains /_db/
     return location;

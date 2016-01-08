@@ -202,7 +202,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
   /// @brief constructor, data is copied
   ////////////////////////////////////////////////////////////////////////////////
 
-  static V8Buffer* New(v8::Isolate* isolate, const char* data, size_t length);
+  static V8Buffer* New(v8::Isolate* isolate, char const* data, size_t length);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief constructor with free callback

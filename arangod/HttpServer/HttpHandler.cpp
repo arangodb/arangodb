@@ -67,7 +67,7 @@ HttpHandler::~HttpHandler() {
 
 size_t HttpHandler::queue() const {
   bool found;
-  const char* queue = _request->header("x-arango-queue", found);
+  char const* queue = _request->header("x-arango-queue", found);
 
   if (found) {
     uint32_t n = StringUtils::uint32(queue);

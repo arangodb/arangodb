@@ -62,7 +62,7 @@ class DummyShell : public ShellBase {
   /// {@inheritDoc}
   ////////////////////////////////////////////////////////////////////////////////
 
-  void addHistory(const std::string&) override final;
+  void addHistory(std::string const&) override final;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// {@inheritDoc}
@@ -74,7 +74,7 @@ class DummyShell : public ShellBase {
   /// {@inheritDoc}
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::string getLine(const std::string& prompt, bool& eof) override final;
+  std::string getLine(std::string const& prompt, bool& eof) override final;
 };
 }
 

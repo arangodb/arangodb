@@ -268,7 +268,7 @@ void TRI_ReleaseConnectionStatistics(TRI_connection_statistics_t* statistics) {
 
 void TRI_FillConnectionStatistics(StatisticsCounter& httpConnections,
                                   StatisticsCounter& totalRequests,
-                                  vector<StatisticsCounter>& methodRequests,
+                                  std::vector<StatisticsCounter>& methodRequests,
                                   StatisticsCounter& asyncRequests,
                                   StatisticsDistribution& connectionTime) {
   MUTEX_LOCKER(ConnectionDataLock);

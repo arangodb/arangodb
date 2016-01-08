@@ -163,7 +163,7 @@ bool HttpHandlerFactory::setRequestContext(HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpHandlerFactory::authenticationRealm(HttpRequest* request) const {
+std::string HttpHandlerFactory::authenticationRealm(HttpRequest* request) const {
   auto context = request->getRequestContext();
 
   if (context != nullptr) {
@@ -201,8 +201,8 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     return new MaintenanceHandler(request);
   }
 
-  unordered_map<string, create_fptr> const& ii = _constructors;
-  string path = request->requestPath();
+  std::unordered_map<std::string, create_fptr> const& ii = _constructors;
+  std::string path = request->requestPath();
   auto i = ii.find(path);
   void* data = nullptr;
 
@@ -211,11 +211,11 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
     LOG_TRACE("no direct handler found, trying prefixes");
 
     // find longest match
-    string prefix;
+    std::string prefix;
     size_t const pathLength = path.size();
 
     for (auto const& p : _prefixes) {
-      const size_t pSize = p.size();
+      size_t const pSize = p.size();
 
       if (path.compare(0, pSize, p) == 0) {
         if (pSize < pathLength && path[pSize] == '/') {
@@ -308,7 +308,7 @@ HttpHandler* HttpHandlerFactory::createHandler(HttpRequest* request) {
 /// @brief adds a path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addHandler(string const& path, create_fptr func,
+void HttpHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
   _constructors[path] = func;
   _datas[path] = data;
@@ -318,7 +318,7 @@ void HttpHandlerFactory::addHandler(string const& path, create_fptr func,
 /// @brief adds a prefix path and constructor to the factory
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpHandlerFactory::addPrefixHandler(string const& path, create_fptr func,
+void HttpHandlerFactory::addPrefixHandler(std::string const& path, create_fptr func,
                                           void* data) {
   _constructors[path] = func;
   _datas[path] = data;

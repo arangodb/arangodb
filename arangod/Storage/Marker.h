@@ -135,7 +135,7 @@ struct MarkerHelper {
 
 class MarkerReader {
  public:
-  static const uint64_t MinMarkerLength = 16;
+  static uint64_t const MinMarkerLength = 16;
 
   MarkerReader(uint8_t* begin) : _begin(begin), _length(calculateLength()) {
     TRI_ASSERT(_length >= MinMarkerLength);

@@ -122,7 +122,7 @@ extern int errno;
 #define SIZECENTRALDIRITEM (0x2e)
 #define SIZEZIPLOCALHEADER (0x1e)
 
-const char unz_copyright[] =
+char const unz_copyright[] =
     " unzip 1.01 Copyright 1998-2004 Gilles Vollant - "
     "http://www.winimage.com/zLibDll";
 
@@ -329,8 +329,8 @@ local int unz64local_getLong64(const zlib_filefunc64_32_def* pzlib_filefunc_def,
 }
 
 /* My own strcmpi / strcasecmp */
-local int strcmpcasenosensitive_internal(const char* fileName1,
-                                         const char* fileName2) {
+local int strcmpcasenosensitive_internal(char const* fileName1,
+                                         char const* fileName2) {
   for (;;) {
     char c1 = *(fileName1++);
     char c2 = *(fileName2++);
@@ -363,7 +363,7 @@ local int strcmpcasenosensitive_internal(const char* fileName1,
 
 */
 extern int ZEXPORT
-unzStringFileNameCompare(const char* fileName1, const char* fileName2,
+unzStringFileNameCompare(char const* fileName1, char const* fileName2,
                          int iCaseSensitivity)
 
 {
@@ -719,7 +719,7 @@ local unzFile unzOpenInternal(const void* path,
 }
 
 extern unzFile ZEXPORT
-unzOpen2(const char* path, zlib_filefunc_def* pzlib_filefunc32_def) {
+unzOpen2(char const* path, zlib_filefunc_def* pzlib_filefunc32_def) {
   if (pzlib_filefunc32_def != NULL) {
     zlib_filefunc64_32_def zlib_filefunc64_32_def_fill;
     fill_zlib_filefunc64_32_def_from_filefunc32(&zlib_filefunc64_32_def_fill,
@@ -741,7 +741,7 @@ unzOpen2_64(const void* path, zlib_filefunc64_def* pzlib_filefunc_def) {
     return unzOpenInternal(path, NULL, 1);
 }
 
-extern unzFile ZEXPORT unzOpen(const char* path) {
+extern unzFile ZEXPORT unzOpen(char const* path) {
   return unzOpenInternal(path, NULL, 0);
 }
 
@@ -1144,7 +1144,7 @@ extern int ZEXPORT unzGoToNextFile(unzFile file) {
   UNZ_END_OF_LIST_OF_FILE if the file is not found
 */
 extern int ZEXPORT
-unzLocateFile(unzFile file, const char* szFileName, int iCaseSensitivity) {
+unzLocateFile(unzFile file, char const* szFileName, int iCaseSensitivity) {
   unz64_s* s;
   int err;
 
@@ -1373,7 +1373,7 @@ local int unz64local_CheckCurrentFileCoherencyHeader(
   If there is no error and the file is opened, the return value is UNZ_OK.
 */
 extern int ZEXPORT unzOpenCurrentFile3(unzFile file, int* method, int* level,
-                                       int raw, const char* password) {
+                                       int raw, char const* password) {
   int err = UNZ_OK;
   uInt iSizeVar;
   unz64_s* s;
@@ -1536,7 +1536,7 @@ extern int ZEXPORT unzOpenCurrentFile(unzFile file) {
 }
 
 extern int ZEXPORT
-unzOpenCurrentFilePassword(unzFile file, const char* password) {
+unzOpenCurrentFilePassword(unzFile file, char const* password) {
   return unzOpenCurrentFile3(file, NULL, NULL, 0, password);
 }
 

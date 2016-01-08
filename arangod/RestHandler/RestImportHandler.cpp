@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestImportHandler.h"
-
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -64,7 +63,7 @@ HttpHandler::status_t RestImportHandler::execute() {
 
   bool found;
 
-  string const duplicateType = _request->value("onDuplicate", found);
+  std::string const duplicateType = _request->value("onDuplicate", found);
 
   if (found) {
     if (duplicateType == "update") {
@@ -82,7 +81,7 @@ HttpHandler::status_t RestImportHandler::execute() {
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
       // extract the import type
-      string const documentType = _request->value("type", found);
+      std::string const documentType = _request->value("type", found);
 
       if (found && (documentType == "documents" || documentType == "array" ||
                     documentType == "list" || documentType == "auto")) {
@@ -156,7 +155,7 @@ bool RestImportHandler::extractComplete() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string RestImportHandler::positionise(size_t i) const {
-  return string("at position " + StringUtils::itoa(i) + ": ");
+  return std::string("at position " + StringUtils::itoa(i) + ": ");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +176,7 @@ void RestImportHandler::registerError(RestImportResult& result,
 std::string RestImportHandler::buildParseError(size_t i,
                                                char const* lineStart) {
   if (lineStart != nullptr) {
-    string part(lineStart);
+    std::string part(lineStart);
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
@@ -205,7 +204,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
                                             bool isEdgeCollection,
                                             bool waitForSync, size_t i) {
   if (!slice.isObject()) {
-    string part = VPackDumper::toString(slice);
+    std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
@@ -234,7 +233,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
       to = triagens::basics::VelocyPackHelper::checkAndGetStringValue(
           slice, TRI_VOC_ATTRIBUTE_TO);
     } catch (triagens::basics::Exception const&) {
-      string part = VPackDumper::toString(slice);
+      std::string part = VPackDumper::toString(slice);
       if (part.size() > 255) {
         // UTF-8 chars in string will be escaped so we can truncate it at any
         // point
@@ -346,7 +345,7 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    string part = VPackDumper::toString(slice);
+    std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
       // UTF-8 chars in string will be escaped so we can truncate it at any
       // point
@@ -367,10 +366,10 @@ int RestImportHandler::handleSingleDocument(RestImportTransaction& trx,
 /// @brief was docuBlock JSF_import_json
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestImportHandler::createFromJson(string const& type) {
+bool RestImportHandler::createFromJson(std::string const& type) {
   RestImportResult result;
 
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -385,7 +384,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 
   // extract the collection name
   bool found;
-  string const& collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -597,7 +596,7 @@ bool RestImportHandler::createFromJson(string const& type) {
 bool RestImportHandler::createFromKeyValueList() {
   RestImportResult result;
 
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -612,7 +611,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // extract the collection name
   bool found;
-  string const& collection = _request->value("collection", found);
+  std::string const& collection = _request->value("collection", found);
 
   if (!found || collection.empty()) {
     generateError(HttpResponse::BAD,
@@ -628,7 +627,7 @@ bool RestImportHandler::createFromKeyValueList() {
 
   // read line number (optional)
   int64_t lineNumber = 0;
-  string const& lineNumValue = _request->value("line", found);
+  std::string const& lineNumValue = _request->value("line", found);
   if (found) {
     lineNumber = StringUtils::int64(lineNumValue);
   }
@@ -752,7 +751,7 @@ bool RestImportHandler::createFromKeyValueList() {
         parseVelocyPackLine(lineStart, lineEnd, success);
 
     // build the json object from the array
-    string errorMsg;
+    std::string errorMsg;
     if (!success) {
       errorMsg = buildParseError(i, lineStart);
       registerError(result, errorMsg);
@@ -843,7 +842,7 @@ void RestImportHandler::generateDocumentsCreated(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine(
-    string const& line, bool& success) {
+    std::string const& line, bool& success) {
   try {
     success = true;
     return VPackParser::fromJson(line);
@@ -876,7 +875,7 @@ std::shared_ptr<VPackBuilder> RestImportHandler::parseVelocyPackLine(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> RestImportHandler::createVelocyPackObject(
-    VPackSlice const& keys, VPackSlice const& values, string& errorMsg,
+    VPackSlice const& keys, VPackSlice const& values, std::string& errorMsg,
     size_t lineNumber) {
   if (!values.isArray()) {
     errorMsg = positionise(lineNumber) + "no valid JSON array data";

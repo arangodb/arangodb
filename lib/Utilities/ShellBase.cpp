@@ -62,7 +62,7 @@ ShellBase* ShellBase::buildShell(std::string const& history,
 /// @brief sort the alternatives results vector
 ////////////////////////////////////////////////////////////////////////////////
 
-void ShellBase::sortAlternatives(vector<string>& completions) {
+void ShellBase::sortAlternatives(std::vector<std::string>& completions) {
   std::sort(completions.begin(), completions.end(),
             [](std::string const& l, std::string const& r) -> bool {
               int res = strcasecmp(l.c_str(), r.c_str());
@@ -72,13 +72,13 @@ void ShellBase::sortAlternatives(vector<string>& completions) {
 
 
 
-ShellBase::ShellBase(string const& history, Completer* completer)
+ShellBase::ShellBase(std::string const& history, Completer* completer)
     : _current(),
       _historyFilename(),
       _state(STATE_NONE),
       _completer(completer) {
   // construct the complete history path
-  string path;
+  std::string path;
   char* p = TRI_HomeDirectory();
 
   if (p != nullptr) {
@@ -112,12 +112,12 @@ void ShellBase::signal() {
 /// @brief shell prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-string ShellBase::prompt(const string& prompt, const string& plain, bool& eof) {
+std::string ShellBase::prompt(std::string const& prompt, std::string const& plain, bool& eof) {
   size_t lineno = 0;
-  string dotdot = "...> ";
-  string p = prompt;
-  string sep = "";
-  string line;
+  std::string dotdot = "...> ";
+  std::string p = prompt;
+  std::string sep = "";
+  std::string line;
 
   eof = false;
 

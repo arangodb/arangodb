@@ -134,7 +134,7 @@ static inline v8::Handle<v8::Value> V8CollectionId(v8::Isolate* isolate,
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t)cid, (char*)&buffer);
 
-  return TRI_V8_PAIR_STRING((const char*)buffer, (int)len);
+  return TRI_V8_PAIR_STRING((char const*)buffer, (int)len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,7 +194,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
   TRI_ASSERT(key.get() == nullptr);
 
   // reset the collection identifier and the revision
-  string collectionName;
+  std::string collectionName;
   rid = 0;
 
   // try to extract the collection name, key, and revision from the object
@@ -264,7 +264,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ParseKeyAndRef(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
-                          string& key, TRI_voc_rid_t& rev) {
+                          std::string& key, TRI_voc_rid_t& rev) {
   rev = 0;
   if (arg->IsString()) {
     key = TRI_ObjectToString(arg);
@@ -311,11 +311,11 @@ static void DocumentVocbaseColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
+  std::string const dbname(collection->_dbName);
   // TODO: someone might rename the collection while we're reading its name...
-  string const collname(collection->_name);
+  std::string const collname(collection->_name);
 
-  string key;
+  std::string key;
   TRI_voc_rid_t rev = 0;
   int error = ParseKeyAndRef(isolate, args[0], key, rev);
 
@@ -326,8 +326,8 @@ static void DocumentVocbaseColCoordinator(
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   error = triagens::arango::getDocumentOnCoordinator(
       dbname, collname, key, rev, headers, generateDocument, responseCode,
@@ -359,7 +359,7 @@ static void DocumentVocbaseColCoordinator(
     }
     if (generateDocument) {
       int errorNum = 0;
-      string errorMessage;
+      std::string errorMessage;
       if (nullptr != json) {
         TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
         if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
@@ -367,7 +367,7 @@ static void DocumentVocbaseColCoordinator(
         }
         subjson = TRI_LookupObjectJson(json, "errorMessage");
         if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-          errorMessage = string(subjson->_value._string.data,
+          errorMessage = std::string(subjson->_value._string.data,
                                 subjson->_value._string.length - 1);
         }
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -564,7 +564,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    string const& name = collections[i]->name();
+    std::string const& name = collections[i]->name();
     result.emplace_back(name);
   }
 
@@ -687,10 +687,10 @@ static void ModifyVocbaseColCoordinator(
   TRI_ASSERT(collection != nullptr);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
-  string const collname(collection->_name);
+  std::string const dbname(collection->_dbName);
+  std::string const collname(collection->_name);
 
-  string key;
+  std::string key;
   TRI_voc_rid_t rev = 0;
   int error = ParseKeyAndRef(isolate, args[0], key, rev);
 
@@ -706,8 +706,8 @@ static void ModifyVocbaseColCoordinator(
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   error = triagens::arango::modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
@@ -729,10 +729,10 @@ static void ModifyVocbaseColCoordinator(
     if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
@@ -879,7 +879,7 @@ static void ReplaceVocbaseCol(bool useCollection,
 
   if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->_info.planId());
+    std::string const cidString = StringUtils::itoa(document->_info.planId());
 
     TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
 
@@ -1404,7 +1404,7 @@ static void UpdateVocbaseCol(bool useCollection,
 
   if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->_info.planId());
+    std::string const cidString = StringUtils::itoa(document->_info.planId());
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
       TRI_FreeJson(document->getShaper()->memoryZone(),
@@ -1472,10 +1472,10 @@ static void RemoveVocbaseColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
-  string const collname(collection->_name);
+  std::string const dbname(collection->_dbName);
+  std::string const collname(collection->_name);
 
-  string key;
+  std::string key;
   TRI_voc_rid_t rev = 0;
   int error = ParseKeyAndRef(isolate, args[0], key, rev);
 
@@ -1484,8 +1484,8 @@ static void RemoveVocbaseColCoordinator(
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
 
@@ -1511,10 +1511,10 @@ static void RemoveVocbaseColCoordinator(
     if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json, "errorMessage");
     if (TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1838,11 +1838,11 @@ static void DropVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
 
   ClusterInfo* ci = ClusterInfo::instance();
-  string errorMsg;
+  std::string errorMsg;
 
   int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
 
@@ -1907,8 +1907,8 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator(
     TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
 
   TRI_doc_collection_info_t* result = nullptr;
 
@@ -2112,8 +2112,8 @@ static void JS_LoadVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    string const databaseName(collection->_dbName);
-    string const cid = StringUtils::itoa(collection->_cid);
+    std::string const databaseName(collection->_dbName);
+    std::string const cid = StringUtils::itoa(collection->_cid);
 
     int res = ClusterInfo::instance()->setCollectionStatusCoordinator(
         databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
@@ -2292,7 +2292,7 @@ static void JS_PropertiesVocbaseCol(
     std::shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(
         databaseName, StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
-    vector<string> const sks = (*c).shardKeys();
+    std::vector<std::string> const sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
       shardKeys->Set((uint32_t)i, TRI_V8_STD_STRING(sks[i]));
     }
@@ -2593,8 +2593,8 @@ static int GetRevisionCoordinator(TRI_vocbase_col_t* collection,
                                   TRI_voc_rid_t& rid) {
   TRI_ASSERT(collection != nullptr);
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
 
   int res = revisionOnCoordinator(databaseName, cid, rid);
 
@@ -2694,10 +2694,10 @@ static void InsertVocbaseColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
+  std::string const dbname(collection->_dbName);
 
   // TODO: someone might rename the collection while we're reading its name...
-  string const collname(collection->_name);
+  std::string const collname(collection->_name);
 
   // Now get the arguments
   uint32_t const argLength = args.Length();
@@ -2728,9 +2728,9 @@ static void InsertVocbaseColCoordinator(
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> headers;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   int error = triagens::arango::createDocumentOnCoordinator(
       dbname, collname, options.waitForSync, json, headers, responseCode,
@@ -2752,10 +2752,10 @@ static void InsertVocbaseColCoordinator(
       errorNum = static_cast<int>(subjson->_value._number);
     }
 
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
@@ -2773,7 +2773,7 @@ static void InsertVocbaseColCoordinator(
 /// @brief extract a key from a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetId(const v8::FunctionCallbackInfo<v8::Value>& args,
+static std::string GetId(const v8::FunctionCallbackInfo<v8::Value>& args,
                     int which) {
   v8::Isolate* isolate = args.GetIsolate();  // used in TRI_GET_GLOBALS
 
@@ -2940,10 +2940,10 @@ static void InsertEdgeColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
+  std::string const dbname(collection->_dbName);
 
   // TODO: someone might rename the collection while we're reading its name...
-  string const collname(collection->_name);
+  std::string const collname(collection->_name);
 
   uint32_t const argLength = args.Length();
   if (argLength < 3 || argLength > 4) {
@@ -2951,8 +2951,8 @@ static void InsertEdgeColCoordinator(
         "insert(<from>, <to>, <data>, [<waitForSync>])");
   }
 
-  string _from = GetId(args, 0);
-  string _to = GetId(args, 1);
+  std::string _from = GetId(args, 0);
+  std::string _to = GetId(args, 1);
 
   std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[2]));
 
@@ -2978,8 +2978,8 @@ static void InsertEdgeColCoordinator(
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   int error = triagens::arango::createEdgeOnCoordinator(
       dbname, collname, options.waitForSync, json, _from.c_str(), _to.c_str(),
@@ -3000,10 +3000,10 @@ static void InsertEdgeColCoordinator(
     if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
@@ -3103,7 +3103,7 @@ static void JS_StatusVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
-    shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
@@ -3187,7 +3187,7 @@ static void JS_TruncateDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("truncateDatafile(<datafile>, <size>)");
   }
 
-  string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(args[0]);
   size_t size = (size_t)TRI_ObjectToInt64(args[1]);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -3232,7 +3232,7 @@ static void JS_TryRepairDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("tryRepairDatafile(<datafile>)");
   }
 
-  string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(args[0]);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -3272,7 +3272,7 @@ static void JS_TypeVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
-    shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
@@ -3311,7 +3311,7 @@ static void JS_UnloadVocbaseCol(
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    string const databaseName(collection->_dbName);
+    std::string const databaseName(collection->_dbName);
 
     res = ClusterInfo::instance()->setCollectionStatusCoordinator(
         databaseName, StringUtils::itoa(collection->_cid),
@@ -3427,7 +3427,7 @@ static void JS_ChangeOperationModeVocbase(
 
     TRI_GET_GLOBAL_STRING(PortTypeKey);
     if (obj->Has(PortTypeKey)) {
-      string const portType = TRI_ObjectToString(obj->Get(PortTypeKey));
+      std::string const portType = TRI_ObjectToString(obj->Get(PortTypeKey));
       if (portType == "unix") {
         allowModeChange = true;
       }
@@ -3444,7 +3444,7 @@ static void JS_ChangeOperationModeVocbase(
         "_changeMode(<mode>), with modes: 'Normal', 'NoCreate'");
   }
 
-  string const newModeStr = TRI_ObjectToString(args[0]);
+  std::string const newModeStr = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_operationmode_e newMode = TRI_VOCBASE_MODE_NORMAL;
 
@@ -3474,7 +3474,7 @@ static TRI_vocbase_col_t* GetCollectionFromArgument(
     return TRI_LookupCollectionByIdVocBase(vocbase, cid);
   }
 
-  string const name = TRI_ObjectToString(val);
+  std::string const name = TRI_ObjectToString(val);
   return TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
 }
 
@@ -3506,8 +3506,8 @@ static void JS_CollectionVocbase(
   TRI_vocbase_col_t const* collection = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
-    string const name = TRI_ObjectToString(val);
-    shared_ptr<CollectionInfo> const ci =
+    std::string const name = TRI_ObjectToString(val);
+    std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(vocbase->_name, name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {
@@ -3724,10 +3724,10 @@ static void JS_CountVocbaseCol(
 
   if (ServerState::instance()->isCoordinator()) {
     // First get the initial data:
-    string const dbname(collection->_dbName);
+    std::string const dbname(collection->_dbName);
 
     // TODO: someone might rename the collection while we're reading its name...
-    string const collname(collection->_name);
+    std::string const collname(collection->_name);
 
     uint64_t count = 0;
     int error = triagens::arango::countOnCoordinator(dbname, collname, count);
@@ -3858,7 +3858,7 @@ static void JS_DatafileScanVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("datafileScan(<path>)");
   }
 
-  string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(args[0]);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -3937,7 +3937,7 @@ static void JS_DatafileScanVocbaseCol(
 
 void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                           TRI_vocbase_t* vocbase, JSLoader* loader,
-                          const size_t threadNumber, TRI_v8_global_t* v8g,
+                          size_t const threadNumber, TRI_v8_global_t* v8g,
                           v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_changeMode"),

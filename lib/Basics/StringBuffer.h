@@ -70,7 +70,7 @@ void TRI_InitStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSizedStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*,
-                               const size_t);
+                               size_t const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the string buffer
@@ -105,7 +105,7 @@ int TRI_DeflateStringBuffer(TRI_string_buffer_t*, size_t);
 /// @brief ensure the string buffer has a specific capacity
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReserveStringBuffer(TRI_string_buffer_t*, const size_t);
+int TRI_ReserveStringBuffer(TRI_string_buffer_t*, size_t const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief swaps content with another string buffer
@@ -738,7 +738,7 @@ class StringBuffer {
   /// @brief replaces characters
   ////////////////////////////////////////////////////////////////////////////////
 
-  StringBuffer& replaceText(const char* str, size_t len) {
+  StringBuffer& replaceText(char const* str, size_t len) {
     TRI_ReplaceStringStringBuffer(&_buffer, str, len);
     return *this;
   }

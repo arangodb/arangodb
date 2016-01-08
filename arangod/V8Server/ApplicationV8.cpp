@@ -919,7 +919,7 @@ void ApplicationV8::prepareServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::setupOptions(
-    map<string, basics::ProgramOptionsDescription>& options) {
+    std::map<std::string, basics::ProgramOptionsDescription>& options) {
   options["Javascript Options:help-admin"](
       "javascript.gc-interval", &_gcInterval,
       "JavaScript request-based garbage collection interval (each x requests)")(
@@ -963,16 +963,16 @@ bool ApplicationV8::prepare() {
 
   // dump paths
   {
-    vector<string> paths;
+    std::vector<std::string> paths;
 
-    paths.push_back(string("startup '" + _startupPath + "'"));
+    paths.push_back(std::string("startup '" + _startupPath + "'"));
 
     if (!_appPath.empty()) {
-      paths.push_back(string("application '" + _appPath + "'"));
+      paths.push_back(std::string("application '" + _appPath + "'"));
     }
 
     if (!_devAppPath.empty()) {
-      paths.push_back(string("dev application '" + _devAppPath + "'"));
+      paths.push_back(std::string("dev application '" + _devAppPath + "'"));
     }
 
     LOG_INFO("JavaScript using %s", StringUtils::join(paths, ", ").c_str());
@@ -994,7 +994,7 @@ bool ApplicationV8::prepare() {
   }
 
 #ifdef TRI_FORCE_ARMV6
-  const string forceARMv6 = "--noenable-armv7";
+  std::string const forceARMv6 = "--noenable-armv7";
   v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int)forceARMv6.size());
 #endif
 
@@ -1219,7 +1219,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc() {
 bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  vector<string> files;
+  std::vector<std::string> files;
 
   files.push_back("server/initialize.js");
 
@@ -1282,7 +1282,7 @@ bool ApplicationV8::prepareV8Instance(size_t i, bool useActions) {
       TRI_InitV8Actions(isolate, localContext, _vocbase, this);
     }
 
-    string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" +
+    std::string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" +
                          TRI_DIR_SEPARATOR_STR + "modules;" + _startupPath +
                          TRI_DIR_SEPARATOR_STR + "common" +
                          TRI_DIR_SEPARATOR_STR + "modules;" + _startupPath +
@@ -1385,7 +1385,7 @@ void ApplicationV8::prepareV8InstanceInThread(size_t i, bool useAction) {
 /// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::prepareV8Server(const size_t i, const string& startupFile) {
+void ApplicationV8::prepareV8Server(size_t i, std::string const& startupFile) {
   // enter context and isolate
   V8Context* context = _contexts[i];
 

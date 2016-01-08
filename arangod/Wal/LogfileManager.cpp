@@ -1284,8 +1284,8 @@ Logfile* LogfileManager::getLogfile(Logfile::IdType id,
 int LogfileManager::getWriteableLogfile(uint32_t size,
                                         Logfile::StatusType& status,
                                         Logfile*& result) {
-  static const uint64_t SleepTime = 10 * 1000;
-  static const uint64_t MaxIterations = 1500;
+  static uint64_t const SleepTime = 10 * 1000;
+  static uint64_t const MaxIterations = 1500;
   size_t iterations = 0;
   bool haveSignalled = false;
 
@@ -1655,7 +1655,7 @@ void LogfileManager::removeLogfile(Logfile* logfile) {
 
 int LogfileManager::waitForCollector(Logfile::IdType logfileId,
                                      double maxWaitTime) {
-  static const int64_t SingleWaitPeriod = 50 * 1000;
+  static int64_t const SingleWaitPeriod = 50 * 1000;
 
   int64_t maxIterations = INT64_MAX;  // wait forever
   if (maxWaitTime > 0.0) {

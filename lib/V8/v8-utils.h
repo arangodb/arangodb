@@ -49,7 +49,7 @@ class TRI_Utf8ValueNFC {
 
   inline char* operator*() { return _str; }
 
-  inline const char* operator*() const { return _str; }
+  inline char const* operator*() const { return _str; }
 
   inline size_t length() const { return _length; }
 

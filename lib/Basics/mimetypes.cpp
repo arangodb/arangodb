@@ -71,7 +71,7 @@ static bool EqualMimetype(TRI_associative_pointer_t* array, void const* key,
                           void const* element) {
   mimetype_t* entry = (mimetype_t*)element;
 
-  return (strcmp((const char*)key, entry->_extension) == 0);
+  return (strcmp((char const*)key, entry->_extension) == 0);
 }
 
 
@@ -79,7 +79,7 @@ static bool EqualMimetype(TRI_associative_pointer_t* array, void const* key,
 /// @brief register a mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_RegisterMimetype(const char* extension, const char* mimetype,
+bool TRI_RegisterMimetype(char const* extension, char const* mimetype,
                           bool appendCharset) {
   mimetype_t* entry = static_cast<mimetype_t*>(
       TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(mimetype_t), false));
@@ -102,7 +102,7 @@ bool TRI_RegisterMimetype(const char* extension, const char* mimetype,
 /// @brief gets the mimetype for an extension
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetMimetype(const char* extension) {
+char* TRI_GetMimetype(char const* extension) {
   mimetype_t* entry = static_cast<mimetype_t*>(
       TRI_LookupByKeyAssociativePointer(&Mimetypes, (void const*)extension));
 

@@ -49,13 +49,13 @@ using namespace triagens::rest;
 /// @brief set port if none specified
 ////////////////////////////////////////////////////////////////////////////////
 
-const uint16_t EndpointIp::_defaultPort = 8529;
+uint16_t const EndpointIp::_defaultPort = 8529;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default host if none specified
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string EndpointIp::_defaultHost = "127.0.0.1";
+std::string const EndpointIp::_defaultHost = "127.0.0.1";
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,9 +65,9 @@ const std::string EndpointIp::_defaultHost = "127.0.0.1";
 EndpointIp::EndpointIp(const Endpoint::EndpointType type,
                        const Endpoint::DomainType domainType,
                        const Endpoint::EncryptionType encryption,
-                       const std::string& specification, int listenBacklog,
-                       bool reuseAddress, const std::string& host,
-                       const uint16_t port)
+                       std::string const& specification, int listenBacklog,
+                       bool reuseAddress, std::string const& host,
+                       uint16_t const port)
     : Endpoint(type, domainType, encryption, specification, listenBacklog),
       _host(host),
       _port(port),
@@ -93,7 +93,7 @@ EndpointIp::~EndpointIp() {
 TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
                                        double connectTimeout,
                                        double requestTimeout) {
-  const char* pErr;
+  char const* pErr;
   char errBuf[256];
 #ifdef _WIN32
   char windowsErrorBuf[256];
@@ -378,7 +378,7 @@ bool EndpointIp::initIncoming(TRI_socket_t incoming) {
       TRI_setsockopt(incoming, IPPROTO_TCP, TCP_NODELAY, (char*)&n, sizeof(n));
 
   if (res != 0) {
-    const char* pErr;
+    char const* pErr;
     char errBuf[256];
 #ifdef _WIN32
     char windowsErrorBuf[256];

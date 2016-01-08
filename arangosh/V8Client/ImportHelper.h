@@ -230,7 +230,7 @@ class ImportHelper {
   bool _hasError;
   std::string _errorMessage;
 
-  static const double ProgressStep;
+  static double const ProgressStep;
 };
 }
 }

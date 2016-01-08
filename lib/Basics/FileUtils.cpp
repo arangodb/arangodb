@@ -83,7 +83,7 @@ void throwFileWriteError(int fd, std::string const& filename) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
-string slurp(string const& filename) {
+std::string slurp(std::string const& filename) {
   int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
@@ -109,12 +109,12 @@ string slurp(string const& filename) {
 
   TRI_CLOSE(fd);
 
-  string r(result.c_str(), result.length());
+  std::string r(result.c_str(), result.length());
 
   return r;
 }
 
-void slurp(string const& filename, StringBuffer& result) {
+void slurp(std::string const& filename, StringBuffer& result) {
   int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
@@ -146,7 +146,7 @@ void slurp(string const& filename, StringBuffer& result) {
   TRI_CLOSE(fd);
 }
 
-void spit(string const& filename, const char* ptr, size_t len) {
+void spit(std::string const& filename, char const* ptr, size_t len) {
   int fd =
       TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
@@ -169,7 +169,7 @@ void spit(string const& filename, const char* ptr, size_t len) {
   TRI_CLOSE(fd);
 }
 
-void spit(string const& filename, string const& content) {
+void spit(std::string const& filename, std::string const& content) {
   int fd =
       TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
@@ -195,7 +195,7 @@ void spit(string const& filename, string const& content) {
   TRI_CLOSE(fd);
 }
 
-void spit(string const& filename, StringBuffer const& content) {
+void spit(std::string const& filename, StringBuffer const& content) {
   int fd =
       TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC | TRI_O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
@@ -221,7 +221,7 @@ void spit(string const& filename, StringBuffer const& content) {
   TRI_CLOSE(fd);
 }
 
-bool remove(string const& fileName, int* errorNumber) {
+bool remove(std::string const& fileName, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
   }
@@ -235,7 +235,7 @@ bool remove(string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool rename(string const& oldName, string const& newName, int* errorNumber) {
+bool rename(std::string const& oldName, std::string const& newName, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
   }
@@ -249,7 +249,7 @@ bool rename(string const& oldName, string const& newName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool createDirectory(string const& name, int* errorNumber) {
+bool createDirectory(std::string const& name, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
   }
@@ -257,7 +257,7 @@ bool createDirectory(string const& name, int* errorNumber) {
   return createDirectory(name, 0777, errorNumber);
 }
 
-bool createDirectory(string const& name, int mask, int* errorNumber) {
+bool createDirectory(std::string const& name, int mask, int* errorNumber) {
   if (errorNumber != nullptr) {
     *errorNumber = 0;
   }
@@ -300,7 +300,7 @@ bool copyDirectoryRecursive(std::string const& source,
   struct _finddata_t oneItem;
   intptr_t handle;
 
-  string filter = source + "\\*";
+  std::string filter = source + "\\*";
   handle = _findfirst(filter.c_str(), &oneItem);
 
   if (handle == -1) {
@@ -382,15 +382,15 @@ bool copyDirectoryRecursive(std::string const& source,
   return rc;
 }
 
-vector<string> listFiles(string const& directory) {
-  vector<string> result;
+std::vector<std::string> listFiles(std::string const& directory) {
+  std::vector<std::string> result;
 
 #ifdef TRI_HAVE_WIN32_LIST_FILES
 
   struct _finddata_t fd;
   intptr_t handle;
 
-  string filter = directory + "\\*";
+  std::string filter = directory + "\\*";
   handle = _findfirst(filter.c_str(), &fd);
 
   if (handle == -1) {
@@ -430,13 +430,13 @@ vector<string> listFiles(string const& directory) {
   return result;
 }
 
-bool isDirectory(string const& path) {
+bool isDirectory(std::string const& path) {
   TRI_stat_t stbuf;
   int res = TRI_STAT(path.c_str(), &stbuf);
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
 }
 
-bool isSymbolicLink(string const& path) {
+bool isSymbolicLink(std::string const& path) {
 #ifdef TRI_HAVE_WIN32_SYMBOLIC_LINK
 
   // .....................................................................
@@ -457,20 +457,20 @@ bool isSymbolicLink(string const& path) {
 #endif
 }
 
-bool isRegularFile(string const& path) {
+bool isRegularFile(std::string const& path) {
   TRI_stat_t stbuf;
   int res = TRI_STAT(path.c_str(), &stbuf);
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFREG);
 }
 
-bool exists(string const& path) {
+bool exists(std::string const& path) {
   TRI_stat_t stbuf;
   int res = TRI_STAT(path.c_str(), &stbuf);
 
   return res == 0;
 }
 
-off_t size(string const& path) {
+off_t size(std::string const& path) {
   int64_t result = TRI_SizeFile(path.c_str());
 
   if (result < 0) {
@@ -480,13 +480,13 @@ off_t size(string const& path) {
   return (off_t)result;
 }
 
-string stripExtension(string const& path, string const& extension) {
+std::string stripExtension(std::string const& path, std::string const& extension) {
   size_t pos = path.rfind(extension);
   if (pos == string::npos) {
     return path;
   }
 
-  string last = path.substr(pos);
+  std::string last = path.substr(pos);
   if (last == extension) {
     return path.substr(0, pos);
   }
@@ -494,11 +494,11 @@ string stripExtension(string const& path, string const& extension) {
   return path;
 }
 
-bool changeDirectory(string const& path) {
+bool changeDirectory(std::string const& path) {
   return TRI_CHDIR(path.c_str()) == 0;
 }
 
-string currentDirectory(int* errorNumber) {
+std::string currentDirectory(int* errorNumber) {
   if (errorNumber != 0) {
     *errorNumber = 0;
   }
@@ -522,16 +522,16 @@ string currentDirectory(int* errorNumber) {
     }
   }
 
-  string result = current;
+  std::string result = current;
 
   delete[] current;
 
   return result;
 }
 
-string homeDirectory() {
+std::string homeDirectory() {
   char* dir = TRI_HomeDirectory();
-  string result = dir;
+  std::string result = dir;
   TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
 
   return result;

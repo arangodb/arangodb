@@ -469,7 +469,7 @@ void ServerState::setState(StateEnum state) {
 /// @brief gets the data path
 ////////////////////////////////////////////////////////////////////////////////
 
-string ServerState::getDataPath() {
+std::string ServerState::getDataPath() {
   READ_LOCKER(_lock);
   return _dataPath;
 }
@@ -478,7 +478,7 @@ string ServerState::getDataPath() {
 /// @brief sets the data path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setDataPath(const string& value) {
+void ServerState::setDataPath(std::string const& value) {
   WRITE_LOCKER(_lock);
   _dataPath = value;
 }
@@ -487,7 +487,7 @@ void ServerState::setDataPath(const string& value) {
 /// @brief gets the log path
 ////////////////////////////////////////////////////////////////////////////////
 
-string ServerState::getLogPath() {
+std::string ServerState::getLogPath() {
   READ_LOCKER(_lock);
   return _logPath;
 }
@@ -496,7 +496,7 @@ string ServerState::getLogPath() {
 /// @brief sets the log path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setLogPath(const string& value) {
+void ServerState::setLogPath(std::string const& value) {
   WRITE_LOCKER(_lock);
   _logPath = value;
 }
@@ -505,7 +505,7 @@ void ServerState::setLogPath(const string& value) {
 /// @brief gets the agent path
 ////////////////////////////////////////////////////////////////////////////////
 
-string ServerState::getAgentPath() {
+std::string ServerState::getAgentPath() {
   READ_LOCKER(_lock);
   return _agentPath;
 }
@@ -514,7 +514,7 @@ string ServerState::getAgentPath() {
 /// @brief sets the data path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setAgentPath(const string& value) {
+void ServerState::setAgentPath(std::string const& value) {
   WRITE_LOCKER(_lock);
   _agentPath = value;
 }
@@ -523,7 +523,7 @@ void ServerState::setAgentPath(const string& value) {
 /// @brief gets the arangod path
 ////////////////////////////////////////////////////////////////////////////////
 
-string ServerState::getArangodPath() {
+std::string ServerState::getArangodPath() {
   READ_LOCKER(_lock);
   return _arangodPath;
 }
@@ -532,7 +532,7 @@ string ServerState::getArangodPath() {
 /// @brief sets the arangod path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setArangodPath(const string& value) {
+void ServerState::setArangodPath(std::string const& value) {
   WRITE_LOCKER(_lock);
   _arangodPath = value;
 }
@@ -541,7 +541,7 @@ void ServerState::setArangodPath(const string& value) {
 /// @brief gets the JavaScript startup path
 ////////////////////////////////////////////////////////////////////////////////
 
-string ServerState::getJavaScriptPath() {
+std::string ServerState::getJavaScriptPath() {
   READ_LOCKER(_lock);
   return _javaScriptStartupPath;
 }
@@ -550,7 +550,7 @@ string ServerState::getJavaScriptPath() {
 /// @brief sets the arangod path
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setJavaScriptPath(const string& value) {
+void ServerState::setJavaScriptPath(std::string const& value) {
   WRITE_LOCKER(_lock);
   _javaScriptStartupPath = value;
 }
@@ -559,7 +559,7 @@ void ServerState::setJavaScriptPath(const string& value) {
 /// @brief gets the DBserver config
 ////////////////////////////////////////////////////////////////////////////////
 
-string ServerState::getDBserverConfig() {
+std::string ServerState::getDBserverConfig() {
   READ_LOCKER(_lock);
   return _dbserverConfig;
 }
@@ -568,7 +568,7 @@ string ServerState::getDBserverConfig() {
 /// @brief sets the DBserver config
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setDBserverConfig(const string& value) {
+void ServerState::setDBserverConfig(std::string const& value) {
   WRITE_LOCKER(_lock);
   _dbserverConfig = value;
 }
@@ -577,7 +577,7 @@ void ServerState::setDBserverConfig(const string& value) {
 /// @brief gets the coordinator config
 ////////////////////////////////////////////////////////////////////////////////
 
-string ServerState::getCoordinatorConfig() {
+std::string ServerState::getCoordinatorConfig() {
   READ_LOCKER(_lock);
   return _coordinatorConfig;
 }
@@ -586,7 +586,7 @@ string ServerState::getCoordinatorConfig() {
 /// @brief sets the coordinator config
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setCoordinatorConfig(const string& value) {
+void ServerState::setCoordinatorConfig(std::string const& value) {
   WRITE_LOCKER(_lock);
   _coordinatorConfig = value;
 }
@@ -771,7 +771,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   // fetch value at Plan/Coordinators
   // we need to do this to determine the server's role
 
-  const std::string key = "Plan/Coordinators";
+  std::string const key = "Plan/Coordinators";
 
   AgencyComm comm;
   AgencyCommResult result;
@@ -785,7 +785,7 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList(
   }
 
   if (!result.successful()) {
-    const std::string endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyComm::getEndpointsString();
 
     LOG_TRACE(
         "Could not fetch configuration from agency endpoints (%s): "
@@ -823,7 +823,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
   // fetch value at Plan/DBServers
   // we need to do this to determine the server's role
 
-  const std::string key = "Target/MapLocalToID";
+  std::string const key = "Target/MapLocalToID";
 
   int count = 0;
   while (++count <= 600) {
@@ -839,7 +839,7 @@ int ServerState::lookupLocalInfoToId(std::string const& localInfo,
     }
 
     if (!result.successful()) {
-      const std::string endpoints = AgencyComm::getEndpointsString();
+      std::string const endpoints = AgencyComm::getEndpointsString();
 
       LOG_DEBUG(
           "Could not fetch configuration from agency endpoints (%s): "
@@ -880,7 +880,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   // fetch value at Plan/DBServers
   // we need to do this to determine the server's role
 
-  const std::string key = "Plan/DBServers";
+  std::string const key = "Plan/DBServers";
 
   AgencyComm comm;
   AgencyCommResult result;
@@ -894,7 +894,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
   }
 
   if (!result.successful()) {
-    const std::string endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyComm::getEndpointsString();
 
     LOG_TRACE(
         "Could not fetch configuration from agency endpoints (%s): "
@@ -920,7 +920,7 @@ ServerState::RoleEnum ServerState::checkServersList(std::string const& id) {
     it = result._values.begin();
 
     while (it != result._values.end()) {
-      const std::string name =
+      std::string const name =
           triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
 
       if (name == id) {

@@ -101,7 +101,7 @@ static bool ParseDocumentHandle(v8::Handle<v8::Value> const arg,
   // collection name / document key
   size_t split;
   if (TRI_ValidateDocumentIdKeyGenerator(*str, &split)) {
-    collectionName = string(*str, split);
+    collectionName = std::string(*str, split);
     auto const length = str.length() - split - 1;
     auto buffer = new char[length + 1];
     memcpy(buffer, *str + split + 1, length);

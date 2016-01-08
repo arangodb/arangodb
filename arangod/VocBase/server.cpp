@@ -281,7 +281,7 @@ static bool CanUseDatabase(TRI_vocbase_t* vocbase, char const* username) {
 /// @brief extract the numeric part from a filename
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t GetNumericFilenamePart(const char* filename) {
+static uint64_t GetNumericFilenamePart(char const* filename) {
   char const* pos = strrchr(filename, '-');
 
   if (pos == nullptr) {
@@ -297,11 +297,11 @@ static uint64_t GetNumericFilenamePart(const char* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int DatabaseIdComparator(const void* lhs, const void* rhs) {
-  const char* l = *((char**)lhs);
-  const char* r = *((char**)rhs);
+  char const* l = *((char**)lhs);
+  char const* r = *((char**)rhs);
 
-  const uint64_t numLeft = GetNumericFilenamePart(l);
-  const uint64_t numRight = GetNumericFilenamePart(r);
+  uint64_t const numLeft = GetNumericFilenamePart(l);
+  uint64_t const numRight = GetNumericFilenamePart(r);
 
   if (numLeft != numRight) {
     return numLeft < numRight ? -1 : 1;
@@ -317,8 +317,8 @@ static int DatabaseIdComparator(const void* lhs, const void* rhs) {
 
 static bool DatabaseIdStringComparator(std::string const& lhs,
                                        std::string const& rhs) {
-  const uint64_t numLeft = GetNumericFilenamePart(lhs.c_str());
-  const uint64_t numRight = GetNumericFilenamePart(rhs.c_str());
+  uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
+  uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
 
   return numLeft < numRight;
 }

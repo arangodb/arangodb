@@ -166,7 +166,7 @@ class Dictionary {
   /// @brief looks up a key
   ////////////////////////////////////////////////////////////////////////////////
 
-  KeyValue const* lookup(char const* key, const size_t keyLength) const {
+  KeyValue const* lookup(char const* key, size_t const keyLength) const {
     KeyValue l(key, keyLength);
     KeyValue const& f = _array.findElement(l);
 

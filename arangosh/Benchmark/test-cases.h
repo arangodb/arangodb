@@ -24,15 +24,15 @@
 #include "Basics/Common.h"
 
 
-static bool DeleteCollection(SimpleHttpClient*, const std::string&);
+static bool DeleteCollection(SimpleHttpClient*, std::string const&);
 
-static bool CreateCollection(SimpleHttpClient*, const std::string&, const int);
+static bool CreateCollection(SimpleHttpClient*, std::string const&, int const);
 
-static bool CreateDocument(SimpleHttpClient*, const std::string&,
-                           const std::string&);
+static bool CreateDocument(SimpleHttpClient*, std::string const&,
+                           std::string const&);
 
-static bool CreateIndex(SimpleHttpClient*, const std::string&,
-                        const std::string&, const std::string&);
+static bool CreateIndex(SimpleHttpClient*, std::string const&,
+                        std::string const&, std::string const&);
 
 
 
@@ -45,21 +45,21 @@ struct VersionTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return _url;
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_GET;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    static const char* payload = "";
+    static char const* payload = "";
 
     *mustFree = false;
     *length = 0;
@@ -82,24 +82,24 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=" + Collection);
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -115,20 +115,20 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 4;
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
-      const uint64_t n = Complexity;
+      uint64_t const n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -149,11 +149,11 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else if (mod == 1 || mod == 3) {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
       return 0;
@@ -174,24 +174,24 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 2;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=" + Collection);
     } else {
       size_t keyId = (size_t)(globalCounter / 2);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 2;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -200,20 +200,20 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 2;
+    size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      const uint64_t n = Complexity;
+      uint64_t const n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 2);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -234,11 +234,11 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     }
   }
 };
@@ -256,24 +256,24 @@ struct ShapesTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 3;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=" + Collection);
     } else {
       size_t keyId = (size_t)(globalCounter / 3);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 3;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -284,20 +284,20 @@ struct ShapesTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 3;
+    size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      const uint64_t n = Complexity;
+      uint64_t const n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 3);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -321,11 +321,11 @@ struct ShapesTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     }
   }
 };
@@ -343,24 +343,24 @@ struct ShapesAppendTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 2;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=" + Collection);
     } else {
       size_t keyId = (size_t)(globalCounter / 2);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 2;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -368,20 +368,20 @@ struct ShapesAppendTest : public BenchmarkOperation {
     return HttpRequest::HTTP_REQUEST_GET;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 2;
+    size_t const mod = globalCounter % 2;
 
     if (mod == 0) {
-      const uint64_t n = Complexity;
+      uint64_t const n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 2);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -405,11 +405,11 @@ struct ShapesAppendTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     }
   }
 };
@@ -429,25 +429,25 @@ struct RandomShapesTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 3;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=") + Collection;
     } else {
       size_t keyId = (size_t)(globalCounter / 3);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/") + Collection + std::string("/") +
              key;
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 3;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -458,20 +458,20 @@ struct RandomShapesTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 3;
+    size_t const mod = globalCounter % 3;
 
     if (mod == 0) {
-      const uint64_t n = Complexity;
+      uint64_t const n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 3);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendString2StringBuffer(buffer, key.c_str(), key.size());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -498,11 +498,11 @@ struct RandomShapesTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     }
   }
 
@@ -522,24 +522,24 @@ struct DocumentCrudTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 5;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=" + Collection);
     } else {
       size_t keyId = (size_t)(globalCounter / 5);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 5;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 5;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -557,20 +557,20 @@ struct DocumentCrudTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 5;
+    size_t const mod = globalCounter % 5;
 
     if (mod == 0 || mod == 2) {
-      const uint64_t n = Complexity;
+      uint64_t const n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 5);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -591,11 +591,11 @@ struct DocumentCrudTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
       return 0;
@@ -616,9 +616,9 @@ struct EdgeCrudTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return std::string("/_api/edge?collection=" + Collection + "&from=" +
@@ -628,16 +628,16 @@ struct EdgeCrudTest : public BenchmarkOperation {
                          StringUtils::itoa(globalCounter));
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/edge/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -659,20 +659,20 @@ struct EdgeCrudTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 4;
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
-      const uint64_t n = Complexity;
+      uint64_t const n = Complexity;
       TRI_string_buffer_t* buffer;
 
       buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -693,11 +693,11 @@ struct EdgeCrudTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
       return 0;
@@ -719,24 +719,24 @@ struct SkiplistTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=" + Collection);
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -752,10 +752,10 @@ struct SkiplistTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 4;
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
       TRI_string_buffer_t* buffer;
@@ -764,7 +764,7 @@ struct SkiplistTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -777,11 +777,11 @@ struct SkiplistTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
       return 0;
@@ -803,24 +803,24 @@ struct HashTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return std::string("/_api/document?collection=" + Collection);
     } else {
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
 
       return std::string("/_api/document/" + Collection + "/" + key);
     }
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
-    const size_t mod = globalCounter % 4;
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0) {
       return HttpRequest::HTTP_REQUEST_POST;
@@ -836,10 +836,10 @@ struct HashTest : public BenchmarkOperation {
     }
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 4;
+    size_t const mod = globalCounter % 4;
 
     if (mod == 0 || mod == 2) {
       TRI_string_buffer_t* buffer;
@@ -848,7 +848,7 @@ struct HashTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
-      const std::string key = "testkey" + StringUtils::itoa(keyId);
+      std::string const key = "testkey" + StringUtils::itoa(keyId);
       TRI_AppendStringStringBuffer(buffer, key.c_str());
       TRI_AppendStringStringBuffer(buffer, "\"");
 
@@ -861,11 +861,11 @@ struct HashTest : public BenchmarkOperation {
       char* ptr = TRI_StealStringBuffer(buffer);
       TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-      return (const char*)ptr;
+      return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
       *length = 0;
       *mustFree = false;
-      return (const char*)nullptr;
+      return (char const*)nullptr;
     } else {
       TRI_ASSERT(false);
       return 0;
@@ -878,7 +878,7 @@ struct DocumentImportTest : public BenchmarkOperation {
   DocumentImportTest() : BenchmarkOperation(), _url(), _buffer(0) {
     _url = "/_api/import?collection=" + Collection + "&type=documents";
 
-    const uint64_t n = Complexity;
+    uint64_t const n = Complexity;
 
     _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 16384);
     for (uint64_t i = 0; i < n; ++i) {
@@ -901,26 +901,26 @@ struct DocumentImportTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  string url(const int threadNumber, const size_t threadCounter,
-             const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+             size_t const globalCounter) {
     return _url;
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
     *mustFree = false;
     *length = _length;
-    return (const char*)_buffer->_buffer;
+    return (char const*)_buffer->_buffer;
   }
 
-  string _url;
+  std::string _url;
 
   TRI_string_buffer_t* _buffer;
 
@@ -932,7 +932,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   DocumentCreationTest() : BenchmarkOperation(), _url(), _buffer(0) {
     _url = "/_api/document?collection=" + Collection;
 
-    const uint64_t n = Complexity;
+    uint64_t const n = Complexity;
 
     _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
     TRI_AppendCharStringBuffer(_buffer, '{');
@@ -962,23 +962,23 @@ struct DocumentCreationTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return _url;
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
     *mustFree = false;
     *length = _length;
-    return (const char*)_buffer->_buffer;
+    return (char const*)_buffer->_buffer;
   }
 
   std::string _url;
@@ -1000,19 +1000,19 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return _url;
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
     TRI_string_buffer_t* buffer;
     char* data;
@@ -1033,7 +1033,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
     *mustFree = true;
-    return (const char*)data;
+    return (char const*)data;
   }
 
   static atomic<uint64_t> _counter;
@@ -1061,21 +1061,21 @@ struct TransactionAqlTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return std::string("/_api/cursor");
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 8;
+    size_t const mod = globalCounter % 8;
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
@@ -1130,7 +1130,7 @@ struct TransactionAqlTest : public BenchmarkOperation {
     char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-    return (const char*)ptr;
+    return (char const*)ptr;
   }
 
   std::string _c1;
@@ -1151,19 +1151,19 @@ struct TransactionCountTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return std::string("/_api/transaction");
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -1185,7 +1185,7 @@ struct TransactionCountTest : public BenchmarkOperation {
     char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-    return (const char*)ptr;
+    return (char const*)ptr;
   }
 };
 
@@ -1207,21 +1207,21 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return std::string("/_api/transaction");
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 2;
+    size_t const mod = globalCounter % 2;
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
@@ -1252,7 +1252,7 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
     char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-    return (const char*)ptr;
+    return (char const*)ptr;
   }
 
   std::string _c1;
@@ -1277,21 +1277,21 @@ struct TransactionMultiTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return std::string("/_api/transaction");
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
-    const size_t mod = globalCounter % 2;
+    size_t const mod = globalCounter % 2;
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
 
@@ -1337,7 +1337,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
     char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-    return (const char*)ptr;
+    return (char const*)ptr;
   }
 
   std::string _c1;
@@ -1360,19 +1360,19 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return std::string("/_api/transaction");
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -1395,7 +1395,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "\\\"]; ");
 
     TRI_AppendStringStringBuffer(buffer, "var doc = {");
-    const uint64_t n = Complexity;
+    uint64_t const n = Complexity;
     for (uint64_t i = 0; i < n; ++i) {
       if (i > 0) {
         TRI_AppendStringStringBuffer(buffer, ", ");
@@ -1414,7 +1414,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
     char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-    return (const char*)ptr;
+    return (char const*)ptr;
   }
 
   std::string _c1;
@@ -1434,19 +1434,19 @@ struct AqlInsertTest : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return std::string("/_api/cursor");
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -1472,7 +1472,7 @@ struct AqlInsertTest : public BenchmarkOperation {
     char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-    return (const char*)ptr;
+    return (char const*)ptr;
   }
 };
 
@@ -1489,19 +1489,19 @@ struct AqlV8Test : public BenchmarkOperation {
 
   void tearDown() {}
 
-  std::string url(const int threadNumber, const size_t threadCounter,
-                  const size_t globalCounter) {
+  std::string url(int const threadNumber, size_t const threadCounter,
+                  size_t const globalCounter) {
     return std::string("/_api/cursor");
   }
 
-  HttpRequest::HttpRequestType type(const int threadNumber,
-                                    const size_t threadCounter,
-                                    const size_t globalCounter) {
+  HttpRequest::HttpRequestType type(int const threadNumber,
+                                    size_t const threadCounter,
+                                    size_t const globalCounter) {
     return HttpRequest::HTTP_REQUEST_POST;
   }
 
-  const char* payload(size_t* length, const int threadNumber,
-                      const size_t threadCounter, const size_t globalCounter,
+  char const* payload(size_t* length, int const threadNumber,
+                      size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) {
     TRI_string_buffer_t* buffer;
     buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
@@ -1529,7 +1529,7 @@ struct AqlV8Test : public BenchmarkOperation {
     char* ptr = TRI_StealStringBuffer(buffer);
     TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
 
-    return (const char*)ptr;
+    return (char const*)ptr;
   }
 };
 
@@ -1539,7 +1539,7 @@ struct AqlV8Test : public BenchmarkOperation {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool DeleteCollection(SimpleHttpClient* client,
-                             const std::string& name) {
+                             std::string const& name) {
   std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
@@ -1564,8 +1564,8 @@ static bool DeleteCollection(SimpleHttpClient* client,
 /// @brief create a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateCollection(SimpleHttpClient* client, const std::string& name,
-                             const int type) {
+static bool CreateCollection(SimpleHttpClient* client, std::string const& name,
+                             int const type) {
   std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
@@ -1592,8 +1592,8 @@ static bool CreateCollection(SimpleHttpClient* client, const std::string& name,
 /// @brief create an index
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CreateIndex(SimpleHttpClient* client, const std::string& name,
-                        const std::string& type, const std::string& fields) {
+static bool CreateIndex(SimpleHttpClient* client, std::string const& name,
+                        std::string const& type, std::string const& fields) {
   std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
@@ -1622,8 +1622,8 @@ static bool CreateIndex(SimpleHttpClient* client, const std::string& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CreateDocument(SimpleHttpClient* client,
-                           const std::string& collection,
-                           const std::string& payload) {
+                           std::string const& collection,
+                           std::string const& payload) {
   std::map<std::string, std::string> headerFields;
   SimpleHttpResult* result = nullptr;
 
@@ -1650,7 +1650,7 @@ static bool CreateDocument(SimpleHttpClient* client,
 /// @brief return the test case for a name
 ////////////////////////////////////////////////////////////////////////////////
 
-static BenchmarkOperation* GetTestCase(const std::string& name) {
+static BenchmarkOperation* GetTestCase(std::string const& name) {
   if (name == "version") {
     return new VersionTest();
   }

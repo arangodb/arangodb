@@ -47,7 +47,7 @@ using namespace triagens::rest;
 Endpoint::Endpoint(const Endpoint::EndpointType type,
                    const Endpoint::DomainType domainType,
                    const Endpoint::EncryptionType encryption,
-                   const std::string& specification, int listenBacklog)
+                   std::string const& specification, int listenBacklog)
     : _connected(false),
       _type(type),
       _domainType(domainType),
@@ -68,12 +68,12 @@ Endpoint::~Endpoint() {}
 /// @brief return the endpoint specification in a unified form
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Endpoint::getUnifiedForm(const std::string& specification) {
+std::string Endpoint::getUnifiedForm(std::string const& specification) {
   if (specification.size() < 7) {
     return "";
   }
 
-  string copy = specification;
+  std::string copy = specification;
   StringUtils::trimInPlace(copy);
   copy = StringUtils::tolower(copy);
 
@@ -117,7 +117,7 @@ std::string Endpoint::getUnifiedForm(const std::string& specification) {
   */
 
   // tcp/ip or ssl
-  string temp = copy.substr(6, copy.length());  // strip tcp:// or ssl://
+  std::string temp = copy.substr(6, copy.length());  // strip tcp:// or ssl://
   if (temp[0] == '[') {
     // ipv6
     found = temp.find("]:", 1);
@@ -152,7 +152,7 @@ std::string Endpoint::getUnifiedForm(const std::string& specification) {
 /// @brief create a client endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::clientFactory(const std::string& specification) {
+Endpoint* Endpoint::clientFactory(std::string const& specification) {
   return Endpoint::factory(ENDPOINT_CLIENT, specification, 0, false);
 }
 
@@ -160,7 +160,7 @@ Endpoint* Endpoint::clientFactory(const std::string& specification) {
 /// @brief create a server endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::serverFactory(const std::string& specification,
+Endpoint* Endpoint::serverFactory(std::string const& specification,
                                   int listenBacklog, bool reuseAddress) {
   return Endpoint::factory(ENDPOINT_SERVER, specification, listenBacklog,
                            reuseAddress);
@@ -171,7 +171,7 @@ Endpoint* Endpoint::serverFactory(const std::string& specification,
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
-                            const std::string& specification, int listenBacklog,
+                            std::string const& specification, int listenBacklog,
                             bool reuseAddress) {
   if (specification.size() < 7) {
     return nullptr;
@@ -187,7 +187,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
     listenBacklog = 10;
   }
 
-  string copy = specification;
+  std::string copy = specification;
   if (specification[specification.size() - 1] == '/') {
     // address ends with a slash => remove
     copy = copy.substr(0, copy.size() - 1);
@@ -196,7 +196,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   // read protocol from string
   size_t found = copy.find('@');
   if (found != string::npos) {
-    string protoString = StringUtils::tolower(copy.substr(0, found));
+    std::string protoString = StringUtils::tolower(copy.substr(0, found));
     if (protoString == "http") {
       copy = copy.substr(strlen("http@"));
     } else {
@@ -206,7 +206,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type,
   }
 
   EncryptionType encryption = ENCRYPTION_NONE;
-  string domainType = StringUtils::tolower(copy.substr(0, 7));
+  std::string domainType = StringUtils::tolower(copy.substr(0, 7));
 
   if (StringUtils::isPrefix(domainType, "ssl://")) {
     // ssl
@@ -285,7 +285,7 @@ bool Endpoint::operator==(Endpoint const& that) const {
 /// @brief return the default endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string Endpoint::getDefaultEndpoint() {
+std::string const Endpoint::getDefaultEndpoint() {
   return "tcp://" + EndpointIp::_defaultHost + ":" +
          StringUtils::itoa(EndpointIp::_defaultPort);
 }

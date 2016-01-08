@@ -48,7 +48,7 @@ class HttpsCommTask : public HttpCommTask {
   /// @brief read block size
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const size_t READ_BLOCK_SIZE = 10000;
+  static size_t const READ_BLOCK_SIZE = 10000;
 
   
  public:

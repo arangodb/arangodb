@@ -62,7 +62,7 @@ class Job : public RequestStatisticsAgent {
   /// Note: currently unused
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual const std::string& getName() const { return _name; }
+  virtual std::string const& getName() const { return _name; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the job id

@@ -182,7 +182,7 @@ bool VocbaseContext::useClusterAuthentication() const {
 /// @brief return authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-const char* VocbaseContext::getRealm() const {
+char const* VocbaseContext::getRealm() const {
   if (_vocbase == nullptr) {
     return nullptr;
   }
@@ -294,13 +294,13 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   }
 
   if (useClusterAuthentication()) {
-    string const expected = ServerState::instance()->getAuthentication();
+    std::string const expected = ServerState::instance()->getAuthentication();
 
-    if (expected.substr(6) != string(auth)) {
+    if (expected.substr(6) != std::string(auth)) {
       return HttpResponse::UNAUTHORIZED;
     }
 
-    string const up = StringUtils::decodeBase64(auth);
+    std::string const up = StringUtils::decodeBase64(auth);
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
@@ -311,7 +311,7 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
       return HttpResponse::BAD;
     }
 
-    string const username = up.substr(0, n);
+    std::string const username = up.substr(0, n);
     _request->setUser(username);
 
     return HttpResponse::OK;
@@ -320,17 +320,17 @@ HttpResponse::HttpResponseCode VocbaseContext::authenticate() {
   // look up the info in the cache first
   bool mustChange;
   char* cached = TRI_CheckCacheAuthInfo(_vocbase, auth, &mustChange);
-  string username;
+  std::string username;
 
   // found a cached entry, access must be granted
   if (cached != 0) {
-    username = string(cached);
+    username = std::string(cached);
     TRI_Free(TRI_CORE_MEM_ZONE, cached);
   }
 
   // no entry found in cache, decode the basic auth info and look it up
   else {
-    string const up = StringUtils::decodeBase64(auth);
+    std::string const up = StringUtils::decodeBase64(auth);
     std::string::size_type n = up.find(':', 0);
 
     if (n == std::string::npos || n == 0 || n + 1 > up.size()) {

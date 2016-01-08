@@ -620,7 +620,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 
 Variable* ExecutionNode::varFromJson(Ast* ast,
                                      triagens::basics::Json const& base,
-                                     const char* variableName, bool optional) {
+                                     char const* variableName, bool optional) {
   triagens::basics::Json variableJson = base.get(variableName);
 
   if (variableJson.isEmpty()) {

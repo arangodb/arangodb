@@ -54,7 +54,7 @@ static bool IsPhysicalDatafile(const TRI_datafile_t* const datafile) {
 /// @brief return the name of a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
-static const char* GetNameDatafile(const TRI_datafile_t* const datafile) {
+static char const* GetNameDatafile(const TRI_datafile_t* const datafile) {
   if (datafile->_filename == nullptr) {
     // anonymous regions do not have a filename
     return "anonymous region";
@@ -397,7 +397,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
 
   // open the file
   char* ptr = TRI_Concatenate2String(datafile->_filename, ".new");
-  string filename = ptr;
+  std::string filename = ptr;
   TRI_FreeString(TRI_CORE_MEM_ZONE, ptr);
 
   int fd =
@@ -500,7 +500,7 @@ static int TruncateAndSealDatafile(TRI_datafile_t* datafile,
 
   // rename files
   ptr = TRI_Concatenate2String(datafile->_filename, ".corrupted");
-  string oldname = ptr;
+  std::string oldname = ptr;
   TRI_FreeString(TRI_CORE_MEM_ZONE, ptr);
 
   res = TRI_RenameFile(datafile->_filename, oldname.c_str());
@@ -1072,7 +1072,7 @@ static bool CheckDatafile(TRI_datafile_t* datafile, bool ignoreFailures) {
 /// a number, and type and ending are arbitrary letters
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t GetNumericFilenamePart(const char* filename) {
+static uint64_t GetNumericFilenamePart(char const* filename) {
   char const* pos1 = strrchr(filename, '.');
 
   if (pos1 == nullptr) {

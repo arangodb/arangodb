@@ -69,7 +69,7 @@ static bool ExtractBoolFlag(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool IsIndexHandle(v8::Handle<v8::Value> const arg,
-                          string& collectionName, TRI_idx_iid_t& iid) {
+                          std::string& collectionName, TRI_idx_iid_t& iid) {
   TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(iid == 0);
 
@@ -91,7 +91,7 @@ static bool IsIndexHandle(v8::Handle<v8::Value> const arg,
 
   size_t split;
   if (triagens::arango::Index::validateHandle(*str, &split)) {
-    collectionName = string(*str, split);
+    collectionName = std::string(*str, split);
     iid = TRI_UInt64String2(*str + split + 1, str.length() - split - 1);
     return true;
   }
@@ -109,15 +109,15 @@ static bool IsIndexHandle(v8::Handle<v8::Value> const arg,
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> IndexRep(v8::Isolate* isolate,
-                                      string const& collectionName,
+                                      std::string const& collectionName,
                                       TRI_json_t const* idx) {
   v8::EscapableHandleScope scope(isolate);
   TRI_ASSERT(idx != nullptr);
 
   v8::Handle<v8::Object> rep = TRI_ObjectJson(isolate, idx)->ToObject();
 
-  string iid = TRI_ObjectToString(rep->Get(TRI_V8_ASCII_STRING("id")));
-  string const id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
+  std::string iid = TRI_ObjectToString(rep->Get(TRI_V8_ASCII_STRING("id")));
+  std::string const id = collectionName + TRI_INDEX_HANDLE_SEPARATOR_STR + iid;
   rep->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(id));
 
   return scope.Escape<v8::Value>(rep);
@@ -131,7 +131,7 @@ static int ProcessIndexFields(v8::Isolate* isolate,
                               v8::Handle<v8::Object> const obj,
                               TRI_json_t* json, int numFields, bool create) {
   v8::HandleScope scope(isolate);
-  std::set<string> fields;
+  std::set<std::string> fields;
 
   v8::Handle<v8::String> fieldsString = TRI_V8_ASCII_STRING("fields");
   if (obj->Has(fieldsString) && obj->Get(fieldsString)->IsArray()) {
@@ -146,7 +146,7 @@ static int ProcessIndexFields(v8::Isolate* isolate,
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      string const f = TRI_ObjectToString(fieldList->Get(i));
+      std::string const f = TRI_ObjectToString(fieldList->Get(i));
 
       if (f.empty() || (create && f[0] == '_')) {
         // accessing internal attributes is disallowed
@@ -399,7 +399,7 @@ static int EnhanceIndexJson(const v8::FunctionCallbackInfo<v8::Value>& args,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    string t(*typeString);
+    std::string t(*typeString);
     // rewrite type "geo" into either "geo1" or "geo2", depending on the number
     // of fields
     if (t == "geo") {
@@ -509,13 +509,13 @@ static void EnsureIndexCoordinator(
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(json != nullptr);
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
   // TODO: protect against races on _name
-  string const collectionName(collection->_name);
+  std::string const collectionName(collection->_name);
 
   TRI_json_t* resultJson = nullptr;
-  string errorMsg;
+  std::string errorMsg;
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
       databaseName, cid, json, create, &triagens::arango::Index::Compare,
       resultJson, errorMsg, 360.0);
@@ -841,7 +841,7 @@ static void EnsureIndex(const v8::FunctionCallbackInfo<v8::Value>& args,
   }
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
-    string name(functionName);
+    std::string name(functionName);
     name.append("(<description>)");
     TRI_V8_THROW_EXCEPTION_USAGE(name.c_str());
   }
@@ -856,7 +856,7 @@ static void EnsureIndex(const v8::FunctionCallbackInfo<v8::Value>& args,
     std::string const dbname(collection->_dbName);
     // TODO: someone might rename the collection while we're reading its name...
     std::string const collname(collection->_name);
-    shared_ptr<CollectionInfo> c =
+    std::shared_ptr<CollectionInfo> c =
         ClusterInfo::instance()->getCollection(dbname, collname);
 
     if (c->empty()) {
@@ -922,7 +922,7 @@ static void CreateCollectionCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   if (!TRI_IsAllowedNameCollection(parameters.isSystem(), name.c_str())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -935,7 +935,7 @@ static void CreateCollectionCoordinator(
   // default shard key
   shardKeys.push_back("_key");
 
-  string distributeShardsLike;
+  std::string distributeShardsLike;
 
   std::string cid = "";  // Could come from properties
   if (2 <= args.Length()) {
@@ -951,7 +951,7 @@ static void CreateCollectionCoordinator(
           p->Get(TRI_V8_ASCII_STRING("keyOptions")));
 
       if (o->Has(TRI_V8_ASCII_STRING("type"))) {
-        string const type =
+        std::string const type =
             TRI_ObjectToString(o->Get(TRI_V8_ASCII_STRING("type")));
 
         if (type != "" && type != "traditional") {
@@ -984,7 +984,7 @@ static void CreateCollectionCoordinator(
         for (uint32_t i = 0; i < k->Length(); ++i) {
           v8::Handle<v8::Value> v = k->Get(i);
           if (v->IsString()) {
-            string const key = TRI_ObjectToString(v);
+            std::string const key = TRI_ObjectToString(v);
 
             // system attributes are not allowed (except _key)
             if (!key.empty() && (key[0] != '_' || key == "_key")) {
@@ -1025,7 +1025,7 @@ static void CreateCollectionCoordinator(
     // if id was given, the first unique id is wasted, this does not matter
   }
 
-  vector<string> dbServers;
+  std::vector<std::string> dbServers;
 
   if (distributeShardsLike.empty()) {
     // fetch list of available servers in cluster, and shuffle them randomly
@@ -1058,10 +1058,10 @@ static void CreateCollectionCoordinator(
   std::map<std::string, std::string> shards;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server
-    string serverId = dbServers[i % dbServers.size()];
+    std::string serverId = dbServers[i % dbServers.size()];
 
     // determine shard id
-    string shardId = "s" + StringUtils::itoa(id + 1 + i);
+    std::string shardId = "s" + StringUtils::itoa(id + 1 + i);
 
     shards.insert(std::make_pair(shardId, serverId));
   }
@@ -1125,7 +1125,7 @@ static void CreateCollectionCoordinator(
     }
   }
 
-  string errorMsg;
+  std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       databaseName, cid, numberOfShards, velocy.slice(), errorMsg, 240.0);
 
@@ -1176,7 +1176,7 @@ static void DropIndexCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  string collectionName;
+  std::string collectionName;
   TRI_idx_iid_t iid = 0;
 
   // extract the index identifier from a string
@@ -1207,9 +1207,9 @@ static void DropIndexCoordinator(
     }
   }
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
-  string errorMsg;
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
+  std::string errorMsg;
 
   int res = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
                                                           iid, errorMsg, 0.0);
@@ -1302,9 +1302,9 @@ static void GetIndexesCoordinator(
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
-  string const collectionName(collection->_name);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
+  std::string const collectionName(collection->_name);
 
   std::shared_ptr<CollectionInfo> c =
       ClusterInfo::instance()->getCollection(databaseName, cid);

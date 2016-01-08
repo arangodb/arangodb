@@ -22,9 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EndpointList.h"
-
-#include "Basics/StringUtils.h"
 #include "Basics/logging.h"
+#include "Basics/StringUtils.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -85,7 +84,7 @@ bool EndpointList::add(std::string const& specification,
     return false;
   }
 
-  _endpoints[key] = pair<Endpoint*, vector<string>>(ep, dbNames);
+  _endpoints[key] = std::pair<Endpoint*, std::vector<std::string>>(ep, dbNames);
 
   if (dst != nullptr) {
     *dst = ep;
@@ -158,7 +157,7 @@ std::map<std::string, std::vector<std::string>> EndpointList::getAll() const {
 
 std::map<std::string, Endpoint*> EndpointList::getByPrefix(
     std::string const& prefix) const {
-  std::map<string, Endpoint*> result;
+  std::map<std::string, Endpoint*> result;
 
   for (auto& it : _endpoints) {
     std::string const& key = it.first;
@@ -177,7 +176,7 @@ std::map<std::string, Endpoint*> EndpointList::getByPrefix(
 
 std::map<std::string, Endpoint*> EndpointList::getByPrefix(
     Endpoint::EncryptionType encryption) const {
-  std::map<string, Endpoint*> result;
+  std::map<std::string, Endpoint*> result;
 
   for (auto& it : _endpoints) {
     std::string const& key = it.first;

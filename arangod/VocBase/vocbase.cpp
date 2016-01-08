@@ -813,7 +813,7 @@ static int ScanPath(TRI_vocbase_t* vocbase, char const* path, bool isUpgrade,
       LOG_FATAL_AND_EXIT("out of memory");
     }
 
-    string file = filePtr;
+    std::string file = filePtr;
     TRI_FreeString(TRI_CORE_MEM_ZONE, filePtr);
 
     if (TRI_IsDirectory(file.c_str())) {
@@ -1321,14 +1321,14 @@ void TRI_FreeCollectionVocBase(TRI_vocbase_col_t* collection) {
 /// a number, and type and ending are arbitrary letters
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t GetNumericFilenamePart(const char* filename) {
-  const char* pos1 = strrchr(filename, '.');
+static uint64_t GetNumericFilenamePart(char const* filename) {
+  char const* pos1 = strrchr(filename, '.');
 
   if (pos1 == nullptr) {
     return 0;
   }
 
-  const char* pos2 = strrchr(filename, '-');
+  char const* pos2 = strrchr(filename, '-');
 
   if (pos2 == nullptr || pos2 > pos1) {
     return 0;
@@ -1344,8 +1344,8 @@ static uint64_t GetNumericFilenamePart(const char* filename) {
 
 static bool FilenameStringComparator(std::string const& lhs,
                                      std::string const& rhs) {
-  const uint64_t numLeft = GetNumericFilenamePart(lhs.c_str());
-  const uint64_t numRight = GetNumericFilenamePart(rhs.c_str());
+  uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
+  uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
   return numLeft < numRight;
 }
 
@@ -1760,7 +1760,7 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
 /// @brief returns a translation of a collection status
 ////////////////////////////////////////////////////////////////////////////////
 
-const char* TRI_GetStatusStringCollectionVocBase(
+char const* TRI_GetStatusStringCollectionVocBase(
     TRI_vocbase_col_status_e status) {
   switch (status) {
     case TRI_VOC_COL_STATUS_UNLOADED:

@@ -96,14 +96,14 @@ static bool UpgradeShapeIterator(TRI_df_marker_t const* marker, void* data,
 /// a number, and type and ending are arbitrary letters
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t GetNumericFilenamePart(const char* filename) {
-  const char* pos1 = strrchr(filename, '.');
+static uint64_t GetNumericFilenamePart(char const* filename) {
+  char const* pos1 = strrchr(filename, '.');
 
   if (pos1 == nullptr) {
     return 0;
   }
 
-  const char* pos2 = strrchr(filename, '-');
+  char const* pos2 = strrchr(filename, '-');
 
   if (pos2 == nullptr || pos2 > pos1) {
     return 0;
@@ -118,11 +118,11 @@ static uint64_t GetNumericFilenamePart(const char* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FilenameComparator(const void* lhs, const void* rhs) {
-  const char* l = *((char**)lhs);
-  const char* r = *((char**)rhs);
+  char const* l = *((char**)lhs);
+  char const* r = *((char**)rhs);
 
-  const uint64_t numLeft = GetNumericFilenamePart(l);
-  const uint64_t numRight = GetNumericFilenamePart(r);
+  uint64_t const numLeft = GetNumericFilenamePart(l);
+  uint64_t const numRight = GetNumericFilenamePart(r);
 
   if (numLeft != numRight) {
     return numLeft < numRight ? -1 : 1;
@@ -137,8 +137,8 @@ static int FilenameComparator(const void* lhs, const void* rhs) {
 
 static bool FilenameStringComparator(std::string const& lhs,
                                      std::string const& rhs) {
-  const uint64_t numLeft = GetNumericFilenamePart(lhs.c_str());
-  const uint64_t numRight = GetNumericFilenamePart(rhs.c_str());
+  uint64_t const numLeft = GetNumericFilenamePart(lhs.c_str());
+  uint64_t const numRight = GetNumericFilenamePart(rhs.c_str());
   return numLeft < numRight;
 }
 
@@ -192,7 +192,7 @@ static void SortDatafiles(TRI_vector_pointer_t* files) {
 /// ids of existing datafiles/journals/compactors
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_voc_tick_t GetDatafileId(const char* path) {
+static TRI_voc_tick_t GetDatafileId(char const* path) {
   regex_t re;
   uint64_t lastId;
 
@@ -320,7 +320,7 @@ static TRI_col_file_structure_t ScanCollectionDirectory(char const* path) {
       // .............................................................................
 
       else if (TRI_EqualString2("db", third, thirdLen)) {
-        string filename = TRI_Concatenate2File(path, file.c_str());
+        std::string filename = TRI_Concatenate2File(path, file.c_str());
 
         // file is a journal
         if (TRI_EqualString2("journal", first, firstLen)) {
@@ -707,7 +707,7 @@ static bool CheckCollection(TRI_collection_t* collection, bool ignoreErrors) {
 /// @brief free all datafiles in a vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeDatafilesVector(TRI_vector_pointer_t* const vector) {
+static void FreeDatafilesVector(TRI_vector_pointer_t* vector) {
   TRI_ASSERT(vector != nullptr);
 
   size_t const n = vector->_length;
@@ -2061,7 +2061,7 @@ int TRI_UpgradeCollection20(TRI_vocbase_t* vocbase, char const* path,
 /// to get the last tick value used
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateTicksCollection(const char* const path,
+bool TRI_IterateTicksCollection(char const* const path,
                                 bool (*iterator)(TRI_df_marker_t const*, void*,
                                                  TRI_datafile_t*),
                                 void* data) {

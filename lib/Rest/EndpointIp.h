@@ -41,7 +41,7 @@ class EndpointIp : public Endpoint {
 
  protected:
   EndpointIp(const EndpointType, const DomainType, const EncryptionType,
-             const std::string&, int, bool, const std::string&, const uint16_t);
+             std::string const&, int, bool, std::string const&, uint16_t const);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an endpoint
@@ -56,13 +56,13 @@ class EndpointIp : public Endpoint {
   /// @brief default port number if none specified
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const uint16_t _defaultPort;
+  static uint16_t const _defaultPort;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief default host if none specified
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const std::string _defaultHost;
+  static std::string const _defaultHost;
 
   
  private:

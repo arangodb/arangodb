@@ -27,8 +27,8 @@
 #include <time.h>
 
 #include "Basics/logging.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
+#include "Basics/tri-strings.h"
 #include "Basics/StringBuffer.h"
 
 using namespace std;
@@ -142,7 +142,7 @@ bool parseHexanumber(char const* inputStr, size_t len, uint32_t* outputInt) {
     } else {
       // invalid sequence of characters received for now simply return whatever
       // we received
-      // *outputStr = string(inputStr,len);
+      // *outputStr = std::string(inputStr,len);
       ok = false;
       break;
     }
@@ -161,7 +161,7 @@ bool toUnicode(uint16_t w1, uint16_t w2, uint32_t* v) {
   return true;
 }
 
-bool toUtf8(uint32_t outputInt, string& outputStr) {
+bool toUtf8(uint32_t outputInt, std::string& outputStr) {
   if ((outputInt >> 7) == 0) {
     outputStr.append(1, (char)(outputInt));
   }
@@ -243,7 +243,7 @@ blob_t duplicateBlob(char const* source, size_t len) {
   return result;
 }
 
-blob_t duplicateBlob(const string& source) {
+blob_t duplicateBlob(std::string const& source) {
   blob_t result = {0, 0};
 
   if (source.size() == 0) {
@@ -258,7 +258,7 @@ blob_t duplicateBlob(const string& source) {
   return result;
 }
 
-char* duplicate(string const& source) {
+char* duplicate(std::string const& source) {
   size_t len = source.size();
   char* result = new char[len + 1];
 
@@ -338,7 +338,7 @@ void erase(blob_t& source) {
 // STRING CONVERSION
 // .............................................................................
 
-string capitalize(string const& name, bool first) {
+std::string capitalize(std::string const& name, bool first) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -375,14 +375,14 @@ string capitalize(string const& name, bool first) {
 
   *qtr = '\0';
 
-  string result(buffer);
+  std::string result(buffer);
 
   delete[] buffer;
 
   return result;
 }
 
-string separate(string const& name, char separator) {
+std::string separate(std::string const& name, char separator) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -423,14 +423,14 @@ string separate(string const& name, char separator) {
 
   *qtr = '\0';
 
-  string result(buffer);
+  std::string result(buffer);
 
   delete[] buffer;
 
   return result;
 }
 
-string escapeUnicode(string const& name, bool escapeSlash) {
+std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -610,7 +610,7 @@ string escapeUnicode(string const& name, bool escapeSlash) {
 
   *qtr = '\0';
 
-  string result(buffer, qtr - buffer);
+  std::string result(buffer, qtr - buffer);
 
   delete[] buffer;
 
@@ -621,7 +621,7 @@ string escapeUnicode(string const& name, bool escapeSlash) {
   return result;
 }
 
-string escapeHtml(string const& name) {
+std::string escapeHtml(std::string const& name) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -668,16 +668,16 @@ string escapeHtml(string const& name) {
 
   *qtr = '\0';
 
-  string result(buffer, qtr - buffer);
+  std::string result(buffer, qtr - buffer);
 
   delete[] buffer;
 
   return result;
 }
 
-string escapeXml(string const& name) { return escapeHtml(name); }
+std::string escapeXml(std::string const& name) { return escapeHtml(name); }
 
-string escapeHex(string const& name, char quote) {
+std::string escapeHex(std::string const& name, char quote) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -709,14 +709,14 @@ string escapeHex(string const& name, char quote) {
 
   *qtr = '\0';
 
-  string result(buffer, qtr - buffer);
+  std::string result(buffer, qtr - buffer);
 
   delete[] buffer;
 
   return result;
 }
 
-string escapeHex(string const& name, string const& special, char quote) {
+std::string escapeHex(std::string const& name, std::string const& special, char quote) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -764,7 +764,7 @@ string escapeHex(string const& name, string const& special, char quote) {
     }
   } else {
     for (; ptr < end; ptr++, qtr++) {
-      if (*ptr == quote || special.find(*ptr) != string::npos) {
+      if (*ptr == quote || special.find(*ptr) != std::string::npos) {
         uint8_t n = (uint8_t)(*ptr);
         uint8_t n1 = n >> 4;
         uint8_t n2 = n & 0x0F;
@@ -780,14 +780,14 @@ string escapeHex(string const& name, string const& special, char quote) {
 
   *qtr = '\0';
 
-  string result(buffer, qtr - buffer);
+  std::string result(buffer, qtr - buffer);
 
   delete[] buffer;
 
   return result;
 }
 
-string escapeC(string const& name) {
+std::string escapeC(std::string const& name) {
   size_t len = name.length();
 
   if (len == 0) {
@@ -842,15 +842,15 @@ string escapeC(string const& name) {
 
   *qtr = '\0';
 
-  string result(buffer, qtr - buffer);
+  std::string result(buffer, qtr - buffer);
 
   delete[] buffer;
 
   return result;
 }
 
-vector<string> split(string const& source, char delim, char quote) {
-  vector<string> result;
+std::vector<std::string> split(std::string const& source, char delim, char quote) {
+  std::vector<std::string> result;
 
   if (source.empty()) {
     return result;
@@ -866,7 +866,7 @@ vector<string> split(string const& source, char delim, char quote) {
     for (; q < e; ++q) {
       if (*q == delim) {
         *p = '\0';
-        result.push_back(string(buffer, p - buffer));
+        result.push_back(std::string(buffer, p - buffer));
         p = buffer;
       } else {
         *p++ = *q;
@@ -880,7 +880,7 @@ vector<string> split(string const& source, char delim, char quote) {
         }
       } else if (*q == delim) {
         *p = '\0';
-        result.push_back(string(buffer, p - buffer));
+        result.push_back(std::string(buffer, p - buffer));
         p = buffer;
       } else {
         *p++ = *q;
@@ -889,15 +889,15 @@ vector<string> split(string const& source, char delim, char quote) {
   }
 
   *p = '\0';
-  result.push_back(string(buffer, p - buffer));
+  result.push_back(std::string(buffer, p - buffer));
 
   delete[] buffer;
 
   return result;
 }
 
-vector<string> split(string const& source, string const& delim, char quote) {
-  vector<string> result;
+std::vector<std::string> split(std::string const& source, std::string const& delim, char quote) {
+  std::vector<std::string> result;
 
   if (source.empty()) {
     return result;
@@ -911,9 +911,9 @@ vector<string> split(string const& source, string const& delim, char quote) {
 
   if (quote == '\0') {
     for (; q < e; ++q) {
-      if (delim.find(*q) != string::npos) {
+      if (delim.find(*q) != std::string::npos) {
         *p = '\0';
-        result.push_back(string(buffer, p - buffer));
+        result.push_back(std::string(buffer, p - buffer));
         p = buffer;
       } else {
         *p++ = *q;
@@ -925,9 +925,9 @@ vector<string> split(string const& source, string const& delim, char quote) {
         if (q + 1 < e) {
           *p++ = *++q;
         }
-      } else if (delim.find(*q) != string::npos) {
+      } else if (delim.find(*q) != std::string::npos) {
         *p = '\0';
-        result.push_back(string(buffer, p - buffer));
+        result.push_back(std::string(buffer, p - buffer));
         p = buffer;
       } else {
         *p++ = *q;
@@ -936,18 +936,18 @@ vector<string> split(string const& source, string const& delim, char quote) {
   }
 
   *p = '\0';
-  result.push_back(string(buffer, p - buffer));
+  result.push_back(std::string(buffer, p - buffer));
 
   delete[] buffer;
 
   return result;
 }
 
-string join(vector<string> const& source, char delim) {
-  string result = "";
+std::string join(std::vector<std::string> const& source, char delim) {
+  std::string result = "";
   bool first = true;
 
-  for (vector<string>::const_iterator i = source.begin(); i != source.end();
+  for (std::vector<std::string>::const_iterator i = source.begin(); i != source.end();
        ++i) {
     if (first) {
       first = false;
@@ -961,11 +961,11 @@ string join(vector<string> const& source, char delim) {
   return result;
 }
 
-string join(vector<string> const& source, string const& delim) {
-  string result = "";
+std::string join(std::vector<std::string> const& source, std::string const& delim) {
+  std::string result = "";
   bool first = true;
 
-  for (vector<string>::const_iterator i = source.begin(); i != source.end();
+  for (std::vector<std::string>::const_iterator i = source.begin(); i != source.end();
        ++i) {
     if (first) {
       first = false;
@@ -979,11 +979,11 @@ string join(vector<string> const& source, string const& delim) {
   return result;
 }
 
-string join(set<string> const& source, char delim) {
-  string result = "";
+std::string join(std::set<std::string> const& source, char delim) {
+  std::string result = "";
   bool first = true;
 
-  for (set<string>::const_iterator i = source.begin(); i != source.end(); ++i) {
+  for (std::set<std::string>::const_iterator i = source.begin(); i != source.end(); ++i) {
     if (first) {
       first = false;
     } else {
@@ -996,11 +996,11 @@ string join(set<string> const& source, char delim) {
   return result;
 }
 
-string join(set<string> const& source, string const& delim) {
-  string result = "";
+std::string join(std::set<std::string> const& source, std::string const& delim) {
+  std::string result = "";
   bool first = true;
 
-  for (set<string>::const_iterator i = source.begin(); i != source.end(); ++i) {
+  for (std::set<std::string>::const_iterator i = source.begin(); i != source.end(); ++i) {
     if (first) {
       first = false;
     } else {
@@ -1013,18 +1013,18 @@ string join(set<string> const& source, string const& delim) {
   return result;
 }
 
-string trim(string const& sourceStr, string const& trimStr) {
+std::string trim(std::string const& sourceStr, std::string const& trimStr) {
   size_t s = sourceStr.find_first_not_of(trimStr);
   size_t e = sourceStr.find_last_not_of(trimStr);
 
   if (s == std::string::npos) {
-    return string();
+    return std::string();
   } else {
-    return string(sourceStr, s, e - s + 1);
+    return std::string(sourceStr, s, e - s + 1);
   }
 }
 
-void trimInPlace(string& str, string const& trimStr) {
+void trimInPlace(std::string& str, std::string const& trimStr) {
   size_t s = str.find_first_not_of(trimStr);
   size_t e = str.find_last_not_of(trimStr);
 
@@ -1039,51 +1039,51 @@ void trimInPlace(string& str, string const& trimStr) {
   }
 }
 
-string lTrim(string const& str, string const& trimStr) {
+std::string lTrim(std::string const& str, std::string const& trimStr) {
   size_t s = str.find_first_not_of(trimStr);
 
   if (s == std::string::npos) {
-    return string();
+    return std::string();
   } else {
-    return string(str, s);
+    return std::string(str, s);
   }
 }
 
-string rTrim(string const& sourceStr, string const& trimStr) {
+std::string rTrim(std::string const& sourceStr, std::string const& trimStr) {
   size_t e = sourceStr.find_last_not_of(trimStr);
 
-  return string(sourceStr, 0, e + 1);
+  return std::string(sourceStr, 0, e + 1);
 }
 
-string lFill(string const& sourceStr, size_t size, char fill) {
+std::string lFill(std::string const& sourceStr, size_t size, char fill) {
   size_t l = sourceStr.size();
 
   if (l >= size) {
     return sourceStr;
   }
 
-  return string(size - l, fill) + sourceStr;
+  return std::string(size - l, fill) + sourceStr;
 }
 
-string rFill(string const& sourceStr, size_t size, char fill) {
+std::string rFill(std::string const& sourceStr, size_t size, char fill) {
   size_t l = sourceStr.size();
 
   if (l >= size) {
     return sourceStr;
   }
 
-  return sourceStr + string(size - l, fill);
+  return sourceStr + std::string(size - l, fill);
 }
 
-vector<string> wrap(string const& sourceStr, size_t size, string breaks) {
-  vector<string> result;
-  string next = sourceStr;
+std::vector<std::string> wrap(std::string const& sourceStr, size_t size, std::string breaks) {
+  std::vector<std::string> result;
+  std::string next = sourceStr;
 
   if (size > 0) {
     while (next.size() > size) {
       size_t m = next.find_last_of(breaks, size - 1);
 
-      if (m == string::npos || m < size / 2) {
+      if (m == std::string::npos || m < size / 2) {
         m = size;
       } else {
         m += 1;
@@ -1107,8 +1107,8 @@ vector<string> wrap(string const& sourceStr, size_t size, string breaks) {
 /// e.g. replace("aaebbbbcce","bb","bbb") = "aaebbbbbbcce"
 /// e.g. replace("aaebbbbcce","bbb","bb") = "aaebbbcce"
 
-string replace(string const& sourceStr, string const& fromStr,
-               string const& toStr) {
+std::string replace(std::string const& sourceStr, std::string const& fromStr,
+               std::string const& toStr) {
   size_t fromLength = fromStr.length();
   size_t toLength = toStr.length();
   size_t sourceLength = sourceStr.length();
@@ -1160,26 +1160,26 @@ string replace(string const& sourceStr, string const& fromStr,
 
   result[k] = '\0';
 
-  string retStr(result);
+  std::string retStr(result);
 
   delete[] result;
 
   return retStr;
 }
 
-void tolowerInPlace(string* str) {
+void tolowerInPlace(std::string* str) {
   size_t len = str->length();
 
   if (len == 0) {
     return;
   }
 
-  for (string::iterator i = str->begin(); i != str->end(); ++i) {
+  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
     *i = ::tolower(*i);
   }
 }
 
-string tolower(string const& str) {
+std::string tolower(std::string const& str) {
   size_t len = str.length();
 
   if (len == 0) {
@@ -1194,26 +1194,26 @@ string tolower(string const& str) {
     *qtr = static_cast<char>(::tolower(*ptr));
   }
 
-  string result(buffer, str.size());
+  std::string result(buffer, str.size());
 
   delete[] buffer;
 
   return result;
 }
 
-void toupperInPlace(string* str) {
+void toupperInPlace(std::string* str) {
   size_t len = str->length();
 
   if (len == 0) {
     return;
   }
 
-  for (string::iterator i = str->begin(); i != str->end(); ++i) {
+  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
     *i = ::toupper(*i);
   }
 }
 
-string toupper(string const& str) {
+std::string toupper(std::string const& str) {
   size_t len = str.length();
 
   if (len == 0) {
@@ -1228,12 +1228,12 @@ string toupper(string const& str) {
     *qtr = static_cast<char>(::toupper(*ptr));
   }
 
-  string result(buffer, str.size());
+  std::string result(buffer, str.size());
   delete[] buffer;
   return result;
 }
 
-bool isPrefix(string const& str, string const& prefix) {
+bool isPrefix(std::string const& str, std::string const& prefix) {
   if (prefix.length() > str.length()) {
     return false;
   } else if (prefix.length() == str.length()) {
@@ -1243,7 +1243,7 @@ bool isPrefix(string const& str, string const& prefix) {
   }
 }
 
-bool isSuffix(string const& str, string const& postfix) {
+bool isSuffix(std::string const& str, std::string const& postfix) {
   if (postfix.length() > str.length()) {
     return false;
   } else if (postfix.length() == str.length()) {
@@ -1254,7 +1254,7 @@ bool isSuffix(string const& str, string const& postfix) {
   }
 }
 
-string urlDecode(string const& str) {
+std::string urlDecode(std::string const& str) {
   char const* src = str.c_str();
   char const* end = src + str.size();
 
@@ -1308,18 +1308,18 @@ string urlDecode(string const& str) {
   }
 
   *ptr = '\0';
-  string result(buffer, ptr - buffer);
+  std::string result(buffer, ptr - buffer);
 
   delete[] buffer;
 
   return result;
 }
 
-string urlEncode(string const& str) {
+std::string urlEncode(std::string const& str) {
   return urlEncode(str.c_str(), str.size());
 }
 
-string urlEncode(const char* src) {
+std::string urlEncode(char const* src) {
   if (src != 0) {
     size_t len = strlen(src);
     return urlEncode(src, len);
@@ -1327,7 +1327,7 @@ string urlEncode(const char* src) {
   return "";
 }
 
-string urlEncode(const char* src, const size_t len) {
+std::string urlEncode(char const* src, size_t const len) {
   static char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
@@ -1369,7 +1369,7 @@ string urlEncode(const char* src, const size_t len) {
   }
 
   *ptr = '\0';
-  string result(buffer, ptr - buffer);
+  std::string result(buffer, ptr - buffer);
 
   delete[] buffer;
 
@@ -1380,7 +1380,7 @@ string urlEncode(const char* src, const size_t len) {
 // CONVERT TO STRING
 // .............................................................................
 
-string itoa(int16_t attr) {
+std::string itoa(int16_t attr) {
   char buffer[7];
   char* p = buffer;
 
@@ -1412,7 +1412,7 @@ string itoa(int16_t attr) {
   return buffer;
 }
 
-string itoa(uint16_t attr) {
+std::string itoa(uint16_t attr) {
   char buffer[6];
   char* p = buffer;
 
@@ -1435,7 +1435,7 @@ string itoa(uint16_t attr) {
   return buffer;
 }
 
-string itoa(int32_t attr) {
+std::string itoa(int32_t attr) {
   char buffer[12];
   char* p = buffer;
 
@@ -1482,7 +1482,7 @@ string itoa(int32_t attr) {
   return buffer;
 }
 
-string itoa(uint32_t attr) {
+std::string itoa(uint32_t attr) {
   char buffer[11];
   char* p = buffer;
 
@@ -1520,7 +1520,7 @@ string itoa(uint32_t attr) {
   return buffer;
 }
 
-string itoa(int64_t attr) {
+std::string itoa(int64_t attr) {
   char buffer[21];
   char* p = buffer;
 
@@ -1594,7 +1594,7 @@ string itoa(int64_t attr) {
   return buffer;
 }
 
-string itoa(uint64_t attr) {
+std::string itoa(uint64_t attr) {
   char buffer[21];
   char* p = buffer;
 
@@ -1662,12 +1662,12 @@ string itoa(uint64_t attr) {
   return buffer;
 }
 
-string ftoa(double i) {
+std::string ftoa(double i) {
   StringBuffer buffer(TRI_CORE_MEM_ZONE);
 
   buffer.appendDecimal(i);
 
-  string result(buffer.c_str());
+  std::string result(buffer.c_str());
 
   return result;
 }
@@ -1676,8 +1676,8 @@ string ftoa(double i) {
 // CONVERT FROM STRING
 // .............................................................................
 
-bool boolean(string const& str) {
-  string lower = tolower(trim(str));
+bool boolean(std::string const& str) {
+  std::string lower = tolower(trim(str));
 
   if (lower == "true" || lower == "yes" || lower == "on" || lower == "y" ||
       lower == "1") {
@@ -1687,7 +1687,7 @@ bool boolean(string const& str) {
   }
 }
 
-int64_t int64(string const& str) {
+int64_t int64(std::string const& str) {
 #ifdef TRI_HAVE_STRTOLL_R
   struct reent buffer;
   return strtoll_r(&buffer, str.c_str(), 0, 10);
@@ -1729,13 +1729,13 @@ int64_t int64(char const* value, size_t size) {
 #ifdef TRI_HAVE_STRTOLL
   return strtoll(value, 0, 10);
 #else
-  return stoll(string(value, size), 0, 10);
+  return stoll(std::string(value, size), 0, 10);
 #endif
 #endif
 #endif
 }
 
-uint64_t uint64(string const& str) {
+uint64_t uint64(std::string const& str) {
 #ifdef TRI_HAVE_STRTOULL_R
   struct reent buffer;
   return strtoull_r(&buffer, str.c_str(), 0, 10);
@@ -1777,13 +1777,13 @@ uint64_t uint64(char const* value, size_t size) {
 #ifdef TRI_HAVE_STRTOULL
   return strtoull(value, 0, 10);
 #else
-  return stoull(string(value, size), 0, 10);
+  return stoull(std::string(value, size), 0, 10);
 #endif
 #endif
 #endif
 }
 
-int32_t int32(string const& str) {
+int32_t int32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOL_R
   struct reent buffer;
   return strtol_r(&buffer, str.c_str(), 0, 10);
@@ -1823,7 +1823,7 @@ int32_t int32(char const* value, size_t size) {
 #endif
 }
 
-uint32_t uint32(string const& str) {
+uint32_t uint32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOUL_R
   struct reent buffer;
   return strtoul_r(&buffer, str.c_str(), 0, 10);
@@ -1837,7 +1837,7 @@ uint32_t uint32(string const& str) {
 #endif
 }
 
-uint32_t unhexUint32(string const& str) {
+uint32_t unhexUint32(std::string const& str) {
 #ifdef TRI_HAVE_STRTOUL_R
   struct reent buffer;
   return strtoul_r(&buffer, str.c_str(), 0, 16);
@@ -1903,7 +1903,7 @@ uint32_t unhexUint32(char const* value, size_t size) {
 #endif
 }
 
-double doubleDecimal(string const& str) {
+double doubleDecimal(std::string const& str) {
   return doubleDecimal(str.c_str(), str.size());
 }
 
@@ -1981,7 +1981,7 @@ double doubleDecimal(char const* value, size_t size) {
   return (v / e) * pow(10.0, double(expValue));
 }
 
-float floatDecimal(string const& str) {
+float floatDecimal(std::string const& str) {
   return floatDecimal(str.c_str(), str.size());
 }
 
@@ -1999,13 +1999,13 @@ float floatDecimal(char const* value, size_t size) {
 // encoding
 // of the unicode representation of that character.
 
-bool unicodeToUTF8(const char* inputStr, const size_t& len, string& outputStr) {
+bool unicodeToUTF8(char const* inputStr, size_t const& len, std::string& outputStr) {
   uint32_t outputInt = 0;
   bool ok;
 
   ok = parseHexanumber(inputStr, len, &outputInt);
   if (ok == false) {
-    outputStr = string(inputStr, len);
+    outputStr = std::string(inputStr, len);
     return false;
   }
   ok = isHighSurrugate(outputInt) || isLowSurrugate(outputInt);
@@ -2015,7 +2015,7 @@ bool unicodeToUTF8(const char* inputStr, const size_t& len, string& outputStr) {
   }
   ok = toUtf8(outputInt, outputStr);
   if (ok == false) {
-    outputStr = string(inputStr, len);
+    outputStr = std::string(inputStr, len);
   }
   return ok;
 }
@@ -2038,8 +2038,8 @@ bool unicodeToUTF8(const char* inputStr, const size_t& len, string& outputStr) {
 // http://en.wikipedia.org/wiki/UTF-16#Code_points_U.2B10000_to_U.2B10FFFF
 //
 
-bool convertUTF16ToUTF8(const char* high_surrogate, const char* low_surrogate,
-                        string& outputStr) {
+bool convertUTF16ToUTF8(char const* high_surrogate, char const* low_surrogate,
+                        std::string& outputStr) {
   uint32_t w1 = 0;
   uint32_t w2 = 0;
   uint32_t v;
@@ -2062,11 +2062,11 @@ bool convertUTF16ToUTF8(const char* high_surrogate, const char* low_surrogate,
 // BASE64
 // .............................................................................
 
-string encodeBase64(string const& in) {
+std::string encodeBase64(std::string const& in) {
   unsigned char charArray3[3];
   unsigned char charArray4[4];
 
-  string ret;
+  std::string ret;
 
   int i = 0;
 
@@ -2117,11 +2117,11 @@ string encodeBase64(string const& in) {
   return ret;
 }
 
-string decodeBase64(string const& source) {
+std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
 
-  string ret;
+  std::string ret;
 
   int i = 0;
   int inp = 0;
@@ -2173,11 +2173,11 @@ string decodeBase64(string const& source) {
   return ret;
 }
 
-string encodeBase64U(string const& in) {
+std::string encodeBase64U(std::string const& in) {
   unsigned char charArray3[3];
   unsigned char charArray4[4];
 
-  string ret;
+  std::string ret;
 
   int i = 0;
 
@@ -2228,11 +2228,11 @@ string encodeBase64U(string const& in) {
   return ret;
 }
 
-string decodeBase64U(string const& source) {
+std::string decodeBase64U(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
 
-  string ret;
+  std::string ret;
 
   int i = 0;
   int inp = 0;
@@ -2288,7 +2288,7 @@ string decodeBase64U(string const& source) {
 // ADDITIONAL STRING UTILITIES
 // .............................................................................
 
-string correctPath(const string& incorrectPath) {
+std::string correctPath(std::string const& incorrectPath) {
 #ifdef _WIN32
   return replace(incorrectPath, "/", "\\");
 #else
@@ -2300,8 +2300,8 @@ string correctPath(const string& incorrectPath) {
 // list delimited
 // by ','. E.g entry(2,str,',') = 'yy'
 
-string entry(const size_t pos, string const& sourceStr,
-             string const& delimiter) {
+std::string entry(size_t const pos, std::string const& sourceStr,
+             std::string const& delimiter) {
   size_t delLength = delimiter.length();
   size_t sourceLength = sourceStr.length();
 
@@ -2339,7 +2339,7 @@ string entry(const size_t pos, string const& sourceStr,
 /// Determines the number of entries in a list str = "xx,yyy,zz,www".
 /// numEntries(str,',') = 4.
 
-size_t numEntries(string const& sourceStr, string const& delimiter) {
+size_t numEntries(std::string const& sourceStr, std::string const& delimiter) {
   size_t delLength = delimiter.length();
   size_t sourceLength = sourceStr.length();
 
@@ -2370,23 +2370,23 @@ size_t numEntries(string const& sourceStr, string const& delimiter) {
   return k;
 }
 
-string encodeHex(string const& str) {
+std::string encodeHex(std::string const& str) {
   char* tmp;
   size_t len;
 
   tmp = TRI_EncodeHexString(str.c_str(), str.length(), &len);
-  string result = string(tmp, len);
+  auto result = std::string(tmp, len);
   TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 
   return result;
 }
 
-string decodeHex(string const& str) {
+std::string decodeHex(std::string const& str) {
   char* tmp;
   size_t len;
 
   tmp = TRI_DecodeHexString(str.c_str(), str.length(), &len);
-  string result = string(tmp, len);
+  auto result = std::string(tmp, len);
   TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
 
   return result;

@@ -277,7 +277,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   /// @brief return the app-path
   ////////////////////////////////////////////////////////////////////////////////
 
-  const std::string& appPath() const { return _appPath; }
+  std::string const& appPath() const { return _appPath; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets the concurrency
@@ -326,7 +326,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   /// @brief defines a boolean variable
   ////////////////////////////////////////////////////////////////////////////////
 
-  void defineBoolean(const std::string& name, bool value) {
+  void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
   }
 
@@ -334,7 +334,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   /// @brief defines a double constant
   ////////////////////////////////////////////////////////////////////////////////
 
-  void defineDouble(const std::string& name, double value) {
+  void defineDouble(std::string const& name, double value) {
     _definedDoubles[name] = value;
   }
 
@@ -418,7 +418,7 @@ class ApplicationV8 : public rest::ApplicationFeature {
   /// @brief prepares the V8 server
   ////////////////////////////////////////////////////////////////////////////////
 
-  void prepareV8Server(size_t i, const std::string& startupFile);
+  void prepareV8Server(size_t i, std::string const& startupFile);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down a V8 instance

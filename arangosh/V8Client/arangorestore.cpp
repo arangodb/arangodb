@@ -81,7 +81,7 @@ static uint64_t ChunkSize = 1024 * 1024 * 8;
 /// @brief collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static vector<string> Collections;
+static std::vector<std::string> Collections;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief include system collections
@@ -99,7 +99,7 @@ static bool CreateDatabase = false;
 /// @brief input directory
 ////////////////////////////////////////////////////////////////////////////////
 
-static string InputDirectory;
+static std::string InputDirectory;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief import data
@@ -194,7 +194,7 @@ static void ParseProgramOptions(int argc, char* argv[]) {
   BaseClient.setupGeneral(description);
   BaseClient.setupServer(description);
 
-  vector<string> arguments;
+  std::vector<std::string> arguments;
   description.arguments(&arguments);
 
   ProgramOptions options;
@@ -236,7 +236,7 @@ static void LocalEntryFunction() {
   }
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (const char*)(&maxOpenFiles));
+                          (char const*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
@@ -343,7 +343,7 @@ static int TryCreateDatabase(std::string const& name) {
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetArangoVersion() {
+static std::string GetArangoVersion() {
   std::unique_ptr<SimpleHttpResult> response(Client->request(
       HttpRequest::HTTP_REQUEST_GET, "/_api/version", nullptr, 0));
 
@@ -351,7 +351,7 @@ static string GetArangoVersion() {
     return "";
   }
 
-  string version;
+  std::string version;
 
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // default value
@@ -399,7 +399,7 @@ static bool GetArangoIsCluster() {
     return false;
   }
 
-  string role = "UNDEFINED";
+  std::string role = "UNDEFINED";
 
   if (response->getHttpReturnCode() == HttpResponse::OK) {
     // convert response body to json
@@ -430,9 +430,9 @@ static int SendRestoreCollection(VPackSlice const& slice, std::string const& nam
   std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
-      string(Overwrite ? "true" : "false") + "&recycleIds=" +
-      string(RecycleIds ? "true" : "false") + "&force=" +
-      string(Force ? "true" : "false");
+      std::string(Overwrite ? "true" : "false") + "&recycleIds=" +
+      std::string(RecycleIds ? "true" : "false") + "&force=" +
+      std::string(Force ? "true" : "false");
         
   if (ClusterMode && 
       ! slice.hasKey(std::vector<std::string>({ "parameters", "shards" })) && 
@@ -470,9 +470,9 @@ static int SendRestoreCollection(VPackSlice const& slice, std::string const& nam
 /// @brief send the request to re-create indexes for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreIndexes(VPackSlice const& slice, string& errorMsg) {
+static int SendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-indexes?force=" +
-                          string(Force ? "true" : "false");
+                          std::string(Force ? "true" : "false");
   std::string const body = slice.toJson();
 
   std::unique_ptr<SimpleHttpResult> response(Client->request(
@@ -500,8 +500,8 @@ static int SendRestoreIndexes(VPackSlice const& slice, string& errorMsg) {
 /// @brief send the request to load data into a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SendRestoreData(string const& cname, char const* buffer,
-                           size_t bufferSize, string& errorMsg) {
+static int SendRestoreData(std::string const& cname, char const* buffer,
+                           size_t bufferSize, std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
                           StringUtils::urlEncode(cname) + "&recycleIds=" +
                           (RecycleIds ? "true" : "false") + "&force=" +
@@ -547,9 +547,9 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
     return leftType < rightType;
   }
 
-  string leftName =
+  std::string leftName =
       triagens::basics::VelocyPackHelper::getStringValue(left, "name", "");
-  string rightName =
+  std::string rightName =
       triagens::basics::VelocyPackHelper::getStringValue(right, "name", "");
 
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
@@ -561,9 +561,9 @@ static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
 
 static int ProcessInputDirectory(std::string& errorMsg) {
   // create a lookup table for collections
-  map<string, bool> restrictList;
+  std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < Collections.size(); ++i) {
-    restrictList.insert(pair<string, bool>(Collections[i], true));
+    restrictList.insert(std::pair<std::string, bool>(Collections[i], true));
   }
   try {
     std::vector<std::string> const files = FileUtils::listFiles(InputDirectory);
@@ -591,7 +591,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
           continue;
         }
 
-        const string fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + file;
+        std::string const fqn = InputDirectory + TRI_DIR_SEPARATOR_STR + file;
         std::shared_ptr<VPackBuilder> fileContentBuilder =
             triagens::basics::VelocyPackHelper::velocyPackFromFile(fqn);
         VPackSlice const fileContent = fileContentBuilder->slice();
@@ -743,7 +743,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
               // error while reading
               int res = TRI_errno();
               TRI_CLOSE(fd);
-              errorMsg = string(TRI_errno_string(res));
+              errorMsg = std::string(TRI_errno_string(res));
 
               return res;
             }
@@ -789,9 +789,9 @@ static int ProcessInputDirectory(std::string& errorMsg) {
               if (res != TRI_ERROR_NO_ERROR) {
                 TRI_CLOSE(fd);
                 if (errorMsg.empty()) {
-                  errorMsg = string(TRI_errno_string(res));
+                  errorMsg = std::string(TRI_errno_string(res));
                 } else {
-                  errorMsg = string(TRI_errno_string(res)) + ": " + errorMsg;
+                  errorMsg = std::string(TRI_errno_string(res)) + ": " + errorMsg;
                 }
 
                 if (Force) {
@@ -847,7 +847,7 @@ static int ProcessInputDirectory(std::string& errorMsg) {
 /// @brief request location rewriter (injects database name)
 ////////////////////////////////////////////////////////////////////////////////
 
-static string rewriteLocation(void* data, const string& location) {
+static std::string rewriteLocation(void* data, std::string const& location) {
   if (location.substr(0, 5) == "/_db/") {
     // location already contains /_db/
     return location;
@@ -938,7 +938,7 @@ int main(int argc, char* argv[]) {
   Client->setUserNamePassword("/", BaseClient.username(),
                               BaseClient.password());
 
-  string versionString = GetArangoVersion();
+  std::string versionString = GetArangoVersion();
 
   if (CreateDatabase && LastErrorCode == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
     // database not found, but database creation requested
@@ -1003,7 +1003,7 @@ int main(int argc, char* argv[]) {
 
   memset(&Stats, 0, sizeof(Stats));
 
-  string errorMsg = "";
+  std::string errorMsg = "";
 
   int res;
   try {

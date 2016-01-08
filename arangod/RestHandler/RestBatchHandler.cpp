@@ -59,7 +59,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     return status_t(HttpHandler::HANDLER_DONE);
   }
 
-  string boundary;
+  std::string boundary;
 
   // invalid content-type or boundary sent
   if (!getBoundary(&boundary)) {
@@ -73,7 +73,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
   size_t errors = 0;
 
   // get authorization header. we will inject this into the subparts
-  string authorization = _request->header("authorization");
+  std::string authorization = _request->header("authorization");
 
   // create the response
   createResponse(HttpResponse::OK);
@@ -100,11 +100,11 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // split part into header & body
-    const char* partStart = helper.foundStart;
-    const char* partEnd = partStart + helper.foundLength;
-    const size_t partLength = helper.foundLength;
+    char const* partStart = helper.foundStart;
+    char const* partEnd = partStart + helper.foundLength;
+    size_t const partLength = helper.foundLength;
 
-    const char* headerStart = partStart;
+    char const* headerStart = partStart;
     char* bodyStart = nullptr;
     size_t headerLength = 0;
     size_t bodyLength = 0;
@@ -131,7 +131,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOG_TRACE("part header is: %s", string(headerStart, headerLength).c_str());
+    LOG_TRACE("part header is: %s", std::string(headerStart, headerLength).c_str());
     HttpRequest* request =
         new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
                         _request->compatibility(), false);
@@ -151,7 +151,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG_TRACE("part body is '%s'", string(bodyStart, bodyLength).c_str());
+      LOG_TRACE("part body is '%s'", std::string(bodyStart, bodyLength).c_str());
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -208,7 +208,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       if (helper.contentId != 0) {
         _response->body().appendText(
             "\r\nContent-Id: " +
-            string(helper.contentId, helper.contentIdLength));
+            std::string(helper.contentId, helper.contentIdLength));
       }
 
       _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
@@ -247,7 +247,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 /// @brief extract the boundary from the body of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryBody(string* result) {
+bool RestBatchHandler::getBoundaryBody(std::string* result) {
   char const* p = _request->body();
   char const* e = p + _request->bodySize();
 
@@ -265,7 +265,7 @@ bool RestBatchHandler::getBoundaryBody(string* result) {
     return false;
   }
 
-  const char* q = p;
+  char const* q = p;
 
   while (q < e && *q && *q != ' ' && *q != '\t' && *q != '\r' && *q != '\n') {
     ++q;
@@ -276,7 +276,7 @@ bool RestBatchHandler::getBoundaryBody(string* result) {
     return false;
   }
 
-  string boundary(p, (q - p));
+  std::string boundary(p, (q - p));
 
   *result = boundary;
   return true;
@@ -286,31 +286,31 @@ bool RestBatchHandler::getBoundaryBody(string* result) {
 /// @brief extract the boundary from the HTTP header of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryHeader(string* result) {
+bool RestBatchHandler::getBoundaryHeader(std::string* result) {
   // extract content type
-  string contentType = StringUtils::trim(_request->header("content-type"));
+  std::string contentType = StringUtils::trim(_request->header("content-type"));
 
   // content type is expect to contain a boundary like this:
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
-  vector<string> parts = StringUtils::split(contentType, ';');
+  std::vector<std::string> parts = StringUtils::split(contentType, ';');
 
   if (parts.size() != 2 || parts[0] != HttpRequest::MultiPartContentType) {
     // content-type is not formatted as expected
     return false;
   }
 
-  static const size_t boundaryLength = 9;  // strlen("boundary=");
+  static size_t const boundaryLength = 9;  // strlen("boundary=");
 
   // trim 2nd part and lowercase it
   StringUtils::trimInPlace(parts[1]);
-  string p = parts[1].substr(0, boundaryLength);
+  std::string p = parts[1].substr(0, boundaryLength);
   StringUtils::tolowerInPlace(&p);
 
   if (p != "boundary=") {
     return false;
   }
 
-  string boundary = "--" + parts[1].substr(boundaryLength);
+  std::string boundary = "--" + parts[1].substr(boundaryLength);
 
   if (boundary.size() < 5) {
     // 3 bytes is min length for boundary (without "--")
@@ -325,7 +325,7 @@ bool RestBatchHandler::getBoundaryHeader(string* result) {
 /// @brief extract the boundary of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundary(string* result) {
+bool RestBatchHandler::getBoundary(std::string* result) {
   TRI_ASSERT(_request);
 
   // try peeking at header first
@@ -351,7 +351,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
   helper->contentId = 0;
   helper->contentIdLength = 0;
 
-  const char* searchEnd = helper->message->messageEnd;
+  char const* searchEnd = helper->message->messageEnd;
 
   if (helper->searchStart >= searchEnd) {
     // we're at the end already
@@ -439,7 +439,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
     }
 
     // set up the key
-    string key(found, colon - found);
+    std::string key(found, colon - found);
     StringUtils::trimInPlace(key);
 
     if (key[0] == 'c' || key[0] == 'C') {
@@ -455,7 +455,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
 
       if ("content-type" == key) {
         // extract the value, too
-        string value(colon, eol - colon);
+        std::string value(colon, eol - colon);
         StringUtils::trimInPlace(value);
 
         if (triagens::rest::HttpRequest::BatchContentType == value) {

@@ -243,7 +243,7 @@ char* TRI_UnescapeUtf8String(TRI_memory_zone_t*, char const* in,
 /// the UTF-8 string must be well-formed and end with a NUL terminator
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_CharLengthUtf8String(const char*);
+size_t TRI_CharLengthUtf8String(char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string end position for a leftmost prefix of a UTF-8 string
@@ -252,7 +252,7 @@ size_t TRI_CharLengthUtf8String(const char*);
 /// the UTF-8 string must be well-formed and end with a NUL terminator
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_PrefixUtf8String(const char*, const uint32_t);
+char* TRI_PrefixUtf8String(char const*, const uint32_t);
 
 #endif
 

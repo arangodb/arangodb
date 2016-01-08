@@ -180,7 +180,7 @@ HttpHandler::status_t PathHandler::execute() {
 
     if (suffix.size() > 0) {
       // look up the mimetype
-      const char* mimetype = TRI_GetMimetype(suffix.c_str());
+      char const* mimetype = TRI_GetMimetype(suffix.c_str());
 
       if (mimetype != 0) {
         _response->setContentType(mimetype);

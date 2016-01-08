@@ -69,7 +69,7 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
       v8::Array::New(isolate, (int)dist._counts.size());
   uint32_t pos = 0;
 
-  for (vector<uint64_t>::const_iterator i = dist._counts.begin();
+  for (std::vector<uint64_t>::const_iterator i = dist._counts.begin();
        i != dist._counts.end(); ++i, ++pos) {
     counts->Set(pos, v8::Number::New(isolate, (double)*i));
   }
@@ -121,7 +121,7 @@ static void JS_ClientStatistics(
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
-  vector<StatisticsCounter> methodRequests;
+  std::vector<StatisticsCounter> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 
@@ -171,7 +171,7 @@ static void JS_HttpStatistics(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   StatisticsCounter httpConnections;
   StatisticsCounter totalRequests;
-  vector<StatisticsCounter> methodRequests;
+  std::vector<StatisticsCounter> methodRequests;
   StatisticsCounter asyncRequests;
   StatisticsDistribution connectionTime;
 

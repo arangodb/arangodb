@@ -45,10 +45,10 @@ static std::unique_ptr<TRI_json_t> ProgramOptionsJson;
 /// @brief looks up a key in a map, returns empty if not found
 ////////////////////////////////////////////////////////////////////////////////
 
-static string const& lookup(map<string, string> const& m, string const& key) {
-  static string empty = "";
+static std::string const& lookup(std::map<std::string, std::string> const& m, std::string const& key) {
+  static std::string empty = "";
 
-  map<string, string>::const_iterator i = m.find(key);
+  std::map<std::string, std::string>::const_iterator i = m.find(key);
 
   if (i == m.end()) {
     return empty;
@@ -62,11 +62,11 @@ static string const& lookup(map<string, string> const& m, string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-static T lookup(map<string, T> const& m, string const& key) {
-  typename map<string, T>::const_iterator i = m.find(key);
+static T lookup(std::map<std::string, T> const& m, std::string const& key) {
+  typename std::map<std::string, T>::const_iterator i = m.find(key);
 
   if (i == m.end()) {
-    return (T)0;
+    return (T) 0;
   } else {
     return i->second;
   }
@@ -77,8 +77,8 @@ static T lookup(map<string, T> const& m, string const& key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
-static T find(map<string, T> const& m, string const& key) {
-  typename map<string, T>::const_iterator i = m.find(key);
+static T find(std::map<std::string, T> const& m, std::string const& key) {
+  typename std::map<std::string, T>::const_iterator i = m.find(key);
 
   if (i == m.end()) {
     std::string message("cannot find option '" + key + "'");
@@ -109,7 +109,7 @@ static void ExtractDouble(char const* name, char const* ptr, double* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractVectorDouble(char const* name, TRI_vector_string_t* ptr,
-                                vector<double>* value) {
+                                std::vector<double>* value) {
   auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
   for (size_t i = 0; i < ptr->_length; ++i) {
@@ -151,7 +151,7 @@ static void ExtractInt32(char const* name, char const* ptr, int32_t* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractVectorInt32(char const* name, TRI_vector_string_t* ptr,
-                               vector<int32_t>* value) {
+                               std::vector<int32_t>* value) {
   auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
   for (size_t i = 0; i < ptr->_length; ++i) {
@@ -194,7 +194,7 @@ static void ExtractInt64(char const* name, char const* ptr, int64_t* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractVectorInt64(char const* name, TRI_vector_string_t* ptr,
-                               vector<int64_t>* value) {
+                               std::vector<int64_t>* value) {
   auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
   for (size_t i = 0; i < ptr->_length; ++i) {
@@ -219,7 +219,7 @@ static void ExtractVectorInt64(char const* name, TRI_vector_string_t* ptr,
 /// @brief extracts a string
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractString(char const* name, char const* ptr, string* value) {
+static void ExtractString(char const* name, char const* ptr, std::string* value) {
   *value = ptr;
 
   // add to global JSON object
@@ -237,7 +237,7 @@ static void ExtractString(char const* name, char const* ptr, string* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractVectorString(char const* name, TRI_vector_string_t* ptr,
-                                vector<string>* value) {
+                                std::vector<std::string>* value) {
   auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
   for (size_t i = 0; i < ptr->_length; ++i) {
@@ -278,7 +278,7 @@ static void ExtractUInt32(char const* name, char const* ptr, uint32_t* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractVectorUInt32(char const* name, TRI_vector_string_t* ptr,
-                                vector<uint32_t>* value) {
+                                std::vector<uint32_t>* value) {
   auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
   for (size_t i = 0; i < ptr->_length; ++i) {
@@ -321,7 +321,7 @@ static void ExtractUInt64(char const* name, char const* ptr, uint64_t* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtractVectorUInt64(char const* name, TRI_vector_string_t* ptr,
-                                vector<uint64_t>* value) {
+                                std::vector<uint64_t>* value) {
   auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
   for (size_t i = 0; i < ptr->_length; ++i) {
@@ -358,7 +358,7 @@ ProgramOptions::ProgramOptions()
 
 
 ProgramOptions::~ProgramOptions() {
-  for (map<string, char**>::iterator i = _valuesString.begin();
+  for (std::map<std::string, char**>::iterator i = _valuesString.begin();
        i != _valuesString.end(); ++i) {
     char** ptr = i->second;
 
@@ -369,14 +369,14 @@ ProgramOptions::~ProgramOptions() {
     TRI_Free(TRI_CORE_MEM_ZONE, ptr);
   }
 
-  for (map<string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();
+  for (std::map<std::string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();
        i != _valuesVector.end(); ++i) {
     if ((*i).second != nullptr) {
       TRI_FreeVectorString(TRI_CORE_MEM_ZONE, (*i).second);
     }
   }
 
-  for (map<string, bool*>::iterator i = _valuesBool.begin();
+  for (std::map<std::string, bool*>::iterator i = _valuesBool.begin();
        i != _valuesBool.end(); ++i) {
     if ((*i).second != nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (*i).second);
@@ -392,7 +392,7 @@ ProgramOptions::~ProgramOptions() {
 bool ProgramOptions::parse(ProgramOptionsDescription const& description,
                            int argc, char** argv) {
   TRI_PO_section_t* desc = setupDescription(description);
-  set<string> const& ho = description.helpOptions();
+  std::set<std::string> const& ho = description.helpOptions();
   _helpOptions.insert(ho.begin(), ho.end());
 
   // set the program name from the argument vector
@@ -434,9 +434,9 @@ bool ProgramOptions::parse(ProgramOptionsDescription const& description,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ProgramOptions::parse(ProgramOptionsDescription const& description,
-                           string const& filename) {
+                           std::string const& filename) {
   TRI_PO_section_t* desc = setupDescription(description);
-  set<string> const& ho = description.helpOptions();
+  std::set<std::string> const& ho = description.helpOptions();
   _helpOptions.insert(ho.begin(), ho.end());
 
   if (ProgramOptionsJson == nullptr) {
@@ -465,7 +465,7 @@ bool ProgramOptions::parse(ProgramOptionsDescription const& description,
 /// @brief checks if option was given
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ProgramOptions::has(string const& key) const {
+bool ProgramOptions::has(std::string const& key) const {
   return _flags.find(key) != _flags.end();
 }
 
@@ -473,8 +473,8 @@ bool ProgramOptions::has(string const& key) const {
 /// @brief checks if help option was given
 ////////////////////////////////////////////////////////////////////////////////
 
-set<string> ProgramOptions::needHelp(string const& key) const {
-  set<string> result;
+std::set<std::string> ProgramOptions::needHelp(std::string const& key) const {
+  std::set<std::string> result;
 
   if (_flags.find(key) != _flags.end()) {
     result.insert("--HELP--");
@@ -484,9 +484,9 @@ set<string> ProgramOptions::needHelp(string const& key) const {
     result.insert("--HELP-ALL--");
   }
 
-  for (set<string>::const_iterator i = _helpOptions.begin();
+  for (std::set<std::string>::const_iterator i = _helpOptions.begin();
        i != _helpOptions.end(); ++i) {
-    string const& hkey = *i;
+    std::string const& hkey = *i;
 
     if (_flags.find(hkey) != _flags.end()) {
       result.insert(hkey);
@@ -500,7 +500,7 @@ set<string> ProgramOptions::needHelp(string const& key) const {
 /// @brief returns the last error
 ////////////////////////////////////////////////////////////////////////////////
 
-string ProgramOptions::lastError() { return _errorMessage; }
+std::string ProgramOptions::lastError() { return _errorMessage; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get global program options as JSON
@@ -524,10 +524,10 @@ TRI_PO_section_t* ProgramOptions::setupDescription(
   setupSubDescription(description, desc);
 
   // generate help options
-  set<string> ho = description.helpOptions();
+  std::set<std::string> ho = description.helpOptions();
 
-  for (set<string>::const_iterator i = ho.begin(); i != ho.end(); ++i) {
-    string const& option = *i;
+  for (std::set<std::string>::const_iterator i = ho.begin(); i != ho.end(); ++i) {
+    std::string const& option = *i;
 
     TRI_AddFlagPODescription(desc, option.c_str(), 0, "more help", 0);
   }
@@ -546,14 +546,14 @@ TRI_PO_section_t* ProgramOptions::setupDescription(
 
 void ProgramOptions::setupSubDescription(
     ProgramOptionsDescription const& description, TRI_PO_section_t* desc) {
-  for (vector<string>::const_iterator i = description._optionNames.begin();
+  for (std::vector<std::string>::const_iterator i = description._optionNames.begin();
        i != description._optionNames.end(); ++i) {
-    string const& name = *i;
-    string const& help = lookup(description._helpTexts, name);
-    string option = name;
+    std::string const& name = *i;
+    std::string const& help = lookup(description._helpTexts, name);
+    std::string option = name;
 
     // check the short option
-    map<string, string>::const_iterator k =
+    std::map<std::string, std::string>::const_iterator k =
         description._long2short.find(option);
     char shortOption = '\0';
 
@@ -565,7 +565,7 @@ void ProgramOptions::setupSubDescription(
     _options.push_back(option);
 
     // either a string or an vector
-    map<string, ProgramOptionsDescription::option_type_e>::const_iterator j =
+    std::map<std::string, ProgramOptionsDescription::option_type_e>::const_iterator j =
         description._optionTypes.find(name);
 
     if (j != description._optionTypes.end()) {
@@ -651,14 +651,14 @@ void ProgramOptions::setupSubDescription(
   }
 
   // add the visible children
-  for (vector<ProgramOptionsDescription>::const_iterator i =
+  for (std::vector<ProgramOptionsDescription>::const_iterator i =
            description._subDescriptions.begin();
        i != description._subDescriptions.end(); ++i) {
     setupSubDescription(*i, desc);
   }
 
   // add the invisible children
-  for (vector<ProgramOptionsDescription>::const_iterator i =
+  for (std::vector<ProgramOptionsDescription>::const_iterator i =
            description._hiddenSubDescriptions.begin();
        i != description._hiddenSubDescriptions.end(); ++i) {
     setupSubDescription(*i, desc);
@@ -671,7 +671,7 @@ void ProgramOptions::setupSubDescription(
 
 bool ProgramOptions::extractValues(ProgramOptionsDescription const& description,
                                    TRI_program_options_t* options,
-                                   set<string> seen) {
+                                   std::set<std::string> seen) {
   TRI_ASSERT(ProgramOptionsJson != nullptr);
 
   for (size_t i = 0; i < TRI_LengthVector(&options->_items); ++i) {
@@ -679,7 +679,7 @@ bool ProgramOptions::extractValues(ProgramOptionsDescription const& description,
         static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_used) {
-      string name = item->_desc->_name;
+      std::string name = item->_desc->_name;
 
       if (seen.find(name) != seen.end()) {
         continue;
@@ -828,7 +828,7 @@ bool ProgramOptions::extractValues(ProgramOptionsDescription const& description,
     }
   }
 
-  for (vector<ProgramOptionsDescription>::const_iterator i =
+  for (std::vector<ProgramOptionsDescription>::const_iterator i =
            description._subDescriptions.begin();
        i != description._subDescriptions.end(); ++i) {
     if (!extractValues(*i, options, seen)) {
@@ -836,7 +836,7 @@ bool ProgramOptions::extractValues(ProgramOptionsDescription const& description,
     }
   }
 
-  for (vector<ProgramOptionsDescription>::const_iterator i =
+  for (std::vector<ProgramOptionsDescription>::const_iterator i =
            description._hiddenSubDescriptions.begin();
        i != description._hiddenSubDescriptions.end(); ++i) {
     if (!extractValues(*i, options, seen)) {

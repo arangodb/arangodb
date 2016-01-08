@@ -130,7 +130,7 @@ namespace v8client {
 /// initialize step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
 
-const double ImportHelper::ProgressStep = 3.0;
+double const ImportHelper::ProgressStep = 3.0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// constructor and destructor
@@ -168,8 +168,8 @@ ImportHelper::~ImportHelper() {}
 /// @brief imports a delimited file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ImportHelper::importDelimited(string const& collectionName,
-                                   string const& fileName,
+bool ImportHelper::importDelimited(std::string const& collectionName,
+                                   std::string const& fileName,
                                    DelimitedImportType typeImport) {
   _collectionName = collectionName;
   _firstLine = "";
@@ -272,8 +272,8 @@ bool ImportHelper::importDelimited(string const& collectionName,
   return !_hasError;
 }
 
-bool ImportHelper::importJson(const string& collectionName,
-                              const string& fileName) {
+bool ImportHelper::importJson(std::string const& collectionName,
+                              std::string const& fileName) {
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -306,7 +306,7 @@ bool ImportHelper::importJson(const string& collectionName,
   int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
-  static const int BUFFER_SIZE = 32768;
+  static int const BUFFER_SIZE = 32768;
 
   while (!_hasError) {
     // reserve enough room to read more data
@@ -431,8 +431,8 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead,
 /// @brief return the collection-related URL part
 ////////////////////////////////////////////////////////////////////////////////
 
-string ImportHelper::getCollectionUrlPart() {
-  string part("collection=" + StringUtils::urlEncode(_collectionName));
+std::string ImportHelper::getCollectionUrlPart() {
+  std::string part("collection=" + StringUtils::urlEncode(_collectionName));
 
   if (_firstChunk) {
     if (_createCollection) {
@@ -621,8 +621,8 @@ void ImportHelper::sendCsvBuffer() {
     return;
   }
 
-  map<string, string> headerFields;
-  string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
+  std::map<std::string, std::string> headerFields;
+  std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
              StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
              StringUtils::urlEncode(_onDuplicateAction));
   std::unique_ptr<SimpleHttpResult> result(_client->request(
@@ -650,7 +650,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
     url += "&type=documents";
   }
 
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
   std::unique_ptr<SimpleHttpResult> result(_client->request(
       HttpRequest::HTTP_REQUEST_POST, url, str, len, headerFields));
 

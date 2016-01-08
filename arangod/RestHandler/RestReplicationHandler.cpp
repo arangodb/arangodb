@@ -20,34 +20,6 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-//
-/// @brief replication request handler
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
 
 #include "RestReplicationHandler.h"
 #include "Basics/conversions.h"
@@ -107,12 +79,12 @@ HttpHandler::status_t RestReplicationHandler::execute() {
   // extract the request type
   HttpRequest::HttpRequestType const type = _request->requestType();
 
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
-  const size_t len = suffix.size();
+  size_t const len = suffix.size();
 
   if (len >= 1) {
-    const string& command = suffix[0];
+    std::string const& command = suffix[0];
 
     if (command == "logger-state") {
       if (type != HttpRequest::HTTP_REQUEST_GET) {
@@ -394,7 +366,7 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   uint64_t chunkSize = defaultChunkSize;
 
   bool found;
-  const char* value = _request->value("chunkSize", found);
+  char const* value = _request->value("chunkSize", found);
 
   if (found) {
     // query parameter "chunkSize" was specified
@@ -554,7 +526,7 @@ void RestReplicationHandler::handleCommandLoggerFirstTick() {
 void RestReplicationHandler::handleCommandBatch() {
   // extract the request type
   HttpRequest::HttpRequestType const type = _request->requestType();
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
   size_t const len = suffix.size();
 
   TRI_ASSERT(len >= 1);
@@ -653,12 +625,12 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     return;
   }
 
-  string const& dbname = _request->databaseName();
+  std::string const& dbname = _request->databaseName();
 
   auto headers = std::make_shared<std::map<std::string, std::string>>(
       triagens::arango::getForwardableRequestHeaders(_request));
-  map<string, string> values = _request->values();
-  string params;
+  std::map<std::string, std::string> values = _request->values();
+  std::string params;
   for (auto const& i : values) {
     if (i.first != "DBserver") {
       if (params.empty()) {
@@ -680,7 +652,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
       "", TRI_NewTickServer(), "server:" + DBserver, _request->requestType(),
       "/_db/" + StringUtils::urlEncode(dbname) + _request->requestPath() +
           params,
-      string(_request->body(), _request->bodySize()), *headers, 300.0);
+      std::string(_request->body(), _request->bodySize()), *headers, 300.0);
 
   if (res->status == CL_COMM_TIMEOUT) {
     // No reply, we give up:
@@ -947,7 +919,7 @@ void RestReplicationHandler::handleCommandInventory() {
   // include system collections?
   bool includeSystem = true;
   bool found;
-  const char* value = _request->value("includeSystem", found);
+  char const* value = _request->value("includeSystem", found);
 
   if (found) {
     includeSystem = StringUtils::boolean(value);
@@ -998,8 +970,8 @@ void RestReplicationHandler::handleCommandInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory() {
-  string const& dbName = _request->databaseName();
-  string value;
+  std::string const& dbName = _request->databaseName();
+  std::string value;
   bool found;
   bool includeSystem = true;
 
@@ -1012,7 +984,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   AgencyCommResult result;
 
   {
-    string prefix("Plan/Collections/");
+    std::string prefix("Plan/Collections/");
     prefix.append(dbName);
 
     AgencyCommLocker locker("Plan", "READ");
@@ -1095,7 +1067,7 @@ int RestReplicationHandler::createCollection(VPackSlice const& slice,
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  const string name =
+  std::string const name =
       triagens::basics::VelocyPackHelper::getStringValue(slice, "name", "");
 
   if (name.empty()) {
@@ -1244,7 +1216,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     numberOfShards = StringUtils::uint64(value);
   }
 
-  string errorMsg;
+  std::string errorMsg;
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, recycleIds,
@@ -1296,7 +1268,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
     force = StringUtils::boolean(value);
   }
 
-  string errorMsg;
+  std::string errorMsg;
   int res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreIndexesCoordinator(slice, force, errorMsg);
@@ -1326,7 +1298,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes() {
 
 int RestReplicationHandler::processRestoreCollection(
     VPackSlice const& collection, bool dropExisting, bool reuseId, bool force,
-    string& errorMsg) {
+    std::string& errorMsg) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1349,7 +1321,7 @@ int RestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
-  const string name = triagens::basics::VelocyPackHelper::getStringValue(
+  std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
@@ -1413,7 +1385,7 @@ int RestReplicationHandler::processRestoreCollection(
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "unable to drop collection '" + name + "': " +
-                   string(TRI_errno_string(res));
+                   std::string(TRI_errno_string(res));
 
         return res;
       }
@@ -1421,7 +1393,7 @@ int RestReplicationHandler::processRestoreCollection(
       int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
       errorMsg = "unable to create collection '" + name + "': " +
-                 string(TRI_errno_string(res));
+                 std::string(TRI_errno_string(res));
 
       return res;
     }
@@ -1498,7 +1470,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "unable to drop collection '" + name + "': " +
-                   string(TRI_errno_string(res));
+                   std::string(TRI_errno_string(res));
 
         return res;
       }
@@ -1506,7 +1478,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
       int res = TRI_ERROR_ARANGO_DUPLICATE_NAME;
 
       errorMsg = "unable to create collection '" + name + "': " +
-                 string(TRI_errno_string(res));
+                 std::string(TRI_errno_string(res));
 
       return res;
     }
@@ -1636,7 +1608,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
 int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
                                                   bool force,
-                                                  string& errorMsg) {
+                                                  std::string& errorMsg) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1666,7 +1638,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_NO_ERROR;
   }
 
-  string const name = triagens::basics::VelocyPackHelper::getStringValue(
+  std::string const name = triagens::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
 
   if (name.empty()) {
@@ -1736,7 +1708,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::processRestoreIndexesCoordinator(
-    VPackSlice const& collection, bool force, string& errorMsg) {
+    VPackSlice const& collection, bool force, std::string& errorMsg) {
   if (!collection.isObject()) {
     errorMsg = "collection declaration is invalid";
 
@@ -1854,10 +1826,10 @@ int RestReplicationHandler::applyCollectionDumpMarker(
           } else {
             res = TRI_ERROR_NO_ERROR;
 
-            string const from =
+            std::string const from =
                 triagens::basics::VelocyPackHelper::getStringValue(
                     slice, TRI_VOC_ATTRIBUTE_FROM, "");
-            string const to =
+            std::string const to =
                 triagens::basics::VelocyPackHelper::getStringValue(
                     slice, TRI_VOC_ATTRIBUTE_TO, "");
 
@@ -2041,7 +2013,7 @@ int RestReplicationHandler::processRestoreDataBatch(
     triagens::arango::Transaction* trx, CollectionNameResolver const& resolver,
     TRI_transaction_collection_t* trxCollection, bool useRevision, bool force,
     std::string& errorMsg) {
-  string const invalidMsg = "received invalid JSON data for collection " +
+  std::string const invalidMsg = "received invalid JSON data for collection " +
                             StringUtils::itoa(trxCollection->_cid);
 
   VPackBuilder builder;
@@ -2198,8 +2170,8 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     return;
   }
 
-  string dbName = _vocbase->_name;
-  string errorMsg;
+  std::string dbName = _vocbase->_name;
+  std::string errorMsg;
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -2307,7 +2279,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator() {
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
     char const* value;
-    string forceopt;
+    std::string forceopt;
     value = _request->value("force");
     if (value != nullptr) {
       bool force = StringUtils::boolean(value);
@@ -3064,7 +3036,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
-  string errorMsg = "";
+  std::string errorMsg = "";
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
                          restrictType, false);
@@ -3147,19 +3119,19 @@ void RestReplicationHandler::handleCommandSync() {
   bool const incremental =
       VelocyPackHelper::getBooleanValue(body, "incremental", false);
 
-  std::unordered_map<string, bool> restrictCollections;
+  std::unordered_map<std::string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
 
   if (restriction.isArray()) {
     for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
       if (cname.isString()) {
         restrictCollections.insert(
-            pair<string, bool>(cname.copyString(), true));
+            std::pair<std::string, bool>(cname.copyString(), true));
       }
     }
   }
 
-  string restrictType =
+  std::string restrictType =
       VelocyPackHelper::getStringValue(body, "restrictType", "");
 
   if ((restrictType.empty() && !restrictCollections.empty()) ||
@@ -3188,7 +3160,7 @@ void RestReplicationHandler::handleCommandSync() {
                        verbose);
 
   int res = TRI_ERROR_NO_ERROR;
-  string errorMsg = "";
+  std::string errorMsg = "";
 
   try {
     res = syncer.run(errorMsg, incremental);
@@ -3241,7 +3213,7 @@ void RestReplicationHandler::handleCommandServerId() {
   try {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-    const string serverId = StringUtils::itoa(TRI_GetIdServer());
+    std::string const serverId = StringUtils::itoa(TRI_GetIdServer());
     result.add("serverId", VPackValue(serverId));
     result.close();
     VPackSlice s = result.slice();
@@ -3301,7 +3273,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
         &_vocbase->_replicationApplier->_configuration, &config);
   }
 
-  const string endpoint =
+  std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
 
   if (!endpoint.empty()) {
@@ -3422,7 +3394,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
   TRI_ASSERT(_vocbase->_replicationApplier != nullptr);
 
   bool found;
-  const char* value = _request->value("from", found);
+  char const* value = _request->value("from", found);
 
   TRI_voc_tick_t initialTick = 0;
   if (found) {

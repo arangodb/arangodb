@@ -63,7 +63,7 @@ class ScriptLoader {
   /// @brief build a script from an array of strings
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::string buildScript(const char** script);
+  std::string buildScript(char const** script);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief defines a new named script
@@ -71,7 +71,7 @@ class ScriptLoader {
 
   void defineScript(std::string const& name, std::string const& script);
 
-  void defineScript(std::string const& name, const char** script);
+  void defineScript(std::string const& name, char const** script);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief finds a named script

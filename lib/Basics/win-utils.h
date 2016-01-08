@@ -43,8 +43,8 @@ typedef enum {
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
 } TRI_win_initialize_e;
 
-int finalizeWindows(const TRI_win_finalize_e, const char*);
-int initializeWindows(const TRI_win_initialize_e, const char*);
+int finalizeWindows(const TRI_win_finalize_e, char const*);
+int initializeWindows(const TRI_win_initialize_e, char const*);
 
 // .............................................................................
 // windows equivalent of ftruncate (the truncation of an open file) is
@@ -64,13 +64,13 @@ int getpagesize(void);
 // then will allow the application to rename files on the fly.
 // .............................................................................
 
-int TRI_createFile(const char* filename, int openFlags, int modeFlags);
+int TRI_createFile(char const* filename, int openFlags, int modeFlags);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a file for windows
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_OPEN_WIN32(const char* filename, int openFlags);
+int TRI_OPEN_WIN32(char const* filename, int openFlags);
 
 // .............................................................................
 // the sleep function in windows is for milliseconds, on linux it is for seconds

@@ -172,7 +172,7 @@ std::string AgencyCommResult::errorMessage() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string AgencyCommResult::errorDetails() const {
-  const std::string errorMessage = this->errorMessage();
+  std::string const errorMessage = this->errorMessage();
 
   if (errorMessage.empty()) {
     return _message;
@@ -229,9 +229,9 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
       std::string(key->_value._string.data, key->_value._string.length - 1)));
 
   // make sure we don't strip more bytes than the key is long
-  const size_t offset =
+  size_t const offset =
       AgencyComm::_globalPrefix.size() + stripKeyPrefix.size();
-  const size_t length = keydecoded.size();
+  size_t const length = keydecoded.size();
 
   std::string prefix;
   if (offset >= length) {
@@ -262,7 +262,7 @@ bool AgencyCommResult::parseJsonNode(TRI_json_t const* node,
       return true;
     }
 
-    const size_t n = TRI_LengthVector(&nodes->_value._objects);
+    size_t const n = TRI_LengthVector(&nodes->_value._objects);
 
     for (size_t i = 0; i < n; ++i) {
       if (!parseJsonNode(
@@ -314,7 +314,7 @@ bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
   // get "node" attribute
   TRI_json_t const* node = TRI_LookupObjectJson(json, "node");
 
-  const bool result = parseJsonNode(node, stripKeyPrefix, withDirs);
+  bool const result = parseJsonNode(node, stripKeyPrefix, withDirs);
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return result;
@@ -326,7 +326,7 @@ bool AgencyCommResult::parse(std::string const& stripKeyPrefix, bool withDirs) {
 /// @brief the static global URL prefix
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string AgencyComm::AGENCY_URL_PREFIX = "v2/keys";
+std::string const AgencyComm::AGENCY_URL_PREFIX = "v2/keys";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global (variable) prefix used for endpoint
@@ -712,7 +712,7 @@ const std::vector<std::string> AgencyComm::getEndpoints() {
 /// @brief get a stringified version of the endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string AgencyComm::getEndpointsString() {
+std::string const AgencyComm::getEndpointsString() {
   std::string result;
 
   {
@@ -1226,7 +1226,7 @@ bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
 
 AgencyCommResult AgencyComm::uniqid(std::string const& key, uint64_t count,
                                     double timeout) {
-  static const int maxTries = 10;
+  static int const maxTries = 10;
   int tries = 0;
 
   AgencyCommResult result;
@@ -1416,7 +1416,7 @@ AgencyEndpoint* AgencyComm::popEndpoint(std::string const& endpoint) {
     {
       WRITE_LOCKER(AgencyComm::_globalLock);
 
-      const size_t numEndpoints TRI_UNUSED = _globalEndpoints.size();
+      size_t const numEndpoints TRI_UNUSED = _globalEndpoints.size();
       std::list<AgencyEndpoint*>::iterator it = _globalEndpoints.begin();
 
       while (it != _globalEndpoints.end()) {
@@ -1516,7 +1516,7 @@ std::string AgencyComm::buildUrl() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AgencyComm::sendWithFailover(
-    triagens::rest::HttpRequest::HttpRequestType method, const double timeout,
+    triagens::rest::HttpRequest::HttpRequestType method, double const timeout,
     AgencyCommResult& result, std::string const& url, std::string const& body,
     bool isWatch) {
   size_t numEndpoints;

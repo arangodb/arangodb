@@ -532,7 +532,7 @@ void TRI_GlobalEntryFunction() {
   }
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (const char*)(&maxOpenFiles));
+                          (char const*)(&maxOpenFiles));
 
   if (res != 0) {
     _exit(EXIT_FAILURE);

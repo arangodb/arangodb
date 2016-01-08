@@ -86,7 +86,7 @@ void CollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   _documents = new std::vector<void const*>();
 
   {
-    static const uint64_t SleepTime = 10000;
+    static uint64_t const SleepTime = 10000;
 
     uint64_t tries = 0;
     uint64_t const maxTries = maxWaitTime / SleepTime;

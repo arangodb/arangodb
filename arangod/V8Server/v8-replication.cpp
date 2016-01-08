@@ -199,24 +199,24 @@ static void JS_SynchronizeReplication(
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
 
-  string endpoint;
+  std::string endpoint;
   if (object->Has(TRI_V8_ASCII_STRING("endpoint"))) {
     endpoint = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("endpoint")));
   }
 
-  string database;
+  std::string database;
   if (object->Has(TRI_V8_ASCII_STRING("database"))) {
     database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("database")));
   } else {
-    database = string(vocbase->_name);
+    database = std::string(vocbase->_name);
   }
 
-  string username;
+  std::string username;
   if (object->Has(TRI_V8_ASCII_STRING("username"))) {
     username = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
   }
 
-  string password;
+  std::string password;
   if (object->Has(TRI_V8_ASCII_STRING("password"))) {
     password = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
   }
@@ -302,7 +302,7 @@ static void JS_SynchronizeReplication(
     }
   }
 
-  string errorMsg = "";
+  std::string errorMsg = "";
   InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
                        verbose);
 
@@ -315,13 +315,13 @@ static void JS_SynchronizeReplication(
     result->Set(TRI_V8_ASCII_STRING("lastLogTick"),
                 V8TickId(isolate, syncer.getLastLogTick()));
 
-    map<TRI_voc_cid_t, string>::const_iterator it;
-    map<TRI_voc_cid_t, string> const& c = syncer.getProcessedCollections();
+    std::map<TRI_voc_cid_t, std::string>::const_iterator it;
+    std::map<TRI_voc_cid_t, std::string> const& c = syncer.getProcessedCollections();
 
     uint32_t j = 0;
     v8::Handle<v8::Array> collections = v8::Array::New(isolate);
     for (it = c.begin(); it != c.end(); ++it) {
-      const string cidString = StringUtils::itoa((*it).first);
+      std::string const cidString = StringUtils::itoa((*it).first);
 
       v8::Handle<v8::Object> ci = v8::Object::New(isolate);
       ci->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cidString));
@@ -356,7 +356,7 @@ static void JS_ServerIdReplication(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  const string serverId = StringUtils::itoa(TRI_GetIdServer());
+  std::string const serverId = StringUtils::itoa(TRI_GetIdServer());
   TRI_V8_RETURN_STD_STRING(serverId);
   TRI_V8_TRY_CATCH_END
 }
@@ -427,7 +427,7 @@ static void JS_ConfigureApplierReplication(
 
     if (object->Has(TRI_V8_ASCII_STRING("endpoint"))) {
       if (object->Get(TRI_V8_ASCII_STRING("endpoint"))->IsString()) {
-        string endpoint =
+        std::string endpoint =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("endpoint")));
 
         if (config._endpoint != nullptr) {
@@ -440,7 +440,7 @@ static void JS_ConfigureApplierReplication(
 
     if (object->Has(TRI_V8_ASCII_STRING("database"))) {
       if (object->Get(TRI_V8_ASCII_STRING("database"))->IsString()) {
-        string database =
+        std::string database =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("database")));
 
         if (config._database != nullptr) {
@@ -461,7 +461,7 @@ static void JS_ConfigureApplierReplication(
 
     if (object->Has(TRI_V8_ASCII_STRING("username"))) {
       if (object->Get(TRI_V8_ASCII_STRING("username"))->IsString()) {
-        string username =
+        std::string username =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("username")));
 
         if (config._username != nullptr) {
@@ -474,7 +474,7 @@ static void JS_ConfigureApplierReplication(
 
     if (object->Has(TRI_V8_ASCII_STRING("password"))) {
       if (object->Get(TRI_V8_ASCII_STRING("password"))->IsString()) {
-        string password =
+        std::string password =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING("password")));
 
         if (config._password != nullptr) {
@@ -582,7 +582,7 @@ static void JS_ConfigureApplierReplication(
 
         if (cname->IsString()) {
           config._restrictCollections.insert(
-              pair<string, bool>(TRI_ObjectToString(cname), true));
+              std::pair<std::string, bool>(TRI_ObjectToString(cname), true));
         }
       }
     }

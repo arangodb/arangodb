@@ -38,17 +38,17 @@ namespace arango {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct MultipartMessage {
-  MultipartMessage(const char* boundary, const size_t boundaryLength,
-                   const char* messageStart, const char* messageEnd)
+  MultipartMessage(char const* boundary, size_t const boundaryLength,
+                   char const* messageStart, char const* messageEnd)
       : boundary(boundary),
         boundaryLength(boundaryLength),
         messageStart(messageStart),
         messageEnd(messageEnd){};
 
-  const char* boundary;
-  const size_t boundaryLength;
-  const char* messageStart;
-  const char* messageEnd;
+  char const* boundary;
+  size_t const boundaryLength;
+  char const* messageStart;
+  char const* messageEnd;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -28,7 +28,7 @@
 #endif
 
 voidpf ZCALLBACK win32_open_file_func
-OF((voidpf opaque, const char* filename, int mode));
+OF((voidpf opaque, char const* filename, int mode));
 uLong ZCALLBACK win32_read_file_func
 OF((voidpf opaque, voidpf stream, void* buf, uLong size));
 uLong ZCALLBACK win32_write_file_func
@@ -83,7 +83,7 @@ static voidpf win32_build_iowin(HANDLE hFile) {
 
 voidpf ZCALLBACK
 win32_open64_file_func(voidpf opaque, const void* filename, int mode) {
-  const char* mode_fopen = NULL;
+  char const* mode_fopen = NULL;
   DWORD dwDesiredAccess, dwCreationDisposition, dwShareMode,
       dwFlagsAndAttributes;
   HANDLE hFile = NULL;
@@ -100,7 +100,7 @@ win32_open64_file_func(voidpf opaque, const void* filename, int mode) {
 
 voidpf ZCALLBACK
 win32_open64_file_funcA(voidpf opaque, const void* filename, int mode) {
-  const char* mode_fopen = NULL;
+  char const* mode_fopen = NULL;
   DWORD dwDesiredAccess, dwCreationDisposition, dwShareMode,
       dwFlagsAndAttributes;
   HANDLE hFile = NULL;
@@ -117,7 +117,7 @@ win32_open64_file_funcA(voidpf opaque, const void* filename, int mode) {
 
 voidpf ZCALLBACK
 win32_open64_file_funcW(voidpf opaque, const void* filename, int mode) {
-  const char* mode_fopen = NULL;
+  char const* mode_fopen = NULL;
   DWORD dwDesiredAccess, dwCreationDisposition, dwShareMode,
       dwFlagsAndAttributes;
   HANDLE hFile = NULL;
@@ -133,8 +133,8 @@ win32_open64_file_funcW(voidpf opaque, const void* filename, int mode) {
 }
 
 voidpf ZCALLBACK
-win32_open_file_func(voidpf opaque, const char* filename, int mode) {
-  const char* mode_fopen = NULL;
+win32_open_file_func(voidpf opaque, char const* filename, int mode) {
+  char const* mode_fopen = NULL;
   DWORD dwDesiredAccess, dwCreationDisposition, dwShareMode,
       dwFlagsAndAttributes;
   HANDLE hFile = NULL;

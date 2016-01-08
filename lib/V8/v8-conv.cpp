@@ -715,7 +715,7 @@ int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const value,
-                            const bool allowStringConversion) {
+                            bool const allowStringConversion) {
   if (value->IsNumber()) {
     return (uint64_t)value->ToNumber()->Value();
   }

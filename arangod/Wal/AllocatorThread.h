@@ -168,7 +168,7 @@ class AllocatorThread : public basics::Thread {
   /// @brief wait interval for the allocator thread when idle
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const uint64_t Interval;
+  static uint64_t const Interval;
 };
 }
 }

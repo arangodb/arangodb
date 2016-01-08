@@ -99,7 +99,7 @@ class SimpleHttpResult {
   /// @brief sets the http return message
   ////////////////////////////////////////////////////////////////////////////////
 
-  void setHttpReturnMessage(const std::string& message) {
+  void setHttpReturnMessage(std::string const& message) {
     this->_returnMessage = message;
   }
 

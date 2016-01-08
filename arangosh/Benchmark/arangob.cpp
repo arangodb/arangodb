@@ -87,7 +87,7 @@ static int BatchSize = 0;
 /// @brief collection to use
 ////////////////////////////////////////////////////////////////////////////////
 
-static string Collection = "ArangoBenchmark";
+static std::string Collection = "ArangoBenchmark";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief complexity parameter for tests
@@ -129,7 +129,7 @@ static bool Progress = true;
 /// @brief test case to use
 ////////////////////////////////////////////////////////////////////////////////
 
-static string TestCase = "version";
+static std::string TestCase = "version";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print out replies on error
@@ -161,7 +161,7 @@ static int GetStartCounter() { return Started; }
 /// @brief print a status line (if ! quiet)
 ////////////////////////////////////////////////////////////////////////////////
 
-static void Status(const string& value) {
+static void Status(std::string const& value) {
   if (!BaseClient.quiet()) {
     cout << value << endl;
   }
@@ -196,7 +196,7 @@ static void ParseProgramOptions(int argc, char* argv[]) {
   BaseClient.setupGeneral(description);
   BaseClient.setupServer(description);
 
-  vector<string> arguments;
+  std::vector<std::string> arguments;
   description.arguments(&arguments);
 
   ProgramOptions options;
@@ -237,7 +237,7 @@ void arangobEntryFunction() {
   }
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (const char*)(&maxOpenFiles));
+                          (char const*)(&maxOpenFiles));
   if (res != 0) {
     _exit(1);
   }
@@ -313,10 +313,10 @@ int main(int argc, char* argv[]) {
                                                     (unsigned long)Operations);
   ConditionVariable startCondition;
 
-  vector<Endpoint*> endpoints;
-  vector<BenchmarkThread*> threads;
+  std::vector<Endpoint*> endpoints;
+  std::vector<BenchmarkThread*> threads;
 
-  const double stepSize = (double)Operations / (double)ThreadConcurrency;
+  double const stepSize = (double)Operations / (double)ThreadConcurrency;
   int64_t realStep = (int64_t)stepSize;
   if (stepSize - (double)((int64_t)stepSize) > 0.0) {
     realStep++;
@@ -364,7 +364,7 @@ int main(int argc, char* argv[]) {
     guard.broadcast();
   }
 
-  const size_t stepValue = (Operations / 20);
+  size_t const stepValue = (Operations / 20);
   size_t nextReportValue = stepValue;
 
   if (nextReportValue < 100) {
@@ -372,7 +372,7 @@ int main(int argc, char* argv[]) {
   }
 
   while (1) {
-    const size_t numOperations = operationsCounter.getDone();
+    size_t const numOperations = operationsCounter.getDone();
 
     if (numOperations >= (size_t)Operations) {
       break;

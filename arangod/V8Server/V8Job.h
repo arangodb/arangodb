@@ -85,7 +85,7 @@ class V8Job : public rest::Job {
   /// {@inheritDoc}
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual const std::string& getName() const override { return _command; }
+  virtual std::string const& getName() const override { return _command; }
 
   
  private:

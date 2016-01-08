@@ -406,10 +406,10 @@ void SimpleHttpClient::clearReadBuffer() {
 /// @brief sets username and password
 ////////////////////////////////////////////////////////////////////////////////
 
-void SimpleHttpClient::setUserNamePassword(const string& prefix,
-                                           const string& username,
-                                           const string& password) {
-  string value =
+void SimpleHttpClient::setUserNamePassword(std::string const& prefix,
+                                           std::string const& username,
+                                           std::string const& password) {
+  std::string value =
       triagens::basics::StringUtils::encodeBase64(username + ":" + password);
 
   _pathToBasicAuth.push_back(make_pair(prefix, value));
@@ -475,7 +475,7 @@ void SimpleHttpClient::setRequest(
   HttpRequest::appendMethod(method, &_writeBuffer);
 
   // append location
-  string l(location);
+  std::string l(location);
   if (location.empty() || location[0] != '/') {
     l = "/" + location;
   }
@@ -486,7 +486,7 @@ void SimpleHttpClient::setRequest(
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR(" HTTP/1.1\r\n"));
 
   // append hostname
-  string&& hostname = _connection->getEndpoint()->getHost();
+  std::string&& hostname = _connection->getEndpoint()->getHost();
 
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
   _writeBuffer.appendText(hostname);
@@ -510,13 +510,13 @@ void SimpleHttpClient::setRequest(
 
   // do basic authorization
   if (!_pathToBasicAuth.empty()) {
-    string foundPrefix;
-    string foundValue;
+    std::string foundPrefix;
+    std::string foundValue;
     std::vector<std::pair<std::string, std::string>>::iterator i =
         _pathToBasicAuth.begin();
 
     for (; i != _pathToBasicAuth.end(); ++i) {
-      string& f = i->first;
+      std::string& f = i->first;
 
       if (l.find(f) == 0) {
         // f is prefix of l
@@ -754,7 +754,7 @@ void SimpleHttpClient::processChunkedHeader() {
   }
 
   size_t len = pos - (_readBuffer.c_str() + _readBufferOffset);
-  string line(_readBuffer.c_str() + _readBufferOffset, len);
+  std::string line(_readBuffer.c_str() + _readBufferOffset, len);
   StringUtils::trimInPlace(line);
 
   _readBufferOffset += (len + 1);

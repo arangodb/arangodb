@@ -85,8 +85,8 @@ class Utf8Helper {
   ///  1 : left > right
   ////////////////////////////////////////////////////////////////////////////////
 
-  int compareUtf16(const uint16_t* left, size_t leftLength,
-                   const uint16_t* right, size_t rightLength) const;
+  int compareUtf16(uint16_t const* left, size_t leftLength,
+                   uint16_t const* right, size_t rightLength) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set collator by language
@@ -228,7 +228,7 @@ int TRI_compare_utf8(char const* left, size_t leftLength, char const* right,
 /// Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_tolower_utf8(TRI_memory_zone_t* zone, const char* src,
+char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
                        int32_t srcLength, int32_t* dstLength);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,7 +236,7 @@ char* TRI_tolower_utf8(TRI_memory_zone_t* zone, const char* src,
 /// Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_toupper_utf8(TRI_memory_zone_t* zone, const char* src,
+char* TRI_toupper_utf8(TRI_memory_zone_t* zone, char const* src,
                        int32_t srcLength, int32_t* dstLength);
 
 ////////////////////////////////////////////////////////////////////////////////

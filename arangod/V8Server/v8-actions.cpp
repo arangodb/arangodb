@@ -84,7 +84,7 @@ class v8_action_t : public TRI_action_t {
   void createCallback(v8::Isolate* isolate, v8::Handle<v8::Function> callback) {
     WRITE_LOCKER(_callbacksLock);
 
-    map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
+    std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
         _callbacks.find(isolate);
 
     if (i != _callbacks.end()) {
@@ -133,7 +133,7 @@ class v8_action_t : public TRI_action_t {
     READ_LOCKER(_callbacksLock);
 
     {
-      map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
+      std::map<v8::Isolate*, v8::Persistent<v8::Function>>::iterator i =
           _callbacks.find(context->isolate);
 
       if (i == _callbacks.end()) {
@@ -213,7 +213,7 @@ class v8_action_t : public TRI_action_t {
   /// @brief callback dictionary
   ////////////////////////////////////////////////////////////////////////////////
 
-  map<v8::Isolate*, v8::Persistent<v8::Function>> _callbacks;
+  std::map<v8::Isolate*, v8::Persistent<v8::Function>> _callbacks;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lock for the callback dictionary
@@ -254,11 +254,11 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
 
 static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                       HttpResponse* response, v8::Handle<v8::Object> data) {
-  string name;
-  string value;
+  std::string name;
+  std::string value;
   int lifeTimeSeconds = 0;
-  string path = "/";
-  string domain = "";
+  std::string path = "/";
+  std::string domain = "";
   bool secure = false;
   bool httpOnly = false;
 
@@ -350,7 +350,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   //      }
 
   // create user or null
-  string const& user = request->user();
+  std::string const& user = request->user();
 
   TRI_GET_GLOBAL_STRING(UserKey);
   if (user.empty()) {
@@ -360,24 +360,24 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   }
 
   // create database attribute
-  string const& database = request->databaseName();
+  std::string const& database = request->databaseName();
   TRI_ASSERT(!database.empty());
 
   TRI_GET_GLOBAL_STRING(DatabaseKey);
   req->ForceSet(DatabaseKey, TRI_V8_STD_STRING(database));
 
   // set the full url
-  string const& fullUrl = request->fullUrl();
+  std::string const& fullUrl = request->fullUrl();
   TRI_GET_GLOBAL_STRING(UrlKey);
   req->ForceSet(UrlKey, TRI_V8_STD_STRING(fullUrl));
 
   // set the protocol
-  string const& protocol = request->protocol();
+  std::string const& protocol = request->protocol();
   TRI_GET_GLOBAL_STRING(ProtocolKey);
   req->ForceSet(ProtocolKey, TRI_V8_STD_STRING(protocol));
 
   // set the task id
-  const string&& taskId = StringUtils::itoa(request->clientTaskId());
+  std::string const&& taskId = StringUtils::itoa(request->clientTaskId());
 
   // set the connection info
   const ConnectionInfo& info = request->connectionInfo();
@@ -407,15 +407,15 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
                 v8::External::New(isolate, request));
 
   // copy prefix
-  string path = request->prefix();
+  std::string path = request->prefix();
   TRI_GET_GLOBAL_STRING(PrefixKey);
   req->ForceSet(PrefixKey, TRI_V8_STD_STRING(path));
 
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New(isolate);
 
-  map<string, string> const& headers = request->headers();
-  map<string, string>::const_iterator iter = headers.begin();
+  std::map<std::string, std::string> const& headers = request->headers();
+  std::map<std::string, std::string>::const_iterator iter = headers.begin();
 
   for (; iter != headers.end(); ++iter) {
     headerFields->ForceSet(TRI_V8_STD_STRING(iter->first),
@@ -480,21 +480,21 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy request parameter
   v8::Handle<v8::Object> valuesObject = v8::Object::New(isolate);
-  map<string, string> values = request->values();
+  std::map<std::string, std::string> values = request->values();
 
-  for (map<string, string>::iterator i = values.begin(); i != values.end();
+  for (std::map<std::string, std::string>::iterator i = values.begin(); i != values.end();
        ++i) {
     valuesObject->ForceSet(TRI_V8_STD_STRING(i->first),
                            TRI_V8_STD_STRING(i->second));
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
-  map<string, vector<char const*>*> arrayValues = request->arrayValues();
+  std::map<std::string, std::vector<char const*>*> arrayValues = request->arrayValues();
 
-  for (map<string, vector<char const*>*>::iterator i = arrayValues.begin();
+  for (std::map<std::string, std::vector<char const*>*>::iterator i = arrayValues.begin();
        i != arrayValues.end(); ++i) {
-    string const& k = i->first;
-    vector<char const*>* v = i->second;
+    std::string const& k = i->first;
+    std::vector<char const*>* v = i->second;
 
     v8::Handle<v8::Array> list =
         v8::Array::New(isolate, static_cast<int>(v->size()));
@@ -512,7 +512,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   // copy cookies
   v8::Handle<v8::Object> cookiesObject = v8::Object::New(isolate);
 
-  map<string, string> const& cookies = request->cookieValues();
+  std::map<std::string, std::string> const& cookies = request->cookieValues();
   iter = cookies.begin();
 
   for (; iter != cookies.end(); ++iter) {
@@ -575,13 +575,13 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
 
     if (val->IsArray()) {
       TRI_GET_GLOBAL_STRING(BodyKey);
-      string out(TRI_ObjectToString(res->Get(BodyKey)));
+      std::string out(TRI_ObjectToString(res->Get(BodyKey)));
       v8::Handle<v8::Array> transformations = val.As<v8::Array>();
 
       for (uint32_t i = 0; i < transformations->Length(); i++) {
         v8::Handle<v8::Value> transformator =
             transformations->Get(v8::Integer::New(isolate, i));
-        string name = TRI_ObjectToString(transformator);
+        std::string name = TRI_ObjectToString(transformator);
 
         // check available transformations
         if (name == "base64encode") {
@@ -626,8 +626,8 @@ static HttpResponse* ResponseV8ToCpp(v8::Isolate* isolate,
       response->body().appendText(content, length);
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
     } else {
-      string msg =
-          string("cannot read file '") + *filename + "': " + TRI_last_error();
+      std::string msg =
+          std::string("cannot read file '") + *filename + "': " + TRI_last_error();
 
       response->body().appendText(msg.c_str(), msg.size());
       response->setResponseCode(HttpResponse::SERVER_ERROR);
@@ -694,9 +694,9 @@ static TRI_action_result_t ExecuteActionVocbase(
   v8::Handle<v8::Object> req = RequestCppToV8(isolate, v8g, request);
 
   // copy suffix, which comes from the action:
-  string path = request->prefix();
+  std::string path = request->prefix();
   v8::Handle<v8::Array> suffixArray = v8::Array::New(isolate);
-  vector<string> const& suffix = request->suffix();
+  std::vector<std::string> const& suffix = request->suffix();
 
   uint32_t index = 0;
   char const* sep = "";
@@ -812,7 +812,7 @@ static void JS_DefineAction(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("<name> must be an UTF-8 string");
   }
 
-  string name = *utf8name;
+  std::string name = *utf8name;
 
   // extract the action callback
   if (!args[1]->IsFunction()) {
@@ -877,7 +877,7 @@ static void JS_ExecuteGlobalContextFunction(
     TRI_V8_THROW_TYPE_ERROR("<definition> must be a UTF-8 function definition");
   }
 
-  string const def = *utf8def;
+  std::string const def = *utf8def;
 
   // and pass it to the V8 contexts
   if (!GlobalV8Dealer->addGlobalContextMethod(def)) {

@@ -36,14 +36,14 @@
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile(const char* filename, const char* chdir,
-                TRI_vector_string_t const*, const char*);
+int TRI_ZipFile(char const* filename, char const* chdir,
+                TRI_vector_string_t const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile(const char*, const char*, const bool, const bool, const char*,
+int TRI_UnzipFile(char const*, char const*, bool const, bool const, char const*,
                   std::string& errorMessage);
 
 #endif

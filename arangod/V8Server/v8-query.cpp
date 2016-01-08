@@ -878,7 +878,7 @@ static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
   ExtractSkipAndLimit(args, 0, skip, limit);
 
   uint64_t total = 0;
-  vector<TRI_doc_mptr_copy_t> docs;
+  std::vector<TRI_doc_mptr_copy_t> docs;
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
                                           col->_vocbase, col->_cid);
@@ -1059,7 +1059,7 @@ static void JS_ByExampleQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
   // inside a read transaction
   // ...........................................................................
 
-  vector<TRI_doc_mptr_copy_t> filtered;
+  std::vector<TRI_doc_mptr_copy_t> filtered;
 
   trx.lockRead();
 
@@ -1351,25 +1351,25 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* e =
           reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-      string const extra =
+      std::string const extra =
           helper->_resolver->getCollectionNameCluster(e->_toCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetToKey) +
+          std::string(((char*)marker) + e->_offsetToKey) +
           helper->_resolver->getCollectionNameCluster(e->_fromCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetFromKey);
+          std::string(((char*)marker) + e->_offsetFromKey);
 
       localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
     } else {
       triagens::wal::edge_marker_t const* e =
           reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
-      string const extra =
+      std::string const extra =
           helper->_resolver->getCollectionNameCluster(e->_toCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetToKey) +
+          std::string(((char*)marker) + e->_offsetToKey) +
           helper->_resolver->getCollectionNameCluster(e->_fromCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetFromKey);
+          std::string(((char*)marker) + e->_offsetFromKey);
 
       localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
     }
@@ -1454,7 +1454,7 @@ static void JS_ChecksumCollection(
 
   trx.lockRead();
   // get last tick
-  string const rid = StringUtils::itoa(document->_info.revision());
+  std::string const rid = StringUtils::itoa(document->_info.revision());
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
@@ -1633,7 +1633,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  string const&& queryString = TRI_ObjectToString(args[1]);
+  std::string const&& queryString = TRI_ObjectToString(args[1]);
   bool isSubstringQuery = false;
   size_t maxResults = 0;  // 0 means "all results"
 
@@ -1798,7 +1798,7 @@ static void JS_LastQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  vector<TRI_doc_mptr_copy_t> documents;
+  std::vector<TRI_doc_mptr_copy_t> documents;
   res = trx.readPositional(documents, -1, count);
   trx.finish(res);
 

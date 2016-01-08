@@ -49,75 +49,75 @@ using namespace triagens::arango;
 /// @brief batch path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
+std::string const RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::CURSOR_PATH = "/_api/cursor";
+std::string const RestVocbaseBaseHandler::CURSOR_PATH = "/_api/cursor";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
+std::string const RestVocbaseBaseHandler::DOCUMENT_PATH = "/_api/document";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::EDGE_PATH = "/_api/edge";
+std::string const RestVocbaseBaseHandler::EDGE_PATH = "/_api/edge";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edges path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
+std::string const RestVocbaseBaseHandler::EDGES_PATH = "/_api/edges";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::EXPORT_PATH = "/_api/export";
+std::string const RestVocbaseBaseHandler::EXPORT_PATH = "/_api/export";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief documents import path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::IMPORT_PATH = "/_api/import";
+std::string const RestVocbaseBaseHandler::IMPORT_PATH = "/_api/import";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::REPLICATION_PATH = "/_api/replication";
+std::string const RestVocbaseBaseHandler::REPLICATION_PATH = "/_api/replication";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple query all path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH = "/_api/simple/all";
+std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH = "/_api/simple/all";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH =
+std::string const RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH =
     "/_api/simple/lookup-by-keys";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch remove path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
+std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH =
     "/_api/simple/remove-by-keys";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upload path
 ////////////////////////////////////////////////////////////////////////////////
 
-const string RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
+std::string const RestVocbaseBaseHandler::UPLOAD_PATH = "/_api/upload";
 
 
 
@@ -141,7 +141,7 @@ RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 /// happen, and the collection name will not be checked
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestVocbaseBaseHandler::checkCreateCollection(string const& name,
+bool RestVocbaseBaseHandler::checkCreateCollection(std::string const& name,
                                                    TRI_col_type_e type) {
   bool found;
   char const* valueStr = _request->value("createCollection", found);
@@ -179,11 +179,11 @@ bool RestVocbaseBaseHandler::checkCreateCollection(string const& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generate20x(
-    HttpResponse::HttpResponseCode responseCode, string const& collectionName,
+    HttpResponse::HttpResponseCode responseCode, std::string const& collectionName,
     TRI_voc_key_t key, TRI_voc_rid_t rid, TRI_col_type_e type) {
-  string handle(
+  std::string handle(
       std::move(DocumentHelper::assembleDocumentId(collectionName, key)));
-  string rev(std::move(StringUtils::itoa(rid)));
+  std::string rev(std::move(StringUtils::itoa(rid)));
 
   createResponse(responseCode);
   _response->setContentType("application/json; charset=utf-8");
@@ -193,22 +193,22 @@ void RestVocbaseBaseHandler::generate20x(
     // in these cases we do not return etag nor location
     _response->setHeader("etag", 4, "\"" + rev + "\"");
 
-    string escapedHandle(std::move(
+    std::string escapedHandle(std::move(
         DocumentHelper::assembleDocumentId(collectionName, key, true)));
 
     if (_request->compatibility() < 10400L) {
       // pre-1.4 location header (e.g. /_api/document/xyz)
       _response->setHeader("location", 8,
-                           string(DOCUMENT_PATH + "/" + escapedHandle));
+                           std::string(DOCUMENT_PATH + "/" + escapedHandle));
     } else {
       // 1.4+ location header (e.g. /_db/_system/_api/document/xyz)
       if (type == TRI_COL_TYPE_EDGE) {
         _response->setHeader("location", 8,
-                             string("/_db/" + _request->databaseName() +
+                             std::string("/_db/" + _request->databaseName() +
                                     EDGE_PATH + "/" + escapedHandle));
       } else {
         _response->setHeader("location", 8,
-                             string("/_db/" + _request->databaseName() +
+                             std::string("/_db/" + _request->databaseName() +
                                     DOCUMENT_PATH + "/" + escapedHandle));
       }
     }
@@ -229,7 +229,7 @@ void RestVocbaseBaseHandler::generate20x(
 /// @brief generates not implemented
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::generateNotImplemented(string const& path) {
+void RestVocbaseBaseHandler::generateNotImplemented(std::string const& path) {
   generateError(HttpResponse::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                 "'" + path + "' not implemented");
 }
@@ -248,8 +248,8 @@ void RestVocbaseBaseHandler::generateForbidden() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generatePreconditionFailed(
-    string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid) {
-  string rev(std::move(StringUtils::itoa(rid)));
+    std::string const& collectionName, TRI_voc_key_t key, TRI_voc_rid_t rid) {
+  std::string rev(std::move(StringUtils::itoa(rid)));
 
   createResponse(HttpResponse::PRECONDITION_FAILED);
   _response->setContentType("application/json; charset=utf-8");
@@ -276,7 +276,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateNotModified(TRI_voc_rid_t rid) {
-  string const&& rev = StringUtils::itoa(rid);
+  std::string const&& rev = StringUtils::itoa(rid);
 
   createResponse(HttpResponse::NOT_MODIFIED);
   _response->setHeader("etag", 4, "\"" + rev + "\"");
@@ -308,7 +308,7 @@ void RestVocbaseBaseHandler::generateDocument(
   }
 
   // convert rid from uint64_t to string
-  string rid(std::move(StringUtils::itoa(mptr._rid)));
+  std::string rid(std::move(StringUtils::itoa(mptr._rid)));
   TRI_json_t* rev =
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, rid.c_str(), rid.size());
 
@@ -333,12 +333,12 @@ void RestVocbaseBaseHandler::generateDocument(
     TRI_doc_edge_key_marker_t const* marker =
         static_cast<TRI_doc_edge_key_marker_t const*>(
             mptr.getDataPtr());  // PROTECTED by trx passed from above
-    string from(std::move(DocumentHelper::assembleDocumentId(
+    std::string from(std::move(DocumentHelper::assembleDocumentId(
         resolver->getCollectionNameCluster(marker->_fromCid),
-        string((char*)marker + marker->_offsetFromKey))));
-    string to(std::move(DocumentHelper::assembleDocumentId(
+        std::string((char*)marker + marker->_offsetFromKey))));
+    std::string to(std::move(DocumentHelper::assembleDocumentId(
         resolver->getCollectionNameCluster(marker->_toCid),
-        string((char*)marker + marker->_offsetToKey))));
+        std::string((char*)marker + marker->_offsetToKey))));
 
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
                           TRI_VOC_ATTRIBUTE_FROM,
@@ -351,12 +351,12 @@ void RestVocbaseBaseHandler::generateDocument(
     triagens::wal::edge_marker_t const* marker =
         static_cast<triagens::wal::edge_marker_t const*>(
             mptr.getDataPtr());  // PROTECTED by trx passed from above
-    string from(std::move(DocumentHelper::assembleDocumentId(
+    std::string from(std::move(DocumentHelper::assembleDocumentId(
         resolver->getCollectionNameCluster(marker->_fromCid),
-        string((char*)marker + marker->_offsetFromKey))));
-    string to(std::move(DocumentHelper::assembleDocumentId(
+        std::string((char*)marker + marker->_offsetFromKey))));
+    std::string to(std::move(DocumentHelper::assembleDocumentId(
         resolver->getCollectionNameCluster(marker->_toCid),
-        string((char*)marker + marker->_offsetToKey))));
+        std::string((char*)marker + marker->_offsetToKey))));
 
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &augmented,
                           TRI_VOC_ATTRIBUTE_FROM,
@@ -412,7 +412,7 @@ void RestVocbaseBaseHandler::generateDocument(
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::generateTransactionError(
-    string const& collectionName, int res, TRI_voc_key_t key,
+    std::string const& collectionName, int res, TRI_voc_key_t key,
     TRI_voc_rid_t rid) {
   switch (res) {
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
@@ -602,7 +602,7 @@ std::shared_ptr<VPackBuilder> RestVocbaseBaseHandler::parseVelocyPackBody(
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestVocbaseBaseHandler::parseDocumentId(
-    CollectionNameResolver const* resolver, string const& handle,
+    CollectionNameResolver const* resolver, std::string const& handle,
     TRI_voc_cid_t& cid, TRI_voc_key_t& key) {
   char const* ptr = handle.c_str();
   char const* end = ptr + handle.size();

@@ -84,7 +84,7 @@ class Syncer {
   /// @brief request location rewriter (injects database name)
   ////////////////////////////////////////////////////////////////////////////////
 
-  static std::string rewriteLocation(void*, const std::string&);
+  static std::string rewriteLocation(void*, std::string const&);
 
   
  protected:
@@ -212,7 +212,7 @@ class Syncer {
   /// @brief base url of the replication API
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const std::string BaseUrl;
+  static std::string const BaseUrl;
 };
 }
 }

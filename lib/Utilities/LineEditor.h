@@ -45,7 +45,7 @@ class LineEditor {
   /// @brief number of history entries
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const int MAX_HISTORY_ENTRIES = 1000;
+  static int const MAX_HISTORY_ENTRIES = 1000;
 
   
  public:
@@ -79,14 +79,14 @@ class LineEditor {
   /// @brief line editor prompt
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::string prompt(const std::string& prompt, const std::string& begin,
+  std::string prompt(std::string const& prompt, std::string const& begin,
                      bool& eof);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add to history
   ////////////////////////////////////////////////////////////////////////////////
 
-  void addHistory(const std::string& line);
+  void addHistory(std::string const& line);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief send a signal to the shell implementation

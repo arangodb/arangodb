@@ -320,8 +320,8 @@ static void JS_Base64Decode(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   try {
-    string const value = TRI_ObjectToString(args[0]);
-    string const base64 = StringUtils::decodeBase64(value);
+    std::string const value = TRI_ObjectToString(args[0]);
+    std::string const base64 = StringUtils::decodeBase64(value);
 
     TRI_V8_RETURN_STD_STRING(base64);
   } catch (...) {
@@ -349,8 +349,8 @@ static void JS_Base64Encode(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   try {
-    string const&& value = TRI_ObjectToString(args[0]);
-    string const&& base64 = StringUtils::encodeBase64(value);
+    std::string const&& value = TRI_ObjectToString(args[0]);
+    std::string const&& base64 = StringUtils::encodeBase64(value);
 
     TRI_V8_RETURN_STD_STRING(base64);
   } catch (...) {
@@ -399,7 +399,7 @@ static void JS_Parse(const v8::FunctionCallbackInfo<v8::Value>& args) {
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
-      string err = TRI_StringifyV8Exception(isolate, &tryCatch);
+      std::string err = TRI_StringifyV8Exception(isolate, &tryCatch);
 
       tryCatch.ReThrow();
       TRI_V8_THROW_SYNTAX_ERROR(err.c_str());
@@ -635,7 +635,7 @@ static void JS_Download(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     // method
     if (options->Has(TRI_V8_ASCII_STRING("method"))) {
-      string methodString =
+      std::string methodString =
           TRI_ObjectToString(options->Get(TRI_V8_ASCII_STRING("method")));
 
       method = HttpRequest::translateMethod(methodString);
@@ -704,7 +704,7 @@ static void JS_Download(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // outfile
-  string outfile;
+  std::string outfile;
   if (args.Length() >= 4) {
     if (args[3]->IsString() || args[3]->IsStringObject()) {
       outfile = TRI_ObjectToString(args[3]);
@@ -803,7 +803,7 @@ static void JS_Download(const v8::FunctionCallbackInfo<v8::Value>& args) {
                        body.size(), headerFields));
 
     int returnCode = 500;  // set a default
-    string returnMessage;
+    std::string returnMessage;
 
     if (response == nullptr || !response->isComplete()) {
       // save error message
@@ -1082,7 +1082,7 @@ static void JS_ChMod(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
-  string const modeStr = TRI_ObjectToString(args[1]);
+  std::string const modeStr = TRI_ObjectToString(args[1]);
 
   if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
     TRI_V8_THROW_TYPE_ERROR(
@@ -1108,7 +1108,7 @@ static void JS_ChMod(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
     mode = mode | digit << ((modeStr.length() - i - 1) * 3);
   }
-  string err;
+  std::string err;
   int rc = TRI_ChMod(*name, mode, err);
 
   if (rc != TRI_ERROR_NO_ERROR) {
@@ -1204,8 +1204,8 @@ static void JS_GetTempFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("getTempFile(<directory>, <createFile>)");
   }
 
-  const char* p = NULL;
-  string path;
+  char const* p = nullptr;
+  std::string path;
   if (args.Length() > 0) {
     path = TRI_ObjectToString(args[0]);
     p = path.c_str();
@@ -1225,7 +1225,7 @@ static void JS_GetTempFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(errorMessage);
   }
 
-  const string tempfile(result);
+  std::string const tempfile(result);
   TRI_Free(TRI_CORE_MEM_ZONE, result);
 
   // return result
@@ -1309,7 +1309,7 @@ static void JS_MakeAbsolute(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   int err = 0;
-  string cwd = triagens::basics::FileUtils::currentDirectory(&err);
+  std::string cwd = triagens::basics::FileUtils::currentDirectory(&err);
   if (0 != err) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(err, "cannot get current working directory");
   }
@@ -1389,7 +1389,7 @@ static void JS_ListTree(const v8::FunctionCallbackInfo<v8::Value>& args) {
   uint32_t j = 0;
 
   for (size_t i = 0; i < list._length; ++i) {
-    const char* f = list._buffer[i];
+    char const* f = list._buffer[i];
     result->Set(j++, TRI_V8_STRING(f));
   }
 
@@ -1480,8 +1480,8 @@ static void JS_UnzipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
         "<password>)");
   }
 
-  const string filename = TRI_ObjectToString(args[0]);
-  const string outPath = TRI_ObjectToString(args[1]);
+  std::string const filename = TRI_ObjectToString(args[0]);
+  std::string const outPath = TRI_ObjectToString(args[1]);
 
   bool skipPaths = false;
   if (args.Length() > 2) {
@@ -1493,8 +1493,8 @@ static void JS_UnzipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
     overwrite = TRI_ObjectToBoolean(args[3]);
   }
 
-  const char* p = nullptr;
-  string password;
+  char const* p = nullptr;
+  std::string password;
   if (args.Length() > 4) {
     password = TRI_ObjectToString(args[4]);
     p = password.c_str();
@@ -1525,8 +1525,8 @@ static void JS_ZipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
         "zipFile(<filename>, <chdir>, <files>, <password>)");
   }
 
-  const string filename = TRI_ObjectToString(args[0]);
-  const string dir = TRI_ObjectToString(args[1]);
+  std::string const filename = TRI_ObjectToString(args[0]);
+  std::string const dir = TRI_ObjectToString(args[1]);
 
   if (!args[2]->IsArray()) {
     TRI_V8_THROW_EXCEPTION_USAGE("<files> must be a list");
@@ -1541,7 +1541,7 @@ static void JS_ZipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
   for (uint32_t i = 0; i < files->Length(); ++i) {
     v8::Handle<v8::Value> file = files->Get(i);
     if (file->IsString()) {
-      string fname = TRI_ObjectToString(file);
+      std::string fname = TRI_ObjectToString(file);
       TRI_PushBackVectorString(
           &filenames,
           TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, fname.c_str()));
@@ -1558,8 +1558,8 @@ static void JS_ZipFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
         "zipFile(<filename>, <chdir>, <files>, <password>)");
   }
 
-  const char* p = nullptr;
-  string password;
+  char const* p = nullptr;
+  std::string password;
   if (args.Length() == 4) {
     password = TRI_ObjectToString(args[3]);
     p = password.c_str();
@@ -1814,7 +1814,7 @@ static void JS_RandomNumbers(const v8::FunctionCallbackInfo<v8::Value>& args) {
                                    "<length> must be between 0 and 65536");
   }
 
-  string&& str = JSNumGenerator.random(length);
+  std::string&& str = JSNumGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
   TRI_V8_TRY_CATCH_END
 }
@@ -1841,7 +1841,7 @@ static void JS_RandomAlphaNum(const v8::FunctionCallbackInfo<v8::Value>& args) {
                                    "<length> must be between 0 and 65536");
   }
 
-  string&& str = JSAlphaNumGenerator.random(length);
+  std::string&& str = JSAlphaNumGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
   TRI_V8_TRY_CATCH_END
 }
@@ -1868,7 +1868,7 @@ static void JS_RandomSalt(const v8::FunctionCallbackInfo<v8::Value>& args) {
                                    "<length> must be between 0 and 65536");
   }
 
-  string str = JSSaltGenerator.random(length);
+  std::string str = JSSaltGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
   TRI_V8_TRY_CATCH_END
 }
@@ -1889,7 +1889,7 @@ static void JS_CreateNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("createNonce()");
   }
 
-  string str = Nonce::createNonce();
+  std::string str = Nonce::createNonce();
 
   TRI_V8_RETURN_STD_STRING(str);
   TRI_V8_TRY_CATCH_END
@@ -1917,7 +1917,7 @@ static void JS_MarkNonce(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting 16-Byte base64url-encoded nonce");
   }
 
-  string raw = StringUtils::decodeBase64U(*base64u);
+  std::string raw = StringUtils::decodeBase64U(*base64u);
 
   if (raw.size() != 12) {
     TRI_V8_THROW_TYPE_ERROR("expecting 12-Byte nonce");
@@ -1943,7 +1943,7 @@ static void JS_MTime(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("mtime(<filename>)");
   }
 
-  string filename = TRI_ObjectToString(args[0]);
+  std::string filename = TRI_ObjectToString(args[0]);
 
   int64_t mtime;
   int res = TRI_MTimeFile(filename.c_str(), &mtime);
@@ -1969,8 +1969,8 @@ static void JS_MoveFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("move(<source>, <destination>)");
   }
 
-  string source = TRI_ObjectToString(args[0]);
-  string destination = TRI_ObjectToString(args[1]);
+  std::string source = TRI_ObjectToString(args[0]);
+  std::string destination = TRI_ObjectToString(args[1]);
 
   bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
@@ -2016,8 +2016,8 @@ static void JS_CopyRecursive(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("copyRecursive(<source>, <destination>)");
   }
 
-  string source = TRI_ObjectToString(args[0]);
-  string destination = TRI_ObjectToString(args[1]);
+  std::string source = TRI_ObjectToString(args[0]);
+  std::string destination = TRI_ObjectToString(args[1]);
 
   bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
@@ -2070,8 +2070,8 @@ static void JS_CopyFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("copyFile(<source>, <destination>)");
   }
 
-  string source = TRI_ObjectToString(args[0]);
-  string destination = TRI_ObjectToString(args[1]);
+  std::string source = TRI_ObjectToString(args[0]);
+  std::string destination = TRI_ObjectToString(args[1]);
 
   bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
 
@@ -2082,7 +2082,7 @@ static void JS_CopyFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string systemErrorStr;
 
   if (destinationIsDirectory) {
-    const char* file = strrchr(source.c_str(), TRI_DIR_SEPARATOR_CHAR);
+    char const* file = strrchr(source.c_str(), TRI_DIR_SEPARATOR_CHAR);
     if (file == nullptr) {
       if (destination[destination.length()] == TRI_DIR_SEPARATOR_CHAR) {
         destination += TRI_DIR_SEPARATOR_CHAR;
@@ -2352,10 +2352,10 @@ static void JS_Read64(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
-  string base64;
+  std::string base64;
 
   try {
-    string&& content = FileUtils::slurp(*name);
+    std::string&& content = FileUtils::slurp(*name);
     base64 = StringUtils::encodeBase64(content);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
@@ -2537,7 +2537,7 @@ static void JS_RemoveRecursiveDirectory(
           "temporary directory name is too short. will not remove directory");
     }
 
-    const string path(*name);
+    std::string const path(*name);
 #ifdef _WIN32
     // windows paths are case-insensitive
     if (!TRI_CaseEqualString2(path.c_str(), tempPath, strlen(tempPath))) {
@@ -2588,7 +2588,7 @@ static void JS_SPrintF(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("<format> must be a UTF-8 string");
   }
 
-  string result;
+  std::string result;
 
   size_t p = 1;
 
@@ -2640,7 +2640,7 @@ static void JS_SPrintF(const v8::FunctionCallbackInfo<v8::Value>& args) {
             TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, args[(int)p]);
 
             if (*text == nullptr) {
-              string msg = StringUtils::itoa(p) +
+              std::string msg = StringUtils::itoa(p) +
                            ".th argument must be a string in format '" +
                            *format + "'";
               TRI_V8_THROW_EXCEPTION_PARAMETER(msg.c_str());
@@ -2668,7 +2668,7 @@ static void JS_SPrintF(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, args[(int)i]);
 
     if (*text == nullptr) {
-      string msg = StringUtils::itoa(i) +
+      std::string msg = StringUtils::itoa(i) +
                    ".th argument must be a string in format '" + *format + "'";
       TRI_V8_THROW_TYPE_ERROR(msg.c_str());
     }
@@ -2698,7 +2698,7 @@ static void JS_Sha512(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha512(<text>)");
   }
 
-  string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(args[0]);
 
   // create sha512
   char* hash = 0;
@@ -2740,7 +2740,7 @@ static void JS_Sha384(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha384(<text>)");
   }
 
-  string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(args[0]);
 
   // create sha384
   char* hash = 0;
@@ -2782,7 +2782,7 @@ static void JS_Sha256(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha256(<text>)");
   }
 
-  string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(args[0]);
 
   // create sha256
   char* hash = 0;
@@ -2824,7 +2824,7 @@ static void JS_Sha224(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha224(<text>)");
   }
 
-  string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(args[0]);
 
   // create sha224
   char* hash = 0;
@@ -2866,7 +2866,7 @@ static void JS_Sha1(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha1(<text>)");
   }
 
-  string key = TRI_ObjectToString(args[0]);
+  std::string key = TRI_ObjectToString(args[0]);
 
   // create sha1
   char* hash = 0;
@@ -3006,7 +3006,7 @@ static void JS_DebugSegfault(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("debugSegfault(<message>)");
   }
 
-  string const message = TRI_ObjectToString(args[0]);
+  std::string const message = TRI_ObjectToString(args[0]);
 
   TRI_SegfaultDebugging(message.c_str());
 
@@ -3035,7 +3035,7 @@ static void JS_DebugSetFailAt(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("debugSetFailAt(<point>)");
   }
 
-  string const point = TRI_ObjectToString(args[0]);
+  std::string const point = TRI_ObjectToString(args[0]);
 
   TRI_AddFailurePointDebugging(point.c_str());
 
@@ -3063,7 +3063,7 @@ static void JS_DebugRemoveFailAt(
     TRI_V8_THROW_EXCEPTION_USAGE("debugRemoveFailAt(<point>)");
   }
 
-  string const point = TRI_ObjectToString(args[0]);
+  std::string const point = TRI_ObjectToString(args[0]);
 
   TRI_RemoveFailurePointDebugging(point.c_str());
 
@@ -3144,12 +3144,12 @@ static void JS_PBKDF2(const v8::FunctionCallbackInfo<v8::Value>& args) {
         "PBKDF2(<salt>, <password>, <iterations>, <keyLength>)");
   }
 
-  string salt = TRI_ObjectToString(args[0]);
-  string password = TRI_ObjectToString(args[1]);
+  std::string salt = TRI_ObjectToString(args[0]);
+  std::string password = TRI_ObjectToString(args[1]);
   int iterations = (int)TRI_ObjectToInt64(args[2]);
   int keyLength = (int)TRI_ObjectToInt64(args[3]);
 
-  string result =
+  std::string result =
       SslInterface::sslPBKDF2(salt.c_str(), salt.size(), password.c_str(),
                               password.size(), iterations, keyLength);
   TRI_V8_RETURN_STD_STRING(result);
@@ -3173,12 +3173,12 @@ static void JS_HMAC(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("HMAC(<key>, <text>, <algorithm>)");
   }
 
-  string key = TRI_ObjectToString(args[0]);
-  string message = TRI_ObjectToString(args[1]);
+  std::string key = TRI_ObjectToString(args[0]);
+  std::string message = TRI_ObjectToString(args[1]);
 
   SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA256;
   if (args.Length() > 2 && !args[2]->IsUndefined()) {
-    string algorithm = TRI_ObjectToString(args[2]);
+    std::string algorithm = TRI_ObjectToString(args[2]);
     StringUtils::tolowerInPlace(&algorithm);
 
     if (algorithm == "sha1") {
@@ -3198,7 +3198,7 @@ static void JS_HMAC(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
-  string result = SslInterface::sslHMAC(key.c_str(), key.size(),
+  std::string result = SslInterface::sslHMAC(key.c_str(), key.size(),
                                         message.c_str(), message.size(), al);
   TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
@@ -3267,7 +3267,7 @@ static void JS_ExecuteExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (const char**)arguments, (size_t)n, usePipes,
+  TRI_CreateExternalProcess(*name, (char const**)arguments, (size_t)n, usePipes,
                             &external);
   if (arguments != 0) {
     for (uint32_t i = 0; i < n; ++i) {
@@ -3295,14 +3295,14 @@ static void JS_ExecuteExternal(
 #else
   size_t readPipe_len, writePipe_len;
   if (0 != external._readPipe) {
-    char* readPipe = TRI_EncodeHexString((const char*)external._readPipe,
+    char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
                                          sizeof(HANDLE), &readPipe_len);
     result->Set(TRI_V8_ASCII_STRING("readPipe"),
                 TRI_V8_PAIR_STRING(readPipe, (int)readPipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
   }
   if (0 != external._writePipe) {
-    char* writePipe = TRI_EncodeHexString((const char*)external._writePipe,
+    char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
                                           sizeof(HANDLE), &writePipe_len);
     result->Set(TRI_V8_ASCII_STRING("writePipe"),
                 TRI_V8_PAIR_STRING(writePipe, (int)writePipe_len));
@@ -3352,7 +3352,7 @@ static void JS_StatusExternal(const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_external_status_t external = TRI_CheckExternalProcess(pid, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  const char* status = "UNKNOWN";
+  char const* status = "UNKNOWN";
 
   switch (external._status) {
     case TRI_EXT_NOT_STARTED:
@@ -3464,7 +3464,7 @@ static void JS_ExecuteAndWaitExternal(
   }
 
   TRI_external_id_t external;
-  TRI_CreateExternalProcess(*name, (const char**)arguments, (size_t)n, usePipes,
+  TRI_CreateExternalProcess(*name, (char const**)arguments, (size_t)n, usePipes,
                             &external);
   if (arguments != 0) {
     for (uint32_t i = 0; i < n; ++i) {
@@ -3492,14 +3492,14 @@ static void JS_ExecuteAndWaitExternal(
 #else
   size_t readPipe_len, writePipe_len;
   if (0 != external._readPipe) {
-    char* readPipe = TRI_EncodeHexString((const char*)external._readPipe,
+    char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
                                          sizeof(HANDLE), &readPipe_len);
     result->Set(TRI_V8_ASCII_STRING("readPipe"),
                 TRI_V8_PAIR_STRING(readPipe, (int)readPipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
   }
   if (0 != external._writePipe) {
-    char* writePipe = TRI_EncodeHexString((const char*)external._writePipe,
+    char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
                                           sizeof(HANDLE), &writePipe_len);
     result->Set(TRI_V8_ASCII_STRING("writePipe"),
                 TRI_V8_PAIR_STRING(writePipe, (int)writePipe_len));
@@ -3514,7 +3514,7 @@ static void JS_ExecuteAndWaitExternal(
 
   TRI_external_status_t external_status = TRI_CheckExternalProcess(pid, true);
 
-  const char* status = "UNKNOWN";
+  char const* status = "UNKNOWN";
 
   switch (external_status._status) {
     case TRI_EXT_NOT_STARTED:
@@ -3614,9 +3614,9 @@ static void JS_TestPort(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("testPort(<address>)");
   }
 
-  string address = TRI_ObjectToString(args[0]);
+  std::string address = TRI_ObjectToString(args[0]);
   Endpoint* endpoint = Endpoint::serverFactory(address, 10, false);
-  if (0 == endpoint) {
+  if (nullptr == endpoint) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "address description invalid, cannot create endpoint");
@@ -3724,13 +3724,13 @@ static void JS_IsIP(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @brief reports an exception
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
+std::string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope(isolate);
 
   TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());
-  const char* exceptionString = *exception;
+  char const* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
-  string result;
+  std::string result;
 
   // V8 didn't provide any extra information about this error; just print the
   // exception.
@@ -3743,7 +3743,7 @@ string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
                               message->GetScriptResourceName());
-    const char* filenameString = *filename;
+    char const* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
     int end = message->GetEndColumn();
@@ -3770,17 +3770,17 @@ string TRI_StringifyV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
-      string l = *sourceline;
+      std::string l = *sourceline;
 
       result += "!" + l + "\n";
 
       if (1 < start) {
-        l = string(start - 1, ' ');
+        l = std::string(start - 1, ' ');
       } else {
         l = "";
       }
 
-      l += string((size_t)(end - start + 1), '^');
+      l += std::string((size_t)(end - start + 1), '^');
 
       result += "!" + l + "\n";
     }
@@ -3817,7 +3817,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   } else {
     TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
                               message->GetScriptResourceName());
-    const char* filenameString = *filename;
+    char const* filenameString = *filename;
 #ifdef TRI_ENABLE_LOGGER
     // if ifdef is not used, the compiler will complain about linenum being
     // unused
@@ -3845,17 +3845,17 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
 
     if (*sourceline) {
-      string l = *sourceline;
+      std::string l = *sourceline;
 
       LOG_ERROR("!%s", l.c_str());
 
       if (1 < start) {
-        l = string(start - 1, ' ');
+        l = std::string(start - 1, ' ');
       } else {
         l = "";
       }
 
-      l += string((size_t)(end - start + 1), '^');
+      l += std::string((size_t)(end - start + 1), '^');
 
       LOG_ERROR("!%s", l.c_str());
     }
@@ -4023,7 +4023,7 @@ void TRI_normalize_V8_Obj(const v8::FunctionCallbackInfo<v8::Value>& args,
     // compilers. v8 expects uint16_t (2 bytes)
     // ..........................................................................
 
-    TRI_V8_RETURN(TRI_V8_STRING_UTF16((const uint16_t*)result.getBuffer(),
+    TRI_V8_RETURN(TRI_V8_STRING_UTF16((uint16_t const*)result.getBuffer(),
                                       result.length()));
   }
 
@@ -4035,13 +4035,13 @@ void TRI_normalize_V8_Obj(const v8::FunctionCallbackInfo<v8::Value>& args,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate,
-                                        string const& modules) {
+                                        std::string const& modules) {
   v8::EscapableHandleScope scope(isolate);
 
 #ifdef _WIN32
-  vector<string> paths = StringUtils::split(modules, ";", '\0');
+  std::vector<std::string> paths = StringUtils::split(modules, ";", '\0');
 #else
-  vector<string> paths = StringUtils::split(modules, ";:");
+  std::vector<std::string> paths = StringUtils::split(modules, ";:");
 #endif
 
   uint32_t const n = static_cast<uint32_t>(paths.size());
@@ -4142,10 +4142,10 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          string const& startupPath, string const& modules);
+                          std::string const& startupPath, std::string const& modules);
 
 void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                     string const& startupPath, string const& modules) {
+                     std::string const& startupPath, std::string const& modules) {
   v8::HandleScope scope(isolate);
 
   // check the isolate

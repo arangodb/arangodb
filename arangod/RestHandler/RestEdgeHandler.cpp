@@ -58,7 +58,7 @@ RestEdgeHandler::RestEdgeHandler(HttpRequest* request)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestEdgeHandler::createDocument() {
-  vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
 
   if (!suffix.empty()) {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -161,7 +161,7 @@ bool RestEdgeHandler::createDocument() {
     edge._fromKey = nullptr;
     edge._toKey = nullptr;
 
-    string wrongPart;
+    std::string wrongPart;
     // Note that in a DBserver in a cluster, the following call will
     // actually parse the first part of *from* as a cluster-wide
     // collection name, exactly as it is needed here!
@@ -236,7 +236,7 @@ bool RestEdgeHandler::createDocument() {
 /// @brief creates a document (an edge), coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestEdgeHandler::createDocumentCoordinator(string const& collname,
+bool RestEdgeHandler::createDocumentCoordinator(std::string const& collname,
                                                 bool waitForSync,
                                                 VPackSlice const& document,
                                                 char const* from,
@@ -244,8 +244,8 @@ bool RestEdgeHandler::createDocumentCoordinator(string const& collname,
   std::string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   std::unique_ptr<TRI_json_t> json(
       triagens::basics::VelocyPackHelper::velocyPackToJson(document));

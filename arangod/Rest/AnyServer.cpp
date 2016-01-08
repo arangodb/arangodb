@@ -48,7 +48,7 @@ using namespace triagens::rest;
 /// @brief writes a pid file
 ////////////////////////////////////////////////////////////////////////////////
 
-static void WritePidFile(string const& pidFile, int pid) {
+static void WritePidFile(std::string const& pidFile, int pid) {
   ofstream out(pidFile.c_str(), ios::trunc);
 
   if (!out) {
@@ -62,7 +62,7 @@ static void WritePidFile(string const& pidFile, int pid) {
 /// @brief checks a pid file
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CheckPidFile(string const& pidFile) {
+static void CheckPidFile(std::string const& pidFile) {
   // check if the pid-file exists
   if (!pidFile.empty()) {
     if (FileUtils::isDirectory(pidFile)) {
@@ -133,7 +133,7 @@ static void CheckPidFile(string const& pidFile) {
 
 #ifdef TRI_HAVE_FORK
 
-static int ForkProcess(string const& workingDirectory, string& current) {
+static int ForkProcess(std::string const& workingDirectory, std::string& current) {
   // fork off the parent process
   TRI_pid_t pid = fork();
 
@@ -267,7 +267,7 @@ int WaitForSupervisor(int pid) {
 // TODO: use windows API CreateProcess & CreateThread to minic fork()
 // .............................................................................
 
-static int ForkProcess(string const& workingDirectory, string& current) {
+static int ForkProcess(std::string const& workingDirectory, std::string& current) {
   // fork off the parent process
   TRI_pid_t pid = -1;  // fork();
 
@@ -362,7 +362,7 @@ int AnyServer::startupSupervisor() {
 
   _applicationServer->setupLogging(false, true, false);
 
-  string current;
+  std::string current;
   int result = ForkProcess(_workingDirectory, current);
 
   // main process
@@ -514,7 +514,7 @@ int AnyServer::startupDaemon() {
 
   _applicationServer->setupLogging(false, true, false);
 
-  string current;
+  std::string current;
   int result = ForkProcess(_workingDirectory, current);
 
   // main process

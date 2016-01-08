@@ -39,8 +39,8 @@ class EndpointIpV4 final : public EndpointIp {
   /// @brief creates an endpoint
   ////////////////////////////////////////////////////////////////////////////////
 
-  EndpointIpV4(const EndpointType, const EncryptionType, const std::string&,
-               int, bool, const std::string&, const uint16_t);
+  EndpointIpV4(const EndpointType, const EncryptionType, std::string const&,
+               int, bool, std::string const&, uint16_t const);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief destroys an endpoint

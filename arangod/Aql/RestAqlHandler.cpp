@@ -619,7 +619,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   query = nullptr;
 
   // sleep for 10ms each time, wait for at most 30 seconds...
-  static const int64_t SingleWaitPeriod = 10 * 1000;
+  static int64_t const SingleWaitPeriod = 10 * 1000;
   static int64_t const MaxIterations =
       static_cast<int64_t>(30.0 * 1000000.0 / (double)SingleWaitPeriod);
 

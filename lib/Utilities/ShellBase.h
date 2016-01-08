@@ -73,7 +73,7 @@ class ShellBase {
   /// @brief line editor prompt
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::string prompt(const std::string& prompt, const std::string& begin,
+  std::string prompt(std::string const& prompt, std::string const& begin,
                      bool& eof);
 
   
@@ -100,7 +100,7 @@ class ShellBase {
   /// @brief add to history
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual void addHistory(const std::string&) = 0;
+  virtual void addHistory(std::string const&) = 0;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief save the history
@@ -112,7 +112,7 @@ class ShellBase {
   /// @brief get next line
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual std::string getLine(const std::string& prompt, bool& eof) = 0;
+  virtual std::string getLine(std::string const& prompt, bool& eof) = 0;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the shell implementation supports colors

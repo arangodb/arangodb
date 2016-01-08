@@ -37,9 +37,9 @@ static inline uint64_t mix(uint64_t h) {
 }
 
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
-  const uint64_t m = 0x880355f21e6d1965ULL;
-  const uint64_t* pos = (const uint64_t*)buf;
-  const uint64_t* end = pos + (len / 8);
+  uint64_t const m = 0x880355f21e6d1965ULL;
+  uint64_t const* pos = (uint64_t const*)buf;
+  uint64_t const* end = pos + (len / 8);
   const unsigned char* pos2;
   uint64_t h = seed ^ (len * m);
   uint64_t v;

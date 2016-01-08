@@ -40,7 +40,7 @@ static void EnvGetter(v8::Local<v8::String> property,
   v8::HandleScope scope(isolate);
 #ifndef _WIN32
   v8::String::Utf8Value const key(property);
-  const char* val = getenv(*key);
+  char const* val = getenv(*key);
   if (val) {
     TRI_V8_RETURN_STRING(val);
   }
@@ -56,7 +56,7 @@ static void EnvGetter(v8::Local<v8::String> property,
   // not found.
   if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
       result < sizeof(buffer)) {
-    const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(buffer);
+    uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(buffer);
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(two_byte_buffer, result));
   }
 #endif
@@ -156,9 +156,9 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   v8::Local<v8::Array> envarr = v8::Array::New(isolate, size);
 
   for (int i = 0; i < size; ++i) {
-    const char* var = environ[i];
-    const char* s = strchr(var, '=');
-    const int length = s ? s - var : strlen(var);
+    char const* var = environ[i];
+    char const* s = strchr(var, '=');
+    int const length = s ? s - var : strlen(var);
     v8::Local<v8::String> name = TRI_V8_PAIR_STRING(var, length);
     envarr->Set(i, name);
   }
@@ -180,8 +180,8 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     if (!s) {
       s = p + wcslen(p);
     }
-    const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(p);
-    const size_t two_byte_buffer_len = s - p;
+    uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(p);
+    size_t const two_byte_buffer_len = s - p;
     auto value = TRI_V8_STRING_UTF16(two_byte_buffer, (int)two_byte_buffer_len);
 
     envarr->Set(i, value);

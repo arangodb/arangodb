@@ -147,7 +147,7 @@ void ClearQueryCache(TRI_transaction_t* trx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-static const char* StatusTransaction(const TRI_transaction_status_e status) {
+static char const* StatusTransaction(const TRI_transaction_status_e status) {
   switch (status) {
     case TRI_TRANSACTION_UNDEFINED:
       return "undefined";

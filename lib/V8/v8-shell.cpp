@@ -57,7 +57,7 @@ static void ProcessCsvBegin(TRI_csv_parser_t* parser, size_t row) {
 /// @brief adds a new CSV field
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvAdd(TRI_csv_parser_t* parser, const char* field, size_t,
+static void ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t,
                           size_t row, size_t column, bool escaped) {
   v8::Isolate* isolate = (v8::Isolate*)parser->_data;
   v8::Handle<v8::Array>* array =
@@ -70,7 +70,7 @@ static void ProcessCsvAdd(TRI_csv_parser_t* parser, const char* field, size_t,
 /// @brief ends a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ProcessCsvEnd(TRI_csv_parser_t* parser, const char* field, size_t,
+static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
                           size_t row, size_t column, bool escaped) {
   v8::Isolate* isolate = (v8::Isolate*)parser->_data;
   v8::Handle<v8::Array>* array =
@@ -134,8 +134,8 @@ static void JS_ProcessCsvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING("separator");
   v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING("quote");
 
-  string separator = ",";
-  string quote = "\"";
+  std::string separator = ",";
+  std::string quote = "\"";
 
   if (3 <= args.Length()) {
     v8::Handle<v8::Object> options = args[2]->ToObject();
@@ -246,7 +246,7 @@ static void JS_ProcessJsonFile(
   v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(args[1]);
 
   // read and convert
-  string line;
+  std::string line;
   ifstream file(*filename);
 
   if (file.is_open()) {
@@ -255,8 +255,8 @@ static void JS_ProcessJsonFile(
     while (file.good()) {
       getline(file, line);
 
-      const char* ptr = line.c_str();
-      const char* end = ptr + line.length();
+      char const* ptr = line.c_str();
+      char const* end = ptr + line.length();
 
       while (ptr < end && (*ptr == ' ' || *ptr == '\t' || *ptr == '\r')) {
         ++ptr;
@@ -272,7 +272,7 @@ static void JS_ProcessJsonFile(
 
       if (object->IsUndefined()) {
         if (error != nullptr) {
-          string msg = error;
+          std::string msg = error;
           TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
           TRI_V8_THROW_SYNTAX_ERROR(msg.c_str());
         } else {

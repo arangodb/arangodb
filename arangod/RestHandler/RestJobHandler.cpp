@@ -62,7 +62,7 @@ HttpHandler::status_t RestJobHandler::execute() {
   if (type == HttpRequest::HTTP_REQUEST_GET) {
     getJob();
   } else if (type == HttpRequest::HTTP_REQUEST_PUT) {
-    const vector<string>& suffix = _request->suffix();
+    const std::vector<std::string>& suffix = _request->suffix();
 
     if (suffix.size() == 1) {
       putJob();
@@ -87,7 +87,7 @@ HttpHandler::status_t RestJobHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestJobHandler::putJob() {
-  std::vector<string> const& suffix = _request->suffix();
+  std::vector<std::string> const& suffix = _request->suffix();
   std::string const& value = suffix[0];
   uint64_t jobId = StringUtils::uint64(value);
 
@@ -263,7 +263,7 @@ void RestJobHandler::deleteJob() {
     return;
   }
 
-  const string& value = suffix[0];
+  std::string const& value = suffix[0];
 
   if (value == "all") {
     _jobManager->deleteJobResults();

@@ -64,7 +64,7 @@ Exception::Exception(int code, char const* file, int line)
 /// @brief returns the error message
 ////////////////////////////////////////////////////////////////////////////////
 
-string Exception::message() const throw() { return _errorMessage; }
+std::string Exception::message() const throw() { return _errorMessage; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the error code
@@ -123,7 +123,7 @@ Exception::~Exception() throw() {}
 /// @brief return exception message
 ////////////////////////////////////////////////////////////////////////////////
 
-const char* Exception::what() const throw() { return _errorMessage.c_str(); }
+char const* Exception::what() const throw() { return _errorMessage.c_str(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct an error message from a template string

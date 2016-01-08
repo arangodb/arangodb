@@ -80,7 +80,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
     return nullptr;
   }
 
-  unique_ptr<AqlItemBlock> res(nullptr);
+  std::unique_ptr<AqlItemBlock> res(nullptr);
 
   do {
     // repeatedly try to get more stuff from upstream

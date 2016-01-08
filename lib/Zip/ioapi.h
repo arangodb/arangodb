@@ -142,7 +142,7 @@ typedef unsigned long long int ZPOS64_T;
 #endif
 
 typedef voidpf(ZCALLBACK* open_file_func)
-    OF((voidpf opaque, const char* filename, int mode));
+    OF((voidpf opaque, char const* filename, int mode));
 typedef uLong(ZCALLBACK* read_file_func)
     OF((voidpf opaque, voidpf stream, void* buf, uLong size));
 typedef uLong(ZCALLBACK* write_file_func)

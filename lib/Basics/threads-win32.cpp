@@ -85,7 +85,7 @@ TRI_tid_t TRI_CurrentThreadId() { return GetCurrentThreadId(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
-                     const char* name, void (*starter)(void*), void* data) {
+                     char const* name, void (*starter)(void*), void* data) {
   thread_data_t* d = static_cast<thread_data_t*>(
       TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false));
 

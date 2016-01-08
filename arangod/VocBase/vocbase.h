@@ -469,7 +469,7 @@ std::shared_ptr<VPackBuilder> TRI_InventoryCollectionsVocBase(
 /// @brief returns a translation of a collection status
 ////////////////////////////////////////////////////////////////////////////////
 
-const char* TRI_GetStatusStringCollectionVocBase(TRI_vocbase_col_status_e);
+char const* TRI_GetStatusStringCollectionVocBase(TRI_vocbase_col_status_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a collection name by a collection id

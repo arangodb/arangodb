@@ -200,7 +200,7 @@ class SingleCollectionTransaction : public Transaction {
   /// @brief read a document within a transaction
   ////////////////////////////////////////////////////////////////////////////////
 
-  inline int read(TRI_doc_mptr_copy_t* mptr, const std::string& key) {
+  inline int read(TRI_doc_mptr_copy_t* mptr, std::string const& key) {
     TRI_ASSERT(mptr != nullptr);
     return this->readSingle(this->trxCollection(), mptr, key);
   }

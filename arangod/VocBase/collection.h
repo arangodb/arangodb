@@ -492,7 +492,7 @@ int TRI_UpgradeCollection20(TRI_vocbase_t*, char const*,
 /// to get the last tick used in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_IterateTicksCollection(const char* const,
+bool TRI_IterateTicksCollection(char const* const,
                                 bool (*)(TRI_df_marker_t const*, void*,
                                          TRI_datafile_t*),
                                 void*);

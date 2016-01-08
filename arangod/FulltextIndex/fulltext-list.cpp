@@ -77,7 +77,7 @@ static inline bool IsSorted(const TRI_fulltext_list_t* const list) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void SetIsSorted(TRI_fulltext_list_t* const list,
-                               const bool value) {
+                               bool const value) {
   uint32_t* head = (uint32_t*)list;
 
   // yes, we could also do this without branching and with more bit twiddling

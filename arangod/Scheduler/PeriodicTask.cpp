@@ -35,7 +35,7 @@ using namespace triagens::rest;
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
-PeriodicTask::PeriodicTask(string const& id, double offset, double interval)
+PeriodicTask::PeriodicTask(std::string const& id, double offset, double interval)
     : Task(id, "PeriodicTask"),
       _watcher(nullptr),
       _offset(offset),

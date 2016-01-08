@@ -63,7 +63,7 @@ bool DummyShell::close() {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void DummyShell::addHistory(const string&) {}
+void DummyShell::addHistory(std::string const&) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -75,10 +75,10 @@ bool DummyShell::writeHistory() { return true; }
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string DummyShell::getLine(const std::string& prompt, bool& eof) {
+std::string DummyShell::getLine(std::string const& prompt, bool& eof) {
   std::cout << prompt << flush;
 
-  string line;
+  std::string line;
   getline(cin, line);
 
   if (cin.eof()) {

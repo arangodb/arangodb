@@ -81,7 +81,7 @@ static void get_normalized_boundaries(Fp* fp, Fp* lower, Fp* upper) {
 }
 
 static Fp multiply(Fp* a, Fp* b) {
-  const uint64_t lomask = 0x00000000FFFFFFFF;
+  uint64_t const lomask = 0x00000000FFFFFFFF;
 
   uint64_t ah_bl = (a->frac >> 32) * (b->frac & lomask);
   uint64_t al_bh = (a->frac & lomask) * (b->frac >> 32);

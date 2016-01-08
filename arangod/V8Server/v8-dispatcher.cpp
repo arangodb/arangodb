@@ -91,7 +91,7 @@ static bool TryCompile(v8::Isolate* isolate, std::string const& command) {
 /// @brief extract a task id from an argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
+static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   if (arg->IsObject()) {
     // extract "id" from object
     v8::Handle<v8::Object> obj = arg.As<v8::Object>();
@@ -266,7 +266,7 @@ static void JS_UnregisterTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
 
-  string const id = GetTaskId(isolate, args[0]);
+  std::string const id = GetTaskId(isolate, args[0]);
 
   if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
@@ -304,7 +304,7 @@ static void JS_GetTask(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (args.Length() == 1) {
     // get a single task
-    string const id = GetTaskId(isolate, args[0]);
+    std::string const id = GetTaskId(isolate, args[0]);
     json.reset(GlobalScheduler->getUserTask(id));
   } else {
     // get all tasks

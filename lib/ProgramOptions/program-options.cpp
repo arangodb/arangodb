@@ -222,12 +222,12 @@ static void printUnrecognizedOption(TRI_program_options_t const* options,
 /// @brief finds and replaces variables
 ////////////////////////////////////////////////////////////////////////////////
 
-static char* FillVariables(const char* value) {
+static char* FillVariables(char const* value) {
   TRI_string_buffer_t buffer;
 
-  const char* p;
-  const char* e;
-  const char* q;
+  char const* p;
+  char const* e;
+  char const* q;
 
   if (value == nullptr) {
     return nullptr;
@@ -245,7 +245,7 @@ static char* FillVariables(const char* value) {
       if (*q == '@') {
         TRI_AppendCharStringBuffer(&buffer, '@');
       } else {
-        const char* t = q;
+        char const* t = q;
 
         for (; q < e && *q != '@'; q++)
           ;
@@ -263,7 +263,7 @@ static char* FillVariables(const char* value) {
 #if _WIN32
 
             if (TRI_EqualString(k, "ROOTDIR")) {
-              string vv = TRI_LocateInstallDirectory();
+              std::string vv = TRI_LocateInstallDirectory();
 
               if (!vv.empty()) {
                 size_t lv = vv.length();
@@ -303,7 +303,7 @@ static char* FillVariables(const char* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static struct option* InitOptionStructure(struct option* option,
-                                          const char* name, int hasArg,
+                                          char const* name, int hasArg,
                                           int* flag, int val) {
   option->name = name;
   option->has_arg = hasArg;
@@ -331,7 +331,7 @@ static void FreeOption(TRI_PO_desc_t* desc, const void* input, void* output) {
 /// @brief parses a double argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseDoubleArg(const char* userarg, void* value) {
+static int ParseDoubleArg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_double_t* desc = static_cast<po_double_t*>(value);
@@ -372,7 +372,7 @@ static void CreateDoubleOption(po_double_t* desc, const void* input,
 /// @brief parses a flag argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseFlagArg(const char* userarg, void* value) {
+static int ParseFlagArg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_flag_t* flag = static_cast<po_flag_t*>(value);
@@ -427,7 +427,7 @@ static void CreateFlagOption(po_flag_t* desc, const void* input, void* output) {
 /// @brief parses a 16-bit integer argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseInt16Arg(const char* userarg, void* value) {
+static int ParseInt16Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_int16_t* desc = static_cast<po_int16_t*>(value);
@@ -474,7 +474,7 @@ static void CreateInt16Option(po_int16_t* desc, const void* input,
 /// @brief parses a 32-bit integer argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseInt32Arg(const char* userarg, void* value) {
+static int ParseInt32Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_int32_t* desc = static_cast<po_int32_t*>(value);
@@ -517,7 +517,7 @@ static void CreateInt32Option(po_int32_t* desc, const void* input,
 /// @brief parses a 64-bit integer argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseInt64Arg(const char* userarg, void* value) {
+static int ParseInt64Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_int64_t* desc = static_cast<po_int64_t*>(value);
@@ -577,7 +577,7 @@ static void CreateSectionOption(TRI_PO_section_t* section, const void* input,
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseStringArg(const char* userarg, void* value) {
+static int ParseStringArg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
   TRI_ASSERT(userarg != nullptr);
 
@@ -619,7 +619,7 @@ static void CreateStringOption(TRI_PO_string_t* desc, const void* input,
 /// @brief parses an unsigned 16-bit integer argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseUInt16Arg(const char* userarg, void* value) {
+static int ParseUInt16Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_uint16_t* desc = static_cast<po_uint16_t*>(value);
@@ -666,7 +666,7 @@ static void CreateUInt16Option(po_uint16_t* desc, const void* input,
 /// @brief parses a 32-bit integer argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseUInt32Arg(const char* userarg, void* value) {
+static int ParseUInt32Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_uint32_t* desc = static_cast<po_uint32_t*>(value);
@@ -709,7 +709,7 @@ static void CreateUInt32Option(po_uint32_t* desc, const void* input,
 /// @brief parses a 64-bit integer argument
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseUInt64Arg(const char* userarg, void* value) {
+static int ParseUInt64Arg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
 
   po_uint64_t* desc = static_cast<po_uint64_t*>(value);
@@ -752,7 +752,7 @@ static void CreateUInt64Option(po_uint64_t* desc, const void* input,
 /// @brief parses a vector of strings
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseVectorStringArg(const char* userarg, void* value) {
+static int ParseVectorStringArg(char const* userarg, void* value) {
   TRI_ASSERT(value != nullptr);
   TRI_ASSERT(userarg != nullptr);
 
@@ -908,7 +908,7 @@ static bool HandleOption(TRI_program_options_t* options,
 /// @brief creates a new program options description
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_PO_section_t* TRI_CreatePODescription(const char* description) {
+TRI_PO_section_t* TRI_CreatePODescription(char const* description) {
   TRI_PO_section_t* desc;
 
   desc = static_cast<TRI_PO_section_t*>(
@@ -1026,8 +1026,8 @@ void TRI_FreeProgramOptions(TRI_program_options_t* options) {
 /// @brief adds a flag option
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddFlagPODescription(TRI_PO_section_t* desc, const char* name,
-                              char shortName, const char* description,
+void TRI_AddFlagPODescription(TRI_PO_section_t* desc, char const* name,
+                              char shortName, char const* description,
                               bool* variable) {
   po_flag_t* res;
 
@@ -1051,8 +1051,8 @@ void TRI_AddFlagPODescription(TRI_PO_section_t* desc, const char* name,
 /// @brief adds a string option
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddStringPODescription(TRI_PO_section_t* desc, const char* name,
-                                char shortName, const char* description,
+void TRI_AddStringPODescription(TRI_PO_section_t* desc, char const* name,
+                                char shortName, char const* description,
                                 char** variable) {
   TRI_PO_string_t* res;
 
@@ -1077,8 +1077,8 @@ void TRI_AddStringPODescription(TRI_PO_section_t* desc, const char* name,
 /// @brief adds a vector string option
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddVectorStringPODescription(TRI_PO_section_t* desc, const char* name,
-                                      char shortName, const char* description,
+void TRI_AddVectorStringPODescription(TRI_PO_section_t* desc, char const* name,
+                                      char shortName, char const* description,
                                       TRI_vector_string_t* variable) {
   TRI_PO_vector_string_t* res;
 
@@ -1238,8 +1238,8 @@ bool TRI_ParseArgumentsProgramOptions(TRI_program_options_t* options,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseFileProgramOptions(TRI_program_options_t* options,
-                                 const char* programName,
-                                 const char* filename) {
+                                 char const* programName,
+                                 char const* filename) {
   FILE* f;
   bool ok;
   char* buffer;

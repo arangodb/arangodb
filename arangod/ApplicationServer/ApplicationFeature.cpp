@@ -29,7 +29,7 @@ using namespace std;
 
 
 
-ApplicationFeature::ApplicationFeature(string const& name)
+ApplicationFeature::ApplicationFeature(std::string const& name)
     : _disabled(false), _name(name) {}
 
 
@@ -40,14 +40,14 @@ ApplicationFeature::~ApplicationFeature() {}
 /// @brief returns the name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ApplicationFeature::getName() const { return _name; }
+std::string const& ApplicationFeature::getName() const { return _name; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the options
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationFeature::setupOptions(
-    map<string, basics::ProgramOptionsDescription>&) {}
+    std::map<std::string, basics::ProgramOptionsDescription>&) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief callback after options parsing and config file reading,

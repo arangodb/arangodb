@@ -88,7 +88,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   /// @brief interrupts a named query
   ////////////////////////////////////////////////////////////////////////////////
 
-  bool deleteQuery(const std::string& name);
+  bool deleteQuery(std::string const& name);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief interrupts a query

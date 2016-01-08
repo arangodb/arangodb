@@ -96,7 +96,7 @@ HttpHandler::status_t RestUploadHandler::execute() {
   }
 
   try {
-    FileUtils::spit(string(filename), body, bodySize);
+    FileUtils::spit(std::string(filename), body, bodySize);
     TRI_Free(TRI_CORE_MEM_ZONE, filename);
   } catch (...) {
     TRI_Free(TRI_CORE_MEM_ZONE, relative);

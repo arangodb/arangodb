@@ -162,13 +162,13 @@ struct AgencyCommResult {
   /// @brief return the location header (might be empty)
   ////////////////////////////////////////////////////////////////////////////////
 
-  const std::string location() const { return _location; }
+  std::string const location() const { return _location; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the body (might be empty)
   ////////////////////////////////////////////////////////////////////////////////
 
-  const std::string body() const { return _body; }
+  std::string const body() const { return _body; }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief flush the internal result buffer
@@ -251,8 +251,8 @@ class AgencyCommLocker {
 
   
  private:
-  const std::string _key;
-  const std::string _type;
+  std::string const _key;
+  std::string const _type;
   TRI_json_t* _json;
   uint64_t _version;
   bool _isLocked;
@@ -318,7 +318,7 @@ class AgencyComm {
   /// @brief get a stringified version of the endpoints
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const std::string getEndpointsString();
+  static std::string const getEndpointsString();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief sets the global prefix for all operations
@@ -572,7 +572,7 @@ class AgencyComm {
   /// @brief the static global URL prefix
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const std::string AGENCY_URL_PREFIX;
+  static std::string const AGENCY_URL_PREFIX;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the (variable) global prefix
@@ -602,7 +602,7 @@ class AgencyComm {
   /// @brief number of connections per endpoint
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const size_t NumConnections = 3;
+  static size_t const NumConnections = 3;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initial sleep time

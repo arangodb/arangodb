@@ -61,7 +61,7 @@ static int update_keys(unsigned long* pkeys, const unsigned long* pcrc_32_tab,
  * Initialize the encryption keys and the random header according to
  * the given password.
  */
-static void init_keys(const char* passwd, unsigned long* pkeys,
+static void init_keys(char const* passwd, unsigned long* pkeys,
                       const unsigned long* pcrc_32_tab) {
   *(pkeys + 0) = 305419896L;
   *(pkeys + 1) = 591751049L;
@@ -87,7 +87,7 @@ static void init_keys(const char* passwd, unsigned long* pkeys,
 #define ZCR_SEED2 3141592654UL /* use PI as default pattern */
 #endif
 
-static int crypthead(const char* passwd, /* password string */
+static int crypthead(char const* passwd, /* password string */
                      unsigned char* buf, /* where to write header */
                      int bufSize, unsigned long* pkeys,
                      const unsigned long* pcrc_32_tab,

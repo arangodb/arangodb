@@ -64,21 +64,21 @@ struct BenchmarkOperation {
   /// @brief return the URL of the operation to execute
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual std::string url(const int, const size_t, const size_t) = 0;
+  virtual std::string url(int const, size_t const, size_t const) = 0;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the HTTP method of the operation to execute
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual triagens::rest::HttpRequest::HttpRequestType type(const int,
-                                                            const size_t,
-                                                            const size_t) = 0;
+  virtual triagens::rest::HttpRequest::HttpRequestType type(int const,
+                                                            size_t const,
+                                                            size_t const) = 0;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return the payload (body) of the HTTP request to execute
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual const char* payload(size_t*, const int, const size_t, const size_t,
+  virtual char const* payload(size_t*, int const, size_t const, size_t const,
                               bool*) = 0;
 };
 }

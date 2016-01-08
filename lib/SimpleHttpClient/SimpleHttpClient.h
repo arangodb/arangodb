@@ -203,7 +203,7 @@ class SimpleHttpClient {
   /// @brief register an error message
   ////////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(const std::string& message, int error) {
+  void setErrorMessage(std::string const& message, int error) {
     if (error != TRI_ERROR_NO_ERROR) {
       _errorMessage = message + ": " + strerror(error);
     } else {
@@ -383,7 +383,7 @@ class SimpleHttpClient {
 
   struct {
     void* data;
-    std::string (*func)(void*, const std::string&);
+    std::string (*func)(void*, std::string const&);
   } _locationRewriter;
 
   uint32_t _nextChunkedSize;

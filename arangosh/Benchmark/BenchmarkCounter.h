@@ -131,7 +131,7 @@ class BenchmarkCounter {
   /// @brief register a failure
   ////////////////////////////////////////////////////////////////////////////////
 
-  void incFailures(const size_t value) {
+  void incFailures(size_t const value) {
     MUTEX_LOCKER(this->_mutex);
     _failures += value;
   }
@@ -140,7 +140,7 @@ class BenchmarkCounter {
   /// @brief register a failure
   ////////////////////////////////////////////////////////////////////////////////
 
-  void incIncompleteFailures(const size_t value) {
+  void incIncompleteFailures(size_t const value) {
     MUTEX_LOCKER(this->_mutex);
     _incompleteFailures += value;
   }

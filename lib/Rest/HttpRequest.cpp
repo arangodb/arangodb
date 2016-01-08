@@ -93,8 +93,8 @@ HttpRequest::HttpRequest(ConnectionInfo const& info, char const* header,
 
 
 HttpRequest::~HttpRequest() {
-  basics::Dictionary<vector<char const*>*>::KeyValue const* begin;
-  basics::Dictionary<vector<char const*>*>::KeyValue const* end;
+  basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
+  basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
   for (_arrayValues.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
 
@@ -102,7 +102,7 @@ HttpRequest::~HttpRequest() {
       continue;
     }
 
-    vector<char const*>* v = begin->_value;
+    std::vector<char const*>* v = begin->_value;
     delete v;
   }
 
@@ -128,7 +128,7 @@ char const* HttpRequest::requestPath() const { return _requestPath; }
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::write(TRI_string_buffer_t* buffer) const {
-  string&& method = translateMethod(_type);
+  std::string&& method = translateMethod(_type);
 
   TRI_AppendString2StringBuffer(buffer, method.c_str(), method.size());
   TRI_AppendCharStringBuffer(buffer, ' ');
@@ -261,11 +261,11 @@ char const* HttpRequest::header(char const* key, bool& found) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::headers() const {
+std::map<std::string, std::string> HttpRequest::headers() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
-  map<string, string> result;
+  std::map<std::string, std::string> result;
 
   for (_headers.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
@@ -316,11 +316,11 @@ char const* HttpRequest::value(char const* key, bool& found) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::values() const {
+std::map<std::string, std::string> HttpRequest::values() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
-  map<string, string> result;
+  std::map<std::string, std::string> result;
 
   for (_values.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
@@ -339,11 +339,11 @@ map<string, string> HttpRequest::values() const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, vector<char const*>*> HttpRequest::arrayValues() const {
-  basics::Dictionary<vector<char const*>*>::KeyValue const* begin;
-  basics::Dictionary<vector<char const*>*>::KeyValue const* end;
+std::map<std::string, std::vector<char const*>*> HttpRequest::arrayValues() const {
+  basics::Dictionary<std::vector<char const*>*>::KeyValue const* begin;
+  basics::Dictionary<std::vector<char const*>*>::KeyValue const* end;
 
-  map<string, vector<char const*>*> result;
+  std::map<std::string, std::vector<char const*>*> result;
 
   for (_arrayValues.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
@@ -392,11 +392,11 @@ char const* HttpRequest::cookieValue(char const* key, bool& found) const {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpRequest::cookieValues() const {
+std::map<std::string, std::string> HttpRequest::cookieValues() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
-  map<string, string> result;
+  std::map<std::string, std::string> result;
 
   for (_cookies.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
@@ -468,7 +468,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
            memcmp(key, "x-method-override", keyLength) == 0) ||
           (keyLength == 22 &&
            memcmp(key, "x-http-method-override", keyLength) == 0)) {
-        string overriddenType(value);
+        std::string overriddenType(value);
         StringUtils::tolowerInPlace(&overriddenType);
 
         _type = getRequestType(overriddenType.c_str(), overriddenType.size());
@@ -568,13 +568,13 @@ int32_t HttpRequest::compatibility() {
 /// @brief returns the protocol
 ////////////////////////////////////////////////////////////////////////////////
 
-const string& HttpRequest::protocol() const { return _protocol; }
+std::string const& HttpRequest::protocol() const { return _protocol; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the connection info
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setProtocol(const string& protocol) { _protocol = protocol; }
+void HttpRequest::setProtocol(std::string const& protocol) { _protocol = protocol; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the connection info
@@ -608,19 +608,19 @@ void HttpRequest::setRequestType(HttpRequestType newType) { _type = newType; }
 /// @brief returns the database name
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpRequest::databaseName() const { return _databaseName; }
+std::string const& HttpRequest::databaseName() const { return _databaseName; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpRequest::user() const { return _user; }
+std::string const& HttpRequest::user() const { return _user; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the authenticated user
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::setUser(string const& user) { _user = user; }
+void HttpRequest::setUser(std::string const& user) { _user = user; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the path of the request
@@ -645,8 +645,8 @@ void HttpRequest::setClientTaskId(uint64_t id) { _clientTaskId = id; }
 /// @brief determine the header type
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpRequest::HttpRequestType HttpRequest::getRequestType(const char* ptr,
-                                                         const size_t length) {
+HttpRequest::HttpRequestType HttpRequest::getRequestType(char const* ptr,
+                                                         size_t const length) {
   switch (length) {
     case 3:
       if (ptr[0] == 'g' && ptr[1] == 'e' && ptr[2] == 't') {
@@ -860,7 +860,7 @@ void HttpRequest::parseHeader(char* ptr, size_t length) {
                 ++q;
               }
 
-              _databaseName = string(pathBegin, q - pathBegin);
+              _databaseName = std::string(pathBegin, q - pathBegin);
 
               pathBegin = q;
             }
@@ -1039,7 +1039,7 @@ void HttpRequest::setFullUrl(char const* begin, char const* end) {
   TRI_ASSERT(end != nullptr);
   TRI_ASSERT(begin <= end);
 
-  _fullUrl = string(begin, end - begin);
+  _fullUrl = std::string(begin, end - begin);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1170,14 +1170,14 @@ void HttpRequest::setPrefix(char const* path) { _prefix = path; }
 /// @brief returns all suffix parts
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> const& HttpRequest::suffix() const { return _suffix; }
+std::vector<std::string> const& HttpRequest::suffix() const { return _suffix; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a suffix part
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::addSuffix(std::string const& part) {
-  string decoded = StringUtils::urlDecode(part);
+  std::string decoded = StringUtils::urlDecode(part);
   size_t tmpLength = 0;
   char* utf8_nfc = TRI_normalize_utf8_to_NFC(
       TRI_UNKNOWN_MEM_ZONE, decoded.c_str(), decoded.length(), &tmpLength);
@@ -1228,7 +1228,7 @@ std::string HttpRequest::translateVersion(HttpVersion version) {
 /// @brief translate an enum value into an HTTP method string
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpRequest::translateMethod(const HttpRequestType method) {
+std::string HttpRequest::translateMethod(HttpRequestType method) {
   if (method == HTTP_REQUEST_DELETE) {
     return "DELETE";
   } else if (method == HTTP_REQUEST_GET) {
@@ -1254,8 +1254,8 @@ string HttpRequest::translateMethod(const HttpRequestType method) {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpRequest::HttpRequestType HttpRequest::translateMethod(
-    const string& method) {
-  const string methodString = StringUtils::toupper(method);
+    std::string const& method) {
+  std::string const methodString = StringUtils::toupper(method);
 
   if (methodString == "DELETE") {
     return HTTP_REQUEST_DELETE;
@@ -1290,12 +1290,12 @@ void HttpRequest::appendMethod(HttpRequestType method, StringBuffer* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
-  Dictionary<vector<char const*>*>::KeyValue const* kv =
+  Dictionary<std::vector<char const*>*>::KeyValue const* kv =
       _arrayValues.lookup(key);
-  vector<char const*>* v = nullptr;
+  std::vector<char const*>* v = nullptr;
 
   if (kv == nullptr) {
-    v = new vector<char const*>;
+    v = new std::vector<char const*>;
     _arrayValues.insert(key, length, v);
   } else {
     v = kv->_value;
@@ -1316,7 +1316,7 @@ void HttpRequest::setCookie(char* key, size_t length, char const* value) {
 /// @brief parse value of a cookie header field
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpRequest::parseCookies(const char* buffer) {
+void HttpRequest::parseCookies(char const* buffer) {
   char* keyBegin = nullptr;
   char* key = nullptr;
 

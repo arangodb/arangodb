@@ -101,7 +101,7 @@ static Fp powers_ten[] = {{18054884314459144840U, -1220},
                           {12648080533535911531U, 1066}};
 
 static Fp find_cachedpow10(int exp, int* k) {
-  const double one_log_ten = 0.30102999566398114;
+  double const one_log_ten = 0.30102999566398114;
 
   int approx = static_cast<int>(-(exp + npowers) * one_log_ten);
   int idx = (approx - firstpower) / steppowers;

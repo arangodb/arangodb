@@ -335,7 +335,7 @@ class HttpResponse {
   /// @brief checks for special headers
   ////////////////////////////////////////////////////////////////////////////////
 
-  void checkHeader(const char* key, const char* value);
+  void checkHeader(char const* key, char const* value);
 
   
  protected:

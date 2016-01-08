@@ -241,7 +241,7 @@ TRI_json_t* Scheduler::getUserTasks() {
 /// @brief get a single user task
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Scheduler::getUserTask(string const& id) {
+TRI_json_t* Scheduler::getUserTask(std::string const& id) {
   MUTEX_LOCKER(schedulerLock);
 
   for (auto& it : task2thread) {
@@ -259,7 +259,7 @@ TRI_json_t* Scheduler::getUserTask(string const& id) {
 /// @brief unregister and delete a user task by id
 ////////////////////////////////////////////////////////////////////////////////
 
-int Scheduler::unregisterUserTask(string const& id) {
+int Scheduler::unregisterUserTask(std::string const& id) {
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
   }

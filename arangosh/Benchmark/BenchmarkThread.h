@@ -52,8 +52,8 @@ class BenchmarkThread : public triagens::basics::Thread {
                   basics::ConditionVariable* condition, void (*callback)(),
                   int threadNumber, const unsigned long batchSize,
                   BenchmarkCounter<unsigned long>* operationsCounter,
-                  rest::Endpoint* endpoint, const std::string& databaseName,
-                  const std::string& username, const std::string& password,
+                  rest::Endpoint* endpoint, std::string const& databaseName,
+                  std::string const& username, std::string const& password,
                   double requestTimeout, double connectTimeout,
                   uint32_t sslProtocol, bool keepAlive, bool async,
                   bool verbose)
@@ -188,7 +188,7 @@ class BenchmarkThread : public triagens::basics::Thread {
   /// @brief request location rewriter (injects database name)
   ////////////////////////////////////////////////////////////////////////////////
 
-  static std::string rewriteLocation(void* data, const std::string& location) {
+  static std::string rewriteLocation(void* data, std::string const& location) {
     auto t = static_cast<arangob::BenchmarkThread*>(data);
 
     TRI_ASSERT(t != nullptr);
@@ -210,7 +210,7 @@ class BenchmarkThread : public triagens::basics::Thread {
   ////////////////////////////////////////////////////////////////////////////////
 
   void executeBatchRequest(const unsigned long numOperations) {
-    static const char boundary[] = "XXXarangob-benchmarkXXX";
+    static char const boundary[] = "XXXarangob-benchmarkXXX";
     size_t blen = strlen(boundary);
 
     basics::StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
@@ -232,13 +232,13 @@ class BenchmarkThread : public triagens::basics::Thread {
 
       // everything else (i.e. part request header & body) will get into the
       // body
-      const size_t threadCounter = _counter++;
-      const size_t globalCounter = _offset + threadCounter;
-      const std::string url =
+      size_t const threadCounter = _counter++;
+      size_t const globalCounter = _offset + threadCounter;
+      std::string const url =
           _operation->url(_threadNumber, threadCounter, globalCounter);
       size_t payloadLength = 0;
       bool mustFree = false;
-      const char* payload =
+      char const* payload =
           _operation->payload(&payloadLength, _threadNumber, threadCounter,
                               globalCounter, &mustFree);
       const rest::HttpRequest::HttpRequestType type =
@@ -340,18 +340,18 @@ class BenchmarkThread : public triagens::basics::Thread {
   ////////////////////////////////////////////////////////////////////////////////
 
   void executeSingleRequest() {
-    const size_t threadCounter = _counter++;
-    const size_t globalCounter = _offset + threadCounter;
+    size_t const threadCounter = _counter++;
+    size_t const globalCounter = _offset + threadCounter;
     const rest::HttpRequest::HttpRequestType type =
         _operation->type(_threadNumber, threadCounter, globalCounter);
-    const std::string url =
+    std::string const url =
         _operation->url(_threadNumber, threadCounter, globalCounter);
     size_t payloadLength = 0;
     bool mustFree = false;
 
     // std::cout << "thread number #" << _threadNumber << ", threadCounter " <<
     // threadCounter << ", globalCounter " << globalCounter << "\n";
-    const char* payload = _operation->payload(
+    char const* payload = _operation->payload(
         &payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
 
     double start = TRI_microtime();
@@ -548,7 +548,7 @@ class BenchmarkThread : public triagens::basics::Thread {
   /// @brief maximum number of warnings to be displayed per thread
   ////////////////////////////////////////////////////////////////////////////////
 
-  static const int MaxWarnings = 5;
+  static int const MaxWarnings = 5;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief output replies if error count in http relpy > 0

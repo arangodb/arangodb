@@ -42,7 +42,7 @@ class triagens::rest::AsyncCallbackContext {
   
  public:
 
-  explicit AsyncCallbackContext(string const& coordHeader)
+  explicit AsyncCallbackContext(std::string const& coordHeader)
       : _coordHeader(coordHeader), _response(nullptr) {}
 
 
@@ -58,7 +58,7 @@ class triagens::rest::AsyncCallbackContext {
   /// @brief gets the coordinator header
   ////////////////////////////////////////////////////////////////////////////////
 
-  string& getCoordinatorHeader() { return _coordHeader; }
+  std::string& getCoordinatorHeader() { return _coordHeader; }
 
   
  private:
@@ -66,7 +66,7 @@ class triagens::rest::AsyncCallbackContext {
   /// @brief coordinator header
   ////////////////////////////////////////////////////////////////////////////////
 
-  string _coordHeader;
+  std::string _coordHeader;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief http response
@@ -225,7 +225,7 @@ void AsyncJobManager::deleteExpiredJobResults(double stamp) {
 /// @brief returns the list of pending jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
+const std::vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_PENDING, maxCount);
 }
 
@@ -233,7 +233,7 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::pending(size_t maxCount) {
 /// @brief returns the list of done jobs
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
+const std::vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
   return byStatus(AsyncJobResult::JOB_DONE, maxCount);
 }
 
@@ -241,9 +241,9 @@ const vector<AsyncJobResult::IdType> AsyncJobManager::done(size_t maxCount) {
 /// @brief returns the list of jobs by status
 ////////////////////////////////////////////////////////////////////////////////
 
-const vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
+const std::vector<AsyncJobResult::IdType> AsyncJobManager::byStatus(
     AsyncJobResult::Status status, size_t maxCount) {
-  vector<AsyncJobResult::IdType> jobs;
+  std::vector<AsyncJobResult::IdType> jobs;
 
   {
     size_t n = 0;
@@ -278,7 +278,7 @@ void AsyncJobManager::initAsyncJob(HttpServerJob* job, char const* hdr) {
 
   if (hdr != nullptr) {
     LOG_DEBUG("Found header X-Arango-Coordinator in async request");
-    ctx = new AsyncCallbackContext(string(hdr));
+    ctx = new AsyncCallbackContext(std::string(hdr));
   }
 
   AsyncJobResult ajr(job->jobId(), nullptr, TRI_microtime(),

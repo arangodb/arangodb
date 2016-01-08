@@ -22,10 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
+#include "Basics/logging.h"
 
 #include <openssl/err.h>
-
-#include "Basics/logging.h"
 
 using namespace triagens::basics;
 using namespace std;
@@ -36,7 +35,7 @@ using namespace std;
 ////////////////////////////////////////////////////////////////////////////////
 
 SSL_CTX* triagens::basics::sslContext(protocol_e protocol,
-                                      string const& keyfile) {
+                                      std::string const& keyfile) {
   // create our context
   SSL_METHOD SSL_CONST* meth = nullptr;
 
@@ -89,7 +88,7 @@ SSL_CTX* triagens::basics::sslContext(protocol_e protocol,
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-string triagens::basics::protocolName(const protocol_e protocol) {
+std::string triagens::basics::protocolName(protocol_e protocol) {
   switch (protocol) {
     case SSL_V2:
       return "SSLv2";
@@ -112,14 +111,14 @@ string triagens::basics::protocolName(const protocol_e protocol) {
 /// @brief get last SSL error
 ////////////////////////////////////////////////////////////////////////////////
 
-string triagens::basics::lastSSLError() {
+std::string triagens::basics::lastSSLError() {
   char buf[122];
   memset(buf, 0, sizeof(buf));
 
   unsigned long err = ERR_get_error();
   ERR_error_string_n(err, buf, sizeof(buf) - 1);
 
-  return string(buf);
+  return std::string(buf);
 }
 
 
