@@ -106,6 +106,11 @@
 
 ### Bundled NPM modules
 
+#### accepts
+
+* GITHUB: https://github.com/jshttp/accepts
+* License: [MIT License](https://github.com/jshttp/accepts/blob/master/LICENSE)
+
 #### Ace
 
 * GITHUB: https://github.com/ajaxorg/ace
