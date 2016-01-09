@@ -285,7 +285,8 @@ class FoxxService {
   }
 
   buildRoutes() {
-    let service = this;
+    const service = this;
+    const context = this.main.context;
     this.router._buildTree();
     this.routes.routes.push({
       url: {match: '/*'},
@@ -295,7 +296,7 @@ class FoxxService {
           let handled = true;
 
           try {
-            handled = service.router._dispatch(req, res);
+            handled = service.router._dispatch(req, res, context);
           } catch (e) {
             let error = e;
             if (!e.statusCode) {

@@ -37,20 +37,21 @@ const crypto = require('@arangodb/crypto');
 
 
 module.exports = class SyntheticRequest {
-  constructor(req, trustProxy) {
+  constructor(req, context) {
     this._url = parseUrl(req.url);
     this._raw = req;
+    this.context = context;
     this.suffix = req.suffix;
     this.queryParams = querystring.parse(this._url.query);
     this.pathParams = {};
     this.body = getRawBodyBuffer(req);
 
-    const server = extractServer(req, trustProxy);
+    const server = extractServer(req, context.trustProxy);
     this.protocol = server.protocol;
     this.hostname = server.hostname;
     this.port = server.port;
 
-    const client = extractClient(req, trustProxy);
+    const client = extractClient(req, context.trustProxy);
     this.remoteAddress = client.ip;
     this.remoteAddresses = client.ips;
     this.remotePort = client.port;
