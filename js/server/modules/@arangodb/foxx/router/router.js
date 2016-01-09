@@ -190,7 +190,7 @@ module.exports = class Router extends SwaggerContext {
     }
   }
 
-  _dispatch(rawReq, rawRes) {
+  _dispatch(rawReq, rawRes, context) {
     let route = resolve(this, rawReq);
 
     if (!route) {
@@ -200,7 +200,7 @@ module.exports = class Router extends SwaggerContext {
     let pathParams = {};
     let queryParams = _.clone(rawReq.queryParams);
 
-    const req = new SyntheticRequest(rawReq);
+    const req = new SyntheticRequest(rawReq, context);
     const res = new SyntheticResponse(rawRes);
 
     function next(err) {
