@@ -31,6 +31,7 @@ const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
 
 const DEFAULT_BODY_SCHEMA = joi.object().optional().meta({allowInvalid: true});
 
+
 module.exports = class Route extends SwaggerContext {
   constructor(methods, path, handler, name) {
     if (typeof path !== 'string') {

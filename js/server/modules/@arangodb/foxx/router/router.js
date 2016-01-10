@@ -41,9 +41,11 @@ const validation = require('@arangodb/foxx/router/validation');
 const $_ROUTES = Symbol.for('@@routes'); // routes and child routers
 const $_MIDDLEWARE = Symbol.for('@@middleware'); // middleware
 
+
 function doesMethodIgnoreRequestBody(method) {
   return ['GET', 'HEAD', 'DELETE', 'CONNECT', 'TRACE'].indexOf(method) !== -1;
 }
+
 
 function parsePathParams(names, route, path) {
   const params = {};
@@ -56,6 +58,7 @@ function parsePathParams(names, route, path) {
   }
   return params;
 }
+
 
 module.exports = class Router extends SwaggerContext {
   constructor() {
@@ -97,8 +100,26 @@ module.exports = class Router extends SwaggerContext {
     return route;
   }
 
+  delete(path, handler, name) {
+    const route = new Route(['DELETE'], path, handler, name);
+    this._routes.push(route);
+    return route;
+  }
+
   get(path, handler, name) {
     const route = new Route(['GET'], path, handler, name);
+    this._routes.push(route);
+    return route;
+  }
+
+  head(path, handler, name) {
+    const route = new Route(['HEAD'], path, handler, name);
+    this._routes.push(route);
+    return route;
+  }
+
+  patch(path, handler, name) {
+    const route = new Route(['PATCH'], path, handler, name);
     this._routes.push(route);
     return route;
   }
@@ -111,24 +132,6 @@ module.exports = class Router extends SwaggerContext {
 
   put(path, handler, name) {
     const route = new Route(['PUT'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  patch(path, handler, name) {
-    const route = new Route(['PATCH'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  delete(path, handler, name) {
-    const route = new Route(['DELETE'], path, handler, name);
-    this._routes.push(route);
-    return route;
-  }
-
-  head(path, handler, name) {
-    const route = new Route(['HEAD'], path, handler, name);
     this._routes.push(route);
     return route;
   }
