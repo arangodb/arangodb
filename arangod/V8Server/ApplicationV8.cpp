@@ -1169,7 +1169,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc() {
 
   for (int i = n - 1; i > 0; --i) {
     // check if there's actually anything to clean up in the context
-    if (_freeContexts[i]->_numExecutions < 10 &&
+    if (_freeContexts[i]->_numExecutions < 50 &&
         !_freeContexts[i]->_hasActiveExternals) {
       continue;
     }
