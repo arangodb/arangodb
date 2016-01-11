@@ -40,9 +40,7 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/_admin/aardvark/APP/frontend/js/bootstrap/monkeypatches.js \
 	\
 	js/apps/system/_admin/aardvark/APP/frontend/js/client/client.js \
-	js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap/modules/internal.js \
-	\
-	js/apps/system/_admin/aardvark/APP/frontend/js/modules/underscore.js
+	js/apps/system/_admin/aardvark/APP/frontend/js/client/bootstrap/modules/internal.js 
 
 BUILT_SOURCES += $(JAVASCRIPT_BROWSER)
 
@@ -152,10 +150,6 @@ js/apps/system/_admin/aardvark/APP/frontend/js/modules/common/%.js: @srcdir@/js/
 
 js/apps/system/_admin/aardvark/APP/frontend/js/modules/client/%.js: @srcdir@/js/client/modules/%.js .setup-js-directories
 	(echo "module.define(\"$(patsubst js/client/modules/%.js,%,$<)\", function(exports, module) {" && cat $< && echo "});") > $@
-
-js/apps/system/_admin/aardvark/APP/frontend/js/modules/underscore.js: @srcdir@/js/node/node_modules/underscore/underscore.js
-	(echo "module.define(\"underscore\", function(exports, module) {" && cat $< && echo "});") > $@
-
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

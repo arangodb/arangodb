@@ -35,17 +35,19 @@ using JsonHelper = triagens::basics::JsonHelper;
 
 VPackBuilder ExecutionStats::toVelocyPack() const {
   VPackBuilder result;
-  VPackObjectBuilder b(&result);
-  result.add("writesExecuted", VPackValue(writesExecuted));
-  result.add("writesIgnored", VPackValue(writesIgnored));
-  result.add("scannedFull", VPackValue(scannedFull));
-  result.add("scannedIndex", VPackValue(scannedIndex));
-  result.add("filtered", VPackValue(filtered));
+  {
+    VPackObjectBuilder b(&result);
+    result.add("writesExecuted", VPackValue(writesExecuted));
+    result.add("writesIgnored", VPackValue(writesIgnored));
+    result.add("scannedFull", VPackValue(scannedFull));
+    result.add("scannedIndex", VPackValue(scannedIndex));
+    result.add("filtered", VPackValue(filtered));
 
-  if (fullCount > -1) {
-    // fullCount is exceptional. it has a default value of -1 and is
-    // not reported with this value
-    result.add("fullCount", VPackValue(fullCount));
+    if (fullCount > -1) {
+      // fullCount is exceptional. it has a default value of -1 and is
+      // not reported with this value
+      result.add("fullCount", VPackValue(fullCount));
+    }
   }
   return result;
 }
