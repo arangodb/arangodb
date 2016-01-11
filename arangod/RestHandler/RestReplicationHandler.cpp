@@ -425,9 +425,8 @@ void RestReplicationHandler::handleCommandLoggerState() {
       TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
       json.add("time", VPackValue(buffer));
 
-      char* tickString = TRI_StringUInt64(std::get<2>(it));
+      auto tickString = std::to_string(std::get<2>(it));
       json.add("lastServedTick", VPackValue(tickString));
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
       json.close();
     }
@@ -948,8 +947,9 @@ void RestReplicationHandler::handleCommandInventory() {
         triagens::wal::LogfileManager::instance()->state();
 
     builder.add("running", VPackValue(true));
-    char* logTickString = TRI_StringUInt64(s.lastTick);
+    auto logTickString = std::to_string(s.lastTick);
     builder.add("lastLogTick", VPackValue(logTickString));
+
     builder.add("totalEvents", VPackValue(s.numEvents));
     builder.add("time", VPackValue(s.timeString));
     builder.close();  // state
@@ -1024,7 +1024,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
               }
             }
             TRI_voc_tick_t tick = TRI_CurrentTickServer();
-            char* tickString = TRI_StringUInt64(tick);
+            auto tickString = std::to_string(tick);
             resultBuilder.add("tick", VPackValue(tickString));
             resultBuilder.add("state", VPackValue("unused"));
           }
@@ -3191,7 +3191,7 @@ void RestReplicationHandler::handleCommandSync() {
 
     result.close();  // collections
 
-    char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
+    auto tickString = std::to_string(syncer.getLastLogTick());
     result.add("lastLogTick", VPackValue(tickString));
 
     result.close();  // base
