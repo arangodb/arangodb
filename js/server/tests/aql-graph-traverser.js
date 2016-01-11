@@ -1031,11 +1031,11 @@ function potentialErrorsSuite () {
         "@eCol": en,
         "@vCol": vn
       };
-      try {
-        db._query(query, bindVars).toArray();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
+      var x = db._query(query, bindVars);
+      var result = x.toArray();
+      var extra = x.getExtra();
+      assertEqual(result, []);
+      assertEqual(extra.warnings.length, 1);
     },
 
     testStepsSubquery: function() {
@@ -1046,6 +1046,7 @@ function potentialErrorsSuite () {
       };
       try {
         db._query(query, bindVars).toArray();
+        fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
@@ -1058,6 +1059,7 @@ function potentialErrorsSuite () {
       };
       try {
         db._query(query, bindVars).toArray();
+        fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
@@ -1070,6 +1072,7 @@ function potentialErrorsSuite () {
       };
       try {
         db._query(query, bindVars).toArray();
+        fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
@@ -1080,11 +1083,11 @@ function potentialErrorsSuite () {
       var bindVars = {
         "@eCol": en,
       };
-      try {
-        db._query(query, bindVars).toArray();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
+      var x = db._query(query, bindVars);
+      var result = x.toArray();
+      var extra = x.getExtra();
+      assertEqual(result, []);
+      assertEqual(extra.warnings.length, 1);
     },
 
     testCrazyStart4: function () {
@@ -1092,11 +1095,11 @@ function potentialErrorsSuite () {
       var bindVars = {
         "@eCol": en,
       };
-      try {
-        db._query(query, bindVars).toArray();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
+      var x = db._query(query, bindVars);
+      var result = x.toArray();
+      var extra = x.getExtra();
+      assertEqual(result, []);
+      assertEqual(extra.warnings.length, 1);
     },
 
     testCrazyStart5: function () {
@@ -1104,11 +1107,11 @@ function potentialErrorsSuite () {
       var bindVars = {
         "@eCol": en,
       };
-      try {
-        db._query(query, bindVars).toArray();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
+      var x = db._query(query, bindVars);
+      var result = x.toArray();
+      var extra = x.getExtra();
+      assertEqual(result, []);
+      assertEqual(extra.warnings.length, 0);
     },
 
     testCrazyStart6: function () {
@@ -1129,14 +1132,14 @@ function potentialErrorsSuite () {
         "@eCol": en,
         "@vCol": vn
       };
-      try {
-        db._query(query, bindVars).toArray();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
+      var x = db._query(query, bindVars);
+      var result = x.toArray();
+      var extra = x.getExtra();
+      assertEqual(result, []);
+      assertEqual(extra.warnings.length, 1);
       // Fix the query, just use the first value
       query = "FOR x IN OUTBOUND (FOR y IN @@vCol FILTER y._id == @startId RETURN y)[0] @@eCol RETURN x._id";
-      var result = db._query(query, bindVars).toArray();
+      result = db._query(query, bindVars).toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0], vertex.C);
     },
@@ -1147,19 +1150,15 @@ function potentialErrorsSuite () {
         "startId": vertex.A,
         "@eCol": en
       };
-      // Fail because it is an array
-      try {
-        db._query(query, bindVars).toArray();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
+      var x = db._query(query, bindVars);
+      var result = x.toArray();
+      var extra = x.getExtra();
+      assertEqual(result, []);
+      assertEqual(extra.warnings.length, 1);
       // Actually use the string!
       query = "FOR x IN OUTBOUND (FOR y IN @@eCol FILTER y._id == @startId RETURN 'peter')[0] @@eCol RETURN x._id";
-      try {
-        db._query(query, bindVars).toArray();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
+      result = db._query(query, bindVars).toArray();
+      assertEqual(result.length, 0);
     }
 
   };
@@ -1213,7 +1212,7 @@ function complexInternaSuite () {
     },
 
     testMultipleBlocksResult: function () {
-      var query = "FOR x IN OUTBOUND @startId @@eCol RETURN x";
+      var query = "FOR x IN OUTBOUND @startId @@eCol SORT x._key RETURN x";
       var amount = 10000;
       var startId = vn + "/test";
       var bindVars = {
