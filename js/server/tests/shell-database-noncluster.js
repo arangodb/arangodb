@@ -31,9 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  database methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: dropping databases while holding references
@@ -215,9 +212,6 @@ function DatabaseSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -226,9 +220,4 @@ function DatabaseSuite () {
 jsunity.run(DatabaseSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

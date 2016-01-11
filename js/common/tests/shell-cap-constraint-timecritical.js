@@ -32,9 +32,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var testHelper = require("@arangodb/test-helper").Helper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     basic methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
@@ -170,9 +167,6 @@ function CapConstraintTimecriticalSuite() {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -182,7 +176,3 @@ jsunity.run(CapConstraintTimecriticalSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

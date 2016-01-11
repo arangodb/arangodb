@@ -94,7 +94,7 @@ void ConsoleThread::run() {
   // work
   try {
     inner();
-  } catch (const char*) {
+  } catch (char const*) {
   } catch (...) {
     _applicationV8->exitContext(_context);
     _done = true;
@@ -134,7 +134,7 @@ void ConsoleThread::inner() {
     // run console
     // .............................................................................
 
-    const uint64_t gcInterval = 10;
+    uint64_t const gcInterval = 10;
     uint64_t nrCommands = 0;
 
     // read and eval .arangod.rc from home directory if it exists
@@ -187,7 +187,7 @@ start_pretty_print();
         nrCommands = 0;
       }
 
-      string input;
+      std::string input;
       bool eof;
 
       {

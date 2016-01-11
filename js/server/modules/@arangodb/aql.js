@@ -37,9 +37,6 @@ var isCoordinator = require("@arangodb/cluster").isCoordinator();
 var underscore = require("lodash");
 var graphModule = require("@arangodb/general-graph");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cache for compiled regexes
@@ -352,9 +349,6 @@ msPerUnit.month = msPerUnit.m;
 msPerUnit.years = msPerUnit.y;
 msPerUnit.year = msPerUnit.y;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear caches
@@ -1393,9 +1387,6 @@ function AQL_COLLECTION_COUNT (name) {
   return c.count();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                logical operations
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute ternary operator
@@ -1463,9 +1454,6 @@ function LOGICAL_NOT (lhs) {
   return ! AQL_TO_BOOL(lhs);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             comparison operations
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform equality check
@@ -1909,9 +1897,6 @@ function RELATIONAL_NOT_IN (lhs, rhs) {
   return ! RELATIONAL_IN(lhs, rhs);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                             arithmetic operations
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform unary plus operation
@@ -2044,9 +2029,6 @@ function ARITHMETIC_MODULUS (lhs, rhs) {
   return AQL_TO_NUMBER(lhs % rhs);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  string functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief perform string concatenation
@@ -2540,9 +2522,6 @@ function AQL_FIND_LAST (value, search, start, end) {
   return result;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                typecast functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cast to a bool
@@ -2666,9 +2645,6 @@ function AQL_ARRAYIZE (value) {
   return value;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               typecheck functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if value is of type null
@@ -2765,9 +2741,6 @@ function AQL_IS_DATESTRING (value) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 numeric functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief integer closest to value, not greater than value
@@ -2839,9 +2812,6 @@ function AQL_POW (base, exp) {
   return NUMERIC_VALUE(Math.pow(AQL_TO_NUMBER(base), AQL_TO_NUMBER(exp)));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         list processing functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the length of a list, document or string
@@ -3951,9 +3921,6 @@ function AQL_STDDEV_POPULATION (values) {
   return NUMERIC_VALUE(Math.sqrt(result.value / result.n));
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     geo functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return at most <limit> documents near a certain point
@@ -4147,9 +4114,6 @@ function AQL_IS_IN_POLYGON (points, latitude, longitude) {
   return false;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                fulltext functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return documents that match a fulltext query
@@ -4174,9 +4138,6 @@ function AQL_FULLTEXT (collection, attribute, query, limit) {
   return COLLECTION(collection, "FULLTEXT").FULLTEXT(idx, query, limit).documents;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    misc functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the first alternative that's not null until there are no more
@@ -4748,9 +4709,6 @@ function AQL_FAIL (message) {
   THROW("FAIL", INTERNAL.errors.ERROR_QUERY_FAIL_CALLED, "");
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    date functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for date creation
@@ -5383,9 +5341,6 @@ function AQL_DATE_FORMAT (value, format) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   graph functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find all paths through a graph, INTERNAL part called recursively
@@ -5563,50 +5518,7 @@ function AQL_PATHS (vertices, edgeCollection, direction, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_paths
-/// The GRAPH\_PATHS function returns all paths of a graph.
-///
-/// `GRAPH_PATHS (graphName, options)`
-///
-/// The complexity of this method is **O(n\*n\*m)** with *n* being the amount of vertices in
-/// the graph and *m* the average amount of connected edges;
-///
-/// *Parameters*
-///
-/// * *graphName*     : The name of the graph as a string.
-/// * *options*     : An object containing the following options:
-///   * *direction*        : The direction of the edges. Possible values are *any*,
-/// *inbound* and *outbound* (default).
-///   * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
-/// default is false.
-///   * *minLength* (optional)     : Defines the minimal length a path must
-/// have to be returned (default is 0).
-///   * *maxLength* (optional)     : Defines the maximal length a path must
-/// have to be returned (default is 10).
-///
-/// @EXAMPLES
-///
-/// Return all paths of the graph "social":
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("social");
-///   db._query("RETURN GRAPH_PATHS('social')").toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Return all inbound paths of the graph "social" with a maximal
-/// length of 1 and a minimal length of 2:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("social");
-/// | db._query(
-/// | "RETURN GRAPH_PATHS('social', {direction : 'inbound', minLength : 1, maxLength :  2})"
-///   ).toArray();
-/// ~ examples.dropGraph("social");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_paths
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_PATHS (graphName, options) {
@@ -6783,104 +6695,7 @@ function IS_EXAMPLE_SET (example) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_shortest_paths
-/// The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.
-///
-/// `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
-///
-/// This function determines all shortest paths in a graph identified by *graphName*.
-/// If one wants to call this function to receive nearly all shortest paths for a
-/// graph the option *algorithm* should be set to
-/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) to
-/// increase performance.
-/// If no algorithm is provided in the options the function chooses the appropriate
-/// one (either [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-///  or [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)) according to its parameters.
-/// The length of a path is by default the amount of edges from one start vertex to
-/// an end vertex. The option weight allows the user to define an edge attribute
-/// representing the length.
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *startVertexExample* : An example for the desired start Vertices
-///   (see [example](#short-explanation-of-the-example-parameter)).
-/// * *endVertexExample*   : An example for the desired
-///   end Vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *options* (optional) : An object containing the following options:
-///   * *direction*                        : The direction of the edges as a string.
-///     Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction*        : One or multiple edge
-///     collection names. Only edges from these collections will be considered for the path.
-///   * *startVertexCollectionRestriction* : One or multiple vertex
-///     collection names. Only vertices from these collections will be considered as
-///     start vertex of a path.
-///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///     collection names. Only vertices from these collections will be considered as
-///     end vertex of a path.
-///   * *edgeExamples*                     : A filter example for the
-///     edges in the shortest paths
-///     (see [example](#short-explanation-of-the-example-parameter)).
-///   * *algorithm*                        : The algorithm to calculate
-///     the shortest paths. If both start and end vertex examples are empty
-///     [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
-///     used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*                           : The name of the attribute of
-///     the edges containing the length as a string.
-///   * *defaultWeight*                    : Only used with the option *weight*.
-///     If an edge does not have the attribute named as defined in option *weight* this default
-///     is used as length.
-///     If no default is supplied the default would be positive Infinity so the path could
-///     not be calculated.
-///   * *stopAtFirstMatch*                 : Only useful if targetVertices is an example that matches 
-///     to more than one vertex. If so only the shortest path to
-///     the closest of these target vertices is returned.
-///     This flag is of special use if you have target pattern and
-///     you want to know which vertex with this pattern is matched first.
-///   * *includeData*                      : Triggers if only *_id*'s are returned (*false*, default)
-///     or if data is included for all objects as well (*true*)
-///     This will modify the content of *vertex*, *path.vertices*
-///     and *path.edges*. 
-///
-/// NOTE: Since version 2.6 we have included a new optional parameter *includeData*.
-/// This parameter triggers if the result contains the real data object *true* or
-/// it just includes the *_id* values *false*.
-/// The default value is *false* as it yields performance benefits.
-///
-/// @EXAMPLES
-///
-/// A route planner example, shortest distance from all german to all french cities:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_SHORTEST_PATH("
-/// | + "'routeplanner', {}, {}, {" +
-/// | "weight : 'distance', endVertexCollectionRestriction : 'frenchCity', " +
-/// | "includeData: true, " +
-/// | "startVertexCollectionRestriction : 'germanCity'}) RETURN [e.startVertex, e.vertex._id, " +
-/// | "e.distance, LENGTH(e.paths)]"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_SHORTEST_PATH("
-/// | +"'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], " +
-/// | "'frenchCity/Lyon', " +
-/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex, e.distance, LENGTH(e.paths)]"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_shortest_paths
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_SHORTEST_PATH (graphName,
@@ -7038,95 +6853,7 @@ function AQL_TRAVERSAL (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_traversal
-/// The GRAPH\_TRAVERSAL function traverses through the graph.
-///
-/// `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
-///
-/// This function performs traversals on the given graph.
-///
-/// The complexity of this function strongly depends on the usage.
-///
-/// *Parameters*
-/// * *graphName*          : The name of the graph as a string.
-/// * *startVertexExample*        : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *direction*          : The direction of the edges as a string. Possible values
-/// are *outbound*, *inbound* and *any* (default).
-/// * *options*: Object containing optional options.
-///
-/// *Options*:
-///  
-/// * *strategy*: determines the visitation strategy. Possible values are 
-/// *depthfirst* and *breadthfirst*. Default is *breadthfirst*.
-/// * *order*: determines the visitation order. Possible values are 
-/// *preorder* and *postorder*.
-/// * *itemOrder*: determines the order in which connections returned by the 
-/// expander will be processed. Possible values are *forward* and *backward*.
-/// * *maxDepth*: if set to a value greater than *0*, this will limit the 
-/// traversal to this maximum depth. 
-/// * *minDepth*: if set to a value greater than *0*, all vertices found on 
-/// a level below the *minDepth* level will not be included in the result.
-/// * *maxIterations*: the maximum number of iterations that the traversal is 
-/// allowed to perform. It is sensible to set this number so unbounded traversals 
-/// will terminate at some point.
-/// * *uniqueness*: an object that defines how repeated visitations of vertices should 
-/// be handled. The *uniqueness* object can have a sub-attribute *vertices*, and a
-/// sub-attribute *edges*. Each sub-attribute can have one of the following values:
-///   * *"none"*: no uniqueness constraints
-///   * *"path"*: element is excluded if it is already contained in the current path.
-///    This setting may be sensible for graphs that contain cycles (e.g. A -> B -> C -> A).
-///   * *"global"*: element is excluded if it was already found/visited at any 
-///   point during the traversal.
-/// * *filterVertices*  An optional array of example vertex documents that the traversal will treat specially.
-///     If no examples are given, the traversal will handle all encountered vertices equally.
-///     If one or many vertex examples are given, the traversal will exclude any non-matching vertex from the
-///     result and/or not descend into it. Optionally, filterVertices can contain a string containing the name
-///     of a user-defined AQL function that should be responsible for filtering.
-///     If so, the AQL function is expected to have the following signature:
-/// 
-///     `function (config, vertex, path)`
-///
-///     If a custom AQL function is used for filterVertices, it is expected to return one of the following values:
-///
-///     * [ ]: Include the vertex in the result and descend into its connected edges
-///     * [ "prune" ]: Will include the vertex in the result but not descend into its connected edges
-///     * [ "exclude" ]: Will not include the vertex in the result but descend into its connected edges
-///     * [ "prune", "exclude" ]: Will completely ignore the vertex and its connected edges
-///
-/// * *vertexFilterMethod:* Only useful in conjunction with filterVertices and if no user-defined AQL function is used.
-///     If specified, it will influence how vertices are handled that don't match the examples in filterVertices:
-///
-///    * [ "prune" ]: Will include non-matching vertices in the result but not descend into them
-///    * [ "exclude" ]: Will not include non-matching vertices in the result but descend into them
-///    * [ "prune", "exclude" ]: Will completely ignore the vertex and its connected edges
-///
-/// @EXAMPLES
-///
-/// A route planner example, start a traversal from Hamburg :
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
-/// | " 'outbound') RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, start a traversal from Hamburg with a max depth of 1
-/// so only the direct neighbors of Hamburg are returned:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
-/// | " 'outbound', {maxDepth : 1}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_traversal
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_TRAVERSAL (graphName,
@@ -7221,44 +6948,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_distance
-/// The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.
-///
-/// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
-///
-/// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#graphshortestpath).
-/// It does not return the actual path but only the distance between two vertices.
-/// 
-/// @EXAMPLES
-///
-/// A route planner example, distance from all french to all german cities:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_DISTANCE_TO("
-/// | +"'routeplanner', {}, {}, { " +
-/// | " weight : 'distance', endVertexCollectionRestriction : 'germanCity', " +
-/// | "startVertexCollectionRestriction : 'frenchCity'}) RETURN [e.startVertex, e.vertex, " +
-/// | "e.distance]"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, distance from Hamburg and Cologne to Lyon:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_DISTANCE_TO("
-/// | + "'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Hamburg'}], " +
-/// | "'frenchCity/Lyon', " +
-/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex, e.distance]"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_distance
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_DISTANCE_TO (graphName,
@@ -7293,54 +6983,7 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_traversal_tree
-/// The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.
-///
-/// `GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
-/// This function creates a tree format from the result for a better visualization of
-/// the path.
-/// This function performs traversals on the given graph.
-///
-/// The complexity of this function strongly depends on the usage.
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *startVertexExample*         : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *direction*          : The direction of the edges as a string.
-///  Possible values are *outbound*, *inbound* and *any* (default).
-/// * *connectName*        : The result attribute which
-///  contains the connection.
-/// * *options* (optional) : An object containing options, see
-///  [Graph Traversals](../Aql/GraphOperations.md#graphtraversal):
-///
-/// @EXAMPLES
-///
-/// A route planner example, start a traversal from Hamburg :
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg'," +
-/// | " 'outbound', 'connnection') RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, start a traversal from Hamburg with a max depth of 1 so
-///  only the direct neighbors of Hamburg are returned:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg',"+
-/// | " 'outbound', 'connnection', {maxDepth : 1}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_traversal_tree
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_TRAVERSAL_TREE (graphName,
@@ -7568,74 +7211,7 @@ function AQL_NEIGHBORS (vertexCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_neighbors
-/// The GRAPH\_NEIGHBORS function returns all neighbors of vertices.
-///
-/// `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
-///
-/// By default only the direct neighbors (path length equals 1) are returned, but one can define
-/// the range of the path length to the neighbors with the options *minDepth* and *maxDepth*.
-/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
-/// parameter vertexExamplex, *m* the average amount of neighbors and *x* the maximal depths.
-/// Hence the default call would have a complexity of **O(n\*m)**;
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *vertexExample*      : An example for the desired
-///   vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *options*            : An object containing the following options:
-///   * *direction*                        : The direction
-///     of the edges. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeExamples*                     : A filter example for the edges to
-///     the neighbors (see [example](#short-explanation-of-the-example-parameter)).
-///   * *neighborExamples*                 : An example for the desired neighbors
-///     (see [example](#short-explanation-of-the-example-parameter)).
-///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collection names. Only edges from these collections will be considered for the path.
-///   * *vertexCollectionRestriction* : One or multiple vertex
-///     collection names. Only vertices from these collections will be contained in the
-///   result. This does not effect vertices on the path.
-///   * *minDepth*                         : Defines the minimal
-///     depth a path to a neighbor must have to be returned (default is 1).
-///   * *maxDepth*                         : Defines the maximal
-///     depth a path to a neighbor must have to be returned (default is 1).
-///   * *maxIterations*: the maximum number of iterations that the traversal is
-///     allowed to perform. It is sensible to set this number so unbounded traversals
-///     will terminate at some point.
-///   * *includeData* is a boolean value to define if the returned documents should be extracted 
-///     instead of returning their ids only. The default is *false*.
-///
-/// Note: in ArangoDB versions prior to 2.6 *NEIGHBORS* returned the array of neighbor vertices with 
-/// all attributes and not just the vertex ids. To return to the same behavior, set the *includeData*
-/// option to *true* in 2.6 and above.
-///
-/// @EXAMPLES
-///
-/// A route planner example, all neighbors of locations with a distance of either
-/// 700 or 600.:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphNeighbors1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_NEIGHBORS("
-/// | +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all outbound neighbors of Hamburg with a maximal depth of 2 :
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphNeighbors2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_NEIGHBORS("
-/// | +"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_NEIGHBORS (graphName,
@@ -7794,85 +7370,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_edges
-///
-/// `GRAPH_EDGES (graphName, vertexExample, options)`
-///
-/// The GRAPH\_EDGES function returns all edges of the graph connected to the vertices
-/// defined by the example.
-///
-/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
-/// parameter vertexExamplex, *m* the average amount of edges of a vertex and *x* the maximal
-/// depths.
-/// Hence the default call would have a complexity of **O(n\*m)**;
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *options* (optional) : An object containing the following options:
-///   * *direction*                        : The direction
-/// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collection names. Only edges from these collections will be considered for the path.
-///   * *startVertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   start vertex of a path.
-///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   end vertex of a path.
-///   * *edgeExamples*                     : A filter example
-/// for the edges (see [example](#short-explanation-of-the-example-parameter)).
-///   * *minDepth*                         : Defines the minimal length of a path from an edge
-///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
-///  be returned).
-///   * *maxDepth*                         : Defines the maximal length of a path from an edge
-///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
-///  be returned).
-///   * *maxIterations*: the maximum number of iterations that the traversal is
-///      allowed to perform. It is sensible to set this number so unbounded traversals
-///      will terminate.
-///   * *includeData*: Defines if the result should contain only ids (false) or if all documents
-///     should be fully extracted (true). By default this parameter is set to false, so only ids
-///     will be returned.
-///
-/// @EXAMPLES
-///
-/// A route planner example, all edges to locations with a distance of either 700 or 600.:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_EDGES("
-/// | +"'routeplanner', {}, {edgeExamples : [{distance: 600}, {distance: 700}]}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all outbound edges of Hamburg with a maximal depth of 2 :
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_EDGES("
-/// | +"'routeplanner', 'germanCity/Hamburg', {direction : 'outbound', maxDepth : 2}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Including the data:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_EDGES("
-/// | + "'routeplanner', 'germanCity/Hamburg', {direction : 'outbound',"
-/// | + "maxDepth : 2, includeData: true}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_edges
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_EDGES (graphName,
@@ -7966,50 +7464,7 @@ function AQL_GRAPH_EDGES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_vertices
-/// The GRAPH\_VERTICES function returns all vertices.
-///
-/// `GRAPH_VERTICES (graphName, vertexExample, options)`
-///
-/// According to the optional filters it will only return vertices that have
-/// outbound, inbound or any (default) edges.
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *options* (optional)           : An object containing the following options:
-///   * *direction*        : The direction of the edges as a string. Possible values are
-///      *outbound*, *inbound* and *any* (default).
-///   * *vertexCollectionRestriction*      : One or multiple
-/// vertex collections that should be considered.
-///
-/// @EXAMPLES
-///
-/// A route planner example, all vertices of the graph
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_VERTICES("
-///   +"'routeplanner', {}) RETURN e").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all vertices from collection *germanCity*.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_VERTICES("
-/// | +"'routeplanner', {}, {direction : 'any', vertexCollectionRestriction" +
-///   " : 'germanCity'}) RETURN e").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-//
+/// @brief was docuBlock JSF_aql_general_graph_vertices
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_VERTICES (graphName,
@@ -8039,50 +7494,7 @@ function AQL_GRAPH_VERTICES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_common_neighbors
-/// The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
-/// defined by the examples.
-///
-/// `GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples,
-/// optionsVertex1, optionsVertex2)`
-///
-/// This function returns the intersection of *GRAPH_NEIGHBORS(vertex1Example, optionsVertex1)*
-/// and *GRAPH_NEIGHBORS(vertex2Example, optionsVertex2)*.
-/// The complexity of this method is **O(n\*m^x)** with *n* being the maximal amount of vertices
-/// defined by the parameters vertexExamples, *m* the average amount of neighbors and *x* the
-/// maximal depths.
-/// Hence the default call would have a complexity of **O(n\*m)**;
-///
-/// For parameter documentation read the documentation of
-/// [GRAPH_NEIGHBORS](#graphneighbors).
-///
-/// @EXAMPLES
-///
-/// A route planner example, all common neighbors of capitals.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-/// | +"'routeplanner', {isCapital : true}, {isCapital : true}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all common outbound neighbors of Hamburg with any other location
-/// which have a maximal depth of 2:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
-/// | +"'routeplanner', 'germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2}, "+
-/// | "{direction : 'outbound', maxDepth : 2}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_common_neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
@@ -8176,58 +7588,7 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_common_properties
-///
-/// `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
-///
-/// The GRAPH\_COMMON\_PROPERTIES function returns a list of objects which have the id of
-/// the vertices defined by *vertex1Example* as keys and a list of vertices defined by
-/// *vertex21Example*, that share common properties as value. Notice that only the
-/// vertex id and the matching attributes are returned in the result.
-///
-/// The complexity of this method is **O(n)** with *n* being the maximal amount of vertices
-/// defined by the parameters vertexExamples.
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *vertex1Example*     : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *vertex2Example*     : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *options* (optional)    : An object containing the following options:
-///   * *vertex1CollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered.
-///   * *vertex2CollectionRestriction*   : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered.
-///   * *ignoreProperties* : One or multiple
-///  attributes of a document that should be ignored, either a string or an array..
-///
-/// @EXAMPLES
-///
-/// A route planner example, all locations with the same properties:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphProperties1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
-/// | +"'routeplanner', {}, {}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, all cities which share same properties except for population.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphProperties2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
-/// | +"'routeplanner', {}, {}, {ignoreProperties: 'population'}) RETURN e"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_common_properties
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_COMMON_PROPERTIES (graphName,
@@ -8348,83 +7709,7 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_absolute_eccentricity
-///
-/// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
-///
-///  The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *options* (optional)    : An object containing the following options:
-///   * *direction*                        : The direction of the edges as a string.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collection names. Only edges from these collections will be considered for the path.
-///   * *startVertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   start vertex of a path.
-///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   end vertex of a path.
-///   * *edgeExamples*                     : A filter example for the edges in the
-///  shortest paths (see [example](#short-explanation-of-the-example-parameter)).
-///   * *algorithm*                        : The algorithm to calculate
-///  the shortest paths as a string. If vertex example is empty
-///  [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
-///  used as default, otherwise the default is
-///  [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)
-///   * *weight*                           : The name of the attribute of
-/// the edges containing the length as a string.
-///   * *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the absolute eccentricity of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('routeplanner', {})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute eccentricity of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
-///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute eccentricity of all German cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
-/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'germanCity', " +
-///   "direction : 'outbound', weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_absolute_eccentricity
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
@@ -8461,56 +7746,7 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_eccentricity
-///
-/// `GRAPH_ECCENTRICITY (graphName, options)`
-///
-/// The GRAPH\_ECCENTRICITY function returns the normalized
-/// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the graphs vertices
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *options* (optional) : An object containing the following options:
-///   * *direction*       : The direction of the edges as a string.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*       : The algorithm to calculate the shortest paths as a string. Possible
-/// values are [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-///  (default) and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*         : The name of the attribute of the edges containing the length as a string.
-///   * *defaultWeight*   : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the eccentricity of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEccentricity1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_ECCENTRICITY('routeplanner')").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the eccentricity of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEccentricity2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ECCENTRICITY('routeplanner', {weight : 'distance'})"
-///   ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_eccentricity
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_ECCENTRICITY (graphName, options) {
@@ -8565,132 +7801,8 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_absolute_closeness
-///
-/// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
-///
-/// The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
-/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness-centrality)
-/// of the vertices defined by the examples.
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *vertexExample*     : An example for the desired
-/// vertices (see [example](#short-explanation-of-the-example-parameter)).
-/// * *options*     : An object containing the following options:
-///   * *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collection names. Only edges from these collections will be considered for the path.
-///   * *startVertexCollectionRestriction* : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   start vertex of a path.
-///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///   collection names. Only vertices from these collections will be considered as
-///   end vertex of a path.
-///   * *edgeExamples*                     : A filter example for the
-/// edges in the shortest paths (
-/// see [example](#short-explanation-of-the-example-parameter)).
-///   * *algorithm*                        : The algorithm to calculate
-/// the shortest paths. Possible values are
-/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) (default)
-///  and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*                           : The name of the attribute of
-/// the edges containing the length.
-///   * *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the absolute closeness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS('routeplanner', {})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute closeness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
-///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute closeness of all German cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
-/// | + "'routeplanner', {}, {startVertexCollectionRestriction : 'germanCity', " +
-///   "direction : 'outbound', weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_absolute_closeness
 ////////////////////////////////////////////////////////////////////////////////
-
-/*
-function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
- 'use strict';
- if (! options) {
-   options = { };
- }
- if (! options.direction) {
-   options.direction = 'any';
- }
- var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample , {}, options), result = {};
- distanceMap.forEach(function(d) {
-   if (options.direction !== 'any' && options.calcNormalized) {
-     d.distance = d.distance === 0 ? 0 : 1 / d.distance;
-   }
-   if (!result[d.startVertex]) {
-     result[d.startVertex] = d.distance;
-   } else {
-     result[d.startVertex] = d.distance + result[d.startVertex];
-   }
- });
- return result;
-}
-
-function AQL_GRAPH_CLOSENESS (graphName, options) {
- 'use strict';
- if (! options) {
-   options = { };
- }
- options.calcNormalized = true;
- if (! options.algorithm) {
-   options.algorithm = "Floyd-Warshall";
- }
- var result = AQL_GRAPH_ABSOLUTE_CLOSENESS(graphName, {}, options), max = 0;
- Object.keys(result).forEach(function (r) {
-   if (options.direction === 'any') {
-     result[r] = result[r] === 0 ? 0 : 1 / result[r];
-   }
-   if (result[r] > max) {
-     max = result[r];
-   }
- });
- Object.keys(result).forEach(function (r) {
-   result[r] = result[r] / max;
- });
- return result;
-}
-*/
 
 function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
   'use strict';
@@ -8723,70 +7835,7 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_closeness
-///
-/// `GRAPH_CLOSENESS (graphName, options)`
-///
-/// The GRAPH\_CLOSENESS function returns the normalized
-/// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness-centrality)
-/// of graphs vertices.
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing the following options:
-///   * *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*                        : The algorithm to calculate
-/// the shortest paths. Possible values are
-/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) (default)
-///  and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*                           : The name of the attribute of
-/// the edges containing the length.
-///   * *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the closeness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_CLOSENESS('routeplanner')").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the closeness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_CLOSENESS("
-///   +"'routeplanner', {weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute closeness of all cities regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_CLOSENESS("
-/// | + "'routeplanner',{direction : 'outbound', weight : 'distance'})"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_closeness
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_CLOSENESS (graphName, options) {
@@ -8831,65 +7880,7 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_absolute_betweenness
-///
-/// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, options)`
-///
-/// The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
-/// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of all vertices in the graph.
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *options*            : An object containing the following options:
-///   * *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *weight*                           : The name of the attribute of
-/// the edges containing the length.
-///   * *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the betweenness can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the absolute betweenness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS('routeplanner', {})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute betweenness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
-///   +"'routeplanner', {weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the absolute closeness regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
-/// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_absolute_betweenness
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
@@ -8927,64 +7918,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_betweenness
-///
-/// `GRAPH_BETWEENNESS (graphName, options)`
-///
-/// The GRAPH\_BETWEENNESS function returns the
-/// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of graphs vertices.
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing the following options:
-///   * *direction*                        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *weight*                           : The name of the attribute of
-/// the edges containing the length.
-///   * *defaultWeight*                    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the betweenness of all locations.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_BETWEENNESS('routeplanner')").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the betweenness of all locations.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_BETWEENNESS('routeplanner', {weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the betweenness regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_BETWEENNESS("
-///   + "'routeplanner', {direction : 'outbound', weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_betweenness
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_BETWEENNESS (graphName, options) {
@@ -9008,66 +7942,7 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_radius
-///
-/// `GRAPH_RADIUS (graphName, options)`
-///
-/// *The GRAPH\_RADIUS function returns the
-/// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.*
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// * *graphName*       : The name of the graph as a string.
-/// * *options*     : An object containing the following options:
-///   * *direction*     : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*     : The algorithm to calculate the shortest paths as a string. Possible
-/// values are [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-///  (default) and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*           : The name of the attribute of
-/// the edges containing the length.
-///   * *defaultWeight*    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the radius of the graph.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_RADIUS('routeplanner')").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the radius of the graph.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_RADIUS('routeplanner', {weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the radius of the graph regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_RADIUS("
-/// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_radius
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_RADIUS (graphName, options) {
@@ -9095,68 +7970,7 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_aql_general_graph_diameter
-///
-/// `GRAPH_DIAMETER (graphName, options)`
-///
-/// The GRAPH\_DIAMETER function returns the
-/// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
-///
-/// The complexity of the function is described
-/// [here](#the-complexity-of-the-shortest-path-algorithms).
-///
-/// *Parameters*
-///
-/// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing the following options:
-///   * *direction*        : The direction of the edges.
-/// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*        : The algorithm to calculate the shortest paths as a string. Possible
-/// values are  [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
-///  (default) and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
-///   * *weight*           : The name of the attribute of
-/// the edges containing the length.
-///   * *defaultWeight*    : Only used with the option *weight*.
-/// If an edge does not have the attribute named as defined in option *weight* this default
-/// is used as length.
-/// If no default is supplied the default would be positive Infinity so the path and
-/// hence the eccentricity can not be calculated.
-///
-/// @EXAMPLES
-///
-/// A route planner example, the diameter of the graph.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter1}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_DIAMETER('routeplanner')").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the diameter of the graph.
-/// This considers the actual distances.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter2}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-///   db._query("RETURN GRAPH_DIAMETER('routeplanner', {weight : 'distance'})").toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// A route planner example, the diameter of the graph regarding only
-/// outbound paths.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter3}
-///   var examples = require("@arangodb/graph-examples/example-graph.js");
-///   var g = examples.loadGraph("routeplanner");
-/// | db._query("RETURN GRAPH_DIAMETER("
-/// | + "'routeplanner', {direction : 'outbound', weight : 'distance'})"
-/// ).toArray();
-/// ~ examples.dropGraph("routeplanner");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock JSF_aql_general_graph_diameter
 ////////////////////////////////////////////////////////////////////////////////
 
 function AQL_GRAPH_DIAMETER (graphName, options) {
@@ -9181,9 +7995,6 @@ function AQL_GRAPH_DIAMETER (graphName, options) {
   return max;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
@@ -9370,11 +8181,4 @@ exports.clearCaches = clearCaches;
 exports.clearCaches();
 //reloadUserFunctions();
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
-// End:

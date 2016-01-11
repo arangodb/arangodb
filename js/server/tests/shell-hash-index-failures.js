@@ -31,9 +31,6 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     basic methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Unique Hash Index
@@ -207,9 +204,4 @@ if (internal.debugCanUseFailAt()) {
 }
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

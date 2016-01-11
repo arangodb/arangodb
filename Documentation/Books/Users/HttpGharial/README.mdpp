@@ -1,25 +1,5 @@
 !CHAPTER General Graphs
 
-This chapter describes the HTTP interface for the multi-collection graph module.
+This chapter describes the REST interface for the [multi-collection graph module](../Graphs/README.md).
 It allows you to define a graph that is spread across several edge and document collections.
-This allows you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 There is no need to include the referenced collections within the query, this module will handle it for you.
-
-!SECTION First Steps with Graphs
-
-A Graph consists of *vertices* and *edges*. Edges are stored as documents in *edge
-collections*. In general a vertex is stored in a document collection.
-The type of edges that are allowed within a graph is defined by *edge definitions*:
-An edge definition is a combination of a [edge collection](../Glossary/README.md#edge-collection), and the vertex collections that the edges within this collection can connect.
-A graph can have an arbitrary number of edge definitions and arbitrary many additional vertex collections.
-
-!SUBSECTION Warning
-
-The underlying collections of the graph are still accessible using the standard methods for collections.
-However the graph module adds an additional layer on top of these collections giving you the following guarantees:
-
-* All modifications are executed transactional
-* If you delete a vertex all edges will be deleted, you will never have loose ends
-* If you insert an edge it is checked if the edge matches the definition, your edge collections will only contain valid edges
-
-These guarantees are lost if you access the collections in any other way than the graph module or AQL, so if you delete documents from your vertex collections directly, the edges will be untouched.

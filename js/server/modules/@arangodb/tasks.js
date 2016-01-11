@@ -33,11 +33,4 @@ exports.register    = internal.registerTask;
 exports.unregister  = internal.unregisterTask;
 exports.get         = internal.getTask;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:

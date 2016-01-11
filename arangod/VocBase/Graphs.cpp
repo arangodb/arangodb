@@ -29,7 +29,7 @@
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-const std::string graphs = "_graphs";
+std::string const graphs = "_graphs";
 
 
 ////////////////////////////////////////////////////////////////////////////////

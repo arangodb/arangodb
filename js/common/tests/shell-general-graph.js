@@ -37,9 +37,6 @@ var ERRORS = arangodb.errors;
 
 var _ = require("lodash");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      graph module
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: general-graph Creation and edge definition
@@ -781,9 +778,6 @@ function GeneralGraphCreationSuite() {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    Simple Queries
-// -----------------------------------------------------------------------------
 
 function GeneralGraphAQLQueriesSuite() {
   'use strict';
@@ -3118,9 +3112,6 @@ function MeasurementsSuite() {
 
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -3136,7 +3127,3 @@ jsunity.run(MeasurementsSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

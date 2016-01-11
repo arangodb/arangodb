@@ -57,9 +57,6 @@ static int LidCompareDesc(void const* l, void const* r) {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
     : RestBaseHandler(request) {}
@@ -72,77 +69,7 @@ RestAdminLogHandler::RestAdminLogHandler(rest::HttpRequest* request)
 bool RestAdminLogHandler::isDirect() const { return true; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_modules_flush
-/// @brief returns the log files
-///
-/// @RESTHEADER{GET /_admin/log, Read global log from the server}
-///
-/// @RESTQUERYPARAMETERS
-///
-/// @RESTQUERYPARAM{upto,string,optional}
-/// Returns all log entries up to log level *upto*. Note that *upto* must be:
-/// - *fatal* or *0*
-/// - *error* or *1*
-/// - *warning* or *2*
-/// - *info* or *3*
-/// - *debug*  or *4*
-/// The default value is *info*.
-///
-/// @RESTQUERYPARAM{level,string,optional}
-/// Returns all log entries of log level *level*. Note that the query parameters
-/// *upto* and *level* are mutually exclusive.
-///
-/// @RESTQUERYPARAM{start,number,optional}
-/// Returns all log entries such that their log entry identifier (*lid* value)
-/// is greater or equal to *start*.
-///
-/// @RESTQUERYPARAM{size,number,optional}
-/// Restricts the result to at most *size* log entries.
-///
-/// @RESTQUERYPARAM{offset,number,optional}
-/// Starts to return log entries skipping the first *offset* log entries.
-/// *offset*
-/// and *size* can be used for pagination.
-///
-/// @RESTQUERYPARAM{search,string,optional}
-/// Only return the log entries containing the text specified in *search*.
-///
-/// @RESTQUERYPARAM{sort,string,optional}
-/// Sort the log entries either ascending (if *sort* is *asc*) or descending
-/// (if *sort* is *desc*) according to their *lid* values. Note that the *lid*
-/// imposes a chronological order. The default value is *asc*.
-///
-/// @RESTDESCRIPTION
-/// Returns fatal, error, warning or info log messages from the server's global
-/// log.
-/// The result is a JSON object with the following attributes:
-///
-/// - *lid*: a list of log entry identifiers. Each log message is uniquely
-///   identified by its @LIT{lid} and the identifiers are in ascending
-///   order.
-///
-/// - *level*: a list of the log-levels for all log entries.
-///
-/// - *timestamp*: a list of the timestamps as seconds since 1970-01-01 for all
-/// log
-///   entries.
-///
-/// - *text* a list of the texts of all log entries
-///
-/// - *totalAmount*: the total amount of log entries before pagination.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{400}
-/// is returned if invalid values are specified for *upto* or *level*.
-///
-/// @RESTRETURNCODE{403}
-/// is returned if the log is requested for any database other than *_system*.
-///
-/// @RESTRETURNCODE{500}
-/// is returned if the server cannot generate the result due to an out-of-memory
-/// error.
-/// @endDocuBlock
+/// @brief was docuBlock JSF_get_admin_modules_flush
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestAdminLogHandler::execute() {
@@ -158,14 +85,14 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
   // .............................................................................
 
   bool found1;
-  string upto = StringUtils::tolower(_request->value("upto", found1));
+  std::string upto = StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
-  string lvl = StringUtils::tolower(_request->value("level", found2));
+  std::string lvl = StringUtils::tolower(_request->value("level", found2));
 
   TRI_log_level_e ul = TRI_LOG_LEVEL_INFO;
   bool useUpto = true;
-  string logLevel;
+  std::string logLevel;
 
   // prefer level over upto
   if (found2) {
@@ -191,7 +118,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
       ul = TRI_LOG_LEVEL_TRACE;
     } else {
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    string("unknown '") + (found2 ? "level" : "upto") +
+                    std::string("unknown '") + (found2 ? "level" : "upto") +
                         "' log level: '" + logLevel + "'");
       return status_t(HANDLER_DONE);
     }
@@ -204,7 +131,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
   uint64_t start = 0;
 
   bool found;
-  string s = _request->value("start", found);
+  std::string s = _request->value("start", found);
 
   if (found) {
     start = StringUtils::uint64(s);
@@ -240,7 +167,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
 
   bool sortAscending = true;
 
-  string sortdir = StringUtils::tolower(_request->value("sort", found));
+  std::string sortdir = StringUtils::tolower(_request->value("sort", found));
 
   if (found) {
     if (sortdir == "desc") {
@@ -253,7 +180,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
   // .............................................................................
 
   bool search = false;
-  string searchString = StringUtils::tolower(_request->value("search", search));
+  std::string searchString = StringUtils::tolower(_request->value("search", search));
 
   // .............................................................................
   // generate result
@@ -271,7 +198,7 @@ HttpHandler::status_t RestAdminLogHandler::execute() {
     TRI_log_buffer_t* buf = (TRI_log_buffer_t*)TRI_AtVector(logs, i);
 
     if (search) {
-      string text = StringUtils::tolower(buf->_text);
+      std::string text = StringUtils::tolower(buf->_text);
 
       if (text.find(searchString) == string::npos) {
         continue;

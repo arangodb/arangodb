@@ -34,9 +34,6 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      aql failures
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -640,9 +637,6 @@ function ahuacatlFailureSuite () {
   };
 }
  
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -653,9 +647,4 @@ if (internal.debugCanUseFailAt()) {
 }
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

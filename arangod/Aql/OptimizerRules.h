@@ -103,7 +103,7 @@ void moveCalculationsDownRule(Optimizer*, ExecutionPlan*,
 void fuseCalculationsRule(Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the "right" type of AggregateNode and
+/// @brief determine the "right" type of CollectNode and
 /// add a sort node for each COLLECT (may be removed later)
 /// this rule cannot be turned off (otherwise, the query result might be wrong!)
 ////////////////////////////////////////////////////////////////////////////////

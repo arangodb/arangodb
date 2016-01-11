@@ -878,7 +878,7 @@ static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
   ExtractSkipAndLimit(args, 0, skip, limit);
 
   uint64_t total = 0;
-  vector<TRI_doc_mptr_copy_t> docs;
+  std::vector<TRI_doc_mptr_copy_t> docs;
 
   SingleCollectionReadOnlyTransaction trx(new V8TransactionContext(true),
                                           col->_vocbase, col->_cid);
@@ -935,14 +935,6 @@ static void JS_AllQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// The @FN{any} method returns a random document from the collection.  It
 /// returns
 /// @LIT{null} if the collection is empty.
-///
-/// @EXAMPLES
-///
-/// @code
-/// arangod> db.example.any()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World"
-/// }
-/// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_AnyQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1067,7 +1059,7 @@ static void JS_ByExampleQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
   // inside a read transaction
   // ...........................................................................
 
-  vector<TRI_doc_mptr_copy_t> filtered;
+  std::vector<TRI_doc_mptr_copy_t> filtered;
 
   trx.lockRead();
 
@@ -1359,25 +1351,25 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
     if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
       TRI_doc_edge_key_marker_t const* e =
           reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker);
-      string const extra =
+      std::string const extra =
           helper->_resolver->getCollectionNameCluster(e->_toCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetToKey) +
+          std::string(((char*)marker) + e->_offsetToKey) +
           helper->_resolver->getCollectionNameCluster(e->_fromCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetFromKey);
+          std::string(((char*)marker) + e->_offsetFromKey);
 
       localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
     } else {
       triagens::wal::edge_marker_t const* e =
           reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
-      string const extra =
+      std::string const extra =
           helper->_resolver->getCollectionNameCluster(e->_toCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetToKey) +
+          std::string(((char*)marker) + e->_offsetToKey) +
           helper->_resolver->getCollectionNameCluster(e->_fromCid) +
           TRI_DOCUMENT_HANDLE_SEPARATOR_CHR +
-          string(((char*)marker) + e->_offsetFromKey);
+          std::string(((char*)marker) + e->_offsetFromKey);
 
       localCrc += TRI_Crc32HashPointer(extra.c_str(), extra.size());
     }
@@ -1407,23 +1399,7 @@ static bool ChecksumCalculator(TRI_doc_mptr_t const* mptr,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief calculates a checksum for the data in a collection
-/// @startDocuBlock collectionChecksum
-/// `collection.checksum(withRevisions, withData)`
-///
-/// The *checksum* operation calculates a CRC32 checksum of the keys
-/// contained in collection *collection*.
-///
-/// If the optional argument *withRevisions* is set to *true*, then the
-/// revision ids of the documents are also included in the checksumming.
-///
-/// If the optional argument *withData* is set to *true*, then the
-/// actual document data is also checksummed. Including the document data in
-/// checksumming will make the calculation slower, but is more accurate.
-///
-/// **Note**: this method is not available in a cluster.
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionChecksum
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ChecksumCollection(
@@ -1478,7 +1454,7 @@ static void JS_ChecksumCollection(
 
   trx.lockRead();
   // get last tick
-  string const rid = StringUtils::itoa(document->_info.revision());
+  std::string const rid = StringUtils::itoa(document->_info.revision());
 
   if (withData) {
     TRI_InitStringBuffer(&helper._buffer, TRI_CORE_MEM_ZONE);
@@ -1518,34 +1494,7 @@ static void JS_ChecksumCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects all edges for a set of vertices
-/// @startDocuBlock edgeCollectionEdges
-/// `edge-collection.edges(vertex)`
-///
-/// The *edges* operator finds all edges starting from (outbound) or ending
-/// in (inbound) *vertex*.
-///
-/// `edge-collection.edges(vertices)`
-///
-/// The *edges* operator finds all edges starting from (outbound) or ending
-/// in (inbound) a document from *vertices*, which must a list of documents
-/// or document handles.
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_Relation}
-///   db._create("vertex");
-///   db._createEdgeCollection("relation");
-/// ~ var myGraph = {};
-///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
-///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
-///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows"
-///   });
-///   db._document(myGraph.e1);
-///   db.relation.edges(myGraph.e1._id);
-/// ~ db._drop("relation");
-/// ~ db._drop("vertex");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock edgeCollectionEdges
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_EdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1555,34 +1504,7 @@ static void JS_EdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects all inbound edges
-/// @startDocuBlock edgeCollectionInEdges
-/// `edge-collection.inEdges(vertex)`
-///
-/// The *edges* operator finds all edges ending in (inbound) *vertex*.
-///
-/// `edge-collection.inEdges(vertices)`
-///
-/// The *edges* operator finds all edges ending in (inbound) a document from
-/// *vertices*, which must a list of documents or document handles.
-///
-/// @EXAMPLES
-/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_inEdges}
-///   db._create("vertex");
-///   db._createEdgeCollection("relation");
-/// ~ var myGraph = {};
-///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
-///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
-///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows"
-///   });
-///   db._document(myGraph.e1);
-///   db.relation.inEdges(myGraph.v1._id);
-///   db.relation.inEdges(myGraph.v2._id);
-/// ~ db._drop("relation");
-/// ~ db._drop("vertex");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock edgeCollectionInEdges
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1592,35 +1514,7 @@ static void JS_InEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects all outbound edges
-/// @startDocuBlock edgeCollectionOutEdges
-/// `edge-collection.outEdges(vertex)`
-///
-/// The *edges* operator finds all edges starting from (outbound)
-/// *vertices*.
-///
-/// `edge-collection.outEdges(vertices)`
-///
-/// The *edges* operator finds all edges starting from (outbound) a document
-/// from *vertices*, which must a list of documents or document handles.
-///
-/// @EXAMPLES
-/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_02_outEdges}
-///   db._create("vertex");
-///   db._createEdgeCollection("relation");
-/// ~ var myGraph = {};
-///   myGraph.v1 = db.vertex.insert({ name : "vertex 1" });
-///   myGraph.v2 = db.vertex.insert({ name : "vertex 2" });
-///   myGraph.e1 = db.relation.insert(myGraph.v1, myGraph.v2, { label : "knows"
-///   });
-///   db._document(myGraph.e1);
-///   db.relation.outEdges(myGraph.v1._id);
-///   db.relation.outEdges(myGraph.v2._id);
-/// ~ db._drop("relation");
-/// ~ db._drop("vertex");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock edgeCollectionOutEdges
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_OutEdgesQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1739,7 +1633,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  string const&& queryString = TRI_ObjectToString(args[1]);
+  std::string const&& queryString = TRI_ObjectToString(args[1]);
   bool isSubstringQuery = false;
   size_t maxResults = 0;  // 0 means "all results"
 
@@ -1816,41 +1710,7 @@ static void FulltextQuery(SingleCollectionReadOnlyTransaction& trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief queries the fulltext index
-/// @startDocuBlock collectionFulltext
-/// `collection.fulltext(attribute, query)`
-///
-/// The *fulltext* simple query functions performs a fulltext search on the
-/// specified
-/// *attribute* and the specified *query*.
-///
-/// Details about the fulltext query syntax can be found below.
-///
-/// Note: the *fulltext* simple query function is **deprecated** as of ArangoDB
-/// 2.6.
-/// The function may be removed in future versions of ArangoDB. The preferred
-/// way for executing fulltext queries is to use an AQL query using the
-/// *FULLTEXT*
-/// [AQL function](../Aql/FulltextFunctions.md) as follows:
-///
-///     FOR doc IN FULLTEXT(@@collection, @attributeName, @queryString, @limit)
-///       RETURN doc
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
-/// ~ db._drop("emails");
-/// ~ db._create("emails");
-///   db.emails.ensureFulltextIndex("content");
-///   db.emails.save({ content: "Hello Alice, how are you doing? Regards, Bob"
-///   });
-///   db.emails.save({ content: "Hello Charlie, do Alice and Bob know about it?"
-///   });
-///   db.emails.save({ content: "I think they don't know. Regards, Eve" });
-///   db.emails.fulltext("content", "charlie,|eve").toArray();
-/// ~ db._drop("emails");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock collectionFulltext
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FulltextQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1938,7 +1798,7 @@ static void JS_LastQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  vector<TRI_doc_mptr_copy_t> documents;
+  std::vector<TRI_doc_mptr_copy_t> documents;
   res = trx.readPositional(documents, -1, count);
   trx.finish(res);
 
@@ -2181,31 +2041,7 @@ static void JS_WithinQuery(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches multiple documents by their keys
-/// @startDocuBlock collectionLookupByKeys
-/// `collection.documents(keys)`
-///
-/// Looks up the documents in the specified collection using the array of keys
-/// provided. All documents for which a matching key was specified in the *keys*
-/// array and that exist in the collection will be returned.
-/// Keys for which no document can be found in the underlying collection are
-/// ignored,
-/// and no exception will be thrown for them.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionLookupByKeys}
-/// ~ db._drop("example");
-/// ~ db._create("example");
-///   keys = [ ];
-/// | for (var i = 0; i < 10; ++i) {
-/// |   db.example.insert({ _key: "test" + i, value: i });
-/// |   keys.push("test" + i);
-///   }
-///   db.example.documents(keys);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock collectionLookupByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LookupByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2259,34 +2095,7 @@ static void JS_LookupByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes multiple documents by their keys
-/// @startDocuBlock collectionRemoveByKeys
-/// `collection.removeByKeys(keys)`
-///
-/// Looks up the documents in the specified collection using the array of keys
-/// provided, and removes all documents from the collection whose keys are
-/// contained in the *keys* array. Keys for which no document can be found in
-/// the underlying collection are ignored, and no exception will be thrown for
-/// them.
-///
-/// The method will return an object containing the number of removed documents
-/// in the *removed* sub-attribute, and the number of not-removed/ignored
-/// documents in the *ignored* sub-attribute.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRemoveByKeys}
-/// ~ db._drop("example");
-/// ~ db._create("example");
-///   keys = [ ];
-/// | for (var i = 0; i < 10; ++i) {
-/// |   db.example.insert({ _key: "test" + i, value: i });
-/// |   keys.push("test" + i);
-///   }
-///   db.example.removeByKeys(keys);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock collectionRemoveByKeys
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveByKeys(const v8::FunctionCallbackInfo<v8::Value>& args) {

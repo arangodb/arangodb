@@ -32,9 +32,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      ensure index
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: ensureIndex
@@ -836,9 +833,6 @@ function ensureIndexSuite() {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -848,7 +842,3 @@ jsunity.run(ensureIndexSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

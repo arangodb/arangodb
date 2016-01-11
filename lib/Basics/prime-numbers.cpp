@@ -28,7 +28,7 @@
 /// @brief pre-calculated prime numbers
 ////////////////////////////////////////////////////////////////////////////////
 
-static const uint64_t Primes[251] = {
+static uint64_t const Primes[251] = {
     7ULL,          11ULL,         13ULL,         17ULL,         19ULL,
     23ULL,         29ULL,         31ULL,         37ULL,         41ULL,
     47ULL,         53ULL,         59ULL,         67ULL,         73ULL,

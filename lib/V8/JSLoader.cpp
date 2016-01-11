@@ -88,13 +88,13 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
 
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
                                       v8::Handle<v8::Context>& context,
-                                      string const& name) {
+                                      std::string const& name) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
 
   findScript(name);
 
-  map<string, string>::iterator i = _scripts.find(name);
+  std::map<std::string, std::string>::iterator i = _scripts.find(name);
 
   if (i == _scripts.end()) {
     // correct the path/name
@@ -135,7 +135,7 @@ bool JSLoader::loadAllScripts(v8::Isolate* isolate,
     return true;
   }
 
-  vector<string> parts = getDirectoryParts();
+  std::vector<std::string> parts = getDirectoryParts();
 
   bool result = true;
 
@@ -153,19 +153,19 @@ bool JSLoader::loadAllScripts(v8::Isolate* isolate,
 
 bool JSLoader::executeScript(v8::Isolate* isolate,
                              v8::Handle<v8::Context>& context,
-                             string const& name) {
+                             std::string const& name) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
 
   findScript(name);
 
-  map<string, string>::iterator i = _scripts.find(name);
+  std::map<std::string, std::string>::iterator i = _scripts.find(name);
 
   if (i == _scripts.end()) {
     return false;
   }
 
-  string content =
+  std::string content =
       "(function() { " + i->second + "/* end-of-file '" + name + "' */ })()";
 
   // Enter the newly created execution environment.

@@ -62,34 +62,34 @@ static VertexId ExtractToId(TRI_doc_mptr_copy_t const& ptr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 class MultiCollectionEdgeExpander {
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Edge direction for this expander
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   TRI_edge_direction_e _direction;
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief all info required for edge collection
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
-  vector<EdgeCollectionInfo*> _edgeCollections;
+  std::vector<EdgeCollectionInfo*> _edgeCollections;
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief function to check if the edge passes the filter
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> _isAllowed;
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief function to check if the vertex passes the filter
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   function<bool(VertexId&)> _isAllowedVertex;
 
  public:
   MultiCollectionEdgeExpander(
       TRI_edge_direction_e const& direction,
-      vector<EdgeCollectionInfo*> const& edgeCollections,
+      std::vector<EdgeCollectionInfo*> const& edgeCollections,
       function<bool(EdgeId&, TRI_doc_mptr_copy_t*)> isAllowed,
       function<bool(VertexId&)> isAllowedVertex)
       : _direction(direction),
@@ -97,12 +97,12 @@ class MultiCollectionEdgeExpander {
         _isAllowed(isAllowed),
         _isAllowedVertex(isAllowedVertex) {}
 
-  void operator()(VertexId& source, vector<ArangoDBPathFinder::Step*>& result) {
+  void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
     equal_to<VertexId> eq;
     for (auto const& edgeCollection : _edgeCollections) {
       auto edges = edgeCollection->getEdges(_direction, source);
 
-      unordered_map<VertexId, size_t> candidates;
+      std::unordered_map<VertexId, size_t> candidates;
       for (size_t j = 0; j < edges.size(); ++j) {
         EdgeId edgeId = edgeCollection->extractEdgeId(edges[j]);
         if (!_isAllowed(edgeId, &edges[j])) {
@@ -139,15 +139,15 @@ class MultiCollectionEdgeExpander {
 };
 
 class SimpleEdgeExpander {
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief The direction used for edges in this expander
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   TRI_edge_direction_e _direction;
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief all info required for edge collection
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   EdgeCollectionInfo* _edgeCollection;
 
@@ -156,11 +156,11 @@ class SimpleEdgeExpander {
                      EdgeCollectionInfo* edgeCollection)
       : _direction(direction), _edgeCollection(edgeCollection){};
 
-  void operator()(VertexId& source, vector<ArangoDBPathFinder::Step*>& result) {
+  void operator()(VertexId& source, std::vector<ArangoDBPathFinder::Step*>& result) {
     auto edges = _edgeCollection->getEdges(_direction, source);
 
     equal_to<VertexId> eq;
-    unordered_map<VertexId, size_t> candidates;
+    std::unordered_map<VertexId, size_t> candidates;
     for (size_t j = 0; j < edges.size(); ++j) {
       VertexId from = ExtractFromId(edges[j]);
       VertexId to = ExtractToId(edges[j]);
@@ -199,7 +199,7 @@ void BasicOptions::addVertexFilter(v8::Isolate* isolate,
                                    ExplicitTransaction* trx,
                                    TRI_transaction_collection_t* col,
                                    VocShaper* shaper, TRI_voc_cid_t const& cid,
-                                   string& errorMessage) {
+                                   std::string& errorMessage) {
   auto it = _vertexFilter.find(cid);
 
   if (example->IsArray()) {
@@ -258,7 +258,7 @@ bool BasicOptions::matchesVertex(VertexId const& v) const {
 void BasicOptions::addEdgeFilter(v8::Isolate* isolate,
                                  v8::Handle<v8::Value> const& example,
                                  VocShaper* shaper, TRI_voc_cid_t const& cid,
-                                 string& errorMessage) {
+                                 std::string& errorMessage) {
   useEdgeFilter = true;
   auto it = _edgeFilter.find(cid);
 
@@ -361,8 +361,8 @@ void NeighborsOptions::addCollectionRestriction(TRI_voc_cid_t cid) {
 /// @brief Wrapper for the shortest path computation
 ////////////////////////////////////////////////////////////////////////////////
 
-unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
-    vector<EdgeCollectionInfo*>& collectionInfos, ShortestPathOptions& opts) {
+std::unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
+    std::vector<EdgeCollectionInfo*>& collectionInfos, ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
 
@@ -390,7 +390,7 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 
   ArangoDBPathFinder pathFinder(forwardExpander, backwardExpander,
                                 opts.bidirectional);
-  unique_ptr<ArangoDBPathFinder::Path> path;
+  std::unique_ptr<ArangoDBPathFinder::Path> path;
   if (opts.multiThreaded) {
     path.reset(pathFinder.shortestPathTwoThreads(opts.start, opts.end));
   } else {
@@ -404,7 +404,7 @@ unique_ptr<ArangoDBPathFinder::Path> TRI_RunShortestPathSearch(
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unique_ptr<ArangoDBConstDistancePathFinder::Path>
-TRI_RunSimpleShortestPathSearch(vector<EdgeCollectionInfo*>& collectionInfos,
+TRI_RunSimpleShortestPathSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
                                 ShortestPathOptions& opts) {
   TRI_edge_direction_e forward;
   TRI_edge_direction_e backward;
@@ -421,7 +421,7 @@ TRI_RunSimpleShortestPathSearch(vector<EdgeCollectionInfo*>& collectionInfos,
   }
 
   auto fwExpander = [&collectionInfos, forward](
-      VertexId& v, vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
+      VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
     equal_to<VertexId> eq;
     for (auto const& edgeCollection : collectionInfos) {
       auto edges = edgeCollection->getEdges(forward, v);
@@ -442,7 +442,7 @@ TRI_RunSimpleShortestPathSearch(vector<EdgeCollectionInfo*>& collectionInfos,
     }
   };
   auto bwExpander = [&collectionInfos, backward](
-      VertexId& v, vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
+      VertexId& v, std::vector<EdgeId>& res_edges, vector<VertexId>& neighbors) {
     equal_to<VertexId> eq;
     for (auto const& edgeCollection : collectionInfos) {
       auto edges = edgeCollection->getEdges(backward, v);
@@ -473,14 +473,14 @@ TRI_RunSimpleShortestPathSearch(vector<EdgeCollectionInfo*>& collectionInfos,
 /// @brief search for distinct inbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void InboundNeighbors(vector<EdgeCollectionInfo*>& collectionInfos,
+static void InboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                              NeighborsOptions& opts,
-                             unordered_set<VertexId>& startVertices,
-                             unordered_set<VertexId>& visited,
-                             unordered_set<VertexId>& distinct,
+                             std::unordered_set<VertexId>& startVertices,
+                             std::unordered_set<VertexId>& visited,
+                             std::unordered_set<VertexId>& distinct,
                              uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_IN;
-  unordered_set<VertexId> nextDepth;
+  std::unordered_set<VertexId> nextDepth;
 
   for (auto const& col : collectionInfos) {
     for (VertexId const& start : startVertices) {
@@ -518,14 +518,14 @@ static void InboundNeighbors(vector<EdgeCollectionInfo*>& collectionInfos,
 /// @brief search for distinct outbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void OutboundNeighbors(vector<EdgeCollectionInfo*>& collectionInfos,
+static void OutboundNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                               NeighborsOptions& opts,
-                              unordered_set<VertexId>& startVertices,
-                              unordered_set<VertexId>& visited,
-                              unordered_set<VertexId>& distinct,
+                              std::unordered_set<VertexId>& startVertices,
+                              std::unordered_set<VertexId>& visited,
+                              std::unordered_set<VertexId>& distinct,
                               uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
-  unordered_set<VertexId> nextDepth;
+  std::unordered_set<VertexId> nextDepth;
 
   for (auto const& col : collectionInfos) {
     for (VertexId const& start : startVertices) {
@@ -562,14 +562,14 @@ static void OutboundNeighbors(vector<EdgeCollectionInfo*>& collectionInfos,
 /// @brief search for distinct in- and outbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void AnyNeighbors(vector<EdgeCollectionInfo*>& collectionInfos,
+static void AnyNeighbors(std::vector<EdgeCollectionInfo*>& collectionInfos,
                          NeighborsOptions& opts,
-                         unordered_set<VertexId>& startVertices,
-                         unordered_set<VertexId>& visited,
-                         unordered_set<VertexId>& distinct,
+                         std::unordered_set<VertexId>& startVertices,
+                         std::unordered_set<VertexId>& visited,
+                         std::unordered_set<VertexId>& distinct,
                          uint64_t depth = 1) {
   TRI_edge_direction_e dir = TRI_EDGE_OUT;
-  unordered_set<VertexId> nextDepth;
+  std::unordered_set<VertexId> nextDepth;
 
   for (auto const& col : collectionInfos) {
     for (VertexId const& start : startVertices) {
@@ -628,11 +628,11 @@ static void AnyNeighbors(vector<EdgeCollectionInfo*>& collectionInfos,
 /// @brief Execute a search for neighboring vertices
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RunNeighborsSearch(vector<EdgeCollectionInfo*>& collectionInfos,
+void TRI_RunNeighborsSearch(std::vector<EdgeCollectionInfo*>& collectionInfos,
                             NeighborsOptions& opts,
-                            unordered_set<VertexId>& result) {
-  unordered_set<VertexId> startVertices;
-  unordered_set<VertexId> visited;
+                            std::unordered_set<VertexId>& result) {
+  std::unordered_set<VertexId> startVertices;
+  std::unordered_set<VertexId> visited;
   startVertices.emplace(opts.start);
   visited.emplace(opts.start);
 

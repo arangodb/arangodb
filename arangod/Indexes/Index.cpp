@@ -177,7 +177,7 @@ bool Index::validateId(char const* key) {
   char const* p = key;
 
   while (1) {
-    const char c = *p;
+    char const c = *p;
 
     if (c == '\0') {
       return (p - key) > 0;

@@ -96,7 +96,7 @@ class ControlCTask : public SignalTask {
 
  public:
   bool handleSignal() {
-    string msg = _server->getName() + " [shutting down]";
+    std::string msg = _server->getName() + " [shutting down]";
 
     TRI_SetProcessTitle(msg.c_str());
 
@@ -221,7 +221,7 @@ bool CtrlHandler(DWORD eventType) {
   ControlCTask* ccTask = localControlCTask;
   // string msg = ccTask->_server->getName() + " [shutting down]";
   bool shutdown = false;
-  string shutdownMessage;
+  std::string shutdownMessage;
 
   switch (eventType) {
     case CTRL_BREAK_EVENT: {
@@ -287,9 +287,6 @@ bool CtrlHandler(DWORD eventType) {
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
     : ApplicationFeature("scheduler"),
@@ -303,9 +300,6 @@ ApplicationScheduler::ApplicationScheduler(ApplicationServer* applicationServer)
       _descriptorMinimum(1024),
       _disableControlCHandler(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::~ApplicationScheduler() {
   Scheduler::SCHEDULER.release();  // TODO(fc) XXX remove this

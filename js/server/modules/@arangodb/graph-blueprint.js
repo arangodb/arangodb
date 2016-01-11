@@ -39,13 +39,7 @@ var arangodb = require("@arangodb"),
   GraphArray = common.GraphArray,
   Iterator = common.Iterator;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             module "@arangodb/graph-blueprint"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
@@ -87,22 +81,10 @@ var findOrCreateEdgeCollectionByName = function (name) {
   return col;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              Edge
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock edgeSetProperty
-///
-/// `edge.setProperty(name, value)`
-///
-/// Changes or sets the property *name* an *edges* to *value*.
-///
-/// @endDocuBlock
+/// @brief was docuBlock edgeSetProperty
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
@@ -122,13 +104,7 @@ Edge.prototype.setProperty = function (name, value) {
   return value;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Vertex
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @start Docu Block vertexEdges
@@ -275,13 +251,7 @@ Vertex.prototype.setProperty = function (name, value) {
   return value;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             Graph
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @start Docu Block graphConstruct
@@ -462,9 +432,6 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   this.distances = {};
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @start Docu Block JSF_graph_getAll
@@ -653,14 +620,14 @@ Graph.prototype.getEdge = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBLock graphGetEdges
+/// @start Docu Block graphGetEdges
 ///
 /// `graph.getEdges()`
 ///
 /// Returns an iterator for all edges of the graph. The iterator supports the
 /// methods *hasNext* and *next*.
 ///
-/// @endDocuBlock
+/// @end Docu Block
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
@@ -729,9 +696,6 @@ Graph.prototype.removeEdge = function (edge, waitForSync) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.Edge = Edge;
 exports.Graph = Graph;
@@ -741,11 +705,4 @@ exports.GraphArray = GraphArray;
 require("@arangodb/graph/algorithms-common");
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

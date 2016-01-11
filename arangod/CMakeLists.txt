@@ -60,9 +60,6 @@ add_executable(
     Actions/RestActionHandler.cpp
     ApplicationServer/ApplicationFeature.cpp
     ApplicationServer/ApplicationServer.cpp
-    Aql/AggregateBlock.cpp
-    Aql/AggregateNode.cpp
-    Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlItemBlockManager.cpp
     Aql/AqlValue.cpp
@@ -77,6 +74,9 @@ add_executable(
     Aql/Collection.cpp
     Aql/Collections.cpp
     Aql/CollectionScanner.cpp
+    Aql/CollectBlock.cpp
+    Aql/CollectNode.cpp
+    Aql/CollectOptions.cpp
     Aql/Condition.cpp
     Aql/ConditionFinder.cpp
     Aql/EnumerateCollectionBlock.cpp

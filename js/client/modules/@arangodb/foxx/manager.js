@@ -31,9 +31,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           imports
-// -----------------------------------------------------------------------------
 
 var arangodb = require("@arangodb");
 var arangosh = require("@arangodb/arangosh");
@@ -48,9 +45,6 @@ var throwBadParameter = arangodb.throwBadParameter;
 
 var utils = require("@arangodb/foxx/manager-utils");
 var store = require("@arangodb/foxx/store");
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts command-line options
@@ -133,10 +127,6 @@ var cmdUsage = function () {
   printf(" %s help   for the list of foxx-manager commands\n", fm);
   printf(" %s --help for the list of options\n", fm);
 };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -728,9 +718,6 @@ var run = function (args) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           exports
-// -----------------------------------------------------------------------------
 
 exports.install = install;
 exports.setup = function (mount, opts) {return runScript(mount, "setup", opts);};
@@ -775,11 +762,4 @@ exports.searchJson = store.searchJson;
 exports.update = store.update;
 exports.info = store.info;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-// End:

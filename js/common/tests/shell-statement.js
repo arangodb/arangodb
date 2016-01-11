@@ -34,9 +34,6 @@ var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           statement-related tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -952,9 +949,6 @@ function StatementSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -963,7 +957,3 @@ function StatementSuite () {
 jsunity.run(StatementSuite);
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

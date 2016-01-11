@@ -86,7 +86,7 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
   return getBodyVelocyPack(options);
 }
 
-string SimpleHttpResult::getResultTypeMessage() const {
+std::string SimpleHttpResult::getResultTypeMessage() const {
   switch (_requestResultType) {
     case (COMPLETE):
       return "No error.";
@@ -213,7 +213,7 @@ std::string SimpleHttpResult::getHeaderField(std::string const& name,
 
   if (find == _headerFields.end()) {
     found = false;
-    return string("");
+    return std::string("");
   }
 
   found = true;

@@ -235,8 +235,8 @@ static inline size_t Padding(const uint32_t numEntries) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void* ReallocateMemory(index_t* const idx, void* old,
-                                     const size_t newSize,
-                                     const size_t oldSize) {
+                                     size_t const newSize,
+                                     size_t const oldSize) {
   void* data;
 
 #if TRI_FULLTEXT_DEBUG
@@ -257,7 +257,7 @@ static inline void* ReallocateMemory(index_t* const idx, void* old,
 /// @brief allocate memory for the index and update memory usage statistics
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void* AllocateMemory(index_t* const idx, const size_t size) {
+static inline void* AllocateMemory(index_t* const idx, size_t const size) {
   void* data;
 
 #if TRI_FULLTEXT_DEBUG
@@ -276,7 +276,7 @@ static inline void* AllocateMemory(index_t* const idx, const size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void FreeMemory(index_t* const idx, void* data,
-                              const size_t size) {
+                              size_t const size) {
 #if TRI_FULLTEXT_DEBUG
   TRI_ASSERT(size > 0);
   TRI_ASSERT(idx->_memoryAllocated >= size);
@@ -843,8 +843,8 @@ static inline node_t* FindDirectSubNode(const node_t* const node,
 /// @brief find a node by its key, starting from the index root
 ////////////////////////////////////////////////////////////////////////////////
 
-static node_t* FindNode(const index_t* idx, const char* const key,
-                        const size_t keyLength) {
+static node_t* FindNode(const index_t* idx, char const* const key,
+                        size_t const keyLength) {
   node_t* node;
   node_char_t* p;
   size_t i;
@@ -1167,9 +1167,9 @@ static TRI_fulltext_result_t* MakeListResult(index_t* const idx,
 
 #if 0
 TRI_fulltext_result_t* FindDocuments (index_t* const idx,
-                                      const char* const key,
-                                      const size_t keyLength,
-                                      const bool recursive) {
+                                      char const* const key,
+                                      size_t const keyLength,
+                                      bool const recursive) {
   node_t* node;
   TRI_fulltext_list_t* list;
 
@@ -1197,8 +1197,8 @@ TRI_fulltext_result_t* FindDocuments (index_t* const idx,
 /// @brief determine the common prefix length of two words
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline size_t CommonPrefixLength(const char* const lhs,
-                                        const char* const rhs) {
+static inline size_t CommonPrefixLength(char const* const lhs,
+                                        char const* const rhs) {
   char* p1;
   char* p2;
   size_t length = 0;
@@ -1449,8 +1449,8 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const ftx,
 
 #if 0
 TRI_fulltext_result_t* TRI_FindExactFulltextIndex (TRI_fts_index_t* const ftx,
-                                                   const char* const key,
-                                                   const size_t keyLength) {
+                                                   char const* const key,
+                                                   size_t const keyLength) {
   return FindDocuments((index_t*) ftx, key, keyLength, false);
 }
 #endif
@@ -1461,8 +1461,8 @@ TRI_fulltext_result_t* TRI_FindExactFulltextIndex (TRI_fts_index_t* const ftx,
 
 #if 0
 TRI_fulltext_result_t* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* const ftx,
-                                                    const char* key,
-                                                    const size_t keyLength) {
+                                                    char const* key,
+                                                    size_t const keyLength) {
   return FindDocuments((index_t*) ftx, key, keyLength, true);
 }
 #endif

@@ -6,7 +6,7 @@ arangosh&gt; stmt.explain().plan.rules;
   <span class="hljs-string">"remove-unnecessary-calculations"</span>, 
   <span class="hljs-string">"move-calculations-up-2"</span>, 
   <span class="hljs-string">"move-filters-up-2"</span>, 
-  <span class="hljs-string">"use-index-range"</span>, 
+  <span class="hljs-string">"use-indexes"</span>, 
   <span class="hljs-string">"remove-filter-covered-by-index"</span>, 
   <span class="hljs-string">"use-index-for-sort"</span> 
 ]

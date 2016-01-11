@@ -154,7 +154,7 @@ ClusterCommResult const ClusterComm::asyncRequest(
     CoordTransactionID const coordTransactionID, std::string const& destination,
     triagens::rest::HttpRequest::HttpRequestType reqtype,
     std::string const& path, std::shared_ptr<std::string const> body,
-    std::unique_ptr<std::map<string, string>>& headerFields,
+    std::unique_ptr<std::map<std::string, std::string>>& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout) {
   auto op = std::make_unique<ClusterCommOperation>();
   op->result.clientTransactionID = clientTransactionID;
@@ -271,11 +271,11 @@ ClusterCommResult const ClusterComm::asyncRequest(
 
 std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     ClientTransactionID const& clientTransactionID,
-    CoordTransactionID const coordTransactionID, string const& destination,
-    triagens::rest::HttpRequest::HttpRequestType reqtype, string const& path,
-    string const& body, map<string, string> const& headerFields,
+    CoordTransactionID const coordTransactionID, std::string const& destination,
+    triagens::rest::HttpRequest::HttpRequestType reqtype, std::string const& path,
+    std::string const& body, std::map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
-  map<string, string> headersCopy(headerFields);
+  std::map<std::string, std::string> headersCopy(headerFields);
 
   auto res = std::make_unique<ClusterCommResult>();
   res->clientTransactionID = clientTransactionID;
@@ -325,7 +325,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   }
 
   // We need a connection to this server:
-  string endpoint = ClusterInfo::instance()->getServerEndpoint(res->serverID);
+  std::string endpoint = ClusterInfo::instance()->getServerEndpoint(res->serverID);
   if (endpoint.empty()) {
     res->status = CL_COMM_ERROR;
     if (logConnectionErrors()) {
@@ -713,7 +713,7 @@ void ClusterComm::drop(ClientTransactionID const& clientTransactionID,
 /// node.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::asyncAnswer(string& coordinatorHeader,
+void ClusterComm::asyncAnswer(std::string& coordinatorHeader,
                               triagens::rest::HttpResponse* responseToSend) {
   // First take apart the header to get the coordinatorID:
   ServerID coordinatorID;
@@ -730,7 +730,7 @@ void ClusterComm::asyncAnswer(string& coordinatorHeader,
 
   // Now find the connection to which the request goes from the coordinatorID:
   httpclient::ConnectionManager* cm = httpclient::ConnectionManager::instance();
-  string endpoint = ClusterInfo::instance()->getServerEndpoint(coordinatorID);
+  std::string endpoint = ClusterInfo::instance()->getServerEndpoint(coordinatorID);
   if (endpoint == "") {
     if (logConnectionErrors()) {
       LOG_ERROR("asyncAnswer: cannot find endpoint for server '%s'",
@@ -750,7 +750,7 @@ void ClusterComm::asyncAnswer(string& coordinatorHeader,
     return;
   }
 
-  map<string, string> headers = responseToSend->headers();
+  std::map<std::string, std::string> headers = responseToSend->headers();
   headers["X-Arango-Coordinator"] = coordinatorHeader;
   headers["X-Arango-Response-Code"] =
       responseToSend->responseString(responseToSend->responseCode());
@@ -790,7 +790,7 @@ void ClusterComm::asyncAnswer(string& coordinatorHeader,
 /// DBServer node.
 ////////////////////////////////////////////////////////////////////////////////
 
-string ClusterComm::processAnswer(string& coordinatorHeader,
+std::string ClusterComm::processAnswer(std::string& coordinatorHeader,
                                   triagens::rest::HttpRequest* answer) {
   // First take apart the header to get the operaitonID:
   OperationID operationID;
@@ -801,13 +801,13 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
 
   pos = coordinatorHeader.find(":", start);
   if (pos == string::npos) {
-    return string("could not find coordinator ID in 'X-Arango-Coordinator'");
+    return std::string("could not find coordinator ID in 'X-Arango-Coordinator'");
   }
   // coordinatorID = coordinatorHeader.substr(start,pos-start);
   start = pos + 1;
   pos = coordinatorHeader.find(":", start);
   if (pos == string::npos) {
-    return string("could not find operationID in 'X-Arango-Coordinator'");
+    return std::string("could not find operationID in 'X-Arango-Coordinator'");
   }
   operationID = basics::StringUtils::uint64(coordinatorHeader.substr(start));
 
@@ -858,14 +858,14 @@ string ClusterComm::processAnswer(string& coordinatorHeader,
       } else {
         // Nothing known about the request, get rid of it:
         delete answer;
-        return string("operation was already dropped by sender");
+        return std::string("operation was already dropped by sender");
       }
     }
   }
 
   // Finally tell the others:
   somethingReceived.broadcast();
-  return string("");
+  return std::string("");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -996,7 +996,7 @@ void ClusterCommThread::run() {
           op->result.errorMessage = "serverID was empty";
         } else {
           // We need a connection to this server:
-          string endpoint =
+          std::string endpoint =
               ClusterInfo::instance()->getServerEndpoint(op->result.serverID);
           if (endpoint == "") {
             op->result.status = CL_COMM_ERROR;

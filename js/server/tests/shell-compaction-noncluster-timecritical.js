@@ -33,9 +33,6 @@ var internal = require("internal");
 var testHelper = require("@arangodb/test-helper").Helper;
 var ArangoCollection = require("@arangodb/arango-collection").ArangoCollection;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        compaction
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: collection
@@ -988,9 +985,6 @@ function CompactionSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -999,9 +993,4 @@ function CompactionSuite () {
 jsunity.run(CompactionSuite);
 
 return jsunity.done();
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 

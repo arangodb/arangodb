@@ -70,7 +70,7 @@ using namespace arangodb;
 /// @brief command prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-static string Prompt = "arangosh [%d]> ";
+static std::string Prompt = "arangosh [%d]> ";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for clients
@@ -120,13 +120,13 @@ static JSLoader StartupLoader;
 /// @brief path for JavaScript modules files
 ////////////////////////////////////////////////////////////////////////////////
 
-static string StartupModules = "";
+static std::string StartupModules = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path for JavaScript files
 ////////////////////////////////////////////////////////////////////////////////
 
-static string StartupPath = "";
+static std::string StartupPath = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief put current directory into module path
@@ -144,31 +144,31 @@ static std::string V8Options;
 /// @brief javascript files to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-static vector<string> ExecuteScripts;
+static std::vector<std::string> ExecuteScripts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief javascript string to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-static string ExecuteString;
+static std::string ExecuteString;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief javascript files to syntax check
 ////////////////////////////////////////////////////////////////////////////////
 
-static vector<string> CheckScripts;
+static std::vector<std::string> CheckScripts;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unit file test cases
 ////////////////////////////////////////////////////////////////////////////////
 
-static vector<string> UnitTests;
+static std::vector<std::string> UnitTests;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief files to jslint
 ////////////////////////////////////////////////////////////////////////////////
 
-static vector<string> JsLint;
+static std::vector<std::string> JsLint;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief garbage collection interval
@@ -200,7 +200,7 @@ static void JS_PagerOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
     // extract the next argument
     v8::Handle<v8::Value> val = args[i];
 
-    string str = TRI_ObjectToString(val);
+    std::string str = TRI_ObjectToString(val);
 
     BaseClient.internalPrint(str);
   }
@@ -222,7 +222,7 @@ static void JS_StartOutputPager(
     BaseClient.internalPrint("Using pager already.\n");
   } else {
     BaseClient.setUsePager(true);
-    BaseClient.internalPrint(string(string("Using pager ") +
+    BaseClient.internalPrint(std::string(std::string("Using pager ") +
                                     BaseClient.outputPager() +
                                     " for output buffering.\n"));
   }
@@ -293,8 +293,8 @@ static void JS_ImportCsvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING("separator");
   v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING("quote");
 
-  string separator = ",";
-  string quote = "\"";
+  std::string separator = ",";
+  std::string quote = "\"";
 
   if (3 <= args.Length()) {
     v8::Handle<v8::Object> options = args[2]->ToObject();
@@ -324,8 +324,8 @@ static void JS_ImportCsvFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
   ih.setQuote(quote);
   ih.setSeparator(separator.c_str());
 
-  string fileName = TRI_ObjectToString(args[0]);
-  string collectionName = TRI_ObjectToString(args[1]);
+  std::string fileName = TRI_ObjectToString(args[0]);
+  std::string collectionName = TRI_ObjectToString(args[1]);
 
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -379,8 +379,8 @@ static void JS_ImportJsonFile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   ImportHelper ih(ClientConnection->getHttpClient(), ChunkSize);
 
-  string fileName = TRI_ObjectToString(args[0]);
-  string collectionName = TRI_ObjectToString(args[1]);
+  std::string fileName = TRI_ObjectToString(args[0]);
+  std::string collectionName = TRI_ObjectToString(args[1]);
 
   if (ih.importJson(collectionName, fileName)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -464,7 +464,7 @@ typedef enum __eRunMode {
 /// @brief parses the program options
 ////////////////////////////////////////////////////////////////////////////////
 
-static vector<string> ParseProgramOptions(int argc, char* args[],
+static std::vector<std::string> ParseProgramOptions(int argc, char* args[],
                                           eRunMode* runMode) {
   ProgramOptionsDescription description("STANDARD options");
   ProgramOptionsDescription javascript("JAVASCRIPT options");
@@ -498,7 +498,7 @@ static vector<string> ParseProgramOptions(int argc, char* args[],
               "maximum size for individual data batches (in bytes)")(
       "prompt", &Prompt, "command prompt")(javascript, false);
 
-  vector<string> arguments;
+  std::vector<std::string> arguments;
   *runMode = eInteractive;
 
   description.arguments(&arguments);
@@ -515,7 +515,7 @@ static vector<string> ParseProgramOptions(int argc, char* args[],
   // and parse the command line and config file
   ProgramOptions options;
 
-  string conf = TRI_BinaryName(args[0]) + ".conf";
+  std::string conf = TRI_BinaryName(args[0]) + ".conf";
 
   BaseClient.parse(options, description, "<options>", argc, args, conf);
 
@@ -562,10 +562,10 @@ static vector<string> ParseProgramOptions(int argc, char* args[],
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copies v8::Object to std::map<string, string>
+/// @brief copies v8::Object to std::map<std::string, std::string>
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ObjectToMap(v8::Isolate* isolate, map<string, string>& myMap,
+static void ObjectToMap(v8::Isolate* isolate, std::map<std::string, std::string>& myMap,
                         v8::Handle<v8::Value> val) {
   v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
@@ -654,12 +654,12 @@ static void ClientConnection_ConstructorCallback(
   v8::HandleScope scope(isolate);
 
   if (args.Length() > 0 && args[0]->IsString()) {
-    string definition = TRI_ObjectToString(args[0]);
+    std::string definition = TRI_ObjectToString(args[0]);
 
     BaseClient.createEndpoint(definition);
 
     if (BaseClient.endpointServer() == nullptr) {
-      string errorMessage = "error in '" + definition + "'";
+      std::string errorMessage = "error in '" + definition + "'";
       TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
     }
   }
@@ -684,7 +684,7 @@ static void ClientConnection_ConstructorCallback(
       << BaseClient.username() << "'";
     BaseClient.printLine(s.str());
   } else {
-    string errorMessage =
+    std::string errorMessage =
         "Could not connect. Error message: " + connection->getErrorMessage();
     delete connection;
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -715,17 +715,17 @@ static void ClientConnection_reconnect(
         "reconnect(<endpoint>, <database>, [, <username>, <password>])");
   }
 
-  string const definition = TRI_ObjectToString(args[0]);
-  string databaseName = TRI_ObjectToString(args[1]);
+  std::string const definition = TRI_ObjectToString(args[0]);
+  std::string databaseName = TRI_ObjectToString(args[1]);
 
-  string username;
+  std::string username;
   if (args.Length() < 3) {
     username = BaseClient.username();
   } else {
     username = TRI_ObjectToString(args[2]);
   }
 
-  string password;
+  std::string password;
   if (args.Length() < 4) {
     BaseClient.printContinuous("Please specify a password: ");
 
@@ -743,10 +743,10 @@ static void ClientConnection_reconnect(
     password = TRI_ObjectToString(args[3]);
   }
 
-  string const oldDefinition = BaseClient.endpointString();
-  string const oldDatabaseName = BaseClient.databaseName();
-  string const oldUsername = BaseClient.username();
-  string const oldPassword = BaseClient.password();
+  std::string const oldDefinition = BaseClient.endpointString();
+  std::string const oldDatabaseName = BaseClient.databaseName();
+  std::string const oldUsername = BaseClient.username();
+  std::string const oldPassword = BaseClient.password();
 
   DestroyConnection(connection);
   ClientConnection = nullptr;
@@ -766,7 +766,7 @@ static void ClientConnection_reconnect(
     BaseClient.setPassword(oldPassword);
     BaseClient.createEndpoint();
 
-    string errorMessage = "error in '" + definition + "'";
+    std::string errorMessage = "error in '" + definition + "'";
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
   }
 
@@ -812,7 +812,7 @@ static void ClientConnection_reconnect(
       << "', username: '" << BaseClient.username() << "'";
     BaseClient.printErrLine(s.str());
 
-    string errorMsg = "could not connect";
+    std::string errorMsg = "could not connect";
     if (newConnection->getErrorMessage() != "") {
       errorMsg = newConnection->getErrorMessage();
     }
@@ -859,7 +859,7 @@ static void ClientConnection_httpGetAny(
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
 
   if (args.Length() > 1) {
     ObjectToMap(isolate, headerFields, args[1]);
@@ -911,7 +911,7 @@ static void ClientConnection_httpHeadAny(
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
 
   if (args.Length() > 1) {
     ObjectToMap(isolate, headerFields, args[1]);
@@ -963,7 +963,8 @@ static void ClientConnection_httpDeleteAny(
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
+
   if (args.Length() > 1) {
     ObjectToMap(isolate, headerFields, args[1]);
   }
@@ -1016,7 +1017,8 @@ static void ClientConnection_httpOptionsAny(
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
+
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
@@ -1070,7 +1072,8 @@ static void ClientConnection_httpPostAny(
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
+
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
@@ -1123,7 +1126,8 @@ static void ClientConnection_httpPutAny(
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
+
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
@@ -1176,7 +1180,8 @@ static void ClientConnection_httpPatchAny(
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
+
   if (args.Length() > 2) {
     ObjectToMap(isolate, headerFields, args[2]);
   }
@@ -1226,7 +1231,7 @@ static void ClientConnection_httpSendFile(
 
   TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
-  const string infile = TRI_ObjectToString(args[1]);
+  std::string const infile = TRI_ObjectToString(args[1]);
 
   if (!TRI_ExistsFile(infile.c_str())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FILE_NOT_FOUND);
@@ -1242,7 +1247,7 @@ static void ClientConnection_httpSendFile(
   v8::TryCatch tryCatch;
 
   // check header fields
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
 
   v8::Handle<v8::Value> result =
       connection->postData(isolate, *url, body, bodySize, headerFields);
@@ -1279,7 +1284,7 @@ static void ClientConnection_getEndpoint(
     TRI_V8_THROW_EXCEPTION_USAGE("getEndpoint()");
   }
 
-  const string endpoint = BaseClient.endpointString();
+  std::string const endpoint = BaseClient.endpointString();
   TRI_V8_RETURN_STD_STRING(endpoint);
 }
 
@@ -1382,7 +1387,7 @@ static void ClientConnection_toString(
     TRI_V8_THROW_EXCEPTION_USAGE("toString()");
   }
 
-  string result = "[object ArangoConnection:" +
+  std::string result = "[object ArangoConnection:" +
                   BaseClient.endpointServer()->getSpecification();
 
   if (connection->isConnected()) {
@@ -1487,7 +1492,7 @@ static void ClientConnection_setDatabaseName(
     TRI_V8_THROW_EXCEPTION_USAGE("setDatabaseName(<name>)");
   }
 
-  string const dbName = TRI_ObjectToString(args[0]);
+  std::string const dbName = TRI_ObjectToString(args[0]);
   connection->setDatabaseName(dbName);
   BaseClient.setDatabaseName(dbName);
 
@@ -1499,13 +1504,13 @@ static void ClientConnection_setDatabaseName(
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::string BuildPrompt() {
-  string result;
+  std::string result;
 
   char const* p = Prompt.c_str();
   bool esc = false;
 
   while (true) {
-    const char c = *p;
+    char const c = *p;
 
     if (c == '\0') {
       break;
@@ -1567,15 +1572,15 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   while (true) {
     // set up prompts
-    string dynamicPrompt;
+    std::string dynamicPrompt;
     if (ClientConnection != nullptr) {
       dynamicPrompt = BuildPrompt();
     } else {
       dynamicPrompt = "disconnected> ";
     }
 
-    string goodPrompt;
-    string badPrompt;
+    std::string goodPrompt;
+    std::string badPrompt;
 
 #if _WIN32
 
@@ -1617,7 +1622,7 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 #endif
 
     bool eof;
-    string input = console.prompt(
+    std::string input = console.prompt(
         promptError ? badPrompt.c_str() : goodPrompt.c_str(), "arangosh", eof);
 
     if (eof) {
@@ -1631,7 +1636,7 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
     BaseClient.log("%s%s\n", dynamicPrompt, input);
 
-    string i = triagens::basics::StringUtils::trim(input);
+    std::string i = triagens::basics::StringUtils::trim(input);
 
     if (i == "exit" || i == "quit" || i == "exit;" || i == "quit;") {
       break;
@@ -1667,7 +1672,7 @@ static int RunShell(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
     if (tryCatch.HasCaught()) {
       // command failed
-      string exception;
+      std::string exception;
 
       if (!tryCatch.CanContinue() || tryCatch.HasTerminated()) {
         exception = "command locally aborted\n";
@@ -1739,7 +1744,7 @@ static bool RunUnitTests(v8::Isolate* isolate,
   TRI_ExecuteJavaScriptString(isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
-    string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
+    std::string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
     BaseClient.printErrLine(exception);
     ok = false;
   } else {
@@ -1763,7 +1768,7 @@ static bool RunScripts(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   for (size_t i = 0; i < scripts.size(); ++i) {
     if (!FileUtils::exists(scripts[i])) {
-      string msg = "error: Javascript file not found: '" + scripts[i] + "'";
+      std::string msg = "error: Javascript file not found: '" + scripts[i] + "'";
 
       BaseClient.printErrLine(msg.c_str());
       BaseClient.log("%s", msg.c_str());
@@ -1805,7 +1810,7 @@ static bool RunScripts(v8::Isolate* isolate, v8::Handle<v8::Context> context,
     }
 
     if (tryCatch.HasCaught()) {
-      string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
+      std::string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
 
       BaseClient.printErrLine(exception);
       BaseClient.log("%s\n", exception.c_str());
@@ -1828,7 +1833,7 @@ static bool RunScripts(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool RunString(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                      const string& script) {
+                      std::string const& script) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
   bool ok = true;
@@ -1838,7 +1843,7 @@ static bool RunString(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                   TRI_V8_ASCII_STRING("(command-line)"), false);
 
   if (tryCatch.HasCaught()) {
-    string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
+    std::string exception(TRI_StringifyV8Exception(isolate, &tryCatch));
 
     BaseClient.printErrLine(exception);
     BaseClient.log("%s\n", exception.c_str());
@@ -1931,7 +1936,7 @@ void LocalEntryFunction() {
   }
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO,
-                          (const char*)(&maxOpenFiles));
+                          (char const*)(&maxOpenFiles));
 
   if (res != 0) {
     _exit(1);
@@ -2280,7 +2285,7 @@ static void InitCallbacks(v8::Isolate* isolate, bool useServer,
 }
 
 static int WarmupEnvironment(v8::Isolate* isolate,
-                             std::vector<string>& positionals,
+                             std::vector<std::string>& positionals,
                              eRunMode runMode) {
   auto context = isolate->GetCurrentContext();
   // .............................................................................
@@ -2297,7 +2302,7 @@ static int WarmupEnvironment(v8::Isolate* isolate,
   StartupLoader.setDirectory(StartupPath);
 
   // load all init files
-  vector<string> files;
+  std::vector<std::string> files;
 
   files.push_back("common/bootstrap/scaffolding.js");
   files.push_back("common/bootstrap/modules/internal.js");  // deps: -
@@ -2452,7 +2457,7 @@ int main(int argc, char* args[]) {
   // parse the program options
   // .............................................................................
 
-  vector<string> positionals = ParseProgramOptions(argc, args, &runMode);
+  std::vector<std::string> positionals = ParseProgramOptions(argc, args, &runMode);
 
   // .............................................................................
   // set-up client connection
@@ -2487,7 +2492,7 @@ int main(int argc, char* args[]) {
   // .............................................................................
 
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("en")) {
-    string msg =
+    std::string msg =
         "cannot initialize ICU; please make sure ICU*dat is available ; "
         "ICU_DATA='";
     if (getenv("ICU_DATA") != nullptr) {

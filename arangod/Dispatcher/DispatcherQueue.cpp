@@ -79,9 +79,6 @@ DispatcherQueue::DispatcherQueue(Scheduler* scheduler, Dispatcher* dispatcher,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 DispatcherQueue::~DispatcherQueue() {
   beginShutdown();
@@ -458,7 +455,7 @@ bool DispatcherQueue::notEnoughThreads() {
 /// @brief sets the process affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void DispatcherQueue::setProcessorAffinity(const vector<size_t>& cores) {
+void DispatcherQueue::setProcessorAffinity(const std::vector<size_t>& cores) {
   _affinityCores = cores;
 }
 

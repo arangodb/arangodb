@@ -124,7 +124,7 @@ static int Reserve(TRI_string_buffer_t* self, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int AppendString(TRI_string_buffer_t* self, char const* str,
-                        const size_t len) {
+                        size_t const len) {
   if (0 < len) {
     int res = Reserve(self, len);
 
@@ -457,7 +457,7 @@ void TRI_InitStringBuffer(TRI_string_buffer_t* self, TRI_memory_zone_t* zone) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitSizedStringBuffer(TRI_string_buffer_t* self,
-                               TRI_memory_zone_t* zone, const size_t length) {
+                               TRI_memory_zone_t* zone, size_t const length) {
   self->_memoryZone = zone;
   self->_buffer = nullptr;
   self->_current = nullptr;
@@ -509,8 +509,8 @@ void TRI_FreeStringBuffer(TRI_memory_zone_t* zone, TRI_string_buffer_t* self) {
 
 int TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
   TRI_string_buffer_t deflated;
-  const char* ptr;
-  const char* end;
+  char const* ptr;
+  char const* end;
   char* buffer;
   int res;
 
@@ -594,7 +594,7 @@ int TRI_DeflateStringBuffer(TRI_string_buffer_t* self, size_t bufferSize) {
 /// @brief ensure the string buffer has a specific capacity
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ReserveStringBuffer(TRI_string_buffer_t* self, const size_t length) {
+int TRI_ReserveStringBuffer(TRI_string_buffer_t* self, size_t const length) {
   return Reserve(self, length);
 }
 

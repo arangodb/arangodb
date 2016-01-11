@@ -38,13 +38,13 @@ using namespace triagens::basics;
 /// @brief actions
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::map<string, TRI_action_t*> Actions;
+static std::map<std::string, TRI_action_t*> Actions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefix actions
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::map<string, TRI_action_t*> PrefixActions;
+static std::map<std::string, TRI_action_t*> PrefixActions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief actions lock
@@ -57,11 +57,11 @@ static ReadWriteLock ActionsLock;
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_action_t* TRI_DefineActionVocBase(string const& name,
+TRI_action_t* TRI_DefineActionVocBase(std::string const& name,
                                       TRI_action_t* action) {
   WRITE_LOCKER(ActionsLock);
 
-  string url = name;
+  std::string url = name;
 
   while (!url.empty() && url[0] == '/') {
     url = url.substr(1);
@@ -125,13 +125,13 @@ TRI_action_t* TRI_DefineActionVocBase(string const& name,
 
 TRI_action_t* TRI_LookupActionVocBase(triagens::rest::HttpRequest* request) {
   // check if we know a callback
-  vector<string> suffix = request->suffix();
+  std::vector<std::string> suffix = request->suffix();
 
   // find a direct match
-  string name = StringUtils::join(suffix, '/');
+  std::string name = StringUtils::join(suffix, '/');
 
   READ_LOCKER(ActionsLock);
-  map<string, TRI_action_t*>::iterator i = Actions.find(name);
+  std::map<std::string, TRI_action_t*>::iterator i = Actions.find(name);
 
   if (i != Actions.end()) {
     return i->second;

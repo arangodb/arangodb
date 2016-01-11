@@ -194,7 +194,7 @@ void sslHEX(char const* inputStr, char*& outputStr, size_t& outputLen) {
 
 void sslBASE64(char const* inputStr, size_t length, char*& outputStr,
                size_t& outputLen) {
-  string b = StringUtils::encodeBase64(string(inputStr, length));
+  std::string b = StringUtils::encodeBase64(std::string(inputStr, length));
 
   if (outputStr == 0) {
     outputStr = new char[b.size() + 1];
@@ -208,7 +208,7 @@ void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen) {
   sslBASE64(inputStr, strlen(inputStr), outputStr, outputLen);
 }
 
-string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
+std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
                  size_t passLength, int iter, int keyLength) {
   unsigned char* dk =
       (unsigned char*)TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
@@ -217,13 +217,13 @@ string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
                          (int)saltLength, iter, keyLength, dk);
 
   // return value as hex
-  string result = StringUtils::encodeHex(string((char*)dk, keyLength));
+  std::string result = StringUtils::encodeHex(std::string((char*)dk, keyLength));
   TRI_SystemFree(dk);
 
   return result;
 }
 
-string sslHMAC(char const* key, size_t keyLength, char const* message,
+std::string sslHMAC(char const* key, size_t keyLength, char const* message,
                size_t messageLen, Algorithm algorithm) {
   EVP_MD* evp_md = nullptr;
 
@@ -250,7 +250,7 @@ string sslHMAC(char const* key, size_t keyLength, char const* message,
        md, &md_len);
 
   // return value as hex
-  string result = StringUtils::encodeHex(string((char*)md, md_len));
+  std::string result = StringUtils::encodeHex(std::string((char*)md, md_len));
   TRI_SystemFree(md);
 
   return result;
@@ -263,10 +263,10 @@ bool verifyHMAC(char const* challenge, size_t challengeLength,
   // secret, secretLen = message
   // result must == BASE64(response, responseLen)
 
-  string s = sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
+  std::string s = sslHMAC(challenge, challengeLength, secret, secretLen, algorithm);
 
   if (s.length() == responseLen &&
-      s.compare(string(response, responseLen)) == 0) {
+      s.compare(std::string(response, responseLen)) == 0) {
     return true;
   }
 
@@ -298,7 +298,7 @@ int sslRand(int32_t* value) {
 }
 
 void salt64(uint64_t& result) {
-  string salt = SaltGenerator.random(8);
+  std::string salt = SaltGenerator.random(8);
   char* saltChar = const_cast<char*>(salt.c_str());
   uint64_t* saltInt = reinterpret_cast<uint64_t*>(saltChar);
   result = *saltInt;
@@ -310,7 +310,7 @@ void saltChar(char*& result, size_t length) {
     return;
   }
 
-  string salt = SaltGenerator.random(length);
+  std::string salt = SaltGenerator.random(length);
   result = StringUtils::duplicate(salt);
 }
 }

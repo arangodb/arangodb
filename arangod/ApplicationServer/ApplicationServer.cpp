@@ -35,19 +35,19 @@
 
 #include "ApplicationServer/ApplicationFeature.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/conversions.h"
+#include "Basics/files.h"
 #include "Basics/FileUtils.h"
+#include "Basics/logging.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
-#include "Basics/conversions.h"
-#include "Basics/logging.h"
-#include "Basics/files.h"
 #include "Basics/tri-strings.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
 
-static string DeprecatedParameter;
+static std::string DeprecatedParameter;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,7 @@ static string DeprecatedParameter;
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-const string OPTIONS_HIDDEN = "Hidden Options";
+std::string const OPTIONS_HIDDEN = "Hidden Options";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,13 +63,10 @@ const string OPTIONS_HIDDEN = "Hidden Options";
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace {
-const string OPTIONS_CMDLINE = "General Options";
+std::string const OPTIONS_CMDLINE = "General Options";
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationServer::ApplicationServer(std::string const& name,
                                      std::string const& title,
@@ -112,9 +109,6 @@ ApplicationServer::ApplicationServer(std::string const& name,
       _finishedCondition() {
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationServer::~ApplicationServer() {
   Random::shutdown();
@@ -152,7 +146,7 @@ void ApplicationServer::setUserConfigFile(std::string const& name) {
 /// @brief returns the name of the application
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& ApplicationServer::getName() const { return _name; }
+std::string const& ApplicationServer::getName() const { return _name; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the logging
@@ -215,7 +209,7 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
   // requests log (must come before the regular logs because it will consume the
   // messages)
   if (!_logRequestsFile.empty()) {
-    string filename = _logRequestsFile;
+    std::string filename = _logRequestsFile;
 
     if (daemon && filename != "+" && filename != "-") {
       filename = filename + ".daemon";
@@ -256,7 +250,7 @@ void ApplicationServer::setupLogging(bool threaded, bool daemon,
 
   // regular log file
   if (!_logFile.empty()) {
-    string filename = _logFile;
+    std::string filename = _logFile;
 
     if (daemon && filename != "+" && filename != "-") {
       filename = filename + ".daemon";
@@ -292,14 +286,14 @@ ProgramOptions& ApplicationServer::programOptions() { return _options; }
 /// @brief returns the command line arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-vector<string> ApplicationServer::programArguments() { return _arguments; }
+std::vector<std::string> ApplicationServer::programArguments() { return _arguments; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the arguments with empty options description
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationServer::parse(int argc, char* argv[]) {
-  map<string, ProgramOptionsDescription> none;
+  std::map<std::string, ProgramOptionsDescription> none;
 
   return parse(argc, argv, none);
 }
@@ -317,15 +311,15 @@ bool ApplicationServer::parse(
 
   setupOptions(opts);
 
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+  for (std::vector<ApplicationFeature*>::iterator i = _features.begin();
        i != _features.end(); ++i) {
     (*i)->setupOptions(opts);
   }
 
   // construct options description
-  for (map<string, ProgramOptionsDescription>::iterator i = opts.begin();
+  for (std::map<std::string, ProgramOptionsDescription>::iterator i = opts.begin();
        i != opts.end(); ++i) {
-    string name = i->first;
+    std::string name = i->first;
 
     ProgramOptionsDescription sectionDescription = i->second;
     sectionDescription.setName(name);
@@ -358,7 +352,7 @@ bool ApplicationServer::parse(
   }
 
   // check for help
-  set<string> help = _options.needHelp("help");
+  std::set<std::string> help = _options.needHelp("help");
 
   if (!help.empty()) {
     // output help, but do not yet exit (we'll exit a little later so we can
@@ -385,7 +379,7 @@ bool ApplicationServer::parse(
   // parse phase 1
   // .............................................................................
 
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+  for (std::vector<ApplicationFeature*>::iterator i = _features.begin();
        i != _features.end(); ++i) {
     ok = (*i)->afterOptionParsing(_options);
 
@@ -461,7 +455,7 @@ void ApplicationServer::prepare() {
   // order and shutting them
   // down in forward order, we ensure that the features created last are
   // destroyed first, i.e.: LIFO
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -484,7 +478,7 @@ void ApplicationServer::prepare() {
 
 void ApplicationServer::prepare2() {
   // prepare all features
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -513,7 +507,7 @@ void ApplicationServer::start() {
 #endif
 
   // start all startable features
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+  for (std::vector<ApplicationFeature*>::iterator i = _features.begin();
        i != _features.end(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -528,7 +522,7 @@ void ApplicationServer::start() {
   }
 
   // now open all features
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -584,7 +578,7 @@ void ApplicationServer::stop() {
   locker.signal();
 
   // close all features
-  for (vector<ApplicationFeature*>::iterator i = _features.begin();
+  for (std::vector<ApplicationFeature*>::iterator i = _features.begin();
        i != _features.end(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -594,7 +588,7 @@ void ApplicationServer::stop() {
   }
 
   // stop all features
-  for (vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
+  for (std::vector<ApplicationFeature*>::reverse_iterator i = _features.rbegin();
        i != _features.rend(); ++i) {
     ApplicationFeature* feature = *i;
 
@@ -626,7 +620,7 @@ void ApplicationServer::extractPrivileges() {
 #endif
     } else {
 #ifdef TRI_HAVE_GETGRNAM
-      string name = _gid;
+      std::string name = _gid;
       group* g = getgrnam(name.c_str());
 
       if (g != 0) {
@@ -663,7 +657,7 @@ void ApplicationServer::extractPrivileges() {
 #endif
     } else {
 #ifdef TRI_HAVE_GETPWNAM
-      string name = _uid;
+      std::string name = _uid;
       passwd* p = getpwnam(name.c_str());
 
       if (p != 0) {
@@ -738,7 +732,7 @@ void ApplicationServer::dropPrivilegesPermanently() {
 
 
 void ApplicationServer::setupOptions(
-    map<string, ProgramOptionsDescription>& options) {
+    std::map<std::string, ProgramOptionsDescription>& options) {
   // .............................................................................
   // command line options
   // .............................................................................
@@ -853,7 +847,7 @@ bool ApplicationServer::readConfigurationFile() {
   // file
   if (!_configFile.empty()) {
     // do not use init files
-    if (StringUtils::tolower(_configFile) == string("none")) {
+    if (StringUtils::tolower(_configFile) == std::string("none")) {
       LOG_INFO("using no init file at all");
       return true;
     }
@@ -889,7 +883,7 @@ bool ApplicationServer::readConfigurationFile() {
     // A safer approach below
     // .........................................................................
 
-    string homeDir = FileUtils::homeDirectory();
+    std::string homeDir = FileUtils::homeDirectory();
 
     if (!homeDir.empty()) {
       if (homeDir[homeDir.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
@@ -930,7 +924,7 @@ bool ApplicationServer::readConfigurationFile() {
     char* d = TRI_LocateConfigDirectory();
 
     if (d != 0) {
-      string sysDir = string(d);
+      std::string sysDir = std::string(d);
 
       if ((sysDir.length() > 0) &&
           (sysDir[sysDir.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
@@ -938,7 +932,7 @@ bool ApplicationServer::readConfigurationFile() {
       }
       sysDir += _systemConfigFile;
 
-      string localSysDir = sysDir + ".local";
+      std::string localSysDir = sysDir + ".local";
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, d);
 

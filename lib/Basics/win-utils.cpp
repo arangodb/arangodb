@@ -143,7 +143,7 @@ static void InvalidParameterHandler(
 // calling function should decide what to do.
 ////////////////////////////////////////////////////////////////////////////////
 
-int finalizeWindows(const TRI_win_finalize_e finalizeWhat, const char* data) {
+int finalizeWindows(const TRI_win_finalize_e finalizeWhat, char const* data) {
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -176,7 +176,7 @@ int finalizeWindows(const TRI_win_finalize_e finalizeWhat, const char* data) {
 }
 
 int initializeWindows(const TRI_win_initialize_e initializeWhat,
-                      const char* data) {
+                      char const* data) {
   // ............................................................................
   // The data is used to transport information from the calling function to here
   // it may be NULL (and will be in most cases)
@@ -241,7 +241,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat,
   return -1;
 }
 
-int TRI_createFile(const char* filename, int openFlags, int modeFlags) {
+int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   HANDLE fileHandle;
   int fileDescriptor;
 
@@ -271,8 +271,8 @@ int TRI_createFile(const char* filename, int openFlags, int modeFlags) {
 /// anyway.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_OPEN_WIN32(const char* filename, int openFlags) {
-  static const int O_ACCMODE = 3;
+int TRI_OPEN_WIN32(char const* filename, int openFlags) {
+  static int const O_ACCMODE = 3;
   HANDLE fileHandle;
   int fileDescriptor;
   DWORD mode;
@@ -313,15 +313,15 @@ void TRI_FixIcuDataEnv() {
     return;
   }
 
-  string p = TRI_LocateInstallDirectory();
+  std::string p = TRI_LocateInstallDirectory();
 
   if (!p.empty()) {
-    string e = "ICU_DATA=" + p + "\\share\\arangodb\\";
+    std::string e = "ICU_DATA=" + p + "\\share\\arangodb\\";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
   } else {
 #ifdef _SYSCONFDIR_
-    string e = "ICU_DATA=" + string(_SYSCONFDIR_) + "..\\..\\bin";
+    std::string e = "ICU_DATA=" + string(_SYSCONFDIR_) + "..\\..\\bin";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
 #else
@@ -329,7 +329,7 @@ void TRI_FixIcuDataEnv() {
     p = TRI_LocateBinaryPath(nullptr);
 
     if (!p.empty()) {
-      string e = "ICU_DATA=" + p + "\\";
+      std::string e = "ICU_DATA=" + p + "\\";
       e = StringUtils::replace(e, "\\", "\\\\");
       putenv(e.c_str());
     } else {

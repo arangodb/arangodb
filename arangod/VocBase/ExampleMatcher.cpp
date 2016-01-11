@@ -89,8 +89,8 @@ void ExampleMatcher::fillExampleDefinition(
         // Internal attributes do have pid == 0.
         char const* p = *keyStr;
         if (*p == '_') {
-          string const key(p, keyStr.length());
-          string keyVal = TRI_ObjectToString(val);
+          std::string const key(p, keyStr.length());
+          std::string keyVal = TRI_ObjectToString(val);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
             def._internal.insert(
                 make_pair(internalAttr::key, DocumentId(0, keyVal)));
@@ -102,7 +102,7 @@ void ExampleMatcher::fillExampleDefinition(
             V8ResolverGuard resolverGuard(vocbase);
             CollectionNameResolver const* resolver =
                 resolverGuard.getResolver();
-            string colName = keyVal.substr(0, keyVal.find("/"));
+            std::string colName = keyVal.substr(0, keyVal.find("/"));
             keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
             if (TRI_VOC_ATTRIBUTE_ID == key) {
               def._internal.insert(make_pair(
@@ -175,13 +175,13 @@ void ExampleMatcher::fillExampleDefinition(
       if (pid == 0) {
         // Internal attributes do have pid == 0.
         if (*keyStr == '_') {
-          string const key(keyStr, keyObj->_value._string.length - 1);
+          std::string const key(keyStr, keyObj->_value._string.length - 1);
           auto jsonValue =
               static_cast<TRI_json_t const*>(TRI_AtVector(&objects, i + 1));
           if (!TRI_IsStringJson(jsonValue)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
           }
-          string keyVal(jsonValue->_value._string.data);
+          std::string keyVal(jsonValue->_value._string.data);
           if (TRI_VOC_ATTRIBUTE_KEY == key) {
             def._internal.insert(
                 make_pair(internalAttr::key, DocumentId(0, keyVal)));
@@ -189,7 +189,7 @@ void ExampleMatcher::fillExampleDefinition(
             def._internal.insert(
                 make_pair(internalAttr::rev, DocumentId(0, keyVal)));
           } else {
-            string colName = keyVal.substr(0, keyVal.find("/"));
+            std::string colName = keyVal.substr(0, keyVal.find("/"));
             keyVal = keyVal.substr(keyVal.find("/") + 1, keyVal.length());
             if (TRI_VOC_ATTRIBUTE_ID == key) {
               def._internal.insert(make_pair(

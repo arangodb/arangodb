@@ -3326,7 +3326,7 @@ static int FillIndexSequential(triagens::arango::Transaction* trx,
 
   if (nrUsed > 0) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    static const int LoopSize = 10000;
+    static int const LoopSize = 10000;
     int counter = 0;
     int loops = 0;
 #endif

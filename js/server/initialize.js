@@ -30,9 +30,6 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                load files required during startup
-// -----------------------------------------------------------------------------
 
 (function () {
   var startupPath = global.STARTUP_PATH;
@@ -96,11 +93,4 @@ require('@arangodb/actions').startup();
 // initialize AQL
 require('@arangodb/aql');
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:

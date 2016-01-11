@@ -42,9 +42,9 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointUnixDomain::EndpointUnixDomain(const Endpoint::EndpointType type,
-                                       const std::string& specification,
+                                       std::string const& specification,
                                        int listenBacklog,
-                                       const std::string& path)
+                                       std::string const& path)
     : Endpoint(type, DOMAIN_UNIX, ENCRYPTION_NONE, specification,
                listenBacklog),
       _path(path) {}

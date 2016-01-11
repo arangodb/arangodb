@@ -7,7 +7,7 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/travers
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"result"</span> : { 
@@ -16,13 +16,13 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"871619015"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"901198953"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
         }, 
         { 
           <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
           <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"872470983"</span>, 
+          <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"902050921"</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
         } 
       ], 
@@ -33,7 +33,7 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"871619015"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"901198953"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             } 
           ] 
@@ -41,9 +41,9 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
         { 
           <span class="hljs-string">"edges"</span> : [ 
             { 
-              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/873322951"</span>, 
-              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"873322951"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"873322951"</span>, 
+              <span class="hljs-string">"_id"</span> : <span class="hljs-string">"knows/902902889"</span>, 
+              <span class="hljs-string">"_key"</span> : <span class="hljs-string">"902902889"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"902902889"</span>, 
               <span class="hljs-string">"_from"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_to"</span> : <span class="hljs-string">"persons/alice"</span> 
             } 
@@ -52,13 +52,13 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/alice"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"871619015"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"901198953"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Alice"</span> 
             }, 
             { 
               <span class="hljs-string">"_id"</span> : <span class="hljs-string">"persons/eve"</span>, 
               <span class="hljs-string">"_key"</span> : <span class="hljs-string">"eve"</span>, 
-              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"872470983"</span>, 
+              <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"902050921"</span>, 
               <span class="hljs-string">"name"</span> : <span class="hljs-string">"Eve"</span> 
             } 
           ] 

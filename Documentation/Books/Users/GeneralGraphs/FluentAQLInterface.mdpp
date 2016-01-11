@@ -1,6 +1,6 @@
 !CHAPTER Fluent AQL Interface
 
-This chapter describes a fluent interface to query your graph.
+This chapter describes a fluent interface to query [your graph](../Graphs/README.md).
 The philosophy of this interface is to select a group of starting elements (vertices or edges) at first and from there on explore the graph with your query by selecting connected elements.
 
 As an example you can start with a set of vertices, select their direct neighbors and finally their outgoing edges.

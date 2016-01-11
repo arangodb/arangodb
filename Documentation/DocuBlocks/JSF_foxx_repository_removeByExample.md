@@ -1,0 +1,13 @@
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_removeByExample
+/// `FoxxRepository#removeByExample(example)`
+///
+/// Find all documents that fit this example and remove them.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.removeByExample({ toBeDeleted: true });
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////

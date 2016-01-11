@@ -33,9 +33,6 @@ var arango = require("@arangodb").arango;
 var db = require("internal").db;
 var users = require("@arangodb/users");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              authentication tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -233,9 +230,6 @@ function AuthSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -245,7 +239,3 @@ jsunity.run(AuthSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

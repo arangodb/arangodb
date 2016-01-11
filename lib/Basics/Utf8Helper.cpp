@@ -93,8 +93,8 @@ int Utf8Helper::compareUtf8(char const* left, size_t leftLength,
   return result;
 }
 
-int Utf8Helper::compareUtf16(const uint16_t* left, size_t leftLength,
-                             const uint16_t* right, size_t rightLength) const {
+int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
+                             uint16_t const* right, size_t rightLength) const {
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf16()!");
 
@@ -223,10 +223,10 @@ std::string Utf8Helper::toLowerCase(std::string const& src) {
                        utf8len);
 
   if (utf8 == nullptr) {
-    return string("");
+    return std::string("");
   }
 
-  string result(utf8, utf8len);
+  std::string result(utf8, utf8len);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
   return result;
 }
@@ -251,7 +251,7 @@ char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
   uint32_t options = U_FOLD_CASE_DEFAULT;
   UErrorCode status = U_ZERO_ERROR;
 
-  string locale = getCollatorLanguage();
+  std::string locale = getCollatorLanguage();
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
@@ -304,10 +304,10 @@ std::string Utf8Helper::toUpperCase(std::string const& src) {
   char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t)src.length(),
                        utf8len);
   if (utf8 == nullptr) {
-    return string("");
+    return std::string("");
   }
 
-  string result(utf8, utf8len);
+  std::string result(utf8, utf8len);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
   return result;
 }
@@ -332,7 +332,7 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
   uint32_t options = U_FOLD_CASE_DEFAULT;
   UErrorCode status = U_ZERO_ERROR;
 
-  string locale = getCollatorLanguage();
+  std::string locale = getCollatorLanguage();
   LocalUCaseMapPointer csm(ucasemap_open(locale.c_str(), options, &status));
 
   if (U_FAILURE(status)) {
@@ -865,7 +865,7 @@ char* TRI_normalize_utf8_to_NFC(TRI_memory_zone_t* zone, char const* utf8,
   }
 
   // continue in TR_normalize_utf16_to_NFC
-  utf8Dest = TRI_normalize_utf16_to_NFC(zone, (const uint16_t*)utf16,
+  utf8Dest = TRI_normalize_utf16_to_NFC(zone, (uint16_t const*)utf16,
                                         (int32_t)utf16Length, outLength);
   TRI_Free(zone, utf16);
 

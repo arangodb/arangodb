@@ -33,9 +33,6 @@ var arangodb = require("@arangodb");
 var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          Cluster collection tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -319,9 +316,6 @@ function ClusterCollectionSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -331,7 +325,3 @@ jsunity.run(ClusterCollectionSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

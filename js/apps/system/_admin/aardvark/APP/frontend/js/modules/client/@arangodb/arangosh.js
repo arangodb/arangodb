@@ -31,13 +31,7 @@ module.define("@arangodb/arangosh", function(exports, module) {
 
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 Module "arangosh"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a formatted type string for object
@@ -112,9 +106,6 @@ exports.checkRequestResult = function (requestResult) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general help
@@ -169,12 +160,5 @@ exports.helpExtended = exports.createHelpHeadline("More help") +
   '                                        and without colors          ' + "\n" +
   ' > clear()                              clear screen                ' ;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:
 });

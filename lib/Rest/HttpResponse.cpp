@@ -48,7 +48,7 @@ bool HttpResponse::HideProductHeader = false;
 /// @brief http response string
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::responseString(HttpResponseCode code) {
+std::string HttpResponse::responseString(HttpResponseCode code) {
   switch (code) {
     //  Informational 1xx
     case CONTINUE:
@@ -179,7 +179,7 @@ string HttpResponse::responseString(HttpResponseCode code) {
 /// @brief get http response code from string
 ////////////////////////////////////////////////////////////////////////////////
 
-HttpResponse::HttpResponseCode HttpResponse::responseCode(const string& str) {
+HttpResponse::HttpResponseCode HttpResponse::responseCode(std::string const& str) {
   int number = ::atoi(str.c_str());
 
   switch (number) {
@@ -516,8 +516,8 @@ bool HttpResponse::isChunked() const { return _isChunked; }
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header(std::string const& key) const {
-  string k = StringUtils::tolower(key);
+std::string HttpResponse::header(std::string const& key) const {
+  std::string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
   if (kv == nullptr) {
@@ -530,7 +530,7 @@ string HttpResponse::header(std::string const& key) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header(char const* key, size_t keyLength) const {
+std::string HttpResponse::header(char const* key, size_t keyLength) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
   if (kv == nullptr) {
@@ -543,8 +543,8 @@ string HttpResponse::header(char const* key, size_t keyLength) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header(std::string const& key, bool& found) const {
-  string k = StringUtils::tolower(key);
+std::string HttpResponse::header(std::string const& key, bool& found) const {
+  std::string k = StringUtils::tolower(key);
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(k.c_str());
 
   if (kv == nullptr) {
@@ -559,7 +559,7 @@ string HttpResponse::header(std::string const& key, bool& found) const {
 /// @brief returns a header field
 ////////////////////////////////////////////////////////////////////////////////
 
-string HttpResponse::header(char const* key, size_t keyLength,
+std::string HttpResponse::header(char const* key, size_t keyLength,
                             bool& found) const {
   Dictionary<char const*>::KeyValue const* kv = _headers.lookup(key, keyLength);
 
@@ -575,11 +575,11 @@ string HttpResponse::header(char const* key, size_t keyLength,
 /// @brief returns all header fields
 ////////////////////////////////////////////////////////////////////////////////
 
-map<string, string> HttpResponse::headers() const {
+std::map<std::string, std::string> HttpResponse::headers() const {
   basics::Dictionary<char const*>::KeyValue const* begin;
   basics::Dictionary<char const*>::KeyValue const* end;
 
-  map<string, string> result;
+  std::map<std::string, std::string> result;
 
   for (_headers.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
@@ -633,7 +633,7 @@ void HttpResponse::setHeader(char const* key, size_t keyLength,
 ////////////////////////////////////////////////////////////////////////////////
 
 void HttpResponse::setHeader(std::string const& key, std::string const& value) {
-  string lk = StringUtils::tolower(key);
+  std::string lk = StringUtils::tolower(key);
 
   if (value.empty()) {
     _headers.erase(lk.c_str());
@@ -760,7 +760,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
   triagens::basics::StringBuffer* buffer =
       new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
-  string tmp = StringUtils::trim(name);
+  std::string tmp = StringUtils::trim(name);
   buffer->appendText(tmp.c_str(), tmp.length());
   buffer->appendChar('=');
 
@@ -850,7 +850,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   basics::Dictionary<char const*>::KeyValue const* end;
 
   bool seenTransferEncoding = false;
-  string transferEncoding;
+  std::string transferEncoding;
 
   for (_headers.range(begin, end); begin < end; ++begin) {
     char const* key = begin->_key;
@@ -905,7 +905,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     output->appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 
-  for (vector<char const*>::iterator iter = _cookies.begin();
+  for (std::vector<char const*>::iterator iter = _cookies.begin();
        iter != _cookies.end(); ++iter) {
     if (capitalizeHeaders) {
       output->appendText(TRI_CHAR_LENGTH_PAIR("Set-Cookie: "));
@@ -1011,7 +1011,7 @@ int HttpResponse::deflate(size_t bufferSize) {
 /// @brief checks for special headers
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpResponse::checkHeader(const char* key, const char* value) {
+void HttpResponse::checkHeader(char const* key, char const* value) {
   if (key[0] == 't' && strcmp(key, "transfer-encoding") == 0) {
     if (TRI_CaseEqualString(value, "chunked")) {
       _isChunked = true;

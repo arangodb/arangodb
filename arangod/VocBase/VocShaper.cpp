@@ -633,6 +633,8 @@ TRI_shape_t const* VocShaper::findShape(TRI_shape_t* shape, bool create) {
 
     char const* m = static_cast<char const*>(slotInfo.mem) +
                     sizeof(triagens::wal::shape_marker_t);
+
+    TRI_ASSERT(m != nullptr);
     TRI_shape_t const* result = reinterpret_cast<TRI_shape_t const*>(m);
 
     {

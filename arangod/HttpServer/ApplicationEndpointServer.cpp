@@ -60,9 +60,6 @@ class BIOGuard {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationEndpointServer::ApplicationEndpointServer(
     ApplicationServer* applicationServer,
@@ -107,9 +104,6 @@ ApplicationEndpointServer::ApplicationEndpointServer(
   _defaultApiCompatibility = Version::getNumericServerVersion();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationEndpointServer::~ApplicationEndpointServer() {
   // ..........................................................................
@@ -124,9 +118,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer() {
   }
   _servers.clear();
 
-  if (_handlerFactory != nullptr) {
-    delete _handlerFactory;
-  }
+  delete _handlerFactory;
 
   if (_sslContext != nullptr) {
     SSL_CTX_free(_sslContext);
@@ -180,7 +172,7 @@ bool ApplicationEndpointServer::buildServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationEndpointServer::setupOptions(
-    map<string, ProgramOptionsDescription>& options) {
+    std::map<std::string, ProgramOptionsDescription>& options) {
   // issue #175: add deprecated hidden option for downwards compatibility
   options["Hidden Options"]("server.http-port", &_httpPort,
                             "http port for client requests (deprecated)");
@@ -240,14 +232,14 @@ bool ApplicationEndpointServer::afterOptionParsing(ProgramOptions& options) {
   if (!_httpPort.empty()) {
     // issue #175: add hidden option --server.http-port for
     // downwards-compatibility
-    string httpEndpoint("tcp://" + _httpPort);
+    std::string httpEndpoint("tcp://" + _httpPort);
     _endpoints.push_back(httpEndpoint);
   }
 
-  const vector<string> dbNames;
+  const std::vector<std::string> dbNames;
 
   // add & validate endpoints
-  for (vector<string>::const_iterator i = _endpoints.begin();
+  for (std::vector<std::string>::const_iterator i = _endpoints.begin();
        i != _endpoints.end(); ++i) {
     bool ok = _endpointList.add((*i), dbNames, _backlogSize, _reuseAddress);
 
@@ -289,7 +281,7 @@ ApplicationEndpointServer::getEndpoints() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::loadEndpoints() {
-  const string filename = getEndpointsFilename();
+  std::string const filename = getEndpointsFilename();
 
   if (!FileUtils::exists(filename)) {
     return false;
@@ -375,8 +367,8 @@ bool ApplicationEndpointServer::prepare() {
       new HttpHandlerFactory(_authenticationRealm, _defaultApiCompatibility,
                              _allowMethodOverride, _setContext, _contextData);
 
-  LOG_INFO("using default API compatibility: %ld",
-           (long int)_defaultApiCompatibility);
+  LOG_DEBUG("using default API compatibility: %ld",
+            (long int)_defaultApiCompatibility);
 
   return true;
 }
@@ -535,7 +527,7 @@ bool ApplicationEndpointServer::createSslContext() {
           char* r;
           long len = BIO_get_mem_data(bout._bio, &r);
 
-          LOG_TRACE("name: %s", string(r, len).c_str());
+          LOG_TRACE("name: %s", std::string(r, len).c_str());
 #endif
         }
       }

@@ -182,7 +182,7 @@ void DispatcherThread::handleJob(Job* job) {
   } catch (std::bad_alloc const& ex) {
     try {
       Exception ex2(TRI_ERROR_OUT_OF_MEMORY,
-                    string("job failed with bad_alloc: ") + ex.what(), __FILE__,
+                    std::string("job failed with bad_alloc: ") + ex.what(), __FILE__,
                     __LINE__);
 
       job->handleError(ex2);
@@ -193,7 +193,7 @@ void DispatcherThread::handleJob(Job* job) {
   } catch (std::exception const& ex) {
     try {
       Exception ex2(TRI_ERROR_INTERNAL,
-                    string("job failed with error: ") + ex.what(), __FILE__,
+                    std::string("job failed with error: ") + ex.what(), __FILE__,
                     __LINE__);
 
       job->handleError(ex2);

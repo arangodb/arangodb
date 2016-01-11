@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionEngine.h"
-#include "Aql/AggregateBlock.h"
-#include "Aql/AggregateNode.h"
-#include "Aql/AggregationOptions.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
+#include "Aql/CollectBlock.h"
+#include "Aql/CollectNode.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionBlock.h"
@@ -87,22 +87,22 @@ static ExecutionBlock* CreateBlock(
     case ExecutionNode::SORT: {
       return new SortBlock(engine, static_cast<SortNode const*>(en));
     }
-    case ExecutionNode::AGGREGATE: {
+    case ExecutionNode::COLLECT: {
       auto aggregationMethod =
-          static_cast<AggregateNode const*>(en)->aggregationMethod();
+          static_cast<CollectNode const*>(en)->aggregationMethod();
 
       if (aggregationMethod ==
-          AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH) {
-        return new HashedAggregateBlock(engine,
-                                        static_cast<AggregateNode const*>(en));
-      } else if (aggregationMethod == AggregationOptions::AggregationMethod::
-                                          AGGREGATION_METHOD_SORTED) {
-        return new SortedAggregateBlock(engine,
-                                        static_cast<AggregateNode const*>(en));
+          CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
+        return new HashedCollectBlock(engine,
+                                        static_cast<CollectNode const*>(en));
+      } else if (aggregationMethod == CollectOptions::CollectMethod::
+                                          COLLECT_METHOD_SORTED) {
+        return new SortedCollectBlock(engine,
+                                        static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "cannot instantiate AggregateBlock with "
+                                     "cannot instantiate CollectBlock with "
                                      "undetermined aggregation method");
     }
     case ExecutionNode::SUBQUERY: {
@@ -411,9 +411,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // coordinator. Note that the main query and engine is not put into
   // this map at all.
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief constructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   CoordinatorInstanciator(Query* query, QueryRegistry* queryRegistry)
       : query(query),
@@ -428,15 +425,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines.emplace_back(COORDINATOR, 0, PART_MAIN, 0);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////////
 
   ~CoordinatorInstanciator() {}
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief generatePlanForOneShard
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   triagens::basics::Json generatePlanForOneShard(size_t nr,
                                                  EngineInfo const& info,
@@ -477,9 +471,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return plan.root()->toJson(TRI_UNKNOWN_MEM_ZONE, verbose);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief distributePlanToShard, send a single plan to one shard
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   void distributePlanToShard(
       triagens::arango::CoordTransactionID& coordTransactionID,
@@ -538,9 +532,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                                 url, body, headers, nullptr, 30.0);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief aggregateQueryIds, get answers for all shards in a Scatter/Gather
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   void aggregateQueryIds(
       EngineInfo const& info, triagens::arango::ClusterComm*& cc,
@@ -600,9 +594,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief distributePlansToShards, for a single Scatter/Gather block
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   void distributePlansToShards(EngineInfo const& info, QueryId connectedId) {
     // std::cout << "distributePlansToShards: " << info.id << std::endl;
@@ -631,9 +625,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     aggregateQueryIds(info, cc, coordTransactionID, collection);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief buildEngineCoordinator, for a single piece
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   ExecutionEngine* buildEngineCoordinator(EngineInfo& info) {
     Query* localQuery = query;
@@ -749,9 +743,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief buildEngines, build engines on DBservers and coordinator
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   ExecutionEngine* buildEngines() {
     ExecutionEngine* engine = nullptr;
@@ -804,9 +798,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return engine;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief before method for collection of pieces phase
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   virtual bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
@@ -839,9 +833,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief after method for collection of pieces phase
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   virtual void after(ExecutionNode* en) override final {
     auto const nodeType = en->getType();

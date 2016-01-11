@@ -282,11 +282,11 @@ function explainSuite () {
       prev = node.id;
       
       node = nodes[n++];
-      assertEqual("AggregateNode", node.type);
+      assertEqual("CollectNode", node.type);
       assertEqual([ prev ], node.dependencies);
-      assertEqual(1, node.aggregates.length);
-      assertEqual("a", node.aggregates[0].inVariable.name);
-      assertEqual("x", node.aggregates[0].outVariable.name);
+      assertEqual(1, node.groups.length);
+      assertEqual("a", node.groups[0].inVariable.name);
+      assertEqual("x", node.groups[0].outVariable.name);
       assertEqual("g", node.outVariable.name);
       prev = node.id;
       
@@ -307,7 +307,3 @@ jsunity.run(explainSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

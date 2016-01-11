@@ -32,13 +32,7 @@
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 ArangoQueryCursor
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -69,9 +63,6 @@ function ArangoQueryCursor (database, data) {
 
 exports.ArangoQueryCursor = ArangoQueryCursor;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a string representation of the cursor
@@ -176,9 +167,6 @@ ArangoQueryCursor.prototype._help = function () {
   internal.print(helpArangoQueryCursor);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether there are more results available in the cursor
@@ -284,11 +272,4 @@ ArangoQueryCursor.prototype._baseurl = function () {
          "/_api/cursor/" + encodeURIComponent(this.data.id);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint\\)"
-// End:

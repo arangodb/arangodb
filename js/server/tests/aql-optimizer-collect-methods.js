@@ -126,9 +126,9 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.aggregationOptions.method);
+            assertEqual("hash", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -166,9 +166,9 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.aggregationOptions.method);
+            assertEqual("hash", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -204,9 +204,9 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.aggregationOptions.method);
+            assertEqual("sorted", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -241,9 +241,9 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.aggregationOptions.method);
+            assertEqual("hash", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -282,9 +282,9 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.aggregationOptions.method);
+            assertEqual("sorted", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -317,9 +317,9 @@ function optimizerCollectMethodsTestSuite () {
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
-          if (node.type === "AggregateNode") {
+          if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.aggregationOptions.method);
+            assertEqual("sorted", node.collectOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -354,7 +354,3 @@ jsunity.run(optimizerCollectMethodsTestSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

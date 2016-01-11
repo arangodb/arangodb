@@ -41,8 +41,8 @@ using namespace triagens::basics;
 static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
                               TRI_shape_value_t* dst,
                               v8::Handle<v8::Value> const json, size_t level,
-                              set<int>& seenHashes,
-                              vector<v8::Handle<v8::Object>>& seenObjects,
+                              std::set<int>& seenHashes,
+                              std::vector<v8::Handle<v8::Object>>& seenObjects,
                               bool create);
 
 static v8::Handle<v8::Value> JsonShapeData(v8::Isolate* isolate,
@@ -248,8 +248,8 @@ static int FillShapeValueString(VocShaper* shaper, TRI_shape_value_t* dst,
 static int FillShapeValueList(v8::Isolate* isolate, VocShaper* shaper,
                               TRI_shape_value_t* dst,
                               v8::Handle<v8::Array> const json, size_t level,
-                              set<int>& seenHashes,
-                              vector<v8::Handle<v8::Object>>& seenObjects,
+                              std::set<int>& seenHashes,
+                              std::vector<v8::Handle<v8::Object>>& seenObjects,
                               bool create) {
   size_t total;
 
@@ -568,8 +568,8 @@ static int FillShapeValueList(v8::Isolate* isolate, VocShaper* shaper,
 static int FillShapeValueArray(v8::Isolate* isolate, VocShaper* shaper,
                                TRI_shape_value_t* dst,
                                v8::Handle<v8::Object> const json, size_t level,
-                               set<int>& seenHashes,
-                               vector<v8::Handle<v8::Object>>& seenObjects,
+                               std::set<int>& seenHashes,
+                               std::vector<v8::Handle<v8::Object>>& seenObjects,
                                bool create) {
   v8::HandleScope scope(isolate);
   TRI_shape_value_t* values;
@@ -817,8 +817,8 @@ static int FillShapeValueArray(v8::Isolate* isolate, VocShaper* shaper,
 static int FillShapeValueJson(v8::Isolate* isolate, VocShaper* shaper,
                               TRI_shape_value_t* dst,
                               v8::Handle<v8::Value> const json, size_t level,
-                              set<int>& seenHashes,
-                              vector<v8::Handle<v8::Object>>& seenObjects,
+                              std::set<int>& seenHashes,
+                              std::vector<v8::Handle<v8::Object>>& seenObjects,
                               bool create) {
   v8::HandleScope scope(isolate);
 

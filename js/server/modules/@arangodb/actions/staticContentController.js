@@ -30,9 +30,6 @@
 var arangodb = require("@arangodb");
 var actions = require("@arangodb/actions");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate content from collection
@@ -60,9 +57,6 @@ function locateContentFromCollection (req, options) {
     application: options.application });
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate content from collection
@@ -106,11 +100,4 @@ exports.get = function (req, res, options, next) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:

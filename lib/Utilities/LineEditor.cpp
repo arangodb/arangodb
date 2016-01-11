@@ -37,9 +37,6 @@ using namespace arangodb;
 
 LineEditor::LineEditor() : _shell(nullptr), _signalFunc(nullptr) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 LineEditor::~LineEditor() {
   if (_shell != nullptr) {
@@ -71,7 +68,7 @@ bool LineEditor::close() { return _shell->close(); }
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-string LineEditor::prompt(const string& prompt, const string& begin,
+std::string LineEditor::prompt(std::string const& prompt, std::string const& begin,
                           bool& eof) {
   return _shell->prompt(prompt, begin, eof);
 }
@@ -80,7 +77,7 @@ string LineEditor::prompt(const string& prompt, const string& begin,
 /// @brief add to history
 ////////////////////////////////////////////////////////////////////////////////
 
-void LineEditor::addHistory(const std::string& line) {
+void LineEditor::addHistory(std::string const& line) {
   return _shell->addHistory(line);
 }
 

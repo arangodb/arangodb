@@ -117,9 +117,9 @@ function optimizerRuleTestSuite () {
 
     testPlans : function () {
       var plans = [ 
-        [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "SortNode", "AggregateNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "AggregateNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "AggregateNode", "CalculationNode", "ReturnNode" ] ]
+        [ "FOR i IN 1..10 COLLECT a = i INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 COLLECT a = i, b = j INTO group RETURN { a: a, b : b }", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "EnumerateListNode", "SortNode", "CollectNode", "CalculationNode", "ReturnNode" ] ]
       ];
 
       plans.forEach(function(plan) {
@@ -166,7 +166,3 @@ jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

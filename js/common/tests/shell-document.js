@@ -36,9 +36,6 @@ var internal = require("internal");
 var wait = internal.wait;
 var testHelper = require("@arangodb/test-helper").Helper;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                collection methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: error handling
@@ -1350,9 +1347,6 @@ function CollectionDocumentSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   vocbase methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: error handling
@@ -1988,9 +1982,6 @@ function DatabaseDocumentSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -2004,7 +1995,3 @@ jsunity.run(DatabaseDocumentSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

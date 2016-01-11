@@ -176,7 +176,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length);
 /// @brief saves data to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteFile(const char*, const char*, size_t);
+int TRI_WriteFile(char const*, char const*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fsyncs a file
@@ -251,7 +251,7 @@ char* TRI_GetAbsolutePath(char const*, char const*);
 /// @brief returns the binary name without any path or suffix
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string TRI_BinaryName(const char* argv0);
+std::string TRI_BinaryName(char const* argv0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the directory containing the program
@@ -287,7 +287,7 @@ char* TRI_GetTempPath(void);
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const*, char**, const bool createFile,
+int TRI_GetTempName(char const*, char**, bool const createFile,
                     long& systemError, std::string& errorMessage);
 
 ////////////////////////////////////////////////////////////////////////////////

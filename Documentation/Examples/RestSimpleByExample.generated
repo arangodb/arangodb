@@ -8,43 +8,43 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/b
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/779082183"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"779082183"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"779082183"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/806564969"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"806564969"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"806564969"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"a"</span> : { 
-        <span class="hljs-string">"k"</span> : <span class="hljs-number">2</span>, 
-        <span class="hljs-string">"j"</span> : <span class="hljs-number">2</span> 
+        <span class="hljs-string">"j"</span> : <span class="hljs-number">2</span>, 
+        <span class="hljs-string">"k"</span> : <span class="hljs-number">2</span> 
       } 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/778295751"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"778295751"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"778295751"</span>, 
-      <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span>, 
-      <span class="hljs-string">"a"</span> : { 
-        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
-      } 
-    }, 
-    { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/778885575"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"778885575"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"778885575"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/806368361"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"806368361"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"806368361"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/778623431"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"778623431"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"778623431"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/806106217"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"806106217"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"806106217"</span>, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"a"</span> : { 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
+      } 
+    }, 
+    { 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/805778537"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"805778537"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"805778537"</span>, 
+      <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span>, 
+      <span class="hljs-string">"a"</span> : { 
+        <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span> 
       } 
     } 
   ], 

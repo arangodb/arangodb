@@ -108,7 +108,7 @@ int TRI_writesocket(TRI_socket_t s, const void* buffer, size_t numBytesToWrite,
   int res;
 #ifdef _WIN32
   res =
-      send(s.fileHandle, (const char*)(buffer), (int)(numBytesToWrite), flags);
+      send(s.fileHandle, (char const*)(buffer), (int)(numBytesToWrite), flags);
 #else
   res = (int)write(s.fileDescriptor, buffer, numBytesToWrite);
 #endif
@@ -182,7 +182,7 @@ bool TRI_SetNonBlockingSocket(TRI_socket_t s) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InetPton4(char const* src, unsigned char* dst) {
-  static const char digits[] = "0123456789";
+  static char const digits[] = "0123456789";
 
   int saw_digit, octets, ch;
   unsigned char tmp[sizeof(struct in_addr)], *tp;
@@ -196,7 +196,7 @@ int TRI_InetPton4(char const* src, unsigned char* dst) {
   *(tp = tmp) = 0;
 
   while ((ch = *src++) != '\0') {
-    const char* pch;
+    char const* pch;
 
     if ((pch = strchr(digits, ch)) != nullptr) {
       unsigned int nw = (unsigned int)(*tp * 10 + (pch - digits));
@@ -248,11 +248,11 @@ int TRI_InetPton4(char const* src, unsigned char* dst) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InetPton6(char const* src, unsigned char* dst) {
-  static const char xdigits_l[] = "0123456789abcdef";
-  static const char xdigits_u[] = "0123456789ABCDEF";
+  static char const xdigits_l[] = "0123456789abcdef";
+  static char const xdigits_u[] = "0123456789ABCDEF";
 
   unsigned char tmp[sizeof(struct in6_addr)], *tp, *endp, *colonp;
-  const char* curtok;
+  char const* curtok;
   int ch, seen_xdigits;
   unsigned int val;
 
@@ -276,8 +276,8 @@ int TRI_InetPton6(char const* src, unsigned char* dst) {
   val = 0;
 
   while ((ch = *src++) != '\0') {
-    const char* pch;
-    const char* xdigits;
+    char const* pch;
+    char const* xdigits;
 
     if ((pch = strchr((xdigits = xdigits_l), ch)) == nullptr) {
       pch = strchr((xdigits = xdigits_u), ch);
@@ -347,7 +347,7 @@ int TRI_InetPton6(char const* src, unsigned char* dst) {
      * Since some memmove()'s erroneously fail to handle
      * overlapping regions, we'll do the shift by hand.
      */
-    const int n = (const int)(tp - colonp);
+    int const n = (int const)(tp - colonp);
     int i;
 
     if (tp == endp) {

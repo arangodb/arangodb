@@ -63,9 +63,6 @@ class DispatcherReporterTask : public PeriodicTask {
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationDispatcher::ApplicationDispatcher()
     : ApplicationFeature("dispatcher"),
@@ -76,9 +73,6 @@ ApplicationDispatcher::ApplicationDispatcher()
       _nrStandardThreads(0),
       _nrAQLThreads(0) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 ApplicationDispatcher::~ApplicationDispatcher() { delete _dispatcher; }
 
@@ -167,7 +161,7 @@ size_t ApplicationDispatcher::numberOfThreads() {
 /// @brief sets the processor affinity
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationDispatcher::setProcessorAffinity(const vector<size_t>& cores) {
+void ApplicationDispatcher::setProcessorAffinity(const std::vector<size_t>& cores) {
 #ifdef TRI_HAVE_THREAD_AFFINITY
   _dispatcher->setProcessorAffinity(Dispatcher::STANDARD_QUEUE, cores);
 #endif
@@ -179,7 +173,7 @@ void ApplicationDispatcher::setProcessorAffinity(const vector<size_t>& cores) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::setupOptions(
-    map<string, ProgramOptionsDescription>& options) {
+    std::map<std::string, ProgramOptionsDescription>& options) {
   options["Server Options:help-admin"]("dispatcher.report-interval",
                                        &_reportInterval,
                                        "dispatcher report interval");

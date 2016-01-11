@@ -32,9 +32,6 @@ module.define("@arangodb/arango-collection", function(exports, module) {
 var internal = require("internal");
 var arangosh = require("@arangodb/arangosh");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add options from arguments to index specification
@@ -67,13 +64,7 @@ function addIndexOptions (body, parameters) {
   return body;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  ArangoCollection
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -110,9 +101,6 @@ require("@arangodb/arango-collection-common");
 
 var ArangoError = require("@arangodb").ArangoError;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append the waitForSync parameter to a URL
@@ -270,9 +258,6 @@ ArangoCollection.prototype._help = function () {
   internal.print(helpArangoCollection);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the name of a collection
@@ -534,9 +519,6 @@ ArangoCollection.prototype.refresh = function () {
   this._type = requestResult.type;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   index functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets all indexes
@@ -759,9 +741,6 @@ ArangoCollection.prototype.ensureIndex = function (data) {
   return requestResult;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                document functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the number of documents
@@ -1417,12 +1396,5 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
   };
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @}\\|/\\*jslint"
-// End:
 });

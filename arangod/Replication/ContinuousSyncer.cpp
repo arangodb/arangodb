@@ -48,9 +48,6 @@ using namespace triagens::arango;
 using namespace triagens::httpclient;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::ContinuousSyncer(
     TRI_server_t* server, TRI_vocbase_t* vocbase,
@@ -84,9 +81,6 @@ ContinuousSyncer::ContinuousSyncer(
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::~ContinuousSyncer() { abortOngoingTransactions(); }
 
@@ -104,7 +98,7 @@ int ContinuousSyncer::run() {
 
 retry:
   double const start = TRI_microtime();
-  string errorMsg;
+  std::string errorMsg;
 
   int res = TRI_ERROR_NO_ERROR;
   uint64_t connectRetries = 0;
@@ -355,7 +349,7 @@ int ContinuousSyncer::saveApplierState() {
 bool ContinuousSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
                                   TRI_json_t const* json) const {
   bool tooOld = false;
-  string const tick = JsonHelper::getStringValue(json, "tick", "");
+  std::string const tick = JsonHelper::getStringValue(json, "tick", "");
 
   if (!tick.empty()) {
     tooOld = (static_cast<TRI_voc_tick_t>(StringUtils::uint64(
@@ -373,7 +367,7 @@ bool ContinuousSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
           type == REPLICATION_TRANSACTION_ABORT ||
           type == REPLICATION_TRANSACTION_COMMIT) {
         // read "tid" entry from marker
-        string const id = JsonHelper::getStringValue(json, "tid", "");
+        std::string const id = JsonHelper::getStringValue(json, "tid", "");
 
         if (!id.empty()) {
           TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(
@@ -440,7 +434,7 @@ bool ContinuousSyncer::excludeCollection(std::string const& masterName) const {
 /// @brief get local replication apply state
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::getLocalState(string& errorMsg) {
+int ContinuousSyncer::getLocalState(std::string& errorMsg) {
   uint64_t oldTotalRequests = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
@@ -486,7 +480,7 @@ int ContinuousSyncer::getLocalState(string& errorMsg) {
 
 int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
                                       TRI_json_t const* json,
-                                      string& errorMsg) {
+                                      std::string& errorMsg) {
   // extract "cid"
   TRI_voc_cid_t cid = getCid(json);
 
@@ -499,7 +493,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   TRI_json_t const* cnameJson = JsonHelper::getObjectElement(json, "cname");
 
   if (JsonHelper::isString(cnameJson)) {
-    string const cnameString = JsonHelper::getStringValue(json, "cname", "");
+    std::string const cnameString = JsonHelper::getStringValue(json, "cname", "");
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
     if (!cnameString.empty()) {
@@ -525,7 +519,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   // extract "rev"
   TRI_voc_rid_t rid;
 
-  string const ridString = JsonHelper::getStringValue(json, "rev", "");
+  std::string const ridString = JsonHelper::getStringValue(json, "rev", "");
   if (ridString.empty()) {
     rid = 0;
   } else {
@@ -536,7 +530,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
   TRI_json_t const* doc = JsonHelper::getObjectElement(json, "data");
 
   // extract "tid"
-  string const id = JsonHelper::getStringValue(json, "tid", "");
+  std::string const id = JsonHelper::getStringValue(json, "tid", "");
   TRI_voc_tid_t tid;
 
   if (id.empty()) {
@@ -591,7 +585,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "unable to create replication transaction: " +
-                 string(TRI_errno_string(res));
+                 std::string(TRI_errno_string(res));
 
       return res;
     }
@@ -624,7 +618,7 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
 int ContinuousSyncer::startTransaction(TRI_json_t const* json) {
   // {"type":2200,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
 
-  string const id = JsonHelper::getStringValue(json, "tid", "");
+  std::string const id = JsonHelper::getStringValue(json, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -673,7 +667,7 @@ int ContinuousSyncer::startTransaction(TRI_json_t const* json) {
 
 int ContinuousSyncer::abortTransaction(TRI_json_t const* json) {
   // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
-  string const id = JsonHelper::getStringValue(json, "tid", "");
+  std::string const id = JsonHelper::getStringValue(json, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -714,7 +708,7 @@ int ContinuousSyncer::abortTransaction(TRI_json_t const* json) {
 
 int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
   // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
-  string const id = JsonHelper::getStringValue(json, "tid", "");
+  std::string const id = JsonHelper::getStringValue(json, "tid", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -755,7 +749,7 @@ int ContinuousSyncer::commitTransaction(TRI_json_t const* json) {
 
 int ContinuousSyncer::renameCollection(TRI_json_t const* json) {
   TRI_json_t const* collectionJson = TRI_LookupObjectJson(json, "collection");
-  string const name = JsonHelper::getStringValue(collectionJson, "name", "");
+  std::string const name = JsonHelper::getStringValue(collectionJson, "name", "");
   char const* cname = getCName(json);
 
   if (name.empty()) {
@@ -818,12 +812,12 @@ int ContinuousSyncer::changeCollection(TRI_json_t const* json) {
 
 int ContinuousSyncer::applyLogMarker(TRI_json_t const* json,
                                      TRI_voc_tick_t firstRegularTick,
-                                     string& errorMsg) {
+                                     std::string& errorMsg) {
   // fetch marker "type"
   int typeValue = JsonHelper::getNumericValue<int>(json, "type", 0);
 
   // fetch "tick"
-  string const tick = JsonHelper::getStringValue(json, "tick", "");
+  std::string const tick = JsonHelper::getStringValue(json, "tick", "");
 
   if (!tick.empty()) {
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
@@ -1000,7 +994,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
 /// @brief perform a continuous sync with the master
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::runContinuousSync(string& errorMsg) {
+int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
   static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds
   static uint64_t const MaxWaitTime = 60 * 1000 * 1000;  // 60 seconds
   uint64_t connectRetries = 0;
@@ -1062,7 +1056,7 @@ int ContinuousSyncer::runContinuousSync(string& errorMsg) {
       (unsigned long long)fromTick, (unsigned long long)fetchTick,
       (int)_ongoingTransactions.size());
 
-  string const progress =
+  std::string const progress =
       "starting with from tick " + StringUtils::itoa(fromTick) +
       ", fetch tick " + StringUtils::itoa(fetchTick) + ", open transactions: " +
       StringUtils::itoa(_ongoingTransactions.size());
@@ -1175,16 +1169,16 @@ int ContinuousSyncer::runContinuousSync(string& errorMsg) {
 /// @brief fetch the initial master state
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::fetchMasterState(string& errorMsg,
+int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
                                        TRI_voc_tick_t fromTick,
                                        TRI_voc_tick_t toTick,
                                        TRI_voc_tick_t& startTick) {
-  string const baseUrl = BaseUrl + "/determine-open-transactions";
-  string const url = baseUrl + "?serverId=" + _localServerIdString + "&from=" +
+  std::string const baseUrl = BaseUrl + "/determine-open-transactions";
+  std::string const url = baseUrl + "?serverId=" + _localServerIdString + "&from=" +
                      StringUtils::itoa(fromTick) + "&to=" +
                      StringUtils::itoa(toTick);
 
-  string const progress = "fetching initial master state with from tick " +
+  std::string const progress = "fetching initial master state with from tick " +
                           StringUtils::itoa(fromTick) + ", to tick " +
                           StringUtils::itoa(toTick);
 
@@ -1220,7 +1214,7 @@ int ContinuousSyncer::fetchMasterState(string& errorMsg,
   bool fromIncluded = false;
 
   bool found;
-  string header =
+  std::string header =
       response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
 
   if (found) {
@@ -1243,7 +1237,7 @@ int ContinuousSyncer::fetchMasterState(string& errorMsg,
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {
     errorMsg = "required tick value '" + StringUtils::itoa(fromTick) +
                "' is not present (anymore?) on master at " +
-               string(_masterInfo._endpoint) +
+               std::string(_masterInfo._endpoint) +
                ". Last tick available on master is " +
                StringUtils::itoa(readTick) +
                ". It may be required to do a full resync and increase the "
@@ -1289,7 +1283,7 @@ int ContinuousSyncer::fetchMasterState(string& errorMsg,
   }
 
   {
-    string const progress =
+    std::string const progress =
         "fetched initial master state for from tick " +
         StringUtils::itoa(fromTick) + ", to tick " + StringUtils::itoa(toTick) +
         ", got start tick: " + StringUtils::itoa(readTick) +
@@ -1305,16 +1299,16 @@ int ContinuousSyncer::fetchMasterState(string& errorMsg,
 /// @brief run the continuous synchronization
 ////////////////////////////////////////////////////////////////////////////////
 
-int ContinuousSyncer::followMasterLog(string& errorMsg,
+int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                                       TRI_voc_tick_t& fetchTick,
                                       TRI_voc_tick_t firstRegularTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
-  string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
+  std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" + _chunkSize;
 
   worked = false;
 
-  string const url = baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
+  std::string const url = baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
                      "&firstRegular=" + StringUtils::itoa(firstRegularTick) +
                      "&serverId=" + _localServerIdString + "&includeSystem=" +
                      (_includeSystem ? "true" : "false");
@@ -1326,7 +1320,7 @@ int ContinuousSyncer::followMasterLog(string& errorMsg,
       url.c_str());
 
   // send request
-  string const progress =
+  std::string const progress =
       "fetching master log from tick " + StringUtils::itoa(fetchTick) +
       ", open transactions: " + std::to_string(_ongoingTransactions.size());
   setProgress(progress);
@@ -1440,7 +1434,7 @@ int ContinuousSyncer::followMasterLog(string& errorMsg,
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     errorMsg = "required tick value '" + StringUtils::itoa(fetchTick) +
                "' is not present (anymore?) on master at " +
-               string(_masterInfo._endpoint) +
+               std::string(_masterInfo._endpoint) +
                ". Last tick available on master is " + StringUtils::itoa(tick) +
                ". It may be required to do a full resync and increase the "
                "number of historic logfiles on the master.";

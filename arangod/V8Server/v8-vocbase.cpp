@@ -165,7 +165,7 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
       (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
 
   if (object->Has(TRI_V8_ASCII_STRING("lockTimeout"))) {
-    static const string timeoutError =
+    static std::string const timeoutError =
         "<lockTimeout> must be a valid numeric value";
 
     if (!object->Get(TRI_V8_ASCII_STRING("lockTimeout"))->IsNumber()) {
@@ -195,7 +195,7 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // "collections"
-  static string const collectionError =
+  static std::string const collectionError =
       "missing/invalid collections definition for transaction";
 
   if (!object->Has(TRI_V8_ASCII_STRING("collections")) ||
@@ -212,8 +212,8 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   bool isValid = true;
-  vector<string> readCollections;
-  vector<string> writeCollections;
+  std::vector<std::string> readCollections;
+  std::vector<std::string> writeCollections;
 
   bool allowImplicitCollections = true;
   if (collections->Has(TRI_V8_ASCII_STRING("allowImplicit"))) {
@@ -272,9 +272,9 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   // extract the "action" property
-  static const string actionErrorPrototype =
+  static std::string const actionErrorPrototype =
       "missing/invalid action definition for transaction";
-  string actionError = actionErrorPrototype;
+  std::string actionError = actionErrorPrototype;
 
   if (!object->Has(TRI_V8_ASCII_STRING("action"))) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(actionError);
@@ -317,7 +317,7 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     // Invoke Function constructor to create function with the given body and no
     // arguments
-    string body = TRI_ObjectToString(
+    std::string body = TRI_ObjectToString(
         object->Get(TRI_V8_ASCII_STRING("action"))->ToString());
     body = "return (" + body + ")(params);";
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
@@ -392,63 +392,11 @@ static void JS_Transaction(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief retrieves the configuration of the write-ahead log
-/// @startDocuBlock walPropertiesGet
-/// `internal.wal.properties()`
-///
-/// Retrieves the configuration of the write-ahead log. The result is a JSON
-/// array with the following attributes:
-/// - *allowOversizeEntries*: whether or not operations that are bigger than a
-///   single logfile can be executed and stored
-/// - *logfileSize*: the size of each write-ahead logfile
-/// - *historicLogfiles*: the maximum number of historic logfiles to keep
-/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
-///   allocates in the background
-/// - *syncInterval*: the interval for automatic synchronization of not-yet
-///   synchronized write-ahead log data (in milliseconds)
-/// - *throttleWait*: the maximum wait time that operations will wait before
-///   they get aborted if case of write-throttling (in milliseconds)
-/// - *throttleWhenPending*: the number of unprocessed garbage-collection
-///   operations that, when reached, will activate write-throttling. A value of
-///   *0* means that write-throttling will not be triggered.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesGet}
-///   require("internal").wal.properties();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock walPropertiesGet
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief configures the write-ahead log
-/// @startDocuBlock walPropertiesSet
-/// `internal.wal.properties(properties)`
-///
-/// Configures the behavior of the write-ahead log. *properties* must be a JSON
-/// JSON object with the following attributes:
-/// - *allowOversizeEntries*: whether or not operations that are bigger than a
-///   single logfile can be executed and stored
-/// - *logfileSize*: the size of each write-ahead logfile
-/// - *historicLogfiles*: the maximum number of historic logfiles to keep
-/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
-///   allocates in the background
-/// - *throttleWait*: the maximum wait time that operations will wait before
-///   they get aborted if case of write-throttling (in milliseconds)
-/// - *throttleWhenPending*: the number of unprocessed garbage-collection
-///   operations that, when reached, will activate write-throttling. A value of
-///   *0* means that write-throttling will not be triggered.
-///
-/// Specifying any of the above attributes is optional. Not specified attributes
-/// will be ignored and the configuration for them will not be modified.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesSet}
-///   require("internal").wal.properties({ allowOverSizeEntries: true,
-///   logfileSize: 32 * 1024 * 1024 });
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock walPropertiesSet
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -522,32 +470,7 @@ static void JS_PropertiesWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the currently open WAL logfile
-/// @startDocuBlock walFlush
-/// `internal.wal.flush(waitForSync, waitForCollector)`
-///
-/// Flushes the write-ahead log. By flushing the currently active write-ahead
-/// logfile, the data in it can be transferred to collection journals and
-/// datafiles. This is useful to ensure that all data for a collection is
-/// present in the collection journals and datafiles, for example, when dumping
-/// the data of a collection.
-///
-/// The *waitForSync* option determines whether or not the operation should
-/// block until the not-yet synchronized data in the write-ahead log was
-/// synchronized to disk.
-///
-/// The *waitForCollector* operation can be used to specify that the operation
-/// should block until the data in the flushed log has been collected by the
-/// write-ahead log garbage collector. Note that setting this option to *true*
-/// might block for a long time if there are long-running transactions and
-/// the write-ahead log garbage collector cannot finish garbage collection.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{WalFlush}
-///   require("internal").wal.flush();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock walFlush
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FlushWal(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -761,7 +684,7 @@ static void JS_Debug(const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (console != nullptr) {
     while (true) {
       bool eof;
-      string input = console->prompt("debug> ", "debug", eof);
+      std::string input = console->prompt("debug> ", "debug", eof);
 
       if (eof) {
         break;
@@ -842,7 +765,7 @@ static void JS_GetIcuTimezones(
 
     for (int32_t i = 0; i < idsCount && U_ZERO_ERROR == status; ++i) {
       int32_t resultLength;
-      const char* str = timeZones->next(&resultLength, status);
+      char const* str = timeZones->next(&resultLength, status);
       result->Set((uint32_t)i, TRI_V8_PAIR_STRING(str, resultLength));
     }
 
@@ -872,7 +795,7 @@ static void JS_GetIcuLocales(const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (locales) {
     for (int32_t i = 0; i < count; ++i) {
       const Locale* l = locales + i;
-      const char* str = l->getBaseName();
+      char const* str = l->getBaseName();
 
       result->Set((uint32_t)i, TRI_V8_STRING(str));
     }
@@ -917,11 +840,11 @@ static void JS_FormatDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   Locale locale;
   if (args.Length() > 3) {
-    string name = TRI_ObjectToString(args[3]);
+    std::string name = TRI_ObjectToString(args[3]);
     locale = Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
-    string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+    std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
     locale = Locale::createFromName(name.c_str());
   }
 
@@ -933,7 +856,7 @@ static void JS_FormatDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
   s->setTimeZone(*tz);
   s->format((UDate)(datetime * 1000), formattedString);
 
-  string resultString;
+  std::string resultString;
   formattedString.toUTF8String(resultString);
   delete s;
   delete tz;
@@ -977,11 +900,11 @@ static void JS_ParseDatetime(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   Locale locale;
   if (args.Length() > 3) {
-    string name = TRI_ObjectToString(args[3]);
+    std::string name = TRI_ObjectToString(args[3]);
     locale = Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
-    string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+    std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
     locale = Locale::createFromName(name.c_str());
   }
 
@@ -1010,7 +933,7 @@ static bool ReloadAuthCoordinator(TRI_vocbase_t* vocbase) {
   TRI_json_t* json = nullptr;
   bool result;
 
-  int res = usersOnCoordinator(string(vocbase->_name), json, 60.0);
+  int res = usersOnCoordinator(std::string(vocbase->_name), json, 60.0);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_ASSERT(json != nullptr);
@@ -1084,7 +1007,7 @@ static void JS_ParseAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
   }
 
-  string const&& queryString = TRI_ObjectToString(args[0]);
+  std::string const&& queryString = TRI_ObjectToString(args[0]);
 
   TRI_GET_GLOBALS();
   triagens::aql::Query query(v8g->_applicationV8, true, vocbase,
@@ -1193,7 +1116,7 @@ static void JS_ExplainAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
   }
 
-  string const&& queryString = TRI_ObjectToString(args[0]);
+  std::string const&& queryString = TRI_ObjectToString(args[0]);
 
   // bind parameters
   std::unique_ptr<TRI_json_t> parameters;
@@ -1366,7 +1289,7 @@ static void JS_ExecuteAql(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <querystring>");
   }
 
-  string const&& queryString = TRI_ObjectToString(args[0]);
+  std::string const&& queryString = TRI_ObjectToString(args[0]);
 
   // bind parameters
   std::unique_ptr<TRI_json_t> parameters;
@@ -1797,7 +1720,7 @@ static v8::Local<v8::String> EdgeIdToString(
 static v8::Handle<v8::Value> VertexIdToData(
     v8::Isolate* isolate, CollectionNameResolver const* resolver,
     ExplicitTransaction* trx,
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo> const& ditches,
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> const& ditches,
     VertexId const& vertexId) {
   auto i = ditches.find(vertexId.cid);
 
@@ -1827,7 +1750,7 @@ static v8::Handle<v8::Value> VertexIdToData(
 static v8::Handle<v8::Value> EdgeIdToData(
     v8::Isolate* isolate, CollectionNameResolver const* resolver,
     ExplicitTransaction* trx,
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo> const& ditches,
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> const& ditches,
     EdgeId const& edgeId) {
   // EdgeId is a typedef of VertexId.
   return VertexIdToData(isolate, resolver, trx, ditches, edgeId);
@@ -1839,8 +1762,8 @@ static v8::Handle<v8::Value> EdgeIdToData(
 
 static void ExtractCidsFromPath(TRI_vocbase_t* vocbase,
                                 ArangoDBPathFinder::Path const& p,
-                                vector<TRI_voc_cid_t>& result) {
-  unordered_set<TRI_voc_cid_t> found;
+                                std::vector<TRI_voc_cid_t>& result) {
+  std::unordered_set<TRI_voc_cid_t> found;
   uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
   uint32_t const en = static_cast<uint32_t>(p.edges.size());
 
@@ -1877,8 +1800,8 @@ static void ExtractCidsFromPath(TRI_vocbase_t* vocbase,
 
 static void ExtractCidsFromPath(TRI_vocbase_t* vocbase,
                                 ArangoDBConstDistancePathFinder::Path const& p,
-                                vector<TRI_voc_cid_t>& result) {
-  unordered_set<TRI_voc_cid_t> found;
+                                std::vector<TRI_voc_cid_t>& result) {
+  std::unordered_set<TRI_voc_cid_t> found;
   uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
   uint32_t const en = static_cast<uint32_t>(p.edges.size());
 
@@ -1915,7 +1838,7 @@ static void ExtractCidsFromPath(TRI_vocbase_t* vocbase,
 
 static void AddDitch(
     ExplicitTransaction* trx, TRI_voc_cid_t const& cid,
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
   TRI_transaction_collection_t* col = trx->trxCollection(cid);
 
   auto ditch = trx->orderDitch(col);
@@ -1935,10 +1858,10 @@ static void AddDitch(
 ////////////////////////////////////////////////////////////////////////////////
 
 static ExplicitTransaction* BeginTransaction(
-    TRI_vocbase_t* vocbase, vector<TRI_voc_cid_t> const& readCollections,
-    vector<TRI_voc_cid_t> const& writeCollections,
+    TRI_vocbase_t* vocbase, std::vector<TRI_voc_cid_t> const& readCollections,
+    std::vector<TRI_voc_cid_t> const& writeCollections,
     CollectionNameResolver const* resolver,
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches) {
   // IHHF isCoordinator
   double lockTimeout =
       (double)(TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
@@ -1975,7 +1898,7 @@ static ExplicitTransaction* BeginTransaction(
 static v8::Handle<v8::Value> PathIdsToV8(
     v8::Isolate* isolate, TRI_vocbase_t* vocbase,
     CollectionNameResolver const* resolver, ArangoDBPathFinder::Path const& p,
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
     bool& includeData) {
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -1988,10 +1911,10 @@ static v8::Handle<v8::Value> PathIdsToV8(
   v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
 
   if (includeData) {
-    vector<TRI_voc_cid_t> readCollections;
+    std::vector<TRI_voc_cid_t> readCollections;
     ExtractCidsFromPath(vocbase, p, readCollections);
-    vector<TRI_voc_cid_t> writeCollections;
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
+    std::vector<TRI_voc_cid_t> writeCollections;
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
 
     std::unique_ptr<ExplicitTransaction> trx;
     trx.reset(BeginTransaction(vocbase, readCollections, writeCollections,
@@ -2030,7 +1953,7 @@ static v8::Handle<v8::Value> PathIdsToV8(
     v8::Isolate* isolate, TRI_vocbase_t* vocbase,
     CollectionNameResolver const* resolver,
     ArangoDBConstDistancePathFinder::Path const& p,
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
     bool& includeData) {
   v8::EscapableHandleScope scope(isolate);
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -2043,10 +1966,10 @@ static v8::Handle<v8::Value> PathIdsToV8(
   v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
 
   if (includeData) {
-    vector<TRI_voc_cid_t> readCollections;
+    std::vector<TRI_voc_cid_t> readCollections;
     ExtractCidsFromPath(vocbase, p, readCollections);
-    vector<TRI_voc_cid_t> writeCollections;
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
+    std::vector<TRI_voc_cid_t> writeCollections;
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
 
     std::unique_ptr<ExplicitTransaction> trx;
     trx.reset(BeginTransaction(vocbase, readCollections, writeCollections,
@@ -2082,7 +2005,7 @@ static v8::Handle<v8::Value> PathIdsToV8(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void V8ArrayToStrings(const v8::Handle<v8::Value>& parameter,
-                             unordered_set<string>& result) {
+                             std::unordered_set<std::string>& result) {
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
   uint32_t const n = array->Length();
   for (uint32_t i = 0; i < n; ++i) {
@@ -2101,9 +2024,9 @@ class HopWeightCalculator {
  public:
   HopWeightCalculator(){};
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Callable weight calculator for edge
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   double operator()(TRI_doc_mptr_copy_t& edge) { return 1; }
 };
@@ -2119,15 +2042,15 @@ class AttributeWeightCalculator {
   VocShaper* _shaper;
 
  public:
-  AttributeWeightCalculator(string const& keyWeight, double defaultWeight,
+  AttributeWeightCalculator(std::string const& keyWeight, double defaultWeight,
                             VocShaper* shaper)
       : _defaultWeight(defaultWeight), _shaper(shaper) {
     _shapePid = _shaper->lookupAttributePathByName(keyWeight.c_str());
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Callable weight calculator for edge
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
 
   double operator()(TRI_doc_mptr_copy_t const& edge) {
     if (_shapePid == 0) {
@@ -2175,14 +2098,14 @@ static void JS_QueryShortestPath(
   if (!args[0]->IsArray()) {
     TRI_V8_THROW_TYPE_ERROR("expecting array for <vertexcollections[]>");
   }
-  unordered_set<string> vertexCollectionNames;
+  std::unordered_set<std::string> vertexCollectionNames;
   V8ArrayToStrings(args[0], vertexCollectionNames);
 
   // get the edge collections
   if (!args[1]->IsArray()) {
     TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
   }
-  unordered_set<string> edgeCollectionNames;
+  std::unordered_set<std::string> edgeCollectionNames;
   V8ArrayToStrings(args[1], edgeCollectionNames);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -2194,12 +2117,12 @@ static void JS_QueryShortestPath(
   if (!args[2]->IsString()) {
     TRI_V8_THROW_TYPE_ERROR("expecting id for <startVertex>");
   }
-  string const startVertex = TRI_ObjectToString(args[2]);
+  std::string const startVertex = TRI_ObjectToString(args[2]);
 
   if (!args[3]->IsString()) {
     TRI_V8_THROW_TYPE_ERROR("expecting id for <targetVertex>");
   }
-  string const targetVertex = TRI_ObjectToString(args[3]);
+  std::string const targetVertex = TRI_ObjectToString(args[3]);
 
   traverser::ShortestPathOptions opts;
 
@@ -2274,8 +2197,8 @@ static void JS_QueryShortestPath(
     }
   }
 
-  vector<TRI_voc_cid_t> readCollections;
-  vector<TRI_voc_cid_t> writeCollections;
+  std::vector<TRI_voc_cid_t> readCollections;
+  std::vector<TRI_voc_cid_t> writeCollections;
 
   V8ResolverGuard resolverGuard(vocbase);
 
@@ -2290,7 +2213,7 @@ static void JS_QueryShortestPath(
   }
 
   // Start the transaction and order ditches
-  unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
+  std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
 
   std::unique_ptr<ExplicitTransaction> trx;
 
@@ -2301,8 +2224,8 @@ static void JS_QueryShortestPath(
     TRI_V8_THROW_EXCEPTION(e.code());
   }
 
-  vector<EdgeCollectionInfo*> edgeCollectionInfos;
-  vector<VertexCollectionInfo*> vertexCollectionInfos;
+  std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  std::vector<VertexCollectionInfo*> vertexCollectionInfos;
 
   triagens::basics::ScopeGuard guard{
       []() -> void {},
@@ -2340,7 +2263,7 @@ static void JS_QueryShortestPath(
   }
 
   if (opts.useEdgeFilter) {
-    string errorMessage;
+    std::string errorMessage;
     for (auto const& it : edgeCollectionInfos) {
       try {
         opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(),
@@ -2356,7 +2279,7 @@ static void JS_QueryShortestPath(
   }
 
   if (opts.useVertexFilter) {
-    string errorMessage;
+    std::string errorMessage;
     for (auto const& it : vertexCollectionInfos) {
       try {
         opts.addVertexFilter(isolate, vertexExample, trx.get(),
@@ -2383,7 +2306,7 @@ static void JS_QueryShortestPath(
 
   if (opts.useVertexFilter || opts.useEdgeFilter || opts.useWeight) {
     // Compute the path
-    unique_ptr<ArangoDBPathFinder::Path> path;
+    std::unique_ptr<ArangoDBPathFinder::Path> path;
 
     try {
       path = TRI_RunShortestPathSearch(edgeCollectionInfos, opts);
@@ -2419,7 +2342,7 @@ static void JS_QueryShortestPath(
   } else {
     // No Data reading required for this path. Use shortcuts.
     // Compute the path
-    unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
+    std::unique_ptr<ArangoDBConstDistancePathFinder::Path> path;
 
     try {
       path = TRI_RunSimpleShortestPathSearch(edgeCollectionInfos, opts);
@@ -2463,7 +2386,7 @@ static void JS_QueryShortestPath(
 static v8::Handle<v8::Value> VertexIdsToV8(
     v8::Isolate* isolate, ExplicitTransaction* trx,
     CollectionNameResolver const* resolver, unordered_set<VertexId>& ids,
-    unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
+    std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo>& ditches,
     bool includeData = false) {
   v8::EscapableHandleScope scope(isolate);
   uint32_t const vn = static_cast<uint32_t>(ids.size());
@@ -2503,14 +2426,14 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (!args[0]->IsArray()) {
     TRI_V8_THROW_TYPE_ERROR("expecting array for <vertexcollections[]>");
   }
-  unordered_set<string> vertexCollectionNames;
+  std::unordered_set<std::string> vertexCollectionNames;
   V8ArrayToStrings(args[0], vertexCollectionNames);
 
   // get the edge collections
   if (!args[1]->IsArray()) {
     TRI_V8_THROW_TYPE_ERROR("expecting array for <edgecollections[]>");
   }
-  unordered_set<string> edgeCollectionNames;
+  std::unordered_set<std::string> edgeCollectionNames;
   V8ArrayToStrings(args[1], edgeCollectionNames);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
@@ -2519,7 +2442,7 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  vector<string> startVertices;
+  std::vector<std::string> startVertices;
   if (args[2]->IsString()) {
     startVertices.emplace_back(TRI_ObjectToString(args[2]));
   } else if (args[2]->IsArray()) {
@@ -2549,7 +2472,7 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
     // Parse direction
     v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
     if (options->Has(keyDirection)) {
-      string dir = TRI_ObjectToString(options->Get(keyDirection));
+      std::string dir = TRI_ObjectToString(options->Get(keyDirection));
       if (dir == "outbound") {
         opts.direction = TRI_EDGE_OUT;
       } else if (dir == "inbound") {
@@ -2599,8 +2522,8 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
-  vector<TRI_voc_cid_t> readCollections;
-  vector<TRI_voc_cid_t> writeCollections;
+  std::vector<TRI_voc_cid_t> readCollections;
+  std::vector<TRI_voc_cid_t> writeCollections;
 
   V8ResolverGuard resolverGuard(vocbase);
 
@@ -2614,7 +2537,7 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
     readCollections.emplace_back(resolver->getCollectionId(it));
   }
 
-  unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
+  std::unordered_map<TRI_voc_cid_t, CollectionDitchInfo> ditches;
   // Start the transaction
   std::unique_ptr<ExplicitTransaction> trx;
   try {
@@ -2624,8 +2547,8 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(e.code());
   }
 
-  vector<EdgeCollectionInfo*> edgeCollectionInfos;
-  vector<VertexCollectionInfo*> vertexCollectionInfos;
+  std::vector<EdgeCollectionInfo*> edgeCollectionInfos;
+  std::vector<VertexCollectionInfo*> vertexCollectionInfos;
 
   triagens::basics::ScopeGuard guard{
       []() -> void {},
@@ -2659,10 +2582,10 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
-  unordered_set<VertexId> neighbors;
+  std::unordered_set<VertexId> neighbors;
 
   if (opts.useEdgeFilter) {
-    string errorMessage;
+    std::string errorMessage;
     for (auto const& it : edgeCollectionInfos) {
       try {
         opts.addEdgeFilter(isolate, edgeExample, it->getShaper(), it->getCid(),
@@ -2678,7 +2601,7 @@ static void JS_QueryNeighbors(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   if (opts.useVertexFilter) {
-    string errorMessage;
+    std::string errorMessage;
     for (auto const& it : vertexCollectionInfos) {
       try {
         opts.addVertexFilter(isolate, vertexExample, trx.get(),
@@ -2773,23 +2696,7 @@ static v8::Handle<v8::Object> WrapVocBase(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief selects a collection from the vocbase
-/// @startDocuBlock collectionDatabaseCollectionName
-/// `db.collection-name`
-///
-/// Returns the collection with the given *collection-name*. If no such
-/// collection exists, create a collection named *collection-name* with the
-/// default properties.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
-/// ~ db._create("example");
-///   db.example;
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionDatabaseCollectionName
 ////////////////////////////////////////////////////////////////////////////////
 
 static void MapGetVocBase(v8::Local<v8::String> const name,
@@ -2828,7 +2735,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   TRI_vocbase_col_t* collection = nullptr;
 
   // generate a name under which the cached property is stored
-  string cacheKey(key, keyLength);
+  std::string cacheKey(key, keyLength);
   cacheKey.push_back('*');
 
   v8::Local<v8::String> cacheName = TRI_V8_STD_STRING(cacheKey);
@@ -2913,7 +2820,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(vocbase->_name,
                                                std::string(key));
 
@@ -2956,19 +2863,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the server version string
-/// @startDocuBlock databaseVersion
-/// `db._version()`
-///
-/// Returns the server version string. Note that this is not the version of the
-/// database.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbVersion}
-///   require("internal").db._version();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databaseVersion
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2979,18 +2874,7 @@ static void JS_VersionServer(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the path to database files
-/// @startDocuBlock databasePath
-/// `db._path()`
-///
-/// Returns the filesystem path of the current database as a string.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbPath}
-///   require("internal").db._path();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databasePath
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3007,18 +2891,7 @@ static void JS_PathDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database id
-/// @startDocuBlock databaseId
-/// `db._id()`
-///
-/// Returns the id of the current database as a string.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbId}
-///   require("internal").db._id();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databaseId
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3035,18 +2908,7 @@ static void JS_IdDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database name
-/// @startDocuBlock databaseName
-/// `db._name()`
-///
-/// Returns the name of the current database as a string.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{dbName}
-///   require("internal").db._name();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock databaseName
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3063,16 +2925,7 @@ static void JS_NameDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the database type
-/// @startDocuBlock databaseIsSystem
-/// `db._isSystem()`
-///
-/// Returns whether the currently used database is the *_system* database.
-/// The system database has some special privileges and properties, for example,
-/// database management operations such as create or drop can only be executed
-/// from within this database. Additionally, the *_system* database itself
-/// cannot be dropped.
-/// @endDocuBlock
+/// @brief was docuBlock databaseIsSystem
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_IsSystemDatabase(
@@ -3090,25 +2943,7 @@ static void JS_IsSystemDatabase(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief change the current database
-/// @startDocuBlock databaseUseDatabase
-/// `db._useDatabase(name)`
-///
-/// Changes the current database to the database specified by *name*. Note
-/// that the database specified by *name* must already exist.
-///
-/// Changing the database might be disallowed in some contexts, for example
-/// server-side actions (including Foxx).
-///
-/// When performing this command from arangosh, the current credentials
-/// (username
-/// and password) will be re-used. These credentials might not be valid to
-/// connect to the database specified by *name*. Additionally, the database
-/// only be accessed from certain endpoints only. In this case, switching the
-/// database might not work, and the connection / session should be closed and
-/// restarted with different username and password credentials and/or
-/// endpoint data.
-/// @endDocuBlock
+/// @brief was docuBlock databaseUseDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UseDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3125,7 +2960,7 @@ static void JS_UseDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  string&& name = TRI_ObjectToString(args[0]);
+  std::string&& name = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
@@ -3181,7 +3016,7 @@ static void ListDatabasesCoordinator(
   ClusterInfo* ci = ClusterInfo::instance();
 
   if (args.Length() == 0) {
-    vector<DatabaseID> list = ci->listDatabases(true);
+    std::vector<DatabaseID> list = ci->listDatabases(true);
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
     for (size_t i = 0; i < list.size(); ++i) {
       result->Set((uint32_t)i, TRI_V8_STD_STRING(list[i]));
@@ -3190,7 +3025,7 @@ static void ListDatabasesCoordinator(
   } else {
     // We have to ask a DBServer, any will do:
     int tries = 0;
-    vector<ServerID> DBServers;
+    std::vector<ServerID> DBServers;
     while (true) {
       DBServers = ci->getCurrentDBServers();
 
@@ -3203,7 +3038,7 @@ static void ListDatabasesCoordinator(
         auto res =
             cc->syncRequest("", 0, "server:" + sid,
                             triagens::rest::HttpRequest::HTTP_REQUEST_GET,
-                            "/_api/database/user", string(""), headers, 0.0);
+                            "/_api/database/user", std::string(""), headers, 0.0);
 
         if (res->status == CL_COMM_SENT) {
           // We got an array back as JSON, let's parse it and build a v8
@@ -3216,7 +3051,7 @@ static void ListDatabasesCoordinator(
                 JsonHelper::getObjectElement(json, "result");
 
             if (dotresult != 0) {
-              vector<string> list = JsonHelper::stringArray(dotresult);
+              std::vector<std::string> list = JsonHelper::stringArray(dotresult);
               TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
               v8::Handle<v8::Array> result = v8::Array::New(isolate);
               for (size_t i = 0; i < list.size(); ++i) {
@@ -3239,13 +3074,7 @@ static void ListDatabasesCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the list of all existing databases
-/// @startDocuBlock databaseListDatabase
-/// `db._listDatabases()`
-///
-/// Returns the list of all databases. This method can only be used from within
-/// the *_system* database.
-/// @endDocuBlock
+/// @brief was docuBlock databaseListDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ListDatabases(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3320,7 +3149,7 @@ static void CreateDatabaseCoordinator(
   v8::HandleScope scope(isolate);
 
   // First work with the arguments to create a JSON entry:
-  string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   if (!TRI_IsAllowedNameVocBase(false, name.c_str())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
@@ -3358,7 +3187,7 @@ static void CreateDatabaseCoordinator(
                                serverId.size()));
 
   ClusterInfo* ci = ClusterInfo::instance();
-  string errorMsg;
+  std::string errorMsg;
 
   int res = ci->createDatabaseCoordinator(name, json.get(), errorMsg, 120.0);
 
@@ -3426,59 +3255,7 @@ static void CreateDatabaseCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new database
-/// @startDocuBlock databaseCreateDatabase
-/// `db._createDatabase(name, options, users)`
-///
-/// Creates a new database with the name specified by *name*.
-/// There are restrictions for database names
-/// (see [DatabaseNames](../NamingConventions/DatabaseNames.md)).
-///
-/// Note that even if the database is created successfully, there will be no
-/// change into the current database to the new database. Changing the current
-/// database must explicitly be requested by using the
-/// *db._useDatabase* method.
-///
-/// The *options* attribute currently has no meaning and is reserved for
-/// future use.
-///
-/// The optional *users* attribute can be used to create initial users for
-/// the new database. If specified, it must be a list of user objects. Each user
-/// object can contain the following attributes:
-///
-/// * *username*: the user name as a string. This attribute is mandatory.
-/// * *passwd*: the user password as a string. If not specified, then it
-/// defaults
-///   to the empty string.
-/// * *active*: a boolean flag indicating whether the user account should be
-///   active or not. The default value is *true*.
-/// * *extra*: an optional JSON object with extra user information. The data
-///   contained in *extra* will be stored for the user but not be interpreted
-///   further by ArangoDB.
-///
-/// If no initial users are specified, a default user *root* will be created
-/// with an empty string password. This ensures that the new database will be
-/// accessible via HTTP after it is created.
-///
-/// You can create users in a database if no initial user is specified. Switch
-/// into the new database (username and password must be identical to the
-/// current
-/// session) and add or modify users with the following commands.
-///
-/// ```js
-///   require("@arangodb/users").save(username, password, true);
-///   require("@arangodb/users").update(username, password, true);
-///   require("@arangodb/users").remove(username);
-/// ```
-/// Alternatively, you can specify user data directly. For example:
-///
-/// ```js
-///   db._createDatabase("newDB", [], [{ username: "newUser", passwd: "123456",
-///   active: true}])
-/// ```
-///
-/// Those methods can only be used from within the *_system* database.
-/// @endDocuBlock
+/// @brief was docuBlock databaseCreateDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CreateDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3571,7 +3348,7 @@ static void JS_CreateDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
-  string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_t* database;
   int res =
@@ -3631,7 +3408,7 @@ static void DropDatabaseCoordinator(
   TRI_GET_GLOBALS();
 
   // Arguments are already checked, there is exactly one argument
-  string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
   TRI_vocbase_t* vocbase = TRI_UseCoordinatorDatabaseServer(
       static_cast<TRI_server_t*>(v8g->_server), name.c_str());
 
@@ -3644,7 +3421,7 @@ static void DropDatabaseCoordinator(
   TRI_ReleaseVocBase(vocbase);
 
   ClusterInfo* ci = ClusterInfo::instance();
-  string errorMsg;
+  std::string errorMsg;
 
   // clear local sid cache for database
   triagens::arango::VocbaseContext::clearSid(name);
@@ -3675,19 +3452,7 @@ static void DropDatabaseCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drop an existing database
-/// @startDocuBlock databaseDropDatabase
-/// `db._dropDatabase(name)`
-///
-/// Drops the database specified by *name*. The database specified by
-/// *name* must exist.
-///
-/// **Note**: Dropping databases is only possible from within the *_system*
-/// database. The *_system* database itself cannot be dropped.
-///
-/// Databases are dropped asynchronously, and will be physically removed if
-/// all clients have disconnected and references have been garbage-collected.
-/// @endDocuBlock
+/// @brief was docuBlock databaseDropDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3717,7 +3482,7 @@ static void JS_DropDatabase(const v8::FunctionCallbackInfo<v8::Value>& args) {
     return;
   }
 
-  string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(args[0]);
   TRI_GET_GLOBALS();
 
   int res = TRI_DropDatabaseServer(static_cast<TRI_server_t*>(v8g->_server),
@@ -3778,7 +3543,7 @@ static void JS_ListEndpoints(const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  map<string, vector<string>>::const_iterator it;
+  std::map<std::string, std::vector<std::string>>::const_iterator it;
   for (it = endpoints.begin(); it != endpoints.end(); ++it) {
     v8::Handle<v8::Array> dbNames = v8::Array::New(isolate);
 
@@ -3812,7 +3577,7 @@ int TRI_ParseVertex(const v8::FunctionCallbackInfo<v8::Value>& args,
   TRI_ASSERT(key.get() == nullptr);
 
   // reset everything
-  string collectionName;
+  std::string collectionName;
   TRI_voc_rid_t rid = 0;
 
   // try to extract the collection name, key, and revision from the object

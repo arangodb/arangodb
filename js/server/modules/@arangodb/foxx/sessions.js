@@ -32,9 +32,6 @@ const Foxx = require('@arangodb/foxx');
 const crypto = require('@arangodb/crypto');
 const paramSchema = joi.string().optional().description('Foxx session ID');
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  helper functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decorates the controller with session logic
@@ -147,13 +144,7 @@ function createDestroySessionHandler(auth, opts) {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     FOXX SESSIONS
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 var sessionTypes = ['cookie', 'header'];
 
@@ -255,9 +246,6 @@ class Sessions {
     this.configuration = opts;
   }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fetches the session storage
@@ -271,20 +259,8 @@ class Sessions {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    module exports
-// -----------------------------------------------------------------------------
 
 exports.sessionTypes = sessionTypes;
 exports.Sessions = Sessions;
 exports.decorateController = decorateController;
 exports.createDestroySessionHandler = createDestroySessionHandler;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-/// Local Variables:
-/// mode: outline-minor
-/// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
-/// End:

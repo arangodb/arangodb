@@ -38,9 +38,9 @@
 /// @brief extracts the current file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ExtractCurrentFile(unzFile uf, void* buffer, const size_t bufferSize,
-                              const char* outPath, const bool skipPaths,
-                              const bool overwrite, const char* password,
+static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
+                              char const* outPath, bool const skipPaths,
+                              bool const overwrite, char const* password,
                               std::string& errorMessage) {
   char filenameInZip[256];
   char* filenameWithoutPath;
@@ -104,7 +104,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, const size_t bufferSize,
 
   // found a file
   else {
-    const char* writeFilename;
+    char const* writeFilename;
 
     if (!skipPaths) {
       writeFilename = filenameInZip;
@@ -216,9 +216,9 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, const size_t bufferSize,
 /// @brief unzips a single file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UnzipFile(unzFile uf, void* buffer, const size_t bufferSize,
-                     const char* outPath, const bool skipPaths,
-                     const bool overwrite, const char* password,
+static int UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
+                     char const* outPath, bool const skipPaths,
+                     bool const overwrite, char const* password,
                      std::string& errorMessage) {
   unz_global_info64 gi;
   uLong i;
@@ -259,8 +259,8 @@ static int UnzipFile(unzFile uf, void* buffer, const size_t bufferSize,
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile(const char* filename, const char* dir,
-                TRI_vector_string_t const* files, const char* password) {
+int TRI_ZipFile(char const* filename, char const* dir,
+                TRI_vector_string_t const* files, char const* password) {
   void* buffer;
   int bufferSize;
   zipFile zf;
@@ -389,9 +389,9 @@ int TRI_ZipFile(const char* filename, const char* dir,
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile(const char* filename, const char* outPath,
-                  const bool skipPaths, const bool overwrite,
-                  const char* password, std::string& errorMessage) {
+int TRI_UnzipFile(char const* filename, char const* outPath,
+                  bool const skipPaths, bool const overwrite,
+                  char const* password, std::string& errorMessage) {
   unzFile uf;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;

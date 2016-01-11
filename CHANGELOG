@@ -1,6 +1,8 @@
 v3.0.0 (XXXX-XX-XX)
 -------------------
 
+* added option `--default-number-of-shards` to arangorestore
+
 * removed support for CoffeeScript source files
 
 * removed undocumented SleepAndRequeue

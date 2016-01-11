@@ -271,7 +271,7 @@ typedef struct TRI_datafile_s {
   bool (*isPhysical)(const struct TRI_datafile_s* const);  // returns true if
                                                            // the datafile is a
                                                            // physical file
-  const char* (*getName)(
+  char const* (*getName)(
       const struct TRI_datafile_s* const);  // returns the name of a datafile
   void (*close)(struct TRI_datafile_s* const);  // close the datafile
   void (*destroy)(struct TRI_datafile_s*);      // destroys the datafile

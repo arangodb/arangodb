@@ -134,7 +134,7 @@ static inline v8::Handle<v8::Value> V8CollectionId(v8::Isolate* isolate,
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t)cid, (char*)&buffer);
 
-  return TRI_V8_PAIR_STRING((const char*)buffer, (int)len);
+  return TRI_V8_PAIR_STRING((char const*)buffer, (int)len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,9 +154,8 @@ static int ExtractDocumentKey(v8::Isolate* isolate, TRI_v8_global_t* v8g,
     v8::Handle<v8::Value> v = obj->Get(_KeyKey);
 
     if (v->IsString()) {
-      // string key
       // keys must not contain any special characters, so it is not necessary
-      // to normalise them first
+      // to normalize them first
       v8::String::Utf8Value str(v);
 
       if (*str == 0) {
@@ -195,7 +194,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
   TRI_ASSERT(key.get() == nullptr);
 
   // reset the collection identifier and the revision
-  string collectionName;
+  std::string collectionName;
   rid = 0;
 
   // try to extract the collection name, key, and revision from the object
@@ -265,7 +264,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int ParseKeyAndRef(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
-                          string& key, TRI_voc_rid_t& rev) {
+                          std::string& key, TRI_voc_rid_t& rev) {
   rev = 0;
   if (arg->IsString()) {
     key = TRI_ObjectToString(arg);
@@ -312,11 +311,11 @@ static void DocumentVocbaseColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
+  std::string const dbname(collection->_dbName);
   // TODO: someone might rename the collection while we're reading its name...
-  string const collname(collection->_name);
+  std::string const collname(collection->_name);
 
-  string key;
+  std::string key;
   TRI_voc_rid_t rev = 0;
   int error = ParseKeyAndRef(isolate, args[0], key, rev);
 
@@ -327,8 +326,8 @@ static void DocumentVocbaseColCoordinator(
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   error = triagens::arango::getDocumentOnCoordinator(
       dbname, collname, key, rev, headers, generateDocument, responseCode,
@@ -360,7 +359,7 @@ static void DocumentVocbaseColCoordinator(
     }
     if (generateDocument) {
       int errorNum = 0;
-      string errorMessage;
+      std::string errorMessage;
       if (nullptr != json) {
         TRI_json_t* subjson = TRI_LookupObjectJson(json, "errorNum");
         if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
@@ -368,7 +367,7 @@ static void DocumentVocbaseColCoordinator(
         }
         subjson = TRI_LookupObjectJson(json, "errorMessage");
         if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-          errorMessage = string(subjson->_value._string.data,
+          errorMessage = std::string(subjson->_value._string.data,
                                 subjson->_value._string.length - 1);
         }
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -565,7 +564,7 @@ static std::vector<std::string> GetCollectionNamesCluster(
       ClusterInfo::instance()->getCollections(vocbase->_name);
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
-    string const& name = collections[i]->name();
+    std::string const& name = collections[i]->name();
     result.emplace_back(name);
   }
 
@@ -688,10 +687,10 @@ static void ModifyVocbaseColCoordinator(
   TRI_ASSERT(collection != nullptr);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
-  string const collname(collection->_name);
+  std::string const dbname(collection->_dbName);
+  std::string const collname(collection->_name);
 
-  string key;
+  std::string key;
   TRI_voc_rid_t rev = 0;
   int error = ParseKeyAndRef(isolate, args[0], key, rev);
 
@@ -707,8 +706,8 @@ static void ModifyVocbaseColCoordinator(
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   error = triagens::arango::modifyDocumentOnCoordinator(
       dbname, collname, key, rev, policy, waitForSync, isPatch, keepNull,
@@ -730,10 +729,10 @@ static void ModifyVocbaseColCoordinator(
     if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
@@ -880,7 +879,7 @@ static void ReplaceVocbaseCol(bool useCollection,
 
   if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->_info.planId());
+    std::string const cidString = StringUtils::itoa(document->_info.planId());
 
     TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
 
@@ -1405,7 +1404,7 @@ static void UpdateVocbaseCol(bool useCollection,
 
   if (ServerState::instance()->isDBServer()) {
     // compare attributes in shardKeys
-    const string cidString = StringUtils::itoa(document->_info.planId());
+    std::string const cidString = StringUtils::itoa(document->_info.planId());
 
     if (shardKeysChanged(col->_dbName, cidString, old, json, true)) {
       TRI_FreeJson(document->getShaper()->memoryZone(),
@@ -1473,10 +1472,10 @@ static void RemoveVocbaseColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
-  string const collname(collection->_name);
+  std::string const dbname(collection->_dbName);
+  std::string const collname(collection->_name);
 
-  string key;
+  std::string key;
   TRI_voc_rid_t rev = 0;
   int error = ParseKeyAndRef(isolate, args[0], key, rev);
 
@@ -1485,8 +1484,8 @@ static void RemoveVocbaseColCoordinator(
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
   std::unique_ptr<std::map<std::string, std::string>> headers(
       new std::map<std::string, std::string>());
 
@@ -1512,10 +1511,10 @@ static void RemoveVocbaseColCoordinator(
     if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json, "errorMessage");
     if (TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1815,61 +1814,7 @@ static void RemoveVocbaseVPack(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document
-/// @startDocuBlock documentsCollectionName
-/// `collection.document(document)`
-///
-/// The *document* method finds a document given its identifier or a document
-/// object containing the *_id* or *_key* attribute. The method returns
-/// the document if it can be found.
-///
-/// An error is thrown if *_rev* is specified but the document found has a
-/// different revision already. An error is also thrown if no document exists
-/// with the given *_id* or *_key* value.
-///
-/// Please note that if the method is executed on the arangod server (e.g. from
-/// inside a Foxx application), an immutable document object will be returned
-/// for performance reasons. It is not possible to change attributes of this
-/// immutable object. To update or patch the returned document, it needs to be
-/// cloned/copied into a regular JavaScript object first. This is not necessary
-/// if the *document* method is called from out of arangosh or from any other
-/// client.
-///
-/// `collection.document(document-handle)`
-///
-/// As before. Instead of document a *document-handle* can be passed as
-/// first argument.
-///
-/// *Examples*
-///
-/// Returns the document for a document-handle:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionName}
-/// ~ db._create("example");
-/// ~ var myid = db.example.insert({_key: "2873916"});
-///   db.example.document("example/2873916");
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// An error is raised if the document is unknown:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
-/// ~ db._create("example");
-/// ~ var myid = db.example.insert({_key: "2873916"});
-///   db.example.document("example/4472917"); //
-///   xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// An error is raised if the handle is invalid:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameHandle}
-/// ~ db._create("example");
-///   db.example.document(""); // xpError(ERROR_ARANGO_DOCUMENT_HANDLE_BAD)
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionName
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbaseCol(
@@ -1893,11 +1838,11 @@ static void DropVocbaseColCoordinator(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
 
   ClusterInfo* ci = ClusterInfo::instance();
-  string errorMsg;
+  std::string errorMsg;
 
   int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
 
@@ -1911,23 +1856,7 @@ static void DropVocbaseColCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops a collection
-/// @startDocuBlock collectionDrop
-/// `collection.drop()`
-///
-/// Drops a *collection* and all its indexes.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDrop}
-/// ~ db._create("example");
-///   col = db.example;
-///   col.drop();
-///   col;
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionDrop
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DropVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -1960,32 +1889,7 @@ static void JS_DropVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a document exists
-/// @startDocuBlock documentsCollectionExists
-/// `collection.exists(document)`
-///
-/// The *exists* method determines whether a document exists given its
-/// identifier.  Instead of returning the found document or an error, this
-/// method will return either *true* or *false*. It can thus be used
-/// for easy existence checks.
-///
-/// The *document* method finds a document given its identifier.  It returns
-/// the document. Note that the returned document contains two
-/// pseudo-attributes, namely *_id* and *_rev*. *_id* contains the
-/// document-handle and *_rev* the revision of the document.
-///
-/// No error will be thrown if the sought document or collection does not
-/// exist.
-/// Still this method will throw an error if used improperly, e.g. when called
-/// with a non-document handle, a non-document, or when a cross-collection
-/// request is performed.
-///
-/// `collection.exists(document-handle)`
-///
-/// As before. Instead of document a *document-handle* can be passed as
-/// first argument.
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionExists
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExistsVocbaseCol(
@@ -2003,8 +1907,8 @@ static TRI_doc_collection_info_t* GetFiguresCoordinator(
     TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
 
   TRI_doc_collection_info_t* result = nullptr;
 
@@ -2048,114 +1952,7 @@ static TRI_doc_collection_info_t* GetFigures(TRI_vocbase_col_t* collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the figures of a collection
-/// @startDocuBlock collectionFigures
-/// `collection.figures()`
-///
-/// Returns an object containing statistics about the collection.
-/// **Note** : Retrieving the figures will always load the collection into
-/// memory.
-///
-/// * *alive.count*: The number of currently active documents in all datafiles
-/// and
-///   journals of the collection. Documents that are contained in the
-///   write-ahead log only are not reported in this figure.
-/// * *alive.size*: The total size in bytes used by all active documents of the
-///   collection. Documents that are contained in the write-ahead log only are
-///   not reported in this figure.
-/// - *dead.count*: The number of dead documents. This includes document
-///   versions that have been deleted or replaced by a newer version. Documents
-///   deleted or replaced that are contained in the write-ahead log only are not
-///   reported in this figure.
-/// * *dead.size*: The total size in bytes used by all dead documents.
-/// * *dead.deletion*: The total number of deletion markers. Deletion markers
-///   only contained in the write-ahead log are not reporting in this figure.
-/// * *datafiles.count*: The number of datafiles.
-/// * *datafiles.fileSize*: The total filesize of datafiles (in bytes).
-/// * *journals.count*: The number of journal files.
-/// * *journals.fileSize*: The total filesize of the journal files
-///   (in bytes).
-/// * *compactors.count*: The number of compactor files.
-/// * *compactors.fileSize*: The total filesize of the compactor files
-///   (in bytes).
-/// * *shapefiles.count*: The number of shape files. This value is
-///   deprecated and kept for compatibility reasons only. The value will always
-///   be 0 since ArangoDB 2.0 and higher.
-/// * *shapefiles.fileSize*: The total filesize of the shape files. This
-///   value is deprecated and kept for compatibility reasons only. The value
-///   will
-///   always be 0 in ArangoDB 2.0 and higher.
-/// * *shapes.count*: The total number of shapes used in the collection.
-///   This includes shapes that are not in use anymore. Shapes that are
-///   contained
-///   in the write-ahead log only are not reported in this figure.
-/// * *shapes.size*: The total size of all shapes (in bytes). This includes
-///   shapes that are not in use anymore. Shapes that are contained in the
-///   write-ahead log only are not reported in this figure.
-/// * *attributes.count*: The total number of attributes used in the
-///   collection. Note: the value includes data of attributes that are not in
-///   use
-///   anymore. Attributes that are contained in the write-ahead log only are
-///   not reported in this figure.
-/// * *attributes.size*: The total size of the attribute data (in bytes).
-///   Note: the value includes data of attributes that are not in use anymore.
-///   Attributes that are contained in the write-ahead log only are not
-///   reported in this figure.
-/// * *indexes.count*: The total number of indexes defined for the
-///   collection, including the pre-defined indexes (e.g. primary index).
-/// * *indexes.size*: The total memory allocated for indexes in bytes.
-/// * *maxTick*: The tick of the last marker that was stored in a journal
-///   of the collection. This might be 0 if the collection does not yet have
-///   a journal.
-/// * *uncollectedLogfileEntries*: The number of markers in the write-ahead
-///   log for this collection that have not been transferred to journals or
-///   datafiles.
-/// * *documentReferences*: The number of references to documents in datafiles
-///   that JavaScript code currently holds. This information can be used for
-///   debugging compaction and unload issues.
-/// * *waitingFor*: An optional string value that contains information about
-///   which object type is at the head of the collection's cleanup queue. This
-///   information can be used for debugging compaction and unload issues.
-/// * *compactionStatus.time*: The point in time the compaction for the
-/// collection
-///   was last executed. This information can be used for debugging compaction
-///   issues.
-/// * *compactionStatus.message*: The action that was performed when the
-/// compaction
-///   was last run for the collection. This information can be used for
-///   debugging
-///   compaction issues.
-///
-/// **Note**: collection data that are stored in the write-ahead log only are
-/// not reported in the results. When the write-ahead log is collected,
-/// documents
-/// might be added to journals and datafiles of the collection, which may modify
-/// the figures of the collection. Also note that `waitingFor` and
-/// `compactionStatus`
-/// may be empty when called on a coordinator in a cluster.
-///
-/// Additionally, the filesizes of collection and index parameter JSON files are
-/// not reported. These files should normally have a size of a few bytes
-/// each. Please also note that the *fileSize* values are reported in bytes
-/// and reflect the logical file sizes. Some filesystems may use optimisations
-/// (e.g. sparse files) so that the actual physical file size is somewhat
-/// different. Directories and sub-directories may also require space in the
-/// file system, but this space is not reported in the *fileSize* results.
-///
-/// That means that the figures reported do not reflect the actual disk
-/// usage of the collection with 100% accuracy. The actual disk usage of
-/// a collection is normally slightly higher than the sum of the reported
-/// *fileSize* values. Still the sum of the *fileSize* values can still be
-/// used as a lower bound approximation of the disk usage.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFigures}
-/// ~ require("internal").wal.flush(true, true);
-///   db.demo.figures()
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionFigures
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_FiguresVocbaseCol(
@@ -2294,23 +2091,7 @@ static void JS_FiguresVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a collection
-/// @startDocuBlock collectionLoad
-/// `collection.load()`
-///
-/// Loads a collection into memory.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionLoad}
-/// ~ db._create("example");
-///   col = db.example;
-///   col.load();
-///   col;
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionLoad
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_LoadVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -2331,8 +2112,8 @@ static void JS_LoadVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    string const databaseName(collection->_dbName);
-    string const cid = StringUtils::itoa(collection->_cid);
+    std::string const databaseName(collection->_dbName);
+    std::string const cid = StringUtils::itoa(collection->_cid);
 
     int res = ClusterInfo::instance()->setCollectionStatusCoordinator(
         databaseName, cid, TRI_VOC_COL_STATUS_LOADED);
@@ -2418,95 +2199,7 @@ static void JS_PlanIdVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets or sets the properties of a collection
-/// @startDocuBlock collectionProperties
-/// `collection.properties()`
-///
-/// Returns an object containing all collection properties.
-///
-/// * *waitForSync*: If *true* creating a document will only return
-///   after the data was synced to disk.
-///
-/// * *journalSize* : The size of the journal in bytes.
-///
-/// * *isVolatile*: If *true* then the collection data will be
-///   kept in memory only and ArangoDB will not write or sync the data
-///   to disk.
-///
-/// * *keyOptions* (optional) additional options for key generation. This is
-///   a JSON array containing the following attributes (note: some of the
-///   attributes are optional):
-///   * *type*: the type of the key generator used for the collection.
-///   * *allowUserKeys*: if set to *true*, then it is allowed to supply
-///     own key values in the *_key* attribute of a document. If set to
-///     *false*, then the key generator will solely be responsible for
-///     generating keys and supplying own key values in the *_key* attribute
-///     of documents is considered an error.
-///   * *increment*: increment value for *autoincrement* key generator.
-///     Not used for other key generator types.
-///   * *offset*: initial offset value for *autoincrement* key generator.
-///     Not used for other key generator types.
-///
-/// * *indexBuckets*: number of buckets into which indexes using a hash
-///   table are split. The default is 16 and this number has to be a
-///   power of 2 and less than or equal to 1024.
-///
-///   For very large collections one should increase this to avoid long pauses
-///   when the hash table has to be initially built or resized, since buckets
-///   are resized individually and can be initially built in parallel. For
-///   example, 64 might be a sensible value for a collection with 100
-///   000 000 documents. Currently, only the edge index respects this
-///   value, but other index types might follow in future ArangoDB versions.
-///   Changes (see below) are applied when the collection is loaded the next
-///   time.
-///
-/// In a cluster setup, the result will also contain the following attributes:
-///
-/// * *numberOfShards*: the number of shards of the collection.
-///
-/// * *shardKeys*: contains the names of document attributes that are used to
-///   determine the target shard for documents.
-///
-/// `collection.properties(properties)`
-///
-/// Changes the collection properties. *properties* must be a object with
-/// one or more of the following attribute(s):
-///
-/// * *waitForSync*: If *true* creating a document will only return
-///   after the data was synced to disk.
-///
-/// * *journalSize* : The size of the journal in bytes.
-///
-/// * *indexBuckets* : See above, changes are only applied when the
-///   collection is loaded the next time.
-///
-/// *Note*: it is not possible to change the journal size after the journal or
-/// datafile has been created. Changing this parameter will only effect newly
-/// created journals. Also note that you cannot lower the journal size to less
-/// then size of the largest document already stored in the collection.
-///
-/// **Note**: some other collection properties, such as *type*, *isVolatile*,
-/// or *keyOptions* cannot be changed once the collection is created.
-///
-/// @EXAMPLES
-///
-/// Read all properties
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperties}
-/// ~ db._create("example");
-///   db.example.properties();
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Change a property
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperty}
-/// ~ db._create("example");
-///   db.example.properties({ waitForSync : true });
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionProperties
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_PropertiesVocbaseCol(
@@ -2599,7 +2292,7 @@ static void JS_PropertiesVocbaseCol(
     std::shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(
         databaseName, StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New(isolate);
-    vector<string> const sks = (*c).shardKeys();
+    std::vector<std::string> const sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
       shardKeys->Set((uint32_t)i, TRI_V8_STD_STRING(sks[i]));
     }
@@ -2607,7 +2300,7 @@ static void JS_PropertiesVocbaseCol(
     result->Set(TRI_V8_ASCII_STRING("numberOfShards"),
                 v8::Number::New(isolate, (*c).numberOfShards()));
     auto keyOpts = info.keyOptions();
-    if (keyOpts->size() > 0) {
+    if (keyOpts != nullptr && keyOpts->size() > 0) {
       TRI_GET_GLOBAL_STRING(KeyOptionsKey);
       VPackSlice const slice(keyOpts->data());
       result->Set(KeyOptionsKey, TRI_VPackToV8(isolate, slice)->ToObject());
@@ -2753,63 +2446,7 @@ static void JS_PropertiesVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a document
-/// @startDocuBlock documentsCollectionRemove
-/// `collection.remove(document)`
-///
-/// Removes a document. If there is revision mismatch, then an error is thrown.
-///
-/// `collection.remove(document, true)`
-///
-/// Removes a document. If there is revision mismatch, then mismatch is ignored
-/// and document is deleted. The function returns *true* if the document
-/// existed and was deleted. It returns *false*, if the document was already
-/// deleted.
-///
-/// `collection.remove(document, true, waitForSync)`
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document deletion operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.remove(document-handle, data)`
-///
-/// As before. Instead of document a *document-handle* can be passed as
-/// first argument.
-///
-/// @EXAMPLES
-///
-/// Remove a document:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemove}
-/// ~ db._create("example");
-///   a1 = db.example.insert({ a : 1 });
-///   db.example.document(a1);
-///   db.example.remove(a1);
-///   db.example.document(a1); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Remove a document with a conflict:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemoveConflict}
-/// ~ db._create("example");
-///   a1 = db.example.insert({ a : 1 });
-///   a2 = db.example.replace(a1, { a : 2 });
-///   db.example.remove(a1);       // xpError(ERROR_ARANGO_CONFLICT);
-///   db.example.remove(a1, true);
-///   db.example.document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionRemove
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveVocbaseCol(
@@ -2851,34 +2488,7 @@ static int RenameGraphCollections(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief renames a collection
-/// @startDocuBlock collectionRename
-/// `collection.rename(new-name)`
-///
-/// Renames a collection using the *new-name*. The *new-name* must not
-/// already be used for a different collection. *new-name* must also be a
-/// valid collection name. For more information on valid collection names please
-/// refer
-/// to the [naming conventions](../NamingConventions/README.md).
-///
-/// If renaming fails for any reason, an error is thrown.
-/// If renaming the collection succeeds, then the collection is also renamed in
-/// all graph definitions inside the `_graphs` collection in the current
-/// database.
-///
-/// **Note**: this method is not available in a cluster.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRename}
-/// ~ db._create("example");
-///   c = db.example;
-///   c.rename("better-example");
-///   c;
-/// ~ db._drop("better-example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionRename
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RenameVocbaseCol(
@@ -2940,72 +2550,7 @@ static void JS_RenameVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces a document
-/// @startDocuBlock documentsCollectionReplace
-/// `collection.replace(document, data)`
-///
-/// Replaces an existing *document*. The *document* must be a document in
-/// the current collection. This document is then replaced with the
-/// *data* given as second argument.
-///
-/// The method returns a document with the attributes *_id*, *_rev* and
-/// *{_oldRev*.  The attribute *_id* contains the document handle of the
-/// updated document, the attribute *_rev* contains the document revision of
-/// the updated document, the attribute *_oldRev* contains the revision of
-/// the old (now replaced) document.
-///
-/// If there is a conflict, i. e. if the revision of the *document* does not
-/// match the revision in the collection, then an error is thrown.
-///
-/// `collection.replace(document, data, true)` or
-/// `collection.replace(document, data, overwrite: true)`
-///
-/// As before, but in case of a conflict, the conflict is ignored and the old
-/// document is overwritten.
-///
-/// `collection.replace(document, data, true, waitForSync)` or
-/// `collection.replace(document, data, overwrite: true, waitForSync: true or
-/// false)`
-///
-/// The optional *waitForSync* parameter can be used to force
-/// synchronization of the document replacement operation to disk even in case
-/// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronization
-/// of just specific operations. To use this, set the *waitForSync* parameter
-/// to *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `collection.replace(document-handle, data)`
-///
-/// As before. Instead of document a *document-handle* can be passed as
-/// first argument.
-///
-/// @EXAMPLES
-///
-/// Create and update a document:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplace}
-/// ~ db._create("example");
-///   a1 = db.example.insert({ a : 1 });
-///   a2 = db.example.replace(a1, { a : 2 });
-///   a3 = db.example.replace(a1, { a : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Use a document handle:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceHandle}
-/// ~ db._create("example");
-/// ~ var myid = db.example.insert({_key: "3903044"});
-///   a1 = db.example.insert({ a : 1 });
-///   a2 = db.example.replace("example/3903044", { a : 2 });
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionReplace
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbaseCol(
@@ -3048,8 +2593,8 @@ static int GetRevisionCoordinator(TRI_vocbase_col_t* collection,
                                   TRI_voc_rid_t& rid) {
   TRI_ASSERT(collection != nullptr);
 
-  string const databaseName(collection->_dbName);
-  string const cid = StringUtils::itoa(collection->_cid);
+  std::string const databaseName(collection->_dbName);
+  std::string const cid = StringUtils::itoa(collection->_cid);
 
   int res = revisionOnCoordinator(databaseName, cid, rid);
 
@@ -3057,22 +2602,7 @@ static int GetRevisionCoordinator(TRI_vocbase_col_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the revision id of a collection
-/// @startDocuBlock collectionRevision
-/// `collection.revision()`
-///
-/// Returns the revision id of the collection
-///
-/// The revision id is updated when the document data is modified, either by
-/// inserting, deleting, updating or replacing documents in it.
-///
-/// The revision id of a collection can be used by clients to check whether
-/// data in a collection has changed or if it is still unmodified since a
-/// previous fetch of the revision id.
-///
-/// The revision id returned is a string value. Clients should treat this value
-/// as an opaque string, and only use it for equality/non-equality comparisons.
-/// @endDocuBlock
+/// @brief was docuBlock collectionRevision
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RevisionVocbaseCol(
@@ -3105,18 +2635,7 @@ static void JS_RevisionVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rotates the current journal of a collection
-/// @startDocuBlock collectionRotate
-/// `collection.rotate()`
-///
-/// Rotates the current journal of a collection. This operation makes the
-/// current journal of the collection a read-only datafile so it may become a
-/// candidate for garbage collection. If there is currently no journal available
-/// for the collection, the operation will fail with an error.
-///
-/// **Note**: this method is not available in a cluster.
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionRotate
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RotateVocbaseCol(
@@ -3154,113 +2673,7 @@ static void JS_RotateVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates a document
-/// @startDocuBlock documentsCollectionUpdate
-/// `collection.update(document, data, overwrite, keepNull, waitForSync)` or
-/// `collection.update(document, data,
-/// overwrite: true or false, keepNull: true or false, waitForSync: true or
-/// false)`
-///
-/// Updates an existing *document*. The *document* must be a document in
-/// the current collection. This document is then patched with the
-/// *data* given as second argument. The optional *overwrite* parameter can
-/// be used to control the behavior in case of version conflicts (see below).
-/// The optional *keepNull* parameter can be used to modify the behavior when
-/// handling *null* values. Normally, *null* values are stored in the
-/// database. By setting the *keepNull* parameter to *false*, this behavior
-/// can be changed so that all attributes in *data* with *null* values will
-/// be removed from the target document.
-///
-/// The optional *waitForSync* parameter can be used to force
-/// synchronization of the document update operation to disk even in case
-/// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronization
-/// of just specific operations. To use this, set the *waitForSync* parameter
-/// to *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// The method returns a document with the attributes *_id*, *_rev* and
-/// *_oldRev*.  The attribute *_id* contains the document handle of the
-/// updated document, the attribute *_rev* contains the document revision of
-/// the updated document, the attribute *_oldRev* contains the revision of
-/// the old (now replaced) document.
-///
-/// If there is a conflict, i. e. if the revision of the *document* does not
-/// match the revision in the collection, then an error is thrown.
-///
-/// `collection.update(document, data, true)`
-///
-/// As before, but in case of a conflict, the conflict is ignored and the old
-/// document is overwritten.
-///
-/// collection.update(document-handle, data)`
-///
-/// As before. Instead of document a document-handle can be passed as
-/// first argument.
-///
-/// *Examples*
-///
-/// Create and update a document:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdate}
-/// ~ db._create("example");
-///   a1 = db.example.insert({"a" : 1});
-///   a2 = db.example.update(a1, {"b" : 2, "c" : 3});
-///   a3 = db.example.update(a1, {"d" : 4}); // xpError(ERROR_ARANGO_CONFLICT);
-///   a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
-///   db.example.document(a4);
-///   a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
-///   db.example.document(a5);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Use a document handle:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandle}
-/// ~ db._create("example");
-/// ~ var myid = db.example.insert({_key: "18612115"});
-///   a1 = db.example.insert({"a" : 1});
-///   a2 = db.example.update("example/18612115", { "x" : 1, "y" : 2 });
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Use the keepNull parameter to remove attributes with null values:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleKeepNull}
-/// ~ db._create("example");
-/// ~ var myid = db.example.insert({_key: "19988371"});
-///   db.example.insert({"a" : 1});
-///   db.example.update("example/19988371", { "b" : null, "c" : null, "d" : 3
-///   });
-///   db.example.document("example/19988371");
-///   db.example.update("example/19988371", { "a" : null }, false, false);
-///   db.example.document("example/19988371");
-///   db.example.update("example/19988371", { "b" : null, "c": null, "d" : null
-///   }, false, false);
-///   db.example.document("example/19988371");
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Patching array values:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleArray}
-/// ~ db._create("example");
-/// ~ var myid = db.example.insert({_key: "20774803"});
-///   db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : {
-///   }});
-///   db.example.update("example/20774803", {"a" : { "four" : 4 }, "b" : { "b1"
-///   : 1 }});
-///   db.example.document("example/20774803");
-///   db.example.update("example/20774803", { "a" : { "one" : null }, "b" : null
-///   }, false, false);
-///   db.example.document("example/20774803");
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionUpdate
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UpdateVocbaseCol(
@@ -3281,10 +2694,10 @@ static void InsertVocbaseColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
+  std::string const dbname(collection->_dbName);
 
   // TODO: someone might rename the collection while we're reading its name...
-  string const collname(collection->_name);
+  std::string const collname(collection->_name);
 
   // Now get the arguments
   uint32_t const argLength = args.Length();
@@ -3315,9 +2728,9 @@ static void InsertVocbaseColCoordinator(
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> headers;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> headers;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   int error = triagens::arango::createDocumentOnCoordinator(
       dbname, collname, options.waitForSync, json, headers, responseCode,
@@ -3339,10 +2752,10 @@ static void InsertVocbaseColCoordinator(
       errorNum = static_cast<int>(subjson->_value._number);
     }
 
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
@@ -3360,7 +2773,7 @@ static void InsertVocbaseColCoordinator(
 /// @brief extract a key from a v8 object
 ////////////////////////////////////////////////////////////////////////////////
 
-static string GetId(const v8::FunctionCallbackInfo<v8::Value>& args,
+static std::string GetId(const v8::FunctionCallbackInfo<v8::Value>& args,
                     int which) {
   v8::Isolate* isolate = args.GetIsolate();  // used in TRI_GET_GLOBALS
 
@@ -3379,40 +2792,7 @@ static string GetId(const v8::FunctionCallbackInfo<v8::Value>& args,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a new edge document
-/// @startDocuBlock InsertEdgeCol
-/// `edge-collection.insert(from, to, document)`
-///
-/// Saves a new edge and returns the document-handle. *from* and *to*
-/// must be documents or document references.
-///
-/// `edge-collection.insert(from, to, document, waitForSync)`
-///
-/// The optional *waitForSync* parameter can be used to force
-/// synchronization of the document creation operation to disk even in case
-/// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronization
-/// of just specific operations. To use this, set the *waitForSync* parameter
-/// to *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{EDGCOL_01_SaveEdgeCol}
-///   db._create("vertex");
-///   db._createEdgeCollection("relation");
-///   v1 = db.vertex.insert({ name : "vertex 1" });
-///   v2 = db.vertex.insert({ name : "vertex 2" });
-///   e1 = db.relation.insert(v1, v2, { label : "knows" });
-///   db._document(e1);
-/// ~ db._drop("relation");
-/// ~ db._drop("vertex");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock InsertEdgeCol
 ////////////////////////////////////////////////////////////////////////////////
 
 static void InsertEdgeCol(TRI_vocbase_col_t* col,
@@ -3560,10 +2940,10 @@ static void InsertEdgeColCoordinator(
   v8::HandleScope scope(isolate);
 
   // First get the initial data:
-  string const dbname(collection->_dbName);
+  std::string const dbname(collection->_dbName);
 
   // TODO: someone might rename the collection while we're reading its name...
-  string const collname(collection->_name);
+  std::string const collname(collection->_name);
 
   uint32_t const argLength = args.Length();
   if (argLength < 3 || argLength > 4) {
@@ -3571,8 +2951,8 @@ static void InsertEdgeColCoordinator(
         "insert(<from>, <to>, <data>, [<waitForSync>])");
   }
 
-  string _from = GetId(args, 0);
-  string _to = GetId(args, 1);
+  std::string _from = GetId(args, 0);
+  std::string _to = GetId(args, 1);
 
   std::unique_ptr<TRI_json_t> json(TRI_ObjectToJson(isolate, args[2]));
 
@@ -3598,8 +2978,8 @@ static void InsertEdgeColCoordinator(
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
-  map<string, string> resultHeaders;
-  string resultBody;
+  std::map<std::string, std::string> resultHeaders;
+  std::string resultBody;
 
   int error = triagens::arango::createEdgeOnCoordinator(
       dbname, collname, options.waitForSync, json, _from.c_str(), _to.c_str(),
@@ -3620,10 +3000,10 @@ static void InsertEdgeColCoordinator(
     if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
-    string errorMessage;
+    std::string errorMessage;
     subjson = TRI_LookupObjectJson(json.get(), "errorMessage");
     if (nullptr != subjson && TRI_IsStringJson(subjson)) {
-      errorMessage = string(subjson->_value._string.data,
+      errorMessage = std::string(subjson->_value._string.data,
                             subjson->_value._string.length - 1);
     }
     TRI_V8_THROW_EXCEPTION_MESSAGE(errorNum, errorMessage);
@@ -3633,43 +3013,7 @@ static void InsertEdgeColCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief insert a new document
-/// @startDocuBlock documentsCollectionInsert
-/// `collection.insert(data)`
-///
-/// Creates a new document in the *collection* from the given *data*. The
-/// *data* must be an object.
-///
-/// The method returns a document with the attributes *_id* and *_rev*.
-/// The attribute *_id* contains the document handle of the newly created
-/// document, the attribute *_rev* contains the document revision.
-///
-/// `collection.insert(data, waitForSync)`
-///
-/// Creates a new document in the *collection* from the given *data* as
-/// above. The optional *waitForSync* parameter can be used to force
-/// synchronization of the document creation operation to disk even in case
-/// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronization
-/// of just specific operations. To use this, set the *waitForSync* parameter
-/// to *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// Note: since ArangoDB 2.2, *insert* is an alias for *save*.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsert}
-/// ~ db._create("example");
-///   db.example.insert({ Hello : "World" });
-///   db.example.insert({ Hello : "World" }, true);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsCollectionInsert
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_InsertVocbaseCol(
@@ -3759,7 +3103,7 @@ static void JS_StatusVocbaseCol(
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
-    shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
@@ -3843,7 +3187,7 @@ static void JS_TruncateDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("truncateDatafile(<datafile>, <size>)");
   }
 
-  string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(args[0]);
   size_t size = (size_t)TRI_ObjectToInt64(args[1]);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
@@ -3888,7 +3232,7 @@ static void JS_TryRepairDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("tryRepairDatafile(<datafile>)");
   }
 
-  string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(args[0]);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -3911,14 +3255,7 @@ static void JS_TryRepairDatafileVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the type of a collection
-/// @startDocuBlock collectionType
-/// `collection.type()`
-///
-/// Returns the type of a collection. Possible values are:
-/// - 2: document collection
-/// - 3: edge collection
-/// @endDocuBlock
+/// @brief was docuBlock collectionType
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_TypeVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -3935,7 +3272,7 @@ static void JS_TypeVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (ServerState::instance()->isCoordinator()) {
     std::string const databaseName = std::string(collection->_dbName);
 
-    shared_ptr<CollectionInfo> const ci =
+    std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(
             databaseName, StringUtils::itoa(collection->_cid));
 
@@ -3956,24 +3293,7 @@ static void JS_TypeVocbaseCol(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unloads a collection
-/// @startDocuBlock collectionUnload
-/// `collection.unload()`
-///
-/// Starts unloading a collection from memory. Note that unloading is deferred
-/// until all query have finished.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{CollectionUnload}
-/// ~ db._create("example");
-///   col = db.example;
-///   col.unload();
-///   col;
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionUnload
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UnloadVocbaseCol(
@@ -3991,7 +3311,7 @@ static void JS_UnloadVocbaseCol(
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    string const databaseName(collection->_dbName);
+    std::string const databaseName(collection->_dbName);
 
     res = ClusterInfo::instance()->setCollectionStatusCoordinator(
         databaseName, StringUtils::itoa(collection->_cid),
@@ -4090,27 +3410,6 @@ static void JS_CheckPointersVocbaseCol(
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief changes the operation mode of the server
-/// @startDocuBock TODO
-/// `db._changeMode(<mode>)`
-///
-/// Sets the server to the given mode.
-/// Possible values for mode are:
-/// - Normal
-/// - NoCreate
-///
-/// `db._changeMode(<mode>)`
-///
-/// *Examples*
-///
-/// db._changeMode("Normal") every user can do all CRUD operations
-/// db._changeMode("NoCreate") the user cannot create databases, indexes,
-///                            and collections, and cannot carry out any
-///                            data-modifying operations but dropping databases,
-///                            indexes and collections.
-////////////////////////////////////////////////////////////////////////////////
-
 static void JS_ChangeOperationModeVocbase(
     const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -4128,7 +3427,7 @@ static void JS_ChangeOperationModeVocbase(
 
     TRI_GET_GLOBAL_STRING(PortTypeKey);
     if (obj->Has(PortTypeKey)) {
-      string const portType = TRI_ObjectToString(obj->Get(PortTypeKey));
+      std::string const portType = TRI_ObjectToString(obj->Get(PortTypeKey));
       if (portType == "unix") {
         allowModeChange = true;
       }
@@ -4145,7 +3444,7 @@ static void JS_ChangeOperationModeVocbase(
         "_changeMode(<mode>), with modes: 'Normal', 'NoCreate'");
   }
 
-  string const newModeStr = TRI_ObjectToString(args[0]);
+  std::string const newModeStr = TRI_ObjectToString(args[0]);
 
   TRI_vocbase_operationmode_e newMode = TRI_VOCBASE_MODE_NORMAL;
 
@@ -4175,45 +3474,12 @@ static TRI_vocbase_col_t* GetCollectionFromArgument(
     return TRI_LookupCollectionByIdVocBase(vocbase, cid);
   }
 
-  string const name = TRI_ObjectToString(val);
+  std::string const name = TRI_ObjectToString(val);
   return TRI_LookupCollectionByNameVocBase(vocbase, name.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a single collection or null
-/// @startDocuBlock collectionDatabaseName
-/// `db._collection(collection-name)`
-///
-/// Returns the collection with the given name or null if no such collection
-/// exists.
-///
-/// `db._collection(collection-identifier)`
-///
-/// Returns the collection with the given identifier or null if no such
-/// collection exists. Accessing collections by identifier is discouraged for
-/// end users. End users should access collections using the collection name.
-///
-/// @EXAMPLES
-///
-/// Get a collection by name:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseName}
-///   db._collection("demo");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Get a collection by id:
-///
-/// ```
-/// arangosh> db._collection(123456);
-/// [ArangoCollection 123456, "demo" (type document, status loaded)]
-/// ```
-///
-/// Unknown collection:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameUnknown}
-///   db._collection("unknown");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
+/// @brief was docuBlock collectionDatabaseName
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionVocbase(
@@ -4240,8 +3506,8 @@ static void JS_CollectionVocbase(
   TRI_vocbase_col_t const* collection = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
-    string const name = TRI_ObjectToString(val);
-    shared_ptr<CollectionInfo> const ci =
+    std::string const name = TRI_ObjectToString(val);
+    std::shared_ptr<CollectionInfo> const ci =
         ClusterInfo::instance()->getCollection(vocbase->_name, name);
 
     if ((*ci).id() == 0 || (*ci).empty()) {
@@ -4269,21 +3535,7 @@ static void JS_CollectionVocbase(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all collections
-/// @startDocuBlock collectionDatabaseNameAll
-/// `db._collections()`
-///
-/// Returns all collections of the given database.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
-/// ~ db._create("example");
-///   db._collections();
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionDatabaseNameAll
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CollectionsVocbase(
@@ -4399,75 +3651,7 @@ static void JS_CompletionsVocbase(
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a document
-/// @startDocuBlock documentsDocumentRemove
-/// `db._remove(document)`
-///
-/// Removes a document. If there is revision mismatch, then an error is thrown.
-///
-/// `db._remove(document, true)`
-///
-/// Removes a document. If there is revision mismatch, then mismatch is ignored
-/// and document is deleted. The function returns *true* if the document
-/// existed and was deleted. It returns *false*, if the document was already
-/// deleted.
-///
-/// `db._remove(document, true, waitForSync)` or
-/// `db._remove(document, {overwrite: true or false, waitForSync: true or
-/// false})`
-///
-/// The optional *waitForSync* parameter can be used to force synchronization
-/// of the document deletion operation to disk even in case that the
-/// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronization of just
-/// specific operations. To use this, set the *waitForSync* parameter to
-/// *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `db._remove(document-handle, data)`
-///
-/// As before. Instead of document a *document-handle* can be passed as first
-/// argument.
-///
-/// @EXAMPLES
-///
-/// Remove a document:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemove}
-/// ~ db._create("example");
-///   a1 = db.example.insert({ a : 1 });
-///   db._remove(a1);
-///   db._remove(a1);  // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-///   db._remove(a1, true);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Remove a document with a conflict:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveConflict}
-/// ~ db._create("example");
-///   a1 = db.example.insert({ a : 1 });
-///   a2 = db._replace(a1, { a : 2 });
-///   db._remove(a1);       // xpError(ERROR_ARANGO_CONFLICT)
-///   db._remove(a1, true);
-///   db._document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// Remove a document using new signature:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveSignature}
-/// ~ db._create("example");
-///   db.example.insert({ a:  1 } );
-///   db.example.remove("example/11265325374", {overwrite: true, waitForSync:
-///   false})
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsDocumentRemove
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_RemoveVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -4477,40 +3661,7 @@ static void JS_RemoveVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a document and returns it
-/// @startDocuBlock documentsDocumentName
-/// `db._document(document)`
-///
-/// This method finds a document given its identifier. It returns the document
-/// if the document exists. An error is thrown if no document with the given
-/// identifier exists, or if the specified *_rev* value does not match the
-/// current revision of the document.
-///
-/// **Note**: If the method is executed on the arangod server (e.g. from
-/// inside a Foxx application), an immutable document object will be returned
-/// for performance reasons. It is not possible to change attributes of this
-/// immutable object. To update or patch the returned document, it needs to be
-/// cloned/copied into a regular JavaScript object first. This is not necessary
-/// if the *_document* method is called from out of arangosh or from any
-/// other client.
-///
-/// `db._document(document-handle)`
-///
-/// As before. Instead of document a *document-handle* can be passed as
-/// first argument.
-///
-/// @EXAMPLES
-///
-/// Returns the document:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentName}
-/// ~ db._create("example");
-/// ~ var myid = db.example.insert({_key: "12345"});
-///   db._document("example/12345");
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsDocumentName
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_DocumentVocbase(
@@ -4521,24 +3672,7 @@ static void JS_DocumentVocbase(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a document exists
-/// @startDocuBlock documentsDocumentExists
-/// `db._exists(document)`
-///
-/// This method determines whether a document exists given its identifier.
-/// Instead of returning the found document or an error, this method will
-/// return either *true* or *false*. It can thus be used
-/// for easy existence checks.
-///
-/// No error will be thrown if the sought document or collection does not
-/// exist.
-/// Still this method will throw an error if used improperly, e.g. when called
-/// with a non-document handle.
-///
-/// `db._exists(document-handle)`
-///
-/// As before, but instead of a document a document-handle can be passed.
-/// @endDocuBlock
+/// @brief was docuBlock documentsDocumentExists
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ExistsVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -4548,55 +3682,7 @@ static void JS_ExistsVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces a document
-/// @startDocuBlock documentsDocumentReplace
-/// `db._replace(document, data)`
-///
-/// The method returns a document with the attributes *_id*, *_rev* and
-/// *_oldRev*.  The attribute *_id* contains the document handle of the
-/// updated document, the attribute *_rev* contains the document revision of
-/// the updated document, the attribute *_oldRev* contains the revision of
-/// the old (now replaced) document.
-///
-/// If there is a conflict, i. e. if the revision of the *document* does not
-/// match the revision in the collection, then an error is thrown.
-///
-/// `db._replace(document, data, true)`
-///
-/// As before, but in case of a conflict, the conflict is ignored and the old
-/// document is overwritten.
-///
-/// `db._replace(document, data, true, waitForSync)`
-///
-/// The optional *waitForSync* parameter can be used to force
-/// synchronization of the document replacement operation to disk even in case
-/// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronization
-/// of just specific operations. To use this, set the *waitForSync* parameter
-/// to *true*. If the *waitForSync* parameter is not specified or set to
-/// *false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// `db._replace(document-handle, data)`
-///
-/// As before. Instead of document a *document-handle* can be passed as
-/// first argument.
-///
-/// @EXAMPLES
-///
-/// Create and replace a document:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentReplace}
-/// ~ db._create("example");
-///   a1 = db.example.insert({ a : 1 });
-///   a2 = db._replace(a1, { a : 2 });
-///   a3 = db._replace(a1, { a : 3 });  // xpError(ERROR_ARANGO_CONFLICT);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsDocumentReplace
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_ReplaceVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -4606,63 +3692,7 @@ static void JS_ReplaceVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document
-/// @startDocuBlock documentsDocumentUpdate
-/// `db._update(document, data, overwrite, keepNull, waitForSync)`
-///
-/// Updates an existing *document*. The *document* must be a document in
-/// the current collection. This document is then patched with the
-/// *data* given as second argument. The optional *overwrite* parameter can
-/// be used to control the behavior in case of version conflicts (see below).
-/// The optional *keepNull* parameter can be used to modify the behavior when
-/// handling *null* values. Normally, *null* values are stored in the
-/// database. By setting the *keepNull* parameter to *false*, this behavior
-/// can be changed so that all attributes in *data* with *null* values will
-/// be removed from the target document.
-///
-/// The optional *waitForSync* parameter can be used to force
-/// synchronization of the document update operation to disk even in case
-/// that the *waitForSync* flag had been disabled for the entire collection.
-/// Thus, the *waitForSync* parameter can be used to force synchronization
-/// of just specific operations. To use this, set the *waitForSync* parameter
-/// to *true*. If the *waitForSync* parameter is not specified or set to
-/// false*, then the collection's default *waitForSync* behavior is
-/// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronization for collections that have a default *waitForSync* value
-/// of *true*.
-///
-/// The method returns a document with the attributes *_id*, *_rev* and
-/// *_oldRev*. The attribute *_id* contains the document handle of the
-/// updated document, the attribute *_rev* contains the document revision of
-/// the updated document, the attribute *_oldRev* contains the revision of
-/// the old (now replaced) document.
-///
-/// If there is a conflict, i. e. if the revision of the *document* does not
-/// match the revision in the collection, then an error is thrown.
-///
-/// `db._update(document, data, true)`
-///
-/// As before, but in case of a conflict, the conflict is ignored and the old
-/// document is overwritten.
-///
-/// `db._update(document-handle, data)`
-///
-/// As before. Instead of document a *document-handle* can be passed as
-/// first argument.
-///
-/// @EXAMPLES
-///
-/// Create and update a document:
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentUpdate}
-/// ~ db._create("example");
-///   a1 = db.example.insert({ a : 1 });
-///   a2 = db._update(a1, { b : 2 });
-///   a3 = db._update(a1, { c : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock documentsDocumentUpdate
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_UpdateVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -4673,21 +3703,7 @@ static void JS_UpdateVocbase(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief counts the number of documents in a result set
-/// @startDocuBlock collectionCount
-/// `collection.count()`
-///
-/// Returns the number of living documents in the collection.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
-/// ~ db._create("users");
-///   db.users.count();
-/// ~ db._drop("users");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
+/// @brief was docuBlock collectionCount
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_CountVocbaseCol(
@@ -4708,10 +3724,10 @@ static void JS_CountVocbaseCol(
 
   if (ServerState::instance()->isCoordinator()) {
     // First get the initial data:
-    string const dbname(collection->_dbName);
+    std::string const dbname(collection->_dbName);
 
     // TODO: someone might rename the collection while we're reading its name...
-    string const collname(collection->_name);
+    std::string const collname(collection->_name);
 
     uint64_t count = 0;
     int error = triagens::arango::countOnCoordinator(dbname, collname, count);
@@ -4842,7 +3858,7 @@ static void JS_DatafileScanVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("datafileScan(<path>)");
   }
 
-  string path = TRI_ObjectToString(args[0]);
+  std::string path = TRI_ObjectToString(args[0]);
 
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -4921,7 +3937,7 @@ static void JS_DatafileScanVocbaseCol(
 
 void TRI_InitV8collection(v8::Handle<v8::Context> context, TRI_server_t* server,
                           TRI_vocbase_t* vocbase, JSLoader* loader,
-                          const size_t threadNumber, TRI_v8_global_t* v8g,
+                          size_t const threadNumber, TRI_v8_global_t* v8g,
                           v8::Isolate* isolate,
                           v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_changeMode"),

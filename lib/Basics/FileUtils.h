@@ -64,7 +64,7 @@ void slurp(std::string const& filename, StringBuffer&);
 /// @brief creates file and writes string to it
 ////////////////////////////////////////////////////////////////////////////////
 
-void spit(std::string const& filename, const char* ptr, size_t len);
+void spit(std::string const& filename, char const* ptr, size_t len);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates file and writes string to it

@@ -106,6 +106,11 @@
 
 ### Bundled NPM modules
 
+#### accepts
+
+* GITHUB: https://github.com/jshttp/accepts
+* License: [MIT License](https://github.com/jshttp/accepts/blob/master/LICENSE)
+
 #### Ace
 
 * GITHUB: https://github.com/ajaxorg/ace
@@ -121,6 +126,11 @@
 * Project Home: http://chaijs.com
 * GITHUB: https://github.com/chaijs/chai
 * License: [MIT License](https://github.com/chaijs/chai/blob/master/README.md)
+
+#### content-disposition
+
+* GITHUB: https://github.com/jshttp/content-disposition
+* License: [MIT License](https://github.com/jshttp/content-disposition/blob/master/LICENSE)
 
 #### expect.js
 
@@ -175,10 +185,21 @@
 * GITHUB: https://github.com/atesgoral/jsunity
 * License: [MIT License](https://github.com/atesgoral/jsunity/blob/master/LICENSE.txt)
 
+#### lodash
+
+* Project Home: https://lodash.com
+* GITHUB: https://github.com/lodash/lodash
+* License: [MIT License](https://github.com/lodash/lodash/blob/master/LICENSE)
+
 #### media-typer
 
 * GITHUB: https://github.com/jshttp/media-typer
 * License: [MIT License](https://github.com/jshttp/media-typer/blob/master/LICENSE)
+
+#### mime-types
+
+* GITHUB: https://github.com/jshttp/mime-types
+* License: [MIT License](https://github.com/jshttp/mime-types/blob/master/LICENSE)
 
 #### minimatch
 
@@ -201,6 +222,11 @@
 * GITHUB: https://github.com/hapijs/qs
 * License: [BSD-style 3-Clause License](https://github.com/hapijs/qs/blob/master/LICENSE)
 
+#### range-parser
+
+* GITHUB: https://github.com/jshttp/range-parser
+* License: [MIT License](https://github.com/jshttp/range-parser/blob/master/LICENSE)
+
 #### Sinon.JS
 
 * Project Home: http://sinonjs.org
@@ -209,9 +235,24 @@
 
 #### stacktrace.js
 
-* Project Home: 
+* Project Home: https://www.stacktracejs.com
 * GITHUB: https://github.com/stacktracejs/stacktrace.js
 * License: [The Unlicense](https://github.com/stacktracejs/stacktrace.js/blob/master/LICENSE), see http://unlicense.org
+
+#### statuses
+
+* GITHUB: https://github.com/jshttp/statuses
+* License: [MIT License](https://github.com/jshttp/statuses/blob/master/LICENSE)
+
+#### type-is
+
+* GITHUB: https://github.com/jshttp/type-is
+* License: [MIT License](https://github.com/jshttp/type-is/blob/master/LICENSE)
+
+#### vary
+
+* GITHUB: https://github.com/jshttp/vary
+* License: [MIT License](https://github.com/jshttp/vary/blob/master/LICENSE)
 
 #### underscore
 
@@ -220,6 +261,11 @@
 * License: [MIT-style License](https://github.com/jashkenas/underscore/blob/master/LICENSE)
 
 ### Frontend libraries
+
+#### Animate.css
+
+* https://github.com/daneden/animate.css
+* [MIT License](https://github.com/daneden/animate.css) under "License"
 
 #### Backbone.js
 
@@ -288,7 +334,7 @@
 * GITHUB: https://github.com/jeresig/jquery.hotkeys
 * License: Dual License [MIT License](https://github.com/jeresig/jquery.hotkeys/blob/master/jquery.hotkeys.js)
 
-#### jQuery Snippet 
+#### jQuery Snippet
 
 * Archived Project Home: https://web.archive.org/web/20150908173503/http://www.steamdev.com/snippet/
 * License: [MIT License](https://web.archive.org/web/20150817084109/http://steamdev.com/snippet/) in "Notes, section 5"
@@ -324,6 +370,11 @@
 * GITHUB: https://github.com/novus/nvd3
 * License: [Apache 2 License](https://github.com/novus/nvd3/blob/master/LICENSE.md) under "nvd3.js"
 
+#### Noty
+
+* https://github.com/needim/noty/
+* [MIT License](https://github.com/needim/noty) under "License"
+
 #### select2
 
 * GITHUB: https://github.com/select2/select2
@@ -334,13 +385,3 @@
 * Project Home: http://swagger.io
 * GITHUB: https://github.com/swagger-api/swagger-ui
 * License: [Apache 2 license](https://github.com/swagger-api/swagger-ui/blob/master/LICENSE)
-
-#### Noty
-
-* https://github.com/needim/noty/
-* [MIT License](https://github.com/needim/noty) under "License"
-
-#### Animate.css
-
-* https://github.com/daneden/animate.css
-* [MIT License](https://github.com/daneden/animate.css) under "License"

@@ -2,13 +2,13 @@ shell> curl -X PUT --header 'x-arango-async: store' --dump - http://localhost:85
 
 HTTP/1.1 202 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 603118023
+x-arango-async-id: 145216793943715
 
 shell> curl --dump - http://localhost:8529/_api/job/done
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 [ 
-  <span class="hljs-string">"603118023"</span> 
+  <span class="hljs-string">"145216793943715"</span> 
 ]

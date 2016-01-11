@@ -8,17 +8,17 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/transac
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">400</span> Bad Request
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"exception"</span> : <span class="hljs-string">"[ArangoError 1210: unique constraint violated]"</span>, 
   <span class="hljs-string">"stacktrace"</span> : [ 
-    <span class="hljs-string">"[ArangoError 1210: unique constraint violated]"</span>, 
-    <span class="hljs-string">"  at Error (native)"</span>, 
-    <span class="hljs-string">"  at eval (&lt;anonymous&gt;:1:99)"</span>, 
-    <span class="hljs-string">"  at eval (&lt;anonymous&gt;:1:122)"</span>, 
-    <span class="hljs-string">"  at post_api_transaction (js/actions/api-transaction.js:268:16)"</span>, 
-    <span class="hljs-string">"  at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)"</span> 
+    <span class="hljs-string">"Error: unique constraint violated"</span>, 
+    <span class="hljs-string">"    at Error (native)"</span>, 
+    <span class="hljs-string">"    at eval (eval at post_api_transaction (js/actions/api-transaction.js:268:16), &lt;anonymous&gt;:1:99)"</span>, 
+    <span class="hljs-string">"    at eval (eval at post_api_transaction (js/actions/api-transaction.js:268:16), &lt;anonymous&gt;:1:122)"</span>, 
+    <span class="hljs-string">"    at post_api_transaction (js/actions/api-transaction.js:268:16)"</span>, 
+    <span class="hljs-string">"    at Function.actions.defineHttp.callback (js/actions/api-transaction.js:288:11)"</span> 
   ], 
   <span class="hljs-string">"message"</span> : <span class="hljs-string">"unique constraint violated"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 

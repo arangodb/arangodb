@@ -47,7 +47,7 @@ static Completer* COMPLETER = nullptr;
 static void LinenoiseCompletionGenerator(char const* text,
                                          linenoiseCompletions* lc) {
   if (COMPLETER) {
-    std::vector<string> alternatives = COMPLETER->alternatives(text);
+    std::vector<std::string> alternatives = COMPLETER->alternatives(text);
     ShellBase::sortAlternatives(alternatives);
 
     for (auto& it : alternatives) {
@@ -58,9 +58,6 @@ static void LinenoiseCompletionGenerator(char const* text,
 
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 LinenoiseShell::LinenoiseShell(std::string const& history, Completer* completer)
     : ShellBase(history, completer) {
@@ -69,9 +66,6 @@ LinenoiseShell::LinenoiseShell(std::string const& history, Completer* completer)
   linenoiseInstallWindowChangeHandler();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 LinenoiseShell::~LinenoiseShell() { COMPLETER = nullptr; }
 

@@ -35,14 +35,11 @@ using namespace triagens::rest;
 using namespace triagens::arango;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
-V8TimerTask::V8TimerTask(string const& id, string const& name,
+V8TimerTask::V8TimerTask(std::string const& id, std::string const& name,
                          TRI_vocbase_t* vocbase, ApplicationV8* v8Dealer,
                          Scheduler* scheduler, Dispatcher* dispatcher,
-                         double offset, string const& command,
+                         double offset, std::string const& command,
                          TRI_json_t* parameters, bool allowUseDatabase)
     : Task(id, name),
       TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)),  // offset must be (at
@@ -63,9 +60,6 @@ V8TimerTask::V8TimerTask(string const& id, string const& name,
   TRI_UseVocBase(_vocbase);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 V8TimerTask::~V8TimerTask() {
   // decrease reference counter for the database used

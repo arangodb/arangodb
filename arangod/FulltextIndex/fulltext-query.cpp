@@ -29,7 +29,7 @@
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalise a word for a fulltext search query
+/// @brief normalize a word for a fulltext search query
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_fulltext_query_operation_e ParseOperation(char c) {
@@ -44,12 +44,12 @@ static TRI_fulltext_query_operation_e ParseOperation(char c) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalise a word for a fulltext search query
+/// @brief normalize a word for a fulltext search query
 /// this will create a copy of the word
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* NormaliseWord(char const* word, size_t wordLength) {
-  // normalise string
+  // normalize string
   size_t outLength;
   char* copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength,
                                          &outLength);
@@ -275,20 +275,20 @@ bool TRI_SetQueryFulltextIndex(TRI_fulltext_query_t* query, size_t position,
                                char const* word, size_t wordLength,
                                TRI_fulltext_query_match_e match,
                                TRI_fulltext_query_operation_e operation) {
-  char* normalised;
+  char* normalized;
 
   if (position >= query->_numWords) {
     return false;
   }
 
-  normalised = NormaliseWord(word, wordLength);
+  normalized = NormaliseWord(word, wordLength);
 
-  if (normalised == nullptr) {
+  if (normalized == nullptr) {
     query->_words[position] = nullptr;
     return false;
   }
 
-  query->_words[position] = normalised;
+  query->_words[position] = normalized;
   query->_matches[position] = match;
   query->_operations[position] = operation;
 

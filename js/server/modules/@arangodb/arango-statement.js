@@ -33,13 +33,7 @@ module.isSystem = true;
 var ArangoStatement = require("@arangodb/arango-statement-common").ArangoStatement;
 var GeneralArrayCursor = require("@arangodb/simple-query-common").GeneralArrayCursor;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   ArangoStatement
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a query and return the results
@@ -91,17 +85,7 @@ ArangoStatement.prototype.execute = function () {
   return new GeneralArrayCursor(result.json, 0, null, result);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.ArangoStatement = ArangoStatement;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

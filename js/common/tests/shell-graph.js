@@ -36,9 +36,6 @@ var console = require("console");
 var ArangoCollection = arangodb.ArangoCollection;
 var print = arangodb.print;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      graph module
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Graph Creation
@@ -719,9 +716,6 @@ function EdgeSuite() {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -734,7 +728,3 @@ jsunity.run(EdgeSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

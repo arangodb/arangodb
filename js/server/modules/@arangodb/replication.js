@@ -29,13 +29,7 @@
 
 var internal = require("internal");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 module "@arangodb/replication"
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 var logger  = { };
 var applier = { };
@@ -112,9 +106,6 @@ applier.properties = function (config) {
   return internal.configureReplicationApplier(config);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   other functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief performs a one-time synchronization with a remote endpoint
@@ -148,9 +139,6 @@ function serverId () {
   return internal.serverId();
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    module exports
-// -----------------------------------------------------------------------------
 
 exports.logger         = logger;
 exports.applier        = applier;
@@ -158,12 +146,4 @@ exports.sync           = sync;
 exports.syncCollection = syncCollection;
 exports.serverId       = serverId;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\|/\\*jslint"
-// End:
 

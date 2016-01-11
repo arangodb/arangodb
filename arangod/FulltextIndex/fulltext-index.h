@@ -103,8 +103,8 @@ bool TRI_InsertWordsFulltextIndex(TRI_fts_index_t* const,
 
 #if 0
 struct TRI_fulltext_result_s* TRI_FindExactFulltextIndex (TRI_fts_index_t* const,
-                                                          const char* const,
-                                                          const size_t);
+                                                          char const* const,
+                                                          size_t const);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,8 +113,8 @@ struct TRI_fulltext_result_s* TRI_FindExactFulltextIndex (TRI_fts_index_t* const
 
 #if 0
 struct TRI_fulltext_result_s* TRI_FindPrefixFulltextIndex (TRI_fts_index_t* const,
-                                                           const char*,
-                                                           const size_t);
+                                                           char const*,
+                                                           size_t const);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

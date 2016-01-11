@@ -110,7 +110,7 @@ static inline bool sliceArgs(v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 
 // supports regular and URL-safe base64
-static const int unbase64_table[] = {
+static int const unbase64_table[] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -2, -1, -1, -2, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -2, -1, -1, -1, -1, -1,
     -1, -1, -1, -1, -1, 62, -1, 62, -1, 63, 52, 53, 54, 55, 56, 57, 58, 59, 60,
@@ -132,9 +132,9 @@ static const int unbase64_table[] = {
 /// @brief Base64DecodedSize
 ////////////////////////////////////////////////////////////////////////////////
 
-static size_t Base64DecodedSize(const char* src, size_t size) {
-  const char* const end = src + size;
-  const int remainder = size % 4;
+static size_t Base64DecodedSize(char const* src, size_t size) {
+  char const* const end = src + size;
+  int const remainder = size % 4;
 
   size = (size / 4) * 3;
   if (remainder) {
@@ -189,7 +189,7 @@ static void Encode(const v8::FunctionCallbackInfo<v8::Value>& args,
                    const void* buf, size_t len, TRI_V8_encoding_t enc) {
   v8::Isolate* isolate = args.GetIsolate();
   if (enc == BUFFER) {
-    TRI_V8_RETURN(TRI_V8_PAIR_STRING(static_cast<const char*>(buf), len));
+    TRI_V8_RETURN(TRI_V8_PAIR_STRING(static_cast<char const*>(buf), len));
   }
 
   if (!len) {
@@ -212,7 +212,7 @@ static void Encode(const v8::FunctionCallbackInfo<v8::Value>& args,
   }
 
   // utf8 or ascii enc
-  v8::Local<v8::String> chunk = TRI_V8_PAIR_STRING((const char*)buf, (int)len);
+  v8::Local<v8::String> chunk = TRI_V8_PAIR_STRING((char const*)buf, (int)len);
   TRI_V8_RETURN(chunk);
 }
 
@@ -247,7 +247,7 @@ static void FromConstructorTemplate(
 /// @brief non ascii test, slow version
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ContainsNonAsciiSlow(const char* buf, size_t len) {
+static bool ContainsNonAsciiSlow(char const* buf, size_t len) {
   for (size_t i = 0; i < len; ++i) {
     if (buf[i] & 0x80) {
       return true;
@@ -261,7 +261,7 @@ static bool ContainsNonAsciiSlow(const char* buf, size_t len) {
 /// @brief non ascii test
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ContainsNonAscii(const char* src, size_t len) {
+static bool ContainsNonAscii(char const* src, size_t len) {
   if (len < 16) {
     return ContainsNonAsciiSlow(src, len);
   }
@@ -283,7 +283,7 @@ static bool ContainsNonAscii(const char* src, size_t len) {
 
 #if TRI_BITS == 64
   typedef uint64_t word;
-  const uint64_t mask = 0x8080808080808080ll;
+  uint64_t const mask = 0x8080808080808080ll;
 #else
   typedef uint32_t word;
   const uint32_t mask = 0x80808080l;
@@ -298,7 +298,7 @@ static bool ContainsNonAscii(const char* src, size_t len) {
   const unsigned remainder = len & align_mask;
 
   if (remainder > 0) {
-    const size_t offset = len - remainder;
+    size_t const offset = len - remainder;
 
     if (ContainsNonAsciiSlow(src + offset, remainder)) {
       return true;
@@ -312,7 +312,7 @@ static bool ContainsNonAscii(const char* src, size_t len) {
 /// @brief strips high bit, slow version
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ForceAsciiSlow(const char* src, char* dst, size_t len) {
+static void ForceAsciiSlow(char const* src, char* dst, size_t len) {
   for (size_t i = 0; i < len; ++i) {
     dst[i] = src[i] & 0x7f;
   }
@@ -322,7 +322,7 @@ static void ForceAsciiSlow(const char* src, char* dst, size_t len) {
 /// @brief strips high bit
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ForceAscii(const char* src, char* dst, size_t len) {
+static void ForceAscii(char const* src, char* dst, size_t len) {
   if (len < 16) {
     ForceAsciiSlow(src, dst, len);
     return;
@@ -348,7 +348,7 @@ static void ForceAscii(const char* src, char* dst, size_t len) {
 
 #if TRI_BITS == 64
   typedef uint64_t word;
-  const uint64_t mask = ~0x8080808080808080ll;
+  uint64_t const mask = ~0x8080808080808080ll;
 #else
   typedef uint32_t word;
   const uint32_t mask = ~0x80808080l;
@@ -364,7 +364,7 @@ static void ForceAscii(const char* src, char* dst, size_t len) {
   const unsigned remainder = len & align_mask;
 
   if (remainder > 0) {
-    const size_t offset = len - remainder;
+    size_t const offset = len - remainder;
     ForceAsciiSlow(src + offset, dst + offset, remainder);
   }
 }
@@ -411,7 +411,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
 
   if (is_buffer && (encoding == BINARY || encoding == BUFFER)) {
     // fast path, copy buffer data
-    const char* data = V8Buffer::data(val.As<v8::Object>());
+    char const* data = V8Buffer::data(val.As<v8::Object>());
     size_t size = V8Buffer::length(val.As<v8::Object>());
     size_t len = size < buflen ? size : buflen;
     memcpy(buf, data, len);
@@ -543,11 +543,11 @@ class RetainedBufferInfo : public v8::RetainedObjectInfo {
   virtual void Dispose();
   virtual bool IsEquivalent(RetainedObjectInfo* other);
   virtual intptr_t GetHash();
-  virtual const char* GetLabel();
+  virtual char const* GetLabel();
   virtual intptr_t GetSizeInBytes();
 
  private:
-  static const char _label[];
+  static char const _label[];
 
  private:
   V8Buffer* _buffer;
@@ -558,7 +558,7 @@ class RetainedBufferInfo : public v8::RetainedObjectInfo {
 /// @brief name of the class
 ////////////////////////////////////////////////////////////////////////////////
 
-const char RetainedBufferInfo::_label[] = "Buffer";
+char const RetainedBufferInfo::_label[] = "Buffer";
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -614,7 +614,7 @@ intptr_t RetainedBufferInfo::GetHash() {
 /// @brief returns the label of the class
 ////////////////////////////////////////////////////////////////////////////////
 
-const char* RetainedBufferInfo::GetLabel() { return _label; }
+char const* RetainedBufferInfo::GetLabel() { return _label; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size in bytes
@@ -704,7 +704,7 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, size_t length) {
 /// @brief constructor, data is copied
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Buffer* V8Buffer::New(v8::Isolate* isolate, const char* data, size_t length) {
+V8Buffer* V8Buffer::New(v8::Isolate* isolate, char const* data, size_t length) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
@@ -735,9 +735,6 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char* data, size_t length,
   return buffer;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 V8Buffer::~V8Buffer() { replace(_isolate, NULL, 0, NULL, NULL); }
 
@@ -943,7 +940,7 @@ static void JS_HexSlice(const v8::FunctionCallbackInfo<v8::Value>& args) {
   InitSafetyOverhead(dst, dstlen);
 
   for (uint32_t i = 0, k = 0; k < dstlen; i += 1, k += 2) {
-    static const char hex[] = "0123456789abcdef";
+    static char const hex[] = "0123456789abcdef";
     uint8_t val = static_cast<uint8_t>(src[i]);
     dst[k + 0] = hex[val >> 4];
     dst[k + 1] = hex[val & 15];
@@ -970,7 +967,7 @@ static void JS_Base64Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   unsigned slen = end - start;
-  const char* src = parent->_data + start;
+  char const* src = parent->_data + start;
 
   unsigned dlen = (slen + 2 - ((slen + 2) % 3)) / 3 * 4;
   char* dst = new char[dlen + SAFETY_OVERHEAD];
@@ -983,7 +980,7 @@ static void JS_Base64Slice(const v8::FunctionCallbackInfo<v8::Value>& args) {
   unsigned k;
   unsigned n;
 
-  static const char table[] =
+  static char const table[] =
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "abcdefghijklmnopqrstuvwxyz"
       "0123456789+/";
@@ -1234,7 +1231,7 @@ static void JS_HexWrite(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   char* dst = parent->_data + start;
   v8::String::Utf8Value string(s);
-  const char* src = *string;
+  char const* src = *string;
   uint32_t max = string.length() / 2;
 
   if (max > size) {
@@ -1323,8 +1320,8 @@ static void JS_Base64Write(const v8::FunctionCallbackInfo<v8::Value>& args) {
   char* start = buffer->_data + offset;
   char* dst = start;
   char* const dstEnd = dst + max_length;
-  const char* src = *s;
-  const char* const srcEnd = src + s.length();
+  char const* src = *s;
+  char const* const srcEnd = src + s.length();
 
   while (src < srcEnd && dst < dstEnd) {
     int remaining = (int)(srcEnd - src);

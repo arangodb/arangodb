@@ -1433,9 +1433,6 @@ var bootstrapDbServers = function (isRelaunch) {
   return result;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.bootstrapDbServers            = bootstrapDbServers;
 exports.coordinatorId                 = coordinatorId;
@@ -1454,11 +1451,4 @@ exports.Kickstarter = Kickstarter;
 exports.Planner = Planner;
 exports.PortFinder = PortFinder;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
-// End:

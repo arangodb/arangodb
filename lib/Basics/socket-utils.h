@@ -177,7 +177,7 @@ static inline int TRI_getsockopt(TRI_socket_t s, int level, int optname,
 #ifdef _WIN32
 static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
                                  const void* optval, int optlen) {
-  return setsockopt(s.fileHandle, level, optname, (const char*)optval, optlen);
+  return setsockopt(s.fileHandle, level, optname, (char const*)optval, optlen);
 }
 #else
 static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
@@ -194,12 +194,12 @@ static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
 static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
   DWORD to = (DWORD)timeout * 1000;
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (const char*)&to,
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to,
                      sizeof(to)) != 0) {
     return false;
   }
 
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (const char*)&to,
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to,
                      sizeof(to)) != 0) {
     return false;
   }

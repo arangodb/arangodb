@@ -36,9 +36,6 @@ using namespace triagens::arango;
 using namespace triagens::rest;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestShardHandler::RestShardHandler(triagens::rest::HttpRequest* request,
                                    Dispatcher* data)
@@ -80,8 +77,8 @@ triagens::rest::HttpHandler::status_t RestShardHandler::execute() {
     return status_t(HANDLER_DONE);
   }
 
-  string coordinatorHeader = _coordinator;
-  string result =
+  std::string coordinatorHeader = _coordinator;
+  std::string result =
       ClusterComm::instance()->processAnswer(coordinatorHeader, stealRequest());
 
   if (result == "") {

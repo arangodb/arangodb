@@ -39,6 +39,7 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
       _index(0),
       _thisBlock(0),
       _seen(0),
+      _docVecSize(0),
       _collection(nullptr),
       _inVarRegId(ExecutionNode::MaxRegisterId) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
@@ -80,7 +81,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
     return nullptr;
   }
 
-  unique_ptr<AqlItemBlock> res(nullptr);
+  std::unique_ptr<AqlItemBlock> res(nullptr);
 
   do {
     // repeatedly try to get more stuff from upstream
@@ -136,10 +137,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
         break;
       }
 
-      case AqlValue::SHAPED: {
-        throwArrayExpectedException();
-      }
-
+      case AqlValue::SHAPED: 
       case AqlValue::EMPTY: {
         throwArrayExpectedException();
       }

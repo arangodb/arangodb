@@ -33,7 +33,7 @@ using EN = triagens::aql::ExecutionNode;
 bool ConditionFinder::before(ExecutionNode* en) {
   switch (en->getType()) {
     case EN::ENUMERATE_LIST:
-    case EN::AGGREGATE:
+    case EN::COLLECT:
     case EN::SCATTER:
     case EN::DISTRIBUTE:
     case EN::GATHER:

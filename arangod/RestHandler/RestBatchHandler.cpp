@@ -36,152 +36,16 @@ using namespace triagens::arango;
 using namespace std;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::RestBatchHandler(HttpRequest* request)
     : RestVocbaseBaseHandler(request) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::~RestBatchHandler() {}
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_batch_processing
-/// @brief executes a batch request
-///
-/// @RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER:
-/// contentype
-///
-/// @RESTALLBODYPARAM{body,string,required}
-/// The multipart batch request, consisting of the envelope and the individual
-/// batch parts.
-///
-/// @RESTDESCRIPTION
-/// Executes a batch request. A batch request can contain any number of
-/// other requests that can be sent to ArangoDB in isolation. The benefit of
-/// using batch requests is that batching requests requires less client/server
-/// roundtrips than when sending isolated requests.
-///
-/// All parts of a batch request are executed serially on the server. The
-/// server will return the results of all parts in a single response when all
-/// parts are finished.
-///
-/// Technically, a batch request is a multipart HTTP request, with
-/// content-type `multipart/form-data`. A batch request consists of an
-/// envelope and the individual batch part actions. Batch part actions
-/// are "regular" HTTP requests, including full header and an optional body.
-/// Multiple batch parts are separated by a boundary identifier. The
-/// boundary identifier is declared in the batch envelope. The MIME content-type
-/// for each individual batch part must be `application/x-arango-batchpart`.
-///
-/// Please note that when constructing the individual batch parts, you must
-/// use CRLF (`\r\n`) as the line terminator as in regular HTTP messages.
-///
-/// The response sent by the server will be an `HTTP 200` response, with an
-/// optional error summary header `x-arango-errors`. This header contains the
-/// number of batch part operations that failed with an HTTP error code of at
-/// least 400. This header is only present in the response if the number of
-/// errors is greater than zero.
-///
-/// The response sent by the server is a multipart response, too. It contains
-/// the individual HTTP responses for all batch parts, including the full HTTP
-/// result header (with status code and other potential headers) and an
-/// optional result body. The individual batch parts in the result are
-/// seperated using the same boundary value as specified in the request.
-///
-/// The order of batch parts in the response will be the same as in the
-/// original client request. Client can additionally use the `Content-Id`
-/// MIME header in a batch part to define an individual id for each batch part.
-/// The server will return this id is the batch part responses, too.
-///
-/// @RESTRETURNCODES
-///
-/// @RESTRETURNCODE{200}
-/// is returned if the batch was received successfully. HTTP 200 is returned
-/// even if one or multiple batch part actions failed.
-///
-/// @RESTRETURNCODE{400}
-/// is returned if the batch envelope is malformed or incorrectly formatted.
-/// This code will also be returned if the content-type of the overall batch
-/// request or the individual MIME parts is not as expected.
-///
-/// @RESTRETURNCODE{405}
-/// is returned when an invalid HTTP method is used.
-///
-/// @EXAMPLES
-///
-/// Sending a batch request with five batch parts:
-///
-/// - GET /_api/version
-///
-/// - DELETE /_api/collection/products
-///
-/// - POST /_api/collection/products
-///
-/// - GET /_api/collection/products/figures
-///
-/// - DELETE /_api/collection/products
-///
-/// The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP
-/// `Content-Type` HTTP header.
-/// *Please note the reply is not displayed all accurate.*
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
-///     var parts = [
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       myId1\r\n\r\nGET /_api/version HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       myId2\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       someId\r\n\r\nPOST /_api/collection/products HTTP/1.1\r\n\r\n{
-///       \"name\": \"products\" }\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       nextId\r\n\r\nGET /_api/collection/products/figures HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\nContent-Id:
-///       otherId\r\n\r\nDELETE /_api/collection/products HTTP/1.1\r\n"
-///     ];
-///     var boundary = "SomeBoundaryValue";
-///     var headers = { "Content-Type" : "multipart/form-data; boundary=" +
-///     boundary };
-///     var body = "--" + boundary + "\r\n" +
-///                parts.join("\r\n" + "--" + boundary + "\r\n") +
-///                "--" + boundary + "--\r\n";
-///
-///     var response = logCurlRequestRaw('POST', '/_api/batch', body, headers);
-///
-///     assert(response.code === 200);
-///
-///     logRawResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-///
-/// Sending a batch request, setting the boundary implicitly (the server will
-/// in this case try to find the boundary at the beginning of the request body).
-///
-/// @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
-///     var parts = [
-///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE
-///       /_api/collection/notexisting1 HTTP/1.1\r\n",
-///       "Content-Type: application/x-arango-batchpart\r\n\r\nDELETE
-///       /_api/collection/notexisting2 HTTP/1.1\r\n"
-///     ];
-///     var boundary = "SomeBoundaryValue";
-///     var body = "--" + boundary + "\r\n" +
-///                parts.join("\r\n" + "--" + boundary + "\r\n") +
-///                "--" + boundary + "--\r\n";
-///
-///     var response = logCurlRequestRaw('POST', '/_api/batch', body);
-///
-///     assert(response.code === 200);
-///     assert(response.headers['x-arango-errors'] == 2);
-///
-///     logRawResponse(response);
-/// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock
+/// @brief was docuBlock JSF_batch_processing
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestBatchHandler::execute() {
@@ -195,7 +59,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     return status_t(HttpHandler::HANDLER_DONE);
   }
 
-  string boundary;
+  std::string boundary;
 
   // invalid content-type or boundary sent
   if (!getBoundary(&boundary)) {
@@ -209,7 +73,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
   size_t errors = 0;
 
   // get authorization header. we will inject this into the subparts
-  string authorization = _request->header("authorization");
+  std::string authorization = _request->header("authorization");
 
   // create the response
   createResponse(HttpResponse::OK);
@@ -236,11 +100,11 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // split part into header & body
-    const char* partStart = helper.foundStart;
-    const char* partEnd = partStart + helper.foundLength;
-    const size_t partLength = helper.foundLength;
+    char const* partStart = helper.foundStart;
+    char const* partEnd = partStart + helper.foundLength;
+    size_t const partLength = helper.foundLength;
 
-    const char* headerStart = partStart;
+    char const* headerStart = partStart;
     char* bodyStart = nullptr;
     size_t headerLength = 0;
     size_t bodyLength = 0;
@@ -267,7 +131,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     }
 
     // set up request object for the part
-    LOG_TRACE("part header is: %s", string(headerStart, headerLength).c_str());
+    LOG_TRACE("part header is: %s", std::string(headerStart, headerLength).c_str());
     HttpRequest* request =
         new HttpRequest(_request->connectionInfo(), headerStart, headerLength,
                         _request->compatibility(), false);
@@ -287,7 +151,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
     request->setDatabaseName(_request->databaseName());
 
     if (bodyLength > 0) {
-      LOG_TRACE("part body is '%s'", string(bodyStart, bodyLength).c_str());
+      LOG_TRACE("part body is '%s'", std::string(bodyStart, bodyLength).c_str());
       request->setBody(bodyStart, bodyLength);
     }
 
@@ -344,7 +208,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
       if (helper.contentId != 0) {
         _response->body().appendText(
             "\r\nContent-Id: " +
-            string(helper.contentId, helper.contentIdLength));
+            std::string(helper.contentId, helper.contentIdLength));
       }
 
       _response->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
@@ -383,7 +247,7 @@ HttpHandler::status_t RestBatchHandler::execute() {
 /// @brief extract the boundary from the body of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryBody(string* result) {
+bool RestBatchHandler::getBoundaryBody(std::string* result) {
   char const* p = _request->body();
   char const* e = p + _request->bodySize();
 
@@ -401,7 +265,7 @@ bool RestBatchHandler::getBoundaryBody(string* result) {
     return false;
   }
 
-  const char* q = p;
+  char const* q = p;
 
   while (q < e && *q && *q != ' ' && *q != '\t' && *q != '\r' && *q != '\n') {
     ++q;
@@ -412,7 +276,7 @@ bool RestBatchHandler::getBoundaryBody(string* result) {
     return false;
   }
 
-  string boundary(p, (q - p));
+  std::string boundary(p, (q - p));
 
   *result = boundary;
   return true;
@@ -422,31 +286,31 @@ bool RestBatchHandler::getBoundaryBody(string* result) {
 /// @brief extract the boundary from the HTTP header of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundaryHeader(string* result) {
+bool RestBatchHandler::getBoundaryHeader(std::string* result) {
   // extract content type
-  string contentType = StringUtils::trim(_request->header("content-type"));
+  std::string contentType = StringUtils::trim(_request->header("content-type"));
 
   // content type is expect to contain a boundary like this:
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
-  vector<string> parts = StringUtils::split(contentType, ';');
+  std::vector<std::string> parts = StringUtils::split(contentType, ';');
 
   if (parts.size() != 2 || parts[0] != HttpRequest::MultiPartContentType) {
     // content-type is not formatted as expected
     return false;
   }
 
-  static const size_t boundaryLength = 9;  // strlen("boundary=");
+  static size_t const boundaryLength = 9;  // strlen("boundary=");
 
   // trim 2nd part and lowercase it
   StringUtils::trimInPlace(parts[1]);
-  string p = parts[1].substr(0, boundaryLength);
+  std::string p = parts[1].substr(0, boundaryLength);
   StringUtils::tolowerInPlace(&p);
 
   if (p != "boundary=") {
     return false;
   }
 
-  string boundary = "--" + parts[1].substr(boundaryLength);
+  std::string boundary = "--" + parts[1].substr(boundaryLength);
 
   if (boundary.size() < 5) {
     // 3 bytes is min length for boundary (without "--")
@@ -461,7 +325,7 @@ bool RestBatchHandler::getBoundaryHeader(string* result) {
 /// @brief extract the boundary of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestBatchHandler::getBoundary(string* result) {
+bool RestBatchHandler::getBoundary(std::string* result) {
   TRI_ASSERT(_request);
 
   // try peeking at header first
@@ -487,7 +351,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
   helper->contentId = 0;
   helper->contentIdLength = 0;
 
-  const char* searchEnd = helper->message->messageEnd;
+  char const* searchEnd = helper->message->messageEnd;
 
   if (helper->searchStart >= searchEnd) {
     // we're at the end already
@@ -575,7 +439,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
     }
 
     // set up the key
-    string key(found, colon - found);
+    std::string key(found, colon - found);
     StringUtils::trimInPlace(key);
 
     if (key[0] == 'c' || key[0] == 'C') {
@@ -591,7 +455,7 @@ bool RestBatchHandler::extractPart(SearchHelper* helper) {
 
       if ("content-type" == key) {
         // extract the value, too
-        string value(colon, eol - colon);
+        std::string value(colon, eol - colon);
         StringUtils::trimInPlace(value);
 
         if (triagens::rest::HttpRequest::BatchContentType == value) {

@@ -72,6 +72,7 @@ void Aqlerror (YYLTYPE* locp,
 %token T_IN "IN keyword"
 %token T_WITH "WITH keyword"
 %token T_INTO "INTO keyword"
+%token T_AGGREGATE "AGGREGATE keyword"
 
 %token T_GRAPH "GRAPH keyword"
 %token T_DISTINCT "DISTINCT modifier"
@@ -125,10 +126,10 @@ void Aqlerror (YYLTYPE* locp,
 
 %token T_END 0 "end of query string"
 
-%token T_OUTBOUND "outbound direction"
-%token T_INBOUND "inbound direction"
-%token T_ANY "any direction"
+%token T_OUTBOUND "outbound modifier"
+%token T_INBOUND "inbound modifier"
 
+%token T_ANY "any modifier"
 %token T_ALL "all modifier"
 %token T_NONE "none modifier"
 
@@ -167,6 +168,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> collect_element;
 %type <node> collect_variable_list;
 %type <node> keep;
+%type <node> aggregate;
 %type <strval> optional_into;
 %type <strval> count_into;
 %type <node> expression;
@@ -347,6 +349,7 @@ collect_variable_list:
 
 collect_statement: 
     T_COLLECT count_into options {
+      /* COLLECT WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -363,6 +366,7 @@ collect_statement:
       parser->ast()->addOperation(node);
     }
   | collect_variable_list count_into options {
+      /* COLLECT var = expr WITH COUNT INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -389,7 +393,97 @@ collect_statement:
       auto node = parser->ast()->createNodeCollectCount($1, $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
     }
+  | T_COLLECT aggregate options {
+      /* AGGREGATE var = expr OPTIONS ... */
+      auto scopes = parser->ast()->scopes();
+
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
+
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+        // register group variables
+        size_t const n = $2->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = $2->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
+        }
+      }
+
+      auto node = parser->ast()->createNodeCollectAggregate(parser->ast()->createNodeArray(), $2, $3);
+      parser->ast()->addOperation(node);
+    }
+  | collect_variable_list aggregate options {
+      /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
+      auto scopes = parser->ast()->scopes();
+
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
+
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+        // register all group variables
+        size_t n = $1->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = $1->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
+        }
+
+        // register aggregate variables too
+        n = $2->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = $2->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto func = member->getMember(1);
+
+            bool isValid = true;
+            if (func->type != NODE_TYPE_FCALL) {
+              // aggregate expression must be a function call
+              isValid = false;
+            }
+            else {
+              auto f = static_cast<triagens::aql::Function*>(func->getData());
+              if (f->externalName != "MIN" && f->externalName != "MAX" && f->externalName != "LENGTH") {
+                // aggregate expression must be a call to MIN|MAX|LENGTH
+                isValid = false;
+              }
+            }
+
+            if (! isValid) {
+              parser->registerParseError(TRI_ERROR_QUERY_PARSE, "aggregate expression must be a function call", yylloc.first_line, yylloc.first_column);
+            }
+
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
+        }
+      }
+
+      auto node = parser->ast()->createNodeCollectAggregate($1, $2, $3);
+      parser->ast()->addOperation(node);
+    }
   | collect_variable_list optional_into options {
+      /* COLLECT var = expr INTO var OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -416,7 +510,36 @@ collect_statement:
       auto node = parser->ast()->createNodeCollect($1, $2.value, $2.length, nullptr, $3);
       parser->ast()->addOperation(node);
     }
+  | collect_variable_list T_INTO variable_name T_ASSIGN expression options {
+      /* COLLECT var = expr INTO var = expr OPTIONS ... */
+      auto scopes = parser->ast()->scopes();
+
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
+
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+        size_t const n = $1->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = $1->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
+        }
+      }
+
+      auto node = parser->ast()->createNodeCollectExpression($1, $3.value, $3.length, $5, $6);
+      parser->ast()->addOperation(node);
+    }
   | collect_variable_list optional_into keep options {
+      /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -446,33 +569,6 @@ collect_statement:
       } 
 
       auto node = parser->ast()->createNodeCollect($1, $2.value, $2.length, $3, $4);
-      parser->ast()->addOperation(node);
-    }
-  | collect_variable_list T_INTO variable_name T_ASSIGN expression options {
-      auto scopes = parser->ast()->scopes();
-
-      // check if we are in the main scope
-      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
-
-      if (reRegisterVariables) {
-        // end the active scopes
-        scopes->endNested();
-        // start a new scope
-        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
-
-        size_t const n = $1->numMembers();
-        for (size_t i = 0; i < n; ++i) {
-          auto member = $1->getMember(i);
-
-          if (member != nullptr) {
-            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-            auto v = static_cast<Variable*>(member->getMember(0)->getData());
-            scopes->addVariable(v);
-          }
-        }
-      }
-
-      auto node = parser->ast()->createNodeCollectExpression($1, $3.value, $3.length, $5, $6);
       parser->ast()->addOperation(node);
     }
   ;
@@ -542,6 +638,16 @@ keep:
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } variable_list {
+      auto list = static_cast<AstNode*>(parser->popStack());
+      $$ = list;
+    }
+  ;
+
+aggregate: 
+    T_AGGREGATE {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } collect_list {
       auto list = static_cast<AstNode*>(parser->popStack());
       $$ = list;
     }

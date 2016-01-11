@@ -758,7 +758,7 @@ static void LogThread(char const* func, char const* file, int line,
                       TRI_log_level_e level, TRI_log_severity_e severity,
                       TRI_pid_t processId, TRI_tid_t threadId, char const* fmt,
                       va_list ap) {
-  static const int maxSize = 100 * 1024;
+  static int const maxSize = 100 * 1024;
   va_list ap2;
   char buffer[2048];  // try a static buffer first
   time_t tt;

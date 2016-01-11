@@ -79,12 +79,12 @@ static T ExtractFigure(TRI_json_t const* json, char const* group,
 ////////////////////////////////////////////////////////////////////////////////
 
 void mergeResponseHeaders(HttpResponse* response,
-                          map<string, string> const& headers) {
-  map<string, string>::const_iterator it = headers.begin();
+                          std::map<std::string, std::string> const& headers) {
+  std::map<std::string, std::string>::const_iterator it = headers.begin();
 
   while (it != headers.end()) {
     // skip first header line (which is the HTTP response code)
-    const string& key = (*it).first;
+    std::string const& key = (*it).first;
 
     // the following headers are ignored
     if (key != "http/1.1" && key != "connection" && key != "content-length" &&
@@ -101,13 +101,13 @@ void mergeResponseHeaders(HttpResponse* response,
 
 std::map<std::string, std::string> getForwardableRequestHeaders(
     triagens::rest::HttpRequest* request) {
-  map<string, string> const& headers = request->headers();
-  map<string, string>::const_iterator it = headers.begin();
+  std::map<std::string, std::string> const& headers = request->headers();
+  std::map<std::string, std::string>::const_iterator it = headers.begin();
 
-  map<string, string> result;
+  std::map<std::string, std::string> result;
 
   while (it != headers.end()) {
-    const string& key = (*it).first;
+    std::string const& key = (*it).first;
 
     // ignore the following headers
     if (key != "x-arango-async" && key != "authorization" &&
@@ -342,7 +342,7 @@ int revisionOnCoordinator(std::string const& dbname,
 /// @brief returns figures for a sharded collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int figuresOnCoordinator(string const& dbname, string const& collname,
+int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
                          TRI_doc_collection_info_t*& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -464,7 +464,7 @@ int figuresOnCoordinator(string const& dbname, string const& collname,
 /// @brief counts number of documents in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int countOnCoordinator(string const& dbname, string const& collname,
+int countOnCoordinator(std::string const& dbname, std::string const& collname,
                        uint64_t& result) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
@@ -529,9 +529,9 @@ int countOnCoordinator(string const& dbname, string const& collname,
 
 int createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname, bool waitForSync,
-    VPackSlice const& slice, map<string, string> const& headers,
+    VPackSlice const& slice, std::map<std::string, std::string> const& headers,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    map<string, string>& resultHeaders, string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
       triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
   return createDocumentOnCoordinator(dbname, collname, waitForSync, json,
@@ -544,7 +544,7 @@ int createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int createDocumentOnCoordinator(
-    string const& dbname, string const& collname, bool waitForSync,
+    std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json,
     std::map<std::string, std::string> const& headers,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
@@ -562,7 +562,7 @@ int createDocumentOnCoordinator(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
-  string const collid = StringUtils::itoa(collinfo->id());
+  std::string const collid = StringUtils::itoa(collinfo->id());
 
   // Sort out the _key attribute:
   // The user is allowed to specify _key, provided that _key is the one
@@ -574,7 +574,7 @@ int createDocumentOnCoordinator(
   // the responsible shard.
   TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), TRI_VOC_ATTRIBUTE_KEY);
   bool userSpecifiedKey = false;
-  string _key;
+  std::string _key;
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
@@ -605,7 +605,7 @@ int createDocumentOnCoordinator(
     return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
   }
 
-  string const body = JsonHelper::toString(json.get());
+  std::string const body = JsonHelper::toString(json.get());
 
   // Send a synchronous request to that shard using ClusterComm:
   auto res = cc->syncRequest(
@@ -643,11 +643,11 @@ int createDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int deleteDocumentOnCoordinator(
-    string const& dbname, string const& collname, string const& key,
+    std::string const& dbname, std::string const& collname, std::string const& key,
     TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    map<string, string>& resultHeaders, string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -658,7 +658,7 @@ int deleteDocumentOnCoordinator(
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = StringUtils::itoa(collinfo->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -679,12 +679,12 @@ int deleteDocumentOnCoordinator(
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Some stuff to prepare cluster-intern requests:
-  string revstr;
+  std::string revstr;
   if (rev != 0) {
     revstr = "&rev=" + StringUtils::itoa(rev);
   }
 
-  string policystr;
+  std::string policystr;
   if (policy == TRI_DOC_UPDATE_LAST_WRITE) {
     policystr = "&policy=last";
   }
@@ -752,7 +752,7 @@ int deleteDocumentOnCoordinator(
         nrok++;
         responseCode = res.answer_code;
         resultHeaders = res.answer->headers();
-        resultBody = string(res.answer->body(), res.answer->bodySize());
+        resultBody = std::string(res.answer->body(), res.answer->bodySize());
       }
     }
   }
@@ -769,8 +769,8 @@ int deleteDocumentOnCoordinator(
 /// @brief truncate a cluster collection on a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int truncateCollectionOnCoordinator(string const& dbname,
-                                    string const& collname) {
+int truncateCollectionOnCoordinator(std::string const& dbname,
+                                    std::string const& collname) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -821,12 +821,12 @@ int truncateCollectionOnCoordinator(string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int getDocumentOnCoordinator(
-    string const& dbname, string const& collname, string const& key,
+    std::string const& dbname, std::string const& collname, std::string const& key,
     TRI_voc_rid_t const rev,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     bool generateDocument,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    map<string, string>& resultHeaders, string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -837,7 +837,7 @@ int getDocumentOnCoordinator(
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = StringUtils::itoa(collinfo->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -858,7 +858,7 @@ int getDocumentOnCoordinator(
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   // Some stuff to prepare cluster-intern requests:
-  string revstr;
+  std::string revstr;
   if (rev != 0) {
     revstr = "?rev=" + StringUtils::itoa(rev);
   }
@@ -928,7 +928,7 @@ int getDocumentOnCoordinator(
         nrok++;
         responseCode = res.answer_code;
         resultHeaders = res.answer->headers();
-        resultBody = string(res.answer->body(), res.answer->bodySize());
+        resultBody = std::string(res.answer->body(), res.answer->bodySize());
       }
     }
   }
@@ -955,7 +955,7 @@ static void insertIntoShardMap(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                    "Collection not found: " + splitId[0]);
   }
-  string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = StringUtils::itoa(collinfo->id());
   if (collinfo->usesDefaultShardKeys()) {
     // We only need add one resp. shard
     triagens::basics::Json partial(triagens::basics::Json::Object, 1);
@@ -1108,9 +1108,9 @@ int getFilteredDocumentsOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int getAllDocumentsOnCoordinator(
-    string const& dbname, string const& collname, string const& returnType,
+    std::string const& dbname, std::string const& collname, std::string const& returnType,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    string& contentType, string& resultBody) {
+    std::string& contentType, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1334,7 +1334,7 @@ int getFilteredEdgesOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    string const& dbname, string const& collname, string const& key,
+    std::string const& dbname, std::string const& collname, std::string const& key,
     TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
     bool isPatch,
     bool keepNull,      // only counts for isPatch == true
@@ -1342,7 +1342,7 @@ int modifyDocumentOnCoordinator(
     VPackSlice const& slice,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    map<string, string>& resultHeaders, string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   std::unique_ptr<TRI_json_t> json(
       triagens::basics::VelocyPackHelper::velocyPackToJson(slice));
   return modifyDocumentOnCoordinator(
@@ -1355,7 +1355,7 @@ int modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int modifyDocumentOnCoordinator(
-    string const& dbname, string const& collname, string const& key,
+    std::string const& dbname, std::string const& collname, std::string const& key,
     TRI_voc_rid_t const rev, TRI_doc_update_policy_e policy, bool waitForSync,
     bool isPatch,
     bool keepNull,      // only counts for isPatch == true
@@ -1363,7 +1363,7 @@ int modifyDocumentOnCoordinator(
     std::unique_ptr<TRI_json_t>& json,
     std::unique_ptr<std::map<std::string, std::string>>& headers,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    map<string, string>& resultHeaders, string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1374,7 +1374,7 @@ int modifyDocumentOnCoordinator(
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = StringUtils::itoa(collinfo->id());
 
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
@@ -1409,7 +1409,7 @@ int modifyDocumentOnCoordinator(
   }
 
   // Some stuff to prepare cluster-internal requests:
-  string revstr;
+  std::string revstr;
   if (rev != 0) {
     revstr = "&rev=" + StringUtils::itoa(rev);
   }
@@ -1428,7 +1428,7 @@ int modifyDocumentOnCoordinator(
     reqType = triagens::rest::HttpRequest::HTTP_REQUEST_PUT;
   }
 
-  string policystr;
+  std::string policystr;
   if (policy == TRI_DOC_UPDATE_LAST_WRITE) {
     policystr = "&policy=last";
   }
@@ -1500,7 +1500,7 @@ int modifyDocumentOnCoordinator(
         nrok++;
         responseCode = res.answer_code;
         resultHeaders = res.answer->headers();
-        resultBody = string(res.answer->body(), res.answer->bodySize());
+        resultBody = std::string(res.answer->body(), res.answer->bodySize());
       }
     }
   }
@@ -1518,10 +1518,10 @@ int modifyDocumentOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int createEdgeOnCoordinator(
-    string const& dbname, string const& collname, bool waitForSync,
+    std::string const& dbname, std::string const& collname, bool waitForSync,
     std::unique_ptr<TRI_json_t>& json, char const* from, char const* to,
     triagens::rest::HttpResponse::HttpResponseCode& responseCode,
-    map<string, string>& resultHeaders, string& resultBody) {
+    std::map<std::string, std::string>& resultHeaders, std::string& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
@@ -1532,7 +1532,7 @@ int createEdgeOnCoordinator(
   if (collinfo->empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-  string collid = StringUtils::itoa(collinfo->id());
+  std::string collid = StringUtils::itoa(collinfo->id());
 
   // Sort out the _key attribute:
   // The user is allowed to specify _key, provided that _key is the one
@@ -1544,7 +1544,7 @@ int createEdgeOnCoordinator(
   // the responsible shard.
   TRI_json_t* subjson = TRI_LookupObjectJson(json.get(), "_key");
   bool userSpecifiedKey = false;
-  string _key;
+  std::string _key;
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
@@ -1570,10 +1570,10 @@ int createEdgeOnCoordinator(
     return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
   }
 
-  string body = JsonHelper::toString(json.get());
+  std::string body = JsonHelper::toString(json.get());
 
   // Send a synchronous request to that shard using ClusterComm:
-  map<string, string> headers;
+  std::map<std::string, std::string> headers;
   auto res = cc->syncRequest(
       "", TRI_NewTickServer(), "shard:" + shardID,
       triagens::rest::HttpRequest::HTTP_REQUEST_POST,
@@ -1612,9 +1612,9 @@ int createEdgeOnCoordinator(
 int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
   ClusterInfo* ci = ClusterInfo::instance();
   ClusterComm* cc = ClusterComm::instance();
-  vector<ServerID> DBservers = ci->getCurrentDBServers();
+  std::vector<ServerID> DBservers = ci->getCurrentDBServers();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  string url = string("/_admin/wal/flush?waitForSync=") +
+  std::string url = std::string("/_admin/wal/flush?waitForSync=") +
                (waitForSync ? "true" : "false") + "&waitForCollector=" +
                (waitForCollector ? "true" : "false");
   auto body = std::make_shared<std::string const>();

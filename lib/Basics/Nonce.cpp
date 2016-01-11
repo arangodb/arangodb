@@ -113,7 +113,7 @@ void destroy() {
   }
 }
 
-string createNonce() {
+std::string createNonce() {
   uint32_t timestamp = (uint32_t)time(0);
   uint32_t rand1 = Random::interval(0U, UINT32_MAX);
   uint32_t rand2 = Random::interval(0U, UINT32_MAX);
@@ -128,10 +128,10 @@ string createNonce() {
   memcpy(buffer + 4, &rand1, 4);
   memcpy(buffer + 8, &rand2, 4);
 
-  return StringUtils::encodeBase64U(string((char*)buffer, 12));
+  return StringUtils::encodeBase64U(std::string((char*)buffer, 12));
 }
 
-bool checkAndMark(string const& nonce) {
+bool checkAndMark(std::string const& nonce) {
   if (nonce.length() != 12) {
     return false;
   }
@@ -223,7 +223,7 @@ vector<Statistics> statistics() {
   MUTEX_LOCKER(MutexNonce);
 
   int const N = 4;
-  vector<Statistics> result;
+  std::vector<Statistics> result;
 
   for (uint32_t l2age = 0, age = 1; l2age < 32; ++l2age) {
     uint32_t T = 0;

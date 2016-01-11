@@ -9,14 +9,14 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/n
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">201</span> Created
-content-type: application/json; charset=utf-<span class="hljs-number">8</span>
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/801823175"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"801823175"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"801823175"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/829305961"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"829305961"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"829305961"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
@@ -24,12 +24,12 @@ content-type: application/json; charset=utf-<span class="hljs-number">8</span>
       ] 
     }, 
     { 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/801429959"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"801429959"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"801429959"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/828912745"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"828912745"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"828912745"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-0.002/"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
-        -<span class="hljs-number">0.002</span>, 
+        <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
       ] 
     } 

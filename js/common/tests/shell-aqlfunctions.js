@@ -36,9 +36,6 @@ var db = arangodb.db;
 
 var aqlfunctions = require("@arangodb/aql/functions");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          AQL user functions tests
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -637,9 +634,6 @@ function AqlFunctionsSuite () {
   };
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
@@ -649,7 +643,3 @@ jsunity.run(AqlFunctionsSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

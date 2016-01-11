@@ -75,9 +75,6 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 GatherBlock::~GatherBlock() {
   ENTER_BLOCK
@@ -508,9 +505,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
                                    ExecutionNode const* ep,
@@ -926,9 +920,9 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::deque<pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
+  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
-  vector<AqlItemBlock*> collector;
+  std::vector<AqlItemBlock*> collector;
 
   auto freeCollector = [&collector]() {
     for (auto& x : collector) {
@@ -1018,7 +1012,7 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
     _pos = 0;    // position in _buffer.at(_index)
   }
 
-  std::vector<std::deque<pair<size_t, size_t>>>& buf = _distBuffer;
+  std::vector<std::deque<std::pair<size_t, size_t>>>& buf = _distBuffer;
   // it should be the case that buf.at(clientId) is empty
 
   while (buf.at(clientId).size() < atLeast) {
@@ -1462,7 +1456,7 @@ int RemoteBlock::shutdown(int errorCode) {
 
   std::unique_ptr<ClusterCommResult> res =
       sendRequest(rest::HttpRequest::HTTP_REQUEST_PUT, "/_api/aql/shutdown/",
-                  string("{\"code\":" + std::to_string(errorCode) + "}"));
+                  std::string("{\"code\":" + std::to_string(errorCode) + "}"));
   if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
     // artificially ignore error in case query was not found during shutdown
     return TRI_ERROR_NO_ERROR;
@@ -1575,7 +1569,7 @@ bool RemoteBlock::hasMore() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/hasMore/", string());
+      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/hasMore/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1599,7 +1593,7 @@ int64_t RemoteBlock::count() const {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/count/", string());
+      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/count/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1624,7 +1618,7 @@ int64_t RemoteBlock::remaining() {
   ENTER_BLOCK
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/remaining/", string());
+      rest::HttpRequest::HTTP_REQUEST_GET, "/_api/aql/remaining/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be

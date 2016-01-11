@@ -31,9 +31,6 @@ var internal = require("internal");
 
 var arangodb = require("@arangodb");
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the flatten routing cache for a method
@@ -103,9 +100,6 @@ function printRoutingMethod (indent, routes) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the routing cache
@@ -154,18 +148,8 @@ function printRouting (method) {
   printRoutingMethod("  ", cache.middleware[method]);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.printFlatRouting = printFlatRouting;
 exports.printRouting = printRouting;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
-// End:

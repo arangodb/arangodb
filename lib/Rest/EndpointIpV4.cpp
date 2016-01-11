@@ -36,9 +36,9 @@ using namespace triagens::rest;
 
 EndpointIpV4::EndpointIpV4(const Endpoint::EndpointType type,
                            const Endpoint::EncryptionType encryption,
-                           const std::string& specification, int listenBacklog,
-                           bool reuseAddress, const std::string& host,
-                           const uint16_t port)
+                           std::string const& specification, int listenBacklog,
+                           bool reuseAddress, std::string const& host,
+                           uint16_t const port)
     : EndpointIp(type, DOMAIN_IPV4, encryption, specification, listenBacklog,
                  reuseAddress, host, port) {}
 

@@ -391,7 +391,7 @@ TRI_json_t* TRI_SortArrayJson(TRI_json_t* array) {
 bool TRI_HasDuplicateKeyJson(TRI_json_t const* object) {
   if (object && object->_type == TRI_JSON_OBJECT) {
     size_t const n = TRI_LengthVector(&object->_value._objects);
-    const bool hasMultipleElements = (n > 2);
+    bool const hasMultipleElements = (n > 2);
 
     // if we don't have attributes, we do not need to check for duplicates
     // if we only have one attribute, we don't need to check for duplicates in

@@ -53,7 +53,7 @@ static void CreateAgencyException(
   v8::Isolate* isolate = args.GetIsolate();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
 
-  const std::string errorDetails = result.errorDetails();
+  std::string const errorDetails = result.errorDetails();
   v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(errorDetails);
   v8::Handle<v8::Object> errorObject =
       v8::Exception::Error(errorMessage)->ToObject();
@@ -87,7 +87,7 @@ static void JS_CasAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
         "cas(<key>, <oldValue>, <newValue>, <ttl>, <timeout>, <throw>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
 
   TRI_json_t* oldJson = TRI_ObjectToJson(isolate, args[1]);
 
@@ -148,7 +148,7 @@ static void JS_CreateDirectoryAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
 
   AgencyComm comm;
   AgencyCommResult result = comm.createDirectory(key);
@@ -174,7 +174,7 @@ static void JS_IsEnabledAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("isEnabled()");
   }
 
-  const std::string prefix = AgencyComm::prefix();
+  std::string const prefix = AgencyComm::prefix();
 
   if (!prefix.empty()) {
     TRI_V8_RETURN_TRUE();
@@ -196,7 +196,7 @@ static void JS_IncreaseVersionAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("increaseVersion(<key>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
 
   AgencyComm comm;
   if (!comm.increaseVersion(key)) {
@@ -220,7 +220,7 @@ static void JS_GetAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("get(<key>, <recursive>, <withIndexes>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
   bool recursive = false;
   bool withIndexes = false;
 
@@ -247,9 +247,9 @@ static void JS_GetAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
         result._values.begin();
 
     while (it != result._values.end()) {
-      const std::string key = (*it).first;
+      std::string const key = (*it).first;
       TRI_json_t const* json = (*it).second._json;
-      const std::string idx = StringUtils::itoa((*it).second._index);
+      std::string const idx = StringUtils::itoa((*it).second._index);
 
       if (json != nullptr) {
         v8::Handle<v8::Object> sub = v8::Object::New(isolate);
@@ -268,7 +268,7 @@ static void JS_GetAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
         result._values.begin();
 
     while (it != result._values.end()) {
-      const std::string key = (*it).first;
+      std::string const key = (*it).first;
       TRI_json_t const* json = (*it).second._json;
 
       if (json != nullptr) {
@@ -295,7 +295,7 @@ static void JS_ListAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("list(<key>, <recursive>, <flat>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
   bool recursive = false;
 
   if (args.Length() > 1) {
@@ -329,7 +329,7 @@ static void JS_ListAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     uint32_t i = 0;
     while (it != result._values.end()) {
-      const std::string key = (*it).first;
+      std::string const key = (*it).first;
 
       l->Set(i++, TRI_V8_STD_STRING(key));
       ++it;
@@ -341,8 +341,8 @@ static void JS_ListAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
     while (it != result._values.end()) {
-      const std::string key = (*it).first;
-      const bool isDirectory = (*it).second._isDir;
+      std::string const key = (*it).first;
+      bool const isDirectory = (*it).second._isDir;
 
       l->Set(TRI_V8_STD_STRING(key), v8::Boolean::New(isolate, isDirectory));
       ++it;
@@ -364,7 +364,7 @@ static void JS_LockReadAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("lockRead(<part>, <ttl>, <timeout>)");
   }
 
-  const std::string part = TRI_ObjectToString(args[0]);
+  std::string const part = TRI_ObjectToString(args[0]);
 
   double ttl = 0.0;
   if (args.Length() > 1) {
@@ -399,7 +399,7 @@ static void JS_LockWriteAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("lockWrite(<part>, <ttl>, <timeout>)");
   }
 
-  const std::string part = TRI_ObjectToString(args[0]);
+  std::string const part = TRI_ObjectToString(args[0]);
 
   double ttl = 0.0;
   if (args.Length() > 1) {
@@ -434,7 +434,7 @@ static void JS_UnlockReadAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("unlockRead(<part>, <timeout>)");
   }
 
-  const std::string part = TRI_ObjectToString(args[0]);
+  std::string const part = TRI_ObjectToString(args[0]);
 
   double timeout = 0.0;
   if (args.Length() > 1) {
@@ -464,7 +464,7 @@ static void JS_UnlockWriteAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("unlockWrite(<part>, <timeout>)");
   }
 
-  const std::string part = TRI_ObjectToString(args[0]);
+  std::string const part = TRI_ObjectToString(args[0]);
 
   double timeout = 0.0;
   if (args.Length() > 1) {
@@ -493,7 +493,7 @@ static void JS_RemoveAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(<key>, <recursive>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
   bool recursive = false;
 
   if (args.Length() > 1) {
@@ -523,7 +523,7 @@ static void JS_SetAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("set(<key>, <value>, <ttl>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
 
   TRI_json_t* json = TRI_ObjectToJson(isolate, args[1]);
 
@@ -562,7 +562,7 @@ static void JS_WatchAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
         "watch(<key>, <waitIndex>, <timeout>, <recursive>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
   double timeout = 1.0;
   uint64_t waitIndex = 0;
   bool recursive = false;
@@ -596,7 +596,7 @@ static void JS_WatchAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::Object> l = v8::Object::New(isolate);
 
   while (it != result._values.end()) {
-    const std::string key = (*it).first;
+    std::string const key = (*it).first;
     TRI_json_t* json = (*it).second._json;
 
     if (json != nullptr) {
@@ -632,7 +632,7 @@ static void JS_EndpointsAgency(
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
 
   for (size_t i = 0; i < endpoints.size(); ++i) {
-    const std::string endpoint = endpoints[i];
+    std::string const endpoint = endpoints[i];
 
     l->Set((uint32_t)i, TRI_V8_STD_STRING(endpoint));
   }
@@ -658,7 +658,7 @@ static void JS_PrefixAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     strip = TRI_ObjectToBoolean(args[0]);
   }
 
-  const std::string prefix = AgencyComm::prefix();
+  std::string const prefix = AgencyComm::prefix();
 
   if (strip && prefix.size() > 2) {
     TRI_V8_RETURN_PAIR_STRING(prefix.c_str() + 1, (int)prefix.size() - 2);
@@ -681,7 +681,7 @@ static void JS_SetPrefixAgency(
     TRI_V8_THROW_EXCEPTION_USAGE("setPrefix(<prefix>)");
   }
 
-  const bool result = AgencyComm::setPrefix(TRI_ObjectToString(args[0]));
+  bool const result = AgencyComm::setPrefix(TRI_ObjectToString(args[0]));
 
   if (result) {
     TRI_V8_RETURN_TRUE();
@@ -702,7 +702,7 @@ static void JS_UniqidAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<key>, <count>, <timeout>)");
   }
 
-  const std::string key = TRI_ObjectToString(args[0]);
+  std::string const key = TRI_ObjectToString(args[0]);
 
   uint64_t count = 1;
   if (args.Length() > 1) {
@@ -725,7 +725,7 @@ static void JS_UniqidAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
     THROW_AGENCY_EXCEPTION(result);
   }
 
-  const std::string value = StringUtils::itoa(result._index);
+  std::string const value = StringUtils::itoa(result._index);
 
   TRI_V8_RETURN_STD_STRING(value);
   TRI_V8_TRY_CATCH_END
@@ -744,7 +744,7 @@ static void JS_VersionAgency(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   AgencyComm comm;
-  const std::string version = comm.getVersion();
+  std::string const version = comm.getVersion();
 
   TRI_V8_RETURN_STD_STRING(version);
   TRI_V8_TRY_CATCH_END
@@ -764,7 +764,7 @@ static void JS_DoesDatabaseExistClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("doesDatabaseExist(<database-id>)");
   }
 
-  const bool result = ClusterInfo::instance()->doesDatabaseExist(
+  bool const result = ClusterInfo::instance()->doesDatabaseExist(
       TRI_ObjectToString(args[0]), true);
 
   if (result) {
@@ -786,9 +786,9 @@ static void JS_ListDatabases(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("listDatabases()");
   }
 
-  vector<DatabaseID> res = ClusterInfo::instance()->listDatabases(true);
+  std::vector<DatabaseID> res = ClusterInfo::instance()->listDatabases(true);
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
-  vector<DatabaseID>::iterator it;
+  std::vector<DatabaseID>::iterator it;
   int count = 0;
   for (it = res.begin(); it != res.end(); ++it) {
     a->Set((uint32_t)count++, TRI_V8_STD_STRING((*it)));
@@ -834,8 +834,8 @@ static void JS_GetCollectionInfoClusterInfo(
       TRI_ObjectToString(args[0]), TRI_ObjectToString(args[1]));
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
-  const std::string& name = ci->name();
+  std::string const cid = triagens::basics::StringUtils::itoa(ci->id());
+  std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
   result->Set(TRI_V8_ASCII_STRING("type"),
@@ -843,7 +843,7 @@ static void JS_GetCollectionInfoClusterInfo(
   result->Set(TRI_V8_ASCII_STRING("status"),
               v8::Number::New(isolate, (int)ci->status()));
 
-  const string statusString = ci->statusString();
+  std::string const statusString = ci->statusString();
   result->Set(TRI_V8_ASCII_STRING("statusString"),
               TRI_V8_STD_STRING(statusString));
 
@@ -911,8 +911,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
-  const std::string cid = triagens::basics::StringUtils::itoa(ci->id());
-  const std::string& name = ci->name();
+  std::string const cid = triagens::basics::StringUtils::itoa(ci->id());
+  std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING("id"), TRI_V8_STD_STRING(cid));
   result->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
 
@@ -933,7 +933,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
   if (error) {
     result->Set(TRI_V8_ASCII_STRING("errorNum"),
                 v8::Number::New(isolate, cic->errorNum(shardID)));
-    const string errorMessage = cic->errorMessage(shardID);
+    std::string const errorMessage = cic->errorMessage(shardID);
     result->Set(TRI_V8_ASCII_STRING("errorMessage"),
                 TRI_V8_STD_STRING(errorMessage));
   }
@@ -1034,7 +1034,7 @@ static void JS_GetServerEndpointClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getServerEndpoint(<server-id>)");
   }
 
-  const std::string result =
+  std::string const result =
       ClusterInfo::instance()->getServerEndpoint(TRI_ObjectToString(args[0]));
 
   TRI_V8_RETURN_STD_STRING(result);
@@ -1054,7 +1054,7 @@ static void JS_GetServerNameClusterInfo(
     TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
   }
 
-  const std::string result =
+  std::string const result =
       ClusterInfo::instance()->getServerName(TRI_ObjectToString(args[0]));
 
   TRI_V8_RETURN_STD_STRING(result);
@@ -1163,7 +1163,7 @@ static void JS_UniqidClusterInfo(
                                    "unable to generate unique id");
   }
 
-  const std::string id = StringUtils::itoa(value);
+  std::string const id = StringUtils::itoa(value);
 
   TRI_V8_RETURN_STD_STRING(id);
   TRI_V8_TRY_CATCH_END
@@ -1183,7 +1183,7 @@ static void JS_AddressServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("address()");
   }
 
-  const std::string address = ServerState::instance()->getAddress();
+  std::string const address = ServerState::instance()->getAddress();
   TRI_V8_RETURN_STD_STRING(address);
   TRI_V8_TRY_CATCH_END
 }
@@ -1220,7 +1220,7 @@ static void JS_LocalInfoServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("localInfo()");
   }
 
-  const std::string li = ServerState::instance()->getLocalInfo();
+  std::string const li = ServerState::instance()->getLocalInfo();
   TRI_V8_RETURN_STD_STRING(li);
   TRI_V8_TRY_CATCH_END
 }
@@ -1237,7 +1237,7 @@ static void JS_IdServerState(const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("id()");
   }
 
-  const std::string id = ServerState::instance()->getId();
+  std::string const id = ServerState::instance()->getId();
   TRI_V8_RETURN_STD_STRING(id);
   TRI_V8_TRY_CATCH_END
 }
@@ -1255,7 +1255,7 @@ static void JS_IdOfPrimaryServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("idOfPrimary()");
   }
 
-  const std::string id = ServerState::instance()->getPrimaryId();
+  std::string const id = ServerState::instance()->getPrimaryId();
   TRI_V8_RETURN_STD_STRING(id);
   TRI_V8_TRY_CATCH_END
 }
@@ -1273,7 +1273,7 @@ static void JS_DescriptionServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("description()");
   }
 
-  const std::string description = ServerState::instance()->getDescription();
+  std::string const description = ServerState::instance()->getDescription();
   TRI_V8_RETURN_STD_STRING(description);
   TRI_V8_TRY_CATCH_END
 }
@@ -1291,7 +1291,7 @@ static void JS_DataPathServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("dataPath()");
   }
 
-  const std::string path = ServerState::instance()->getDataPath();
+  std::string const path = ServerState::instance()->getDataPath();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -1309,7 +1309,7 @@ static void JS_LogPathServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("logPath()");
   }
 
-  const std::string path = ServerState::instance()->getLogPath();
+  std::string const path = ServerState::instance()->getLogPath();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -1327,7 +1327,7 @@ static void JS_AgentPathServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("agentPath()");
   }
 
-  const std::string path = ServerState::instance()->getAgentPath();
+  std::string const path = ServerState::instance()->getAgentPath();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -1345,7 +1345,7 @@ static void JS_ArangodPathServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("arangodPath()");
   }
 
-  const std::string path = ServerState::instance()->getArangodPath();
+  std::string const path = ServerState::instance()->getArangodPath();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -1363,7 +1363,7 @@ static void JS_JavaScriptPathServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("javaScriptPath()");
   }
 
-  const std::string path = ServerState::instance()->getJavaScriptPath();
+  std::string const path = ServerState::instance()->getJavaScriptPath();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -1381,7 +1381,7 @@ static void JS_DBserverConfigServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("dbserverConfig()");
   }
 
-  const std::string path = ServerState::instance()->getDBserverConfig();
+  std::string const path = ServerState::instance()->getDBserverConfig();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -1399,7 +1399,7 @@ static void JS_CoordinatorConfigServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("coordinatorConfig()");
   }
 
-  const std::string path = ServerState::instance()->getCoordinatorConfig();
+  std::string const path = ServerState::instance()->getCoordinatorConfig();
   TRI_V8_RETURN_STD_STRING(path);
   TRI_V8_TRY_CATCH_END
 }
@@ -1497,7 +1497,7 @@ static void JS_RoleServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("role()");
   }
 
-  const std::string role =
+  std::string const role =
       ServerState::roleToString(ServerState::instance()->getRole());
 
   TRI_V8_RETURN_STD_STRING(role);
@@ -1517,7 +1517,7 @@ static void JS_SetLocalInfoServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("setLocalInfo(<info>)");
   }
 
-  const std::string li = TRI_ObjectToString(args[0]);
+  std::string const li = TRI_ObjectToString(args[0]);
   ServerState::instance()->setLocalInfo(li);
 
   TRI_V8_RETURN_TRUE();
@@ -1537,7 +1537,7 @@ static void JS_SetIdServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("setId(<id>)");
   }
 
-  const std::string id = TRI_ObjectToString(args[0]);
+  std::string const id = TRI_ObjectToString(args[0]);
   ServerState::instance()->setId(id);
 
   TRI_V8_RETURN_TRUE();
@@ -1557,7 +1557,7 @@ static void JS_SetRoleServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("setRole(<role>)");
   }
 
-  const std::string role = TRI_ObjectToString(args[0]);
+  std::string const role = TRI_ObjectToString(args[0]);
   ServerState::RoleEnum r = ServerState::stringToRole(role);
 
   if (r == ServerState::ROLE_UNDEFINED) {
@@ -1605,7 +1605,7 @@ static void JS_StatusServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("status()");
   }
 
-  const std::string state =
+  std::string const state =
       ServerState::stateToString(ServerState::instance()->getState());
 
   TRI_V8_RETURN_STD_STRING(state);
@@ -1656,7 +1656,7 @@ static void PrepareClusterCommRequest(
   reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
   if (args[0]->IsString()) {
     TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, args[0]);
-    string methstring = *UTF8;
+    std::string methstring = *UTF8;
     reqType = triagens::rest::HttpRequest::translateMethod(methstring);
     if (reqType == triagens::rest::HttpRequest::HTTP_REQUEST_ILLEGAL) {
       reqType = triagens::rest::HttpRequest::HTTP_REQUEST_GET;
@@ -1665,7 +1665,7 @@ static void PrepareClusterCommRequest(
 
   destination = TRI_ObjectToString(args[1]);
 
-  string dbname = TRI_ObjectToString(args[2]);
+  std::string dbname = TRI_ObjectToString(args[2]);
 
   path = TRI_ObjectToString(args[3]);
   path = "/_db/" + dbname + path;
@@ -1695,8 +1695,8 @@ static void PrepareClusterCommRequest(
     for (i = 0; i < props->Length(); ++i) {
       v8::Handle<v8::Value> prop = props->Get(i);
       v8::Handle<v8::Value> val = obj->Get(prop);
-      string propstring = TRI_ObjectToString(prop);
-      string valstring = TRI_ObjectToString(val);
+      std::string propstring = TRI_ObjectToString(prop);
+      std::string valstring = TRI_ObjectToString(val);
       if (propstring != "") {
         headerFields.insert(std::make_pair(propstring, valstring));
       }
@@ -1831,8 +1831,8 @@ static void Return_PrepareClusterCommResultForJS(
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING("RECEIVED"));
-      map<string, string> headers = res.answer->headers();
-      map<string, string>::iterator i;
+      std::map<std::string, std::string> headers = res.answer->headers();
+      std::map<std::string, std::string>::iterator i;
       for (i = headers.begin(); i != headers.end(); ++i) {
         h->Set(TRI_V8_STD_STRING(i->first), TRI_V8_STD_STRING(i->second));
       }
@@ -1876,8 +1876,8 @@ static void JS_AsyncRequest(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   triagens::rest::HttpRequest::HttpRequestType reqType;
-  string destination;
-  string path;
+  std::string destination;
+  std::string path;
   auto body = make_shared<std::string>();
   std::unique_ptr<std::map<std::string, std::string>> headerFields(
       new std::map<std::string, std::string>());
@@ -1938,9 +1938,9 @@ static void JS_SyncRequest(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   triagens::rest::HttpRequest::HttpRequestType reqType;
-  string destination;
-  string path;
-  string body;
+  std::string destination;
+  std::string path;
+  std::string body;
   std::unique_ptr<std::map<std::string, std::string>> headerFields(
       new std::map<std::string, std::string>());
   ClientTransactionID clientTransactionID;

@@ -35,9 +35,6 @@ var is = require("@arangodb/is"),
   GraphArray,
   Iterator;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             module "@arangodb/graph-blueprint"
-// -----------------------------------------------------------------------------
 
 Iterator = function (wrapper, cursor, stringRepresentation) {
   this.next = function next() {
@@ -58,13 +55,7 @@ Iterator = function (wrapper, cursor, stringRepresentation) {
 };
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        GraphArray
-// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a graph arrays
@@ -78,9 +69,6 @@ GraphArray = function (len) {
 
 GraphArray.prototype = new Array(0);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief map
@@ -220,9 +208,6 @@ GraphArray.prototype.properties = function () {
   return this.map(function(a) {return a.properties();});
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              Edge
-// -----------------------------------------------------------------------------
 
 Edge = function (graph, properties) {
   this._graph = graph;
@@ -230,9 +215,6 @@ Edge = function (graph, properties) {
   this._properties = properties;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// the real docu is in Users/ModuleGraph/EdgeMethods.mdpp
@@ -328,9 +310,6 @@ Edge.prototype.getPeerVertex = function (vertex) {
   return null;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief edge printing
@@ -353,9 +332,6 @@ Edge.prototype._PRINT = function (context) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            Vertex
-// -----------------------------------------------------------------------------
 
 Vertex = function (graph, properties) {
   this._graph = graph;
@@ -363,9 +339,6 @@ Vertex = function (graph, properties) {
   this._properties = properties;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// the real docu is in Users/ModuleGraph/VertexMethods.mdpp
@@ -480,9 +453,6 @@ Vertex.prototype.properties = function () {
   return this._properties._shallowCopy;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vertex representation
@@ -505,17 +475,11 @@ Vertex.prototype._PRINT = function (context) {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                             Graph
-// -----------------------------------------------------------------------------
 
 Graph = function (name, vertices, edges, waitForSync) {
   this.initialize(name, vertices, edges, waitForSync);
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 Graph.prototype._prepareEdgeData = function (data, label) {
   var edgeData;
@@ -552,9 +516,6 @@ Graph.prototype._prepareVertexData = function (data) {
   return vertexData;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a vertex from the graph, create it if it doesn't exist
@@ -652,9 +613,6 @@ Graph.prototype.size = function () {
   return this._edges.count();
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// this is no documentation.
@@ -763,9 +721,6 @@ Graph.prototype._PRINT = function (context) {
   context.output += "Graph(\"" + this._properties._key + "\")";
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    MODULE EXPORTS
-// -----------------------------------------------------------------------------
 
 exports.Edge = Edge;
 exports.Graph = Graph;
@@ -773,12 +728,5 @@ exports.Vertex = Vertex;
 exports.GraphArray = GraphArray;
 exports.Iterator = Iterator;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:
 });

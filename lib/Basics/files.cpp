@@ -102,7 +102,7 @@ static TRI_read_write_lock_t FileNamesLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 static void RemoveTrailingSeparator(char* path) {
-  const char* s;
+  char const* s;
   size_t n;
 
   n = strlen(path);
@@ -944,7 +944,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
 /// @brief saves data to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteFile(const char* filename, const char* data, size_t length) {
+int TRI_WriteFile(char const* filename, char const* data, size_t length) {
   int fd;
   bool result;
 
@@ -1369,8 +1369,8 @@ int TRI_DestroyLockFile(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_GetFilename(char const* filename) {
-  const char* p;
-  const char* s;
+  char const* p;
+  char const* s;
 
   p = s = filename;
 
@@ -1554,7 +1554,7 @@ char* TRI_GetAbsolutePath(char const* file, char const* cwd) {
 /// @brief returns the binary name without any path or suffix
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_BinaryName(const char* argv0) {
+std::string TRI_BinaryName(char const* argv0) {
   char* name;
   char* p;
   char* e;
@@ -1570,7 +1570,7 @@ string TRI_BinaryName(const char* argv0) {
     }
   }
 
-  string result = name;
+  std::string result = name;
   TRI_FreeString(TRI_CORE_MEM_ZONE, name);
 
   return result;
@@ -1580,7 +1580,7 @@ string TRI_BinaryName(const char* argv0) {
 /// @brief locates the directory containing the program
 ////////////////////////////////////////////////////////////////////////////////
 
-string TRI_LocateBinaryPath(char const* argv0) {
+std::string TRI_LocateBinaryPath(char const* argv0) {
   char const* p;
   char* binaryPath = nullptr;
 
@@ -1604,10 +1604,10 @@ string TRI_LocateBinaryPath(char const* argv0) {
         --q;
       }
 
-      return string(buff);
+      return std::string(buff);
     }
 
-    return string();
+    return std::string();
   }
 
 #endif
@@ -1663,7 +1663,7 @@ string TRI_LocateBinaryPath(char const* argv0) {
     }
   }
 
-  string result = (binaryPath == nullptr) ? "" : binaryPath;
+  std::string result = (binaryPath == nullptr) ? "" : binaryPath;
 
   if (binaryPath != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
@@ -2141,7 +2141,7 @@ char* TRI_GetTempPath() {
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const* directory, char** result, const bool createFile,
+int TRI_GetTempName(char const* directory, char** result, bool const createFile,
                     long& systemError, std::string& errorMessage) {
   char* dir;
   int tries;
@@ -2260,8 +2260,8 @@ void TRI_SetUserTempPath(char* path) {
 
 #if _WIN32
 
-string TRI_LocateInstallDirectory() {
-  return TRI_LocateBinaryPath(nullptr) + string(1, TRI_DIR_SEPARATOR_CHAR) +
+std::string TRI_LocateInstallDirectory() {
+  return TRI_LocateBinaryPath(nullptr) + std::string(1, TRI_DIR_SEPARATOR_CHAR) +
          ".." + string(1, TRI_DIR_SEPARATOR_CHAR);
 }
 
@@ -2282,7 +2282,7 @@ char* TRI_LocateConfigDirectory() {
     return v;
   }
 
-  string r = TRI_LocateInstallDirectory();
+  std::string r = TRI_LocateInstallDirectory();
 
 #ifdef _SYSCONFDIR_
   r += _SYSCONFDIR_;
@@ -2290,7 +2290,7 @@ char* TRI_LocateConfigDirectory() {
   r += "etc\\arangodb";
 #endif
 
-  r += string(1, TRI_DIR_SEPARATOR_CHAR);
+  r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 
   return TRI_DuplicateString(r.c_str());
 }
@@ -2299,7 +2299,7 @@ char* TRI_LocateConfigDirectory() {
 
 char* TRI_LocateConfigDirectory() {
   size_t len;
-  const char* dir = _SYSCONFDIR_;
+  char const* dir = _SYSCONFDIR_;
   char* v;
 
   v = LocateConfigDirectoryEnv();

@@ -54,12 +54,9 @@ using namespace triagens::httpclient;
 /// @brief base url of the replication API
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string Syncer::BaseUrl = "/_api/replication";
+std::string const Syncer::BaseUrl = "/_api/replication";
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 Syncer::Syncer(TRI_vocbase_t* vocbase,
                TRI_replication_applier_configuration_t const* configuration)
@@ -101,8 +98,8 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
                                      _configuration._requestTimeout, false);
 
       if (_client != nullptr) {
-        string username;
-        string password;
+        std::string username;
+        std::string password;
 
         if (_configuration._username != nullptr) {
           username = std::string(_configuration._username);
@@ -127,9 +124,6 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
 
 Syncer::~Syncer() {
   // shutdown everything properly
@@ -145,7 +139,7 @@ Syncer::~Syncer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-string Syncer::rewriteLocation(void* data, const string& location) {
+std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
 
   TRI_ASSERT(s != nullptr);
@@ -212,7 +206,7 @@ int Syncer::applyCollectionDumpMarker(
     triagens::arango::Transaction* trx,
     TRI_transaction_collection_t* trxCollection,
     TRI_replication_operation_e type, const TRI_voc_key_t key,
-    const TRI_voc_rid_t rid, TRI_json_t const* json, string& errorMsg) {
+    const TRI_voc_rid_t rid, TRI_json_t const* json, std::string& errorMsg) {
   if (type == REPLICATION_MARKER_DOCUMENT || type == REPLICATION_MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
@@ -251,9 +245,9 @@ int Syncer::applyCollectionDumpMarker(
             res = TRI_ERROR_NO_ERROR;
           }
 
-          string const from =
+          std::string const from =
               JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
-          string const to =
+          std::string const to =
               JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
 
           CollectionNameResolver resolver(_vocbase);
@@ -354,7 +348,7 @@ int Syncer::createCollection(TRI_json_t const* json, TRI_vocbase_col_t** dst) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  string const name = JsonHelper::getStringValue(json, "name", "");
+  std::string const name = JsonHelper::getStringValue(json, "name", "");
 
   if (name.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -513,7 +507,7 @@ int Syncer::createIndex(TRI_json_t const* json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Syncer::dropIndex(TRI_json_t const* json) {
-  string const id = JsonHelper::getStringValue(json, "id", "");
+  std::string const id = JsonHelper::getStringValue(json, "id", "");
 
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -551,8 +545,8 @@ int Syncer::dropIndex(TRI_json_t const* json) {
 /// @brief get master state
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::getMasterState(string& errorMsg) {
-  string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
+int Syncer::getMasterState(std::string& errorMsg) {
+  std::string const url = BaseUrl + "/logger-state?serverId=" + _localServerIdString;
 
   // store old settings
   uint64_t maxRetries = _client->_maxRetries;
@@ -607,8 +601,8 @@ int Syncer::getMasterState(string& errorMsg) {
 /// @brief handle the state response of the master
 ////////////////////////////////////////////////////////////////////////////////
 
-int Syncer::handleStateResponse(TRI_json_t const* json, string& errorMsg) {
-  string const endpointString =
+int Syncer::handleStateResponse(TRI_json_t const* json, std::string& errorMsg) {
+  std::string const endpointString =
       " from endpoint '" + std::string(_masterInfo._endpoint) + "'";
 
   // process "state" section
@@ -663,7 +657,7 @@ int Syncer::handleStateResponse(TRI_json_t const* json, string& errorMsg) {
   }
 
   // validate all values we got
-  string const masterIdString = string(serverId->_value._string.data,
+  std::string const masterIdString = std::string(serverId->_value._string.data,
                                        serverId->_value._string.length - 1);
   TRI_server_id_t const masterId = StringUtils::uint64(masterIdString);
 
@@ -685,7 +679,7 @@ int Syncer::handleStateResponse(TRI_json_t const* json, string& errorMsg) {
   int major = 0;
   int minor = 0;
 
-  string const versionString(version->_value._string.data,
+  std::string const versionString(version->_value._string.data,
                              version->_value._string.length - 1);
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {

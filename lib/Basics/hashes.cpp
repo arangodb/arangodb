@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline uint64_t FnvWork(uint8_t value, uint64_t hash) {
-  static const uint64_t MagicPrime = 0x00000100000001b3ULL;
+  static uint64_t const MagicPrime = 0x00000100000001b3ULL;
 
   return (hash ^ value) * MagicPrime;
 }
@@ -452,7 +452,7 @@ static const uint32_t Crc32Lookup[8][256] = {
 /// @brief CRC32 reflect
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint32_t ReflectCrc32(uint32_t value, const int size) {
+static uint32_t ReflectCrc32(uint32_t value, int const size) {
   int i;
   uint32_t reflected;
 

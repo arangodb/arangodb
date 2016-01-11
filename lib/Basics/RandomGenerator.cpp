@@ -447,7 +447,7 @@ struct UniformIntegerMersenne : public UniformIntegerImpl {
             std::chrono::system_clock::now().time_since_epoch().count())) {}
 
   int32_t random(int32_t left, int32_t right) {
-    const int64_t range = (int64_t)right - (int64_t)left + 1LL;
+    int64_t const range = (int64_t)right - (int64_t)left + 1LL;
     TRI_ASSERT(range > 0);
 
     uint32_t result = engine();
@@ -509,20 +509,20 @@ UniformCharacter::UniformCharacter(size_t length)
           "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"),
       generator(0, (int32_t)characters.size() - 1) {}
 
-UniformCharacter::UniformCharacter(string const& characters)
+UniformCharacter::UniformCharacter(std::string const& characters)
     : length(1),
       characters(characters),
       generator(0, (int32_t)characters.size() - 1) {}
 
-UniformCharacter::UniformCharacter(size_t length, string const& characters)
+UniformCharacter::UniformCharacter(size_t length, std::string const& characters)
     : length(length),
       characters(characters),
       generator(0, (int32_t)characters.size() - 1) {}
 
-string UniformCharacter::random() { return random(length); }
+std::string UniformCharacter::random() { return random(length); }
 
-string UniformCharacter::random(size_t length) {
-  string buffer;
+std::string UniformCharacter::random(size_t length) {
+  std::string buffer;
   buffer.reserve(length);
 
   for (size_t i = 0; i < length; ++i) {

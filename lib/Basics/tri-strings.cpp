@@ -1272,7 +1272,7 @@ char* TRI_UnescapeUtf8String(TRI_memory_zone_t* zone, char const* in,
 /// the UTF-8 string must be well-formed and end with a NUL terminator
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_CharLengthUtf8String(const char* in) {
+size_t TRI_CharLengthUtf8String(char const* in) {
   size_t length;
   unsigned char* p;
 
@@ -1310,7 +1310,7 @@ size_t TRI_CharLengthUtf8String(const char* in) {
 /// the UTF-8 string must be well-formed and end with a NUL terminator
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_PrefixUtf8String(const char* in, const uint32_t maximumLength) {
+char* TRI_PrefixUtf8String(char const* in, const uint32_t maximumLength) {
   uint32_t length;
   unsigned char* p;
 

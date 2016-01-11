@@ -112,9 +112,6 @@ char const* ArangoClient::PROMPT_IGNORE_START = "\001";
 char const* ArangoClient::PROMPT_IGNORE_END = "\002";
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
 
 ArangoClient::ArangoClient(char const* appName)
     : _configFile(),
@@ -156,7 +153,7 @@ ArangoClient::ArangoClient(char const* appName)
   char* p = TRI_GetTempPath();
 
   if (p != nullptr) {
-    _tempPath = string(p);
+    _tempPath = std::string(p);
     TRI_Free(TRI_CORE_MEM_ZONE, p);
   }
 }
@@ -309,11 +306,11 @@ void ArangoClient::parse(ProgramOptions& options,
   TRI_SetThreadIdentifierLogging(false);
 
   // parse config file
-  string configFile = "";
+  std::string configFile = "";
   bool allowLocal = false;
 
   if (!_configFile.empty()) {
-    if (StringUtils::tolower(_configFile) == string("none")) {
+    if (StringUtils::tolower(_configFile) == std::string("none")) {
       LOG_DEBUG("using no init file at all");
     } else {
       configFile = _configFile;
@@ -324,7 +321,7 @@ void ArangoClient::parse(ProgramOptions& options,
     char* d = TRI_LocateConfigDirectory();
 
     if (d != nullptr) {
-      string sysDir = string(d) + initFilename;
+      std::string sysDir = std::string(d) + initFilename;
       TRI_FreeString(TRI_CORE_MEM_ZONE, d);
 
       if (FileUtils::exists(sysDir)) {
@@ -338,7 +335,7 @@ void ArangoClient::parse(ProgramOptions& options,
 
   if (!configFile.empty()) {
     if (allowLocal) {
-      string localConfigFile = configFile + ".local";
+      std::string localConfigFile = configFile + ".local";
 
       if (FileUtils::exists(localConfigFile)) {
         LOG_DEBUG("using init override file '%s'", localConfigFile.c_str());
@@ -362,7 +359,7 @@ void ArangoClient::parse(ProgramOptions& options,
   // configuration is parsed and valid if we got to this point
 
   // check for --help
-  set<string> help = options.needHelp("help");
+  std::set<std::string> help = options.needHelp("help");
 
   if (!help.empty()) {
     if (!example.empty()) {
@@ -626,8 +623,8 @@ void ArangoClient::stopPager() {
 /// this is done before sending the string to a pager or writing it to the log
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::string StripBinary(const char* value) {
-  string result;
+static std::string StripBinary(char const* value) {
+  std::string result;
 
   char const* p = value;
   bool inBinary = false;
@@ -663,15 +660,15 @@ void ArangoClient::internalPrint(std::string const& str) {
     fprintf(_pager, "%s", str.c_str());
 #endif
     if (_log) {
-      string sanitised = StripBinary(str.c_str());
-      log("%s", sanitised.c_str());
+      std::string sanitized = StripBinary(str.c_str());
+      log("%s", sanitized.c_str());
     }
   } else {
-    string sanitised = StripBinary(str.c_str());
+    std::string sanitized = StripBinary(str.c_str());
 
-    if (!sanitised.empty()) {
-      fprintf(_pager, "%s", sanitised.c_str());
-      log("%s", sanitised.c_str());
+    if (!sanitized.empty()) {
+      fprintf(_pager, "%s", sanitized.c_str());
+      log("%s", sanitized.c_str());
     }
   }
 }
@@ -738,13 +735,13 @@ void ArangoClient::printByeBye() {
 /// @brief logs output, without prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::log(const char* format, const char* str) {
+void ArangoClient::log(char const* format, char const* str) {
   if (_log) {
-    string sanitised = StripBinary(str);
+    std::string sanitized = StripBinary(str);
 
-    if (!sanitised.empty()) {
+    if (!sanitized.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format, sanitised.c_str());
+      fprintf(_log, format, sanitized.c_str());
     }
   }
 }
@@ -756,11 +753,11 @@ void ArangoClient::log(const char* format, const char* str) {
 void ArangoClient::log(std::string const& format, std::string const& prompt,
                        std::string const& str) {
   if (_log) {
-    string sanitised = StripBinary(str.c_str());
+    std::string sanitized = StripBinary(str.c_str());
 
-    if (!sanitised.empty()) {
+    if (!sanitized.empty()) {
       // do not print terminal escape sequences into log
-      fprintf(_log, format.c_str(), prompt.c_str(), sanitised.c_str());
+      fprintf(_log, format.c_str(), prompt.c_str(), sanitized.c_str());
     }
   }
 }

@@ -133,7 +133,7 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC SORT i.a DESC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC, i.b DESC SORT i.a DESC, i.b ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC, i.b DESC FILTER i.a == 1 SORT i.a DESC, i.b ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
-        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC COLLECT x = i.a RETURN x", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "AggregateNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC COLLECT x = i.a RETURN x", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "CollectNode", "ReturnNode" ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a SORT i.a RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a DESC SORT i.a ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ]
       ]; 
@@ -224,7 +224,3 @@ jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
-// End:

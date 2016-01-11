@@ -69,7 +69,7 @@ void sslMD5(char const* input1, size_t length1, char const* input2,
 /// @brief sha1 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA1(char const* inputStr, const size_t length, char*& outputStr,
+void sslSHA1(char const* inputStr, size_t const length, char*& outputStr,
              size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
@@ -82,7 +82,7 @@ void sslSHA1(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha224 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA224(char const* inputStr, const size_t length, char*& outputStr,
+void sslSHA224(char const* inputStr, size_t const length, char*& outputStr,
                size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ void sslSHA224(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha256 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA256(char const* inputStr, const size_t length, char*& outputStr,
+void sslSHA256(char const* inputStr, size_t const length, char*& outputStr,
                size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
@@ -108,7 +108,7 @@ void sslSHA256(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha384 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA384(char const* inputStr, const size_t length, char*& outputStr,
+void sslSHA384(char const* inputStr, size_t const length, char*& outputStr,
                size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
@@ -121,7 +121,7 @@ void sslSHA384(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief sha512 hash
 //////////////////////////////////////////////////////////////////////////
 
-void sslSHA512(char const* inputStr, const size_t length, char*& outputStr,
+void sslSHA512(char const* inputStr, size_t const length, char*& outputStr,
                size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
@@ -134,7 +134,7 @@ void sslSHA512(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief HEX
 //////////////////////////////////////////////////////////////////////////
 
-void sslHEX(char const* inputStr, const size_t length, char*& outputStr,
+void sslHEX(char const* inputStr, size_t const length, char*& outputStr,
             size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
@@ -147,7 +147,7 @@ void sslHEX(char const* inputStr, char*& outputStr, size_t& outputLen);
 /// @brief BASE64
 //////////////////////////////////////////////////////////////////////////
 
-void sslBASE64(char const* inputStr, const size_t length, char*& outputStr,
+void sslBASE64(char const* inputStr, size_t const length, char*& outputStr,
                size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////

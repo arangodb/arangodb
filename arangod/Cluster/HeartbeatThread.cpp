@@ -111,7 +111,7 @@ void HeartbeatThread::runDBServer() {
   LOG_TRACE("starting heartbeat thread (DBServer version)");
 
   // convert timeout to seconds
-  const double interval = (double)_interval / 1000.0 / 1000.0;
+  double const interval = (double)_interval / 1000.0 / 1000.0;
 
   // last value of plan which we have noticed:
   uint64_t lastPlanVersionNoticed = 0;
@@ -128,7 +128,7 @@ void HeartbeatThread::runDBServer() {
   while (!_stop) {
     LOG_TRACE("sending heartbeat to agency");
 
-    const double start = TRI_microtime();
+    double const start = TRI_microtime();
 
     // send our state to the agency.
     // we don't care if this fails
@@ -263,7 +263,7 @@ void HeartbeatThread::runCoordinator() {
   uint64_t oldUserVersion = 0;
 
   // convert timeout to seconds
-  const double interval = (double)_interval / 1000.0 / 1000.0;
+  double const interval = (double)_interval / 1000.0 / 1000.0;
 
   // last value of plan which we have noticed:
   uint64_t lastPlanVersionNoticed = 0;
@@ -276,7 +276,7 @@ void HeartbeatThread::runCoordinator() {
   while (!_stop) {
     LOG_TRACE("sending heartbeat to agency");
 
-    const double start = TRI_microtime();
+    double const start = TRI_microtime();
 
     // send our state to the agency.
     // we don't care if this fails
@@ -485,7 +485,7 @@ static bool myDBnamesComparer(std::string const& a, std::string const& b) {
 /// this is triggered if the heartbeat thread finds a new plan version number
 ////////////////////////////////////////////////////////////////////////////////
 
-static const std::string prefixPlanChangeCoordinator = "Plan/Databases";
+static std::string const prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   bool fetchingUsersFailed = false;
   LOG_TRACE("found a plan update");
@@ -656,7 +656,7 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result,
   if (it != result._values.end()) {
     lastCommandIndex = (*it).second._index;
 
-    const std::string command =
+    std::string const command =
         triagens::basics::JsonHelper::getStringValue((*it).second._json, "");
     ServerState::StateEnum newState = ServerState::stringToState(command);
 
@@ -684,7 +684,7 @@ bool HeartbeatThread::sendState() {
   }
 
   if (++_numFails % _maxFailsBeforeWarning == 0) {
-    const std::string endpoints = AgencyComm::getEndpointsString();
+    std::string const endpoints = AgencyComm::getEndpointsString();
 
     LOG_WARNING(
         "heartbeat could not be sent to agency endpoints (%s): http code: %d, "
