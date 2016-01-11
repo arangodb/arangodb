@@ -1,15 +1,14 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_BaseMiddleware_response_json
-///
-/// `response.json(object)`
-///
-/// Set the content type to JSON and the body to the JSON encoded *object*
-/// you provided.
-///
-/// @EXAMPLES
-///
-/// ```js
-/// response.json({'born': 'December 12, 1915'});
-/// ```
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`response.json(object)`
+
+Set the content type to JSON and the body to the JSON encoded *object*
+you provided.
+
+@EXAMPLES
+
+```js
+response.json({'born': 'December 12, 1915'});
+```
+

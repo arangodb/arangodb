@@ -1,9 +1,8 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_errors
-///
-/// `model.errors`
-///
-/// The *errors* property maps the names of any invalid attributes to their
-/// corresponding validation error.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`model.errors`
+
+The *errors* property maps the names of any invalid attributes to their
+corresponding validation error.
+

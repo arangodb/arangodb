@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_attributes
-///
-/// `model.attributes`
-///
-/// The *attributes* property is the internal hash containing the model's state.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`model.attributes`
+
+The *attributes* property is the internal hash containing the model's state.
+

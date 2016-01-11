@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsCollectionNotFound
-///
-/// `actions.collectionNotFound(req, res, collection, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`actions.collectionNotFound(req, res, collection, headers)`
+
+The function generates an error response.
+

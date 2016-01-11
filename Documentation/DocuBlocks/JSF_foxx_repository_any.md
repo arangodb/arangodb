@@ -1,13 +1,12 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_repository_any
-/// `FoxxRepository#any()`
-///
-/// Returns a random model from this repository (or null if there is none).
-///
-/// @EXAMPLES
-///
-/// ```javascript
-/// repository.any();
-/// ```
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+`FoxxRepository#any()`
+
+Returns a random model from this repository (or null if there is none).
+
+@EXAMPLES
+
+```javascript
+repository.any();
+```
+

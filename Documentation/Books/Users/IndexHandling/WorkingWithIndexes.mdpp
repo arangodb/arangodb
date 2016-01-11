@@ -34,7 +34,27 @@ db._index("demo/362549736");
 
 !SUBSECTION Listing all indexes of a collection
 <!-- arangod/V8Server/v8-vocindex.cpp -->
-@startDocuBlock collectionGetIndexes
+
+
+@brief returns information about the indexes
+`getIndexes()`
+
+Returns an array of all indexes defined for the collection.
+
+Note that `_key` implicitly has an index assigned to it.
+
+    @startDocuBlockInline collectionGetIndexes
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionGetIndexes}
+    ~db._create("test");
+    ~db.test.ensureUniqueSkiplist("skiplistAttribute");
+    ~db.test.ensureUniqueSkiplist("skiplistUniqueAttribute");
+    |~db.test.ensureHashIndex("hashListAttribute",
+                              "hashListSecondAttribute.subAttribute");
+    db.test.getIndexes();
+    ~db._drop("test");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionGetIndexes
+
 
 !SUBSECTION Creating an index
 Indexes should be created using the general method *ensureIndex*. This
@@ -42,22 +62,152 @@ method obsoletes the specialized index-specific methods *ensureHashIndex*,
 *ensureSkiplist*, *ensureUniqueConstraint* etc.
 
 <!-- arangod/V8Server/v8-vocindex.cpp -->
-@startDocuBlock collectionEnsureIndex
+
+
+@brief ensures that an index exists
+`collection.ensureIndex(index-description)`
+
+Ensures that an index according to the *index-description* exists. A
+new index will be created if none exists with the given description.
+
+The *index-description* must contain at least a *type* attribute.
+Other attributes may be necessary, depending on the index type.
+
+**type** can be one of the following values:
+- *hash*: hash index
+- *skiplist*: skiplist index
+- *fulltext*: fulltext index
+- *geo1*: geo index, with one attribute
+- *geo2*: geo index, with two attributes
+- *cap*: cap constraint
+
+**sparse** can be *true* or *false*.
+
+For *hash*, and *skiplist* the sparsity can be controlled, *fulltext* and *geo*
+are [sparse](WhichIndex.md) by definition.
+
+**unique** can be *true* or *false* and is supported by *hash* or *skiplist*
+
+Calling this method returns an index object. Whether or not the index
+object existed before the call is indicated in the return attribute
+*isNewlyCreated*.
+
+@EXAMPLES
+
+    @startDocuBlockInline collectionEnsureIndex
+    @EXAMPLE_ARANGOSH_OUTPUT{collectionEnsureIndex}
+    ~db._create("test");
+    db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
+    db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
+    ~db._drop("test");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock collectionEnsureIndex
+
+
 
 !SUBSECTION Dropping an index
 <!-- arangod/V8Server/v8-vocindex.cpp -->
-@startDocuBlock col_dropIndex
+
+
+@brief drops an index
+`collection.dropIndex(index)`
+
+Drops the index. If the index does not exist, then *false* is
+returned. If the index existed and was dropped, then *true* is
+returned. Note that you cannot drop some special indexes (e.g. the primary
+index of a collection or the edge index of an edge collection).
+
+`collection.dropIndex(index-handle)`
+
+Same as above. Instead of an index an index handle can be given.
+
+    @startDocuBlockInline col_dropIndex
+    @EXAMPLE_ARANGOSH_OUTPUT{col_dropIndex}
+    ~db._create("example");
+    db.example.ensureSkiplist("a", "b");
+    var indexInfo = db.example.getIndexes();
+    indexInfo;
+    db.example.dropIndex(indexInfo[0])
+    db.example.dropIndex(indexInfo[1].id)
+    indexInfo = db.example.getIndexes();
+    ~db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock col_dropIndex
+
+
 
 !SECTION Database Methods
 
 !SUBSECTION Fetching an index by handle
 <!-- js/server/modules/@arangodb/arango-database.js -->
-@startDocuBlock IndexHandle
+
+
+@brief finds an index
+`db._index(index-handle)`
+
+Returns the index with *index-handle* or null if no such index exists.
+
+    @startDocuBlockInline IndexHandle
+    @EXAMPLE_ARANGOSH_OUTPUT{IndexHandle}
+    ~db._create("example");
+    db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
+    var indexInfo = db.example.getIndexes().map(function(x) { return x.id; });
+    indexInfo;
+    db._index(indexInfo[0])
+    db._index(indexInfo[1])
+    ~db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock IndexHandle
+
 
 !SUBSECTION Dropping an index
 <!-- js/server/modules/@arangodb/arango-database.js -->
-@startDocuBlock dropIndex
+
+
+@brief drops an index
+`db._dropIndex(index)`
+
+Drops the *index*.  If the index does not exist, then *false* is
+returned. If the index existed and was dropped, then *true* is
+returned.
+
+`db._dropIndex(index-handle)`
+
+Drops the index with *index-handle*.
+
+    @startDocuBlockInline dropIndex
+    @EXAMPLE_ARANGOSH_OUTPUT{dropIndex}
+    ~db._create("example");
+    db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
+    var indexInfo = db.example.getIndexes();
+    indexInfo;
+    db._dropIndex(indexInfo[0])
+    db._dropIndex(indexInfo[1].id)
+    indexInfo = db.example.getIndexes();
+    ~db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock dropIndex
+
 
 !SUBSECTION Revalidating whether an index is used
 <!-- js/server/modules/@arangodb/arango-database.js -->
-@startDocuBlock IndexVerify
+
+
+@brief finds an index
+
+So you've created an index, and since its maintainance isn't for free,
+you definitely want to know whether your query can utilize it.
+
+You can use explain to verify whether **skiplists** or **hash indexes** are 
+used (if you omit `colors: false` you will get nice colors in ArangoShell):
+
+    @startDocuBlockInline IndexVerify
+    @EXAMPLE_ARANGOSH_OUTPUT{IndexVerify}
+    ~db._create("example");
+    var explain = require("@arangodb/aql/explainer").explain;
+    db.example.ensureIndex({ type: "skiplist", fields: [ "a", "b" ] });
+    explain("FOR doc IN example FILTER doc.a < 23 RETURN doc", {colors:false});
+    ~db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock IndexVerify
+

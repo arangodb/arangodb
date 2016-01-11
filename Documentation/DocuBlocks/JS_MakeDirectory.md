@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JS_MakeDirectory
-/// @brief creates a directory
-/// `fs.makeDirectory(path)`
-///
-/// Creates the directory specified by *path*.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+@brief creates a directory
+`fs.makeDirectory(path)`
+
+Creates the directory specified by *path*.
+

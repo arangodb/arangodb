@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_model_forDB
-///
-/// `FoxxModel#forDB()`
-///
-/// Return a copy of the model which can be saved into ArangoDB
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`FoxxModel#forDB()`
+
+Return a copy of the model which can be saved into ArangoDB
+

@@ -1,6 +1,5 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_repository_prefix
-/// The prefix of the application. This is useful if you want to construct AQL
-/// queries for example.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+The prefix of the application. This is useful if you want to construct AQL
+queries for example.
+

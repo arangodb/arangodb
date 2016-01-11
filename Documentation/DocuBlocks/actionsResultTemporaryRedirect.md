@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultTemporaryRedirect
-///
-/// `actions.resultTemporaryRedirect(req, res, options, headers)`
-///
-/// The function generates a redirect response.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`actions.resultTemporaryRedirect(req, res, options, headers)`
+
+The function generates a redirect response.
+

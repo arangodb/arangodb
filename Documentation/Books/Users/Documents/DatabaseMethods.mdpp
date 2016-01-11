@@ -2,20 +2,258 @@
 
 !SUBSECTION Document
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock documentsDocumentName
+
+
+@brief looks up a document and returns it
+`db._document(document)`
+
+This method finds a document given its identifier. It returns the document
+if the document exists. An error is thrown if no document with the given
+identifier exists, or if the specified *_rev* value does not match the
+current revision of the document.
+
+**Note**: If the method is executed on the arangod server (e.g. from
+inside a Foxx application), an immutable document object will be returned
+for performance reasons. It is not possible to change attributes of this
+immutable object. To update or patch the returned document, it needs to be
+cloned/copied into a regular JavaScript object first. This is not necessary
+if the *_document* method is called from out of arangosh or from any
+other client.
+
+`db._document(document-handle)`
+
+As before. Instead of document a *document-handle* can be passed as
+first argument.
+
+@EXAMPLES
+
+Returns the document:
+
+    @startDocuBlockInline documentsDocumentName
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentName}
+    ~ db._create("example");
+    ~ var myid = db.example.insert({_key: "12345"});
+      db._document("example/12345");
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsDocumentName
+
+
 
 !SUBSECTION Exists
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock documentsDocumentExists
+
+
+@brief checks whether a document exists
+`db._exists(document)`
+
+This method determines whether a document exists given its identifier.
+Instead of returning the found document or an error, this method will
+return either *true* or *false*. It can thus be used
+for easy existence checks.
+
+No error will be thrown if the sought document or collection does not
+exist.
+Still this method will throw an error if used improperly, e.g. when called
+with a non-document handle.
+
+`db._exists(document-handle)`
+
+As before, but instead of a document a document-handle can be passed.
+
 
 !SUBSECTION Replace
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock documentsDocumentReplace
+
+
+@brief replaces a document
+`db._replace(document, data)`
+
+The method returns a document with the attributes *_id*, *_rev* and
+*_oldRev*.  The attribute *_id* contains the document handle of the
+updated document, the attribute *_rev* contains the document revision of
+the updated document, the attribute *_oldRev* contains the revision of
+the old (now replaced) document.
+
+If there is a conflict, i. e. if the revision of the *document* does not
+match the revision in the collection, then an error is thrown.
+
+`db._replace(document, data, true)`
+
+As before, but in case of a conflict, the conflict is ignored and the old
+document is overwritten.
+
+`db._replace(document, data, true, waitForSync)`
+
+The optional *waitForSync* parameter can be used to force
+synchronization of the document replacement operation to disk even in case
+that the *waitForSync* flag had been disabled for the entire collection.
+Thus, the *waitForSync* parameter can be used to force synchronization
+of just specific operations. To use this, set the *waitForSync* parameter
+to *true*. If the *waitForSync* parameter is not specified or set to
+*false*, then the collection's default *waitForSync* behavior is
+applied. The *waitForSync* parameter cannot be used to disable
+synchronization for collections that have a default *waitForSync* value
+of *true*.
+
+`db._replace(document-handle, data)`
+
+As before. Instead of document a *document-handle* can be passed as
+first argument.
+
+@EXAMPLES
+
+Create and replace a document:
+
+    @startDocuBlockInline documentsDocumentReplace
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentReplace}
+    ~ db._create("example");
+      a1 = db.example.insert({ a : 1 });
+      a2 = db._replace(a1, { a : 2 });
+      a3 = db._replace(a1, { a : 3 });  // xpError(ERROR_ARANGO_CONFLICT);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsDocumentReplace
+
+
 
 !SUBSECTION Update
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock documentsDocumentUpdate
+
+
+@brief update a document
+`db._update(document, data, overwrite, keepNull, waitForSync)`
+
+Updates an existing *document*. The *document* must be a document in
+the current collection. This document is then patched with the
+*data* given as second argument. The optional *overwrite* parameter can
+be used to control the behavior in case of version conflicts (see below).
+The optional *keepNull* parameter can be used to modify the behavior when
+handling *null* values. Normally, *null* values are stored in the
+database. By setting the *keepNull* parameter to *false*, this behavior
+can be changed so that all attributes in *data* with *null* values will
+be removed from the target document.
+
+The optional *waitForSync* parameter can be used to force
+synchronization of the document update operation to disk even in case
+that the *waitForSync* flag had been disabled for the entire collection.
+Thus, the *waitForSync* parameter can be used to force synchronization
+of just specific operations. To use this, set the *waitForSync* parameter
+to *true*. If the *waitForSync* parameter is not specified or set to
+false*, then the collection's default *waitForSync* behavior is
+applied. The *waitForSync* parameter cannot be used to disable
+synchronization for collections that have a default *waitForSync* value
+of *true*.
+
+The method returns a document with the attributes *_id*, *_rev* and
+*_oldRev*. The attribute *_id* contains the document handle of the
+updated document, the attribute *_rev* contains the document revision of
+the updated document, the attribute *_oldRev* contains the revision of
+the old (now replaced) document.
+
+If there is a conflict, i. e. if the revision of the *document* does not
+match the revision in the collection, then an error is thrown.
+
+`db._update(document, data, true)`
+
+As before, but in case of a conflict, the conflict is ignored and the old
+document is overwritten.
+
+`db._update(document-handle, data)`
+
+As before. Instead of document a *document-handle* can be passed as
+first argument.
+
+@EXAMPLES
+
+Create and update a document:
+
+    @startDocuBlockInline documentDocumentUpdate
+    @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentUpdate}
+    ~ db._create("example");
+      a1 = db.example.insert({ a : 1 });
+      a2 = db._update(a1, { b : 2 });
+      a3 = db._update(a1, { c : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentDocumentUpdate
+
+
 
 !SUBSECTION Remove
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock documentsDocumentRemove
+
+
+@brief removes a document
+`db._remove(document)`
+
+Removes a document. If there is revision mismatch, then an error is thrown.
+
+`db._remove(document, true)`
+
+Removes a document. If there is revision mismatch, then mismatch is ignored
+and document is deleted. The function returns *true* if the document
+existed and was deleted. It returns *false*, if the document was already
+deleted.
+
+`db._remove(document, true, waitForSync)` or
+`db._remove(document, {overwrite: true or false, waitForSync: true or false})`
+
+The optional *waitForSync* parameter can be used to force synchronization
+of the document deletion operation to disk even in case that the
+*waitForSync* flag had been disabled for the entire collection.  Thus,
+the *waitForSync* parameter can be used to force synchronization of just
+specific operations. To use this, set the *waitForSync* parameter to
+*true*. If the *waitForSync* parameter is not specified or set to
+*false*, then the collection's default *waitForSync* behavior is
+applied. The *waitForSync* parameter cannot be used to disable
+synchronization for collections that have a default *waitForSync* value
+of *true*.
+
+`db._remove(document-handle, data)`
+
+As before. Instead of document a *document-handle* can be passed as first
+argument.
+
+@EXAMPLES
+
+Remove a document:
+
+    @startDocuBlockInline documentsCollectionRemove
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemove}
+    ~ db._create("example");
+      a1 = db.example.insert({ a : 1 });
+      db._remove(a1);
+      db._remove(a1);  // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      db._remove(a1, true);
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionRemove
+
+Remove a document with a conflict:
+
+    @startDocuBlockInline documentsCollectionRemoveConflict
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveConflict}
+    ~ db._create("example");
+      a1 = db.example.insert({ a : 1 });
+      a2 = db._replace(a1, { a : 2 });
+      db._remove(a1);       // xpError(ERROR_ARANGO_CONFLICT)
+      db._remove(a1, true);
+      db._document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionRemoveConflict
+
+Remove a document using new signature:
+
+    @startDocuBlockInline documentsCollectionRemoveSignature
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveSignature}
+    ~ db._create("example");
+      db.example.insert({ a:  1 } );
+    | db.example.remove("example/11265325374",
+           { overwrite: true, waitForSync: false})
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionRemoveSignature
+
+

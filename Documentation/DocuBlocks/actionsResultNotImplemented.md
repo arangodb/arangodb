@@ -1,8 +1,7 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultNotImplemented
-///
-/// `actions.resultNotImplemented(req, res, msg, headers)`
-///
-/// The function generates an error response.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
+
+
+
+`actions.resultNotImplemented(req, res, msg, headers)`
+
+The function generates an error response.
+
