@@ -46,7 +46,7 @@ module.exports = class SwaggerContext {
     this._headers = new Map();
     this._queryParams = new Map();
     this._bodyParam = null;
-    this._response = null;
+    this._responses = new Map();
     this._summary = null;
     this._description = null;
     this._deprecated = false;
@@ -82,9 +82,18 @@ module.exports = class SwaggerContext {
     };
     return this;
   }
-  response(type, description) {
-    this._response = {type: type, description: description};
+  response(status, type, description) {
+    let statusCode = Number(status || undefined);
+    if (Number.isNaN(statusCode)) {
+      description = type;
+      type = status;
+      statusCode = 200;
+    }
+    this._responses.set(statusCode, {type: type, description: description});
     return this;
+  }
+  error(status, description) {
+    return this.response(status, undefined, description);
   }
   summary(text) {
     this._summary = text;
