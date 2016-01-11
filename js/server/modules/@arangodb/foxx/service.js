@@ -286,6 +286,19 @@ class FoxxService {
   buildRoutes() {
     const service = this;
     const tree = new Tree(this.main.context, this.router);
+    this.docs = {
+      swagger: '2.0',
+      basePath: this.main.context.baseUrl,
+      paths: tree.buildSwaggerPaths(),
+      info: {
+        title: this.name,
+        description: this.manifest.description,
+        version: this.version,
+        license: {
+          name: this.manifest.license
+        }
+      }
+    };
     this.routes.routes.push({
       url: {match: '/*'},
       action: {

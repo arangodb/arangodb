@@ -29,6 +29,7 @@
 const _ = require('lodash');
 const httpError = require('http-errors');
 const union = require('@arangodb/util').union;
+const SwaggerContext = require('@arangodb/foxx/router/swagger-context');
 const SyntheticRequest = require('@arangodb/foxx/router/request');
 const SyntheticResponse = require('@arangodb/foxx/router/response');
 const tokenize = require('@arangodb/foxx/router/tokenize');
@@ -80,6 +81,12 @@ module.exports = class Tree {
   *findRoutes(suffix) {
     let result = [{router: this.router, path: [], suffix: suffix}];
     for (let route of findRoutes(this.root, result, suffix, [])) {
+      yield route;
+    }
+  }
+
+  *flatten() {
+    for (let route of flatten(this.root, [this.router])) {
       yield route;
     }
   }
@@ -157,11 +164,43 @@ module.exports = class Tree {
     return true;
   }
 
-  *flatten() {
-    let things = [{router: this.router, path: []}];
-    for (let result of flatten(this.root, [], things)) {
-      yield result;
+  buildSwaggerPaths() {
+    let paths = {};
+    for (let route of this.flatten()) {
+      let parts = [];
+      let swagger = new SwaggerContext();
+      let i = 0;
+      for (let item of route) {
+        if (item.router) {
+          swagger._merge(item, true);
+          if (item.router) {
+            swagger._merge(item.router);
+          }
+        } else {
+          swagger._merge(item);
+          swagger._methods = item._methods;
+        }
+      }
+      for (let token of swagger._pathTokens) {
+        if (token === tokenize.PARAM) {
+          token = ':' + swagger._pathParamNames[i];
+          i++;
+        }
+        parts.push(token);
+      }
+      if (!paths[swagger.path]) {
+        paths[swagger.path] = {};
+      }
+      let pathItem = paths[swagger.path];
+      let operation = swagger._buildOperation();
+      for (let method of swagger._methods) {
+        method = method.toLowerCase();
+        if (!pathItem[method]) {
+          pathItem[method] = operation;
+        }
+      }
     }
+    return paths;
   }
 };
 
@@ -294,29 +333,22 @@ function* findRoutes(node, result, suffix, path) {
 }
 
 
-function* flatten(node, path, result) {
+function* flatten(node, result) {
   for (let entry of node.entries()) {
     let token = entry[0];
     let child = entry[1];
     if (token === tokenize.WILDCARD || token === tokenize.TERMINAL) {
       for (let endpoint of child.get($_ROUTES) || []) {
         if (endpoint.router) {
-          let result2 = result.concat({
-            router: endpoint,
-            path: path
-          });
-          for (let route of flatten(endpoint.tree.root, [], result2)) {
+          for (let route of flatten(endpoint.tree.root, result.concat(endpoint))) {
             yield route;
           }
         } else {
-          yield result.concat({
-            endpoint: endpoint,
-            path: path
-          });
+          yield result.concat(endpoint);
         }
       }
     } else {
-      for (let route of flatten(child, path.concat(token), result)) {
+      for (let route of flatten(child, result)) {
         yield route;
       }
     }

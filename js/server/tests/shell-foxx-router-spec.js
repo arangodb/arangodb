@@ -401,4 +401,19 @@ describe('Tree', function () {
   });
 });
 
+describe('Tree#buildSwaggerPaths', function () {
+  it('', function () {
+    const child = createRouter();
+    child.get('/:x', function () {});
+    const router = createRouter();
+    router.use('/:x', child);
+    const tree = new Tree({}, router);
+    const docs = tree.buildSwaggerPaths();
+    console.log(docs);
+    expect(docs['/:x/:x2']).toBeDefined();
+    // TODO
+    expect(false).toEqual(true);
+  });
+});
+
 }());

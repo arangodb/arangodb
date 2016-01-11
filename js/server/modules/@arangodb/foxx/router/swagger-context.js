@@ -152,4 +152,17 @@ module.exports = class SwaggerContext {
     }
     this.path = tokenize.reverse(this._pathTokens, this._pathParamNames);
   }
+  _buildOperation() {
+    const operation = {};
+    if (this._deprecated) {
+      operation.deprecated = this._deprecated;
+    }
+    if (this._description) {
+      operation.description = this._description;
+    }
+    if (this._summary) {
+      operation.summary = this._summary;
+    }
+    return operation;
+  }
 };
