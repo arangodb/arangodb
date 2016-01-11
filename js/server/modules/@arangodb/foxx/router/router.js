@@ -34,7 +34,7 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 
 module.exports = exports = class Router extends SwaggerContext {
   constructor() {
-    super('');
+    super();
     this._routes = [];
     this._middleware = [];
   }

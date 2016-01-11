@@ -31,6 +31,9 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 
 module.exports = class SwaggerContext {
   constructor(path) {
+    if (!path) {
+      path = '';
+    }
     {
       let n = path.length - 1;
       if (path.charAt(n) === '/') {
