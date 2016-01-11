@@ -78,12 +78,12 @@ TraverserExpression::TraverserExpression(VPackSlice const& slice) {
   triagens::basics::Json varNode(
       TRI_UNKNOWN_MEM_ZONE,
       basics::VelocyPackHelper::velocyPackToJson(slice.get("varAccess")),
-      triagens::basics::Json::NOFREE);
+      triagens::basics::Json::AUTOFREE);
 
   compareTo.reset(new triagens::basics::Json(
       TRI_UNKNOWN_MEM_ZONE,
       basics::VelocyPackHelper::velocyPackToJson(slice.get("compareTo")),
-      triagens::basics::Json::NOFREE));
+      triagens::basics::Json::AUTOFREE));
 
   if (compareTo->json() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
